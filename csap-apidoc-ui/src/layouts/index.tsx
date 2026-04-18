@@ -18,6 +18,13 @@ import { groupParametersByType, getNonEmptyParamTypes, getParamTypeLabel, buildR
 import { ExclamationCircleFilled, ThunderboltOutlined } from '@ant-design/icons';
 import TryItOutPanel, { RequestSpec } from '@/components/TryItOutPanel';
 import type { HttpMethod } from '@/services/tryItOutClient';
+import {
+  composeTryItOutSpec,
+  explainContextBadges,
+} from '@/services/requestComposer';
+import { useActiveEnvironment } from '@/contexts/EnvironmentContext';
+import { useHeaders } from '@/contexts/HeadersContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 import './index.less';
 
@@ -25,6 +32,13 @@ const { Search } = Input;
 const { DirectoryTree } = Tree;
 
 const LayoutIndex = () => {
+  // M5 — wire env + headers + auth into try-it-out. These hooks must be
+  // called at the top of the component so React's hook ordering stays
+  // stable across renders.
+  const env = useActiveEnvironment();
+  const { resolve: resolveHeaders, explain: explainHeaders } = useHeaders();
+  const { apply: applyAuth, getActiveSchemeFor } = useAuth();
+
   const [toolipTitle, setToolipTitle] = useState('点击复制');
   const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
   const [defaultExpandeKeys, SetDefaultExpandeKeys] = useState<React.Key[]>([]);
@@ -739,6 +753,47 @@ const LayoutIndex = () => {
     }
   };
 
+  // M5 — assemble the inputs the Try-it-out panel needs from the env /
+  // headers / auth contexts. Reading `selectRefValue.current?.value` here
+  // is safe because it changes via `onChangeValue → getTreeList`, which
+  // updates state and triggers a re-render before the panel is shown.
+  const serviceRefId = selectRefValue.current?.value ?? null;
+  const tryItOutBaseUrl = selectRefValue.current?.value
+    ? selectRefValue.current.value.replace('/csap/apidoc/parent', '')
+    : (import.meta.env.VITE_API_URL ?? '');
+  const tryItOutPath = dataObj.patch || '';
+  const tryItOutUrl = tryItOutBaseUrl
+    ? `${tryItOutBaseUrl}${tryItOutPath.startsWith('/') ? '' : '/'}${tryItOutPath}`
+    : tryItOutPath;
+  const tryItOutInitial: RequestSpec = {
+    method: ((dataObj.method || 'GET').toUpperCase() as HttpMethod),
+    url: tryItOutUrl,
+  };
+
+  const tryItOutBadges = React.useMemo(
+    () =>
+      explainContextBadges({
+        env,
+        activeHeaderRules: explainHeaders({ serviceRefId }),
+        activeAuth: getActiveSchemeFor(serviceRefId),
+      }),
+    [env, explainHeaders, getActiveSchemeFor, serviceRefId],
+  );
+
+  const tryItOutEnrich = React.useCallback(
+    async (spec: RequestSpec): Promise<RequestSpec> => {
+      const authPatch = await applyAuth(serviceRefId);
+      return composeTryItOutSpec({
+        spec,
+        env,
+        serviceRefId,
+        resolvedHeaders: resolveHeaders({ serviceRefId }),
+        authPatch,
+      });
+    },
+    [applyAuth, env, resolveHeaders, serviceRefId],
+  );
+
   return (
     <>
       <LayoutHeader
@@ -915,18 +970,9 @@ const LayoutIndex = () => {
 
               {tryV2 ? (
                 <TryItOutPanel
-                  initial={(() => {
-                    const baseUrl = selectRefValue.current?.value
-                      ? selectRefValue.current.value.replace('/csap/apidoc/parent', '')
-                      : (import.meta.env.VITE_API_URL ?? '');
-                    const path = dataObj.patch || '';
-                    const url = baseUrl ? `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}` : path;
-                    const spec: RequestSpec = {
-                      method: ((dataObj.method || 'GET').toUpperCase() as HttpMethod),
-                      url,
-                    };
-                    return spec;
-                  })()}
+                  initial={tryItOutInitial}
+                  contextBadges={tryItOutBadges}
+                  enrichRequest={tryItOutEnrich}
                 />
               ) : DocText ? (
                 <div className="jsonDiv">
