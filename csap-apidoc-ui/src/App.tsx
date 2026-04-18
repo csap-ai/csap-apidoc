@@ -1,8 +1,12 @@
 import LayoutIndex from "@/layouts";
+import { EnvironmentProvider } from "@/contexts/EnvironmentContext";
+
 const App = () => {
   return (
-    <LayoutIndex />
-  )
-}
+    <EnvironmentProvider>
+      <LayoutIndex />
+    </EnvironmentProvider>
+  );
+};
 
-export default App
+export default App;

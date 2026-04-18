@@ -3,6 +3,7 @@ import {useState, forwardRef, useImperativeHandle} from 'react';
 import {DownloadOutlined, FileTextOutlined, ApiOutlined, DownOutlined} from '@ant-design/icons';
 import type {MenuProps} from 'antd';
 import CSAP from '@/assets/ICON.png';
+import EnvironmentSwitcher from '@/components/EnvironmentSwitcher';
 import './index.less';
 
 const {Header} = Layout;
@@ -84,6 +85,9 @@ const LayoutHeader = (props: IProps, ref) => {
             </div>
             <div className="header-ri">
                 <div className="apiList">
+                    <div className="api-item">
+                        <EnvironmentSwitcher />
+                    </div>
                     <div className="api-item">
                         <div>切换服务</div>
                         <Select
