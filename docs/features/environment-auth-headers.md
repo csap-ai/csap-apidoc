@@ -3,356 +3,468 @@
 > Branch: `feat/environment-auth-headers`
 > Status: **APPROVED — ready for M1**
 > Owner: yangchengfu
-> Last updated: 2026-04-18
+> Last updated: 2026-04-18 (v2 — major rewrite after architecture clarification)
 
-This document is the working spec for the first major feature shipped after the
-public release of `csap-apidoc`. It covers four tightly coupled capabilities
-that together upgrade the doc viewer from a read-only reference into an
-interactive API workbench.
+This document is the working spec for the first major feature shipped after
+the public release of `csap-apidoc`. It upgrades the doc viewer from a
+read-only reference into an interactive API workbench that frontend
+developers can use to inspect and exercise endpoints without leaving the
+browser.
 
 ---
 
-## 1. Goals & Non-goals
+## 1. Module positioning (read this first)
+
+`csap-framework-apidoc` ships **two parallel, independent products**. They
+share the same Maven multi-module repo but serve different audiences and have
+no client–server relationship.
+
+| module | audience | role | runtime shape |
+|---|---|---|---|
+| `csap-apidoc-ui` | **Frontend developers / QA** | Browse multi-service API docs; inspect schema; **exercise endpoints (try-it-out)**; manage personal request context (env / headers / auth) | Standalone React SPA. Calls each service's `/apidoc` endpoint directly. No backend of its own. |
+| `csap-apidoc-devtools` | **Backend developers** | Manage doc metadata (field configs, regex templates, response models, hide endpoints) inside their own Spring Boot app at runtime | Embedded Spring Boot starter. Auto-mounts `/devtools-ui` and `/api/devtools/*` inside the host app, similar in spirit to `spring-boot-actuator`. |
+
+**This feature lives entirely in `csap-apidoc-ui`.** No changes are required
+in `csap-apidoc-devtools`, `csap-apidoc-boot`, `csap-apidoc-core`, or any
+other Maven module for the in-scope milestones (M1–M6, M8). M7 is an
+optional later enhancement that touches `csap-apidoc-annotation` and
+`csap-apidoc-core`.
+
+> **Why this matters**: the v1 of this doc assumed the two modules formed a
+> client–server pair with central persistence. They do not. All
+> personalisation in this feature lives in the user's browser. See §10.
+
+---
+
+## 2. Goals & Non-goals
 
 ### Goals
 
-1. Reader-side users (frontend devs, QAs) can pick an **Environment**
-   (`dev`/`staging`/`prod`/...) and have all subsequent requests target the
-   correct base URL with the correct variables.
-2. **Global Headers** can be configured at three scopes — environment, service,
-   user — and are auto-injected into every request issued from the doc UI.
+1. Frontend devs can pick an **Environment** (`dev` / `staging` / `prod` / ...)
+   and have all subsequent requests target the correct base URL with the
+   correct variables.
+2. **Global Headers** can be configured at three scopes — global / service /
+   environment — and are auto-injected into every try-it-out request.
 3. **Auth Schemes** are first-class: Bearer, Basic, API Key (header / query /
-   cookie), OAuth2 Client Credentials. Credentials are encrypted at rest and
-   never exposed to the browser.
-4. A **Try it out** panel sends real requests through a backend proxy with the
-   above context applied, displaying status, latency, response body and
-   headers.
-5. All four are persisted server-side, scoped by workspace, and follow the
-   existing RBAC model (`viewer` / `editor` / `admin`).
+   cookie), OAuth2 Client Credentials. Sensitive fields can optionally be
+   encrypted with a per-browser master password (Web Crypto AES-GCM).
+4. A **Try it out** panel sends real requests directly from the browser to
+   the target service, displaying status, latency, response headers and body.
+5. All configuration is stored in the browser (`localStorage`); nothing leaves
+   the device. No server-side persistence, no accounts.
 
-### Non-goals (will be addressed in later branches)
+### Non-goals (separate branches)
 
-- Mock server (Phase 1.3 of the devtools roadmap)
+- Server-side persistence / cross-device sync (would require integration with
+  the commercial `agent-admin-web` platform; out of scope for the OSS framework)
+- RBAC / multi-tenant / team-shared configurations
+- Mock server (Phase 1.3 of devtools roadmap)
 - Code-sample generation (cURL / axios / fetch / Java)
 - Deep links / shareable URLs with prefilled params
-- OAuth2 Authorization Code / PKCE / Device flow (only Client Credentials in
-  this iteration)
+- OAuth2 Authorization Code / PKCE / Device flow (Client Credentials only)
 - Non-HTTP protocols (WebSocket, SSE, gRPC)
-- Internationalisation of new screens (will follow in a separate i18n PR using
-  the same key conventions as `agent-admin-web`)
+- Fully reactive Antd 5 redesign (tracked in `chore/antd5-upgrade`)
 
 ---
 
-## 2. User stories
+## 3. User stories
 
 | # | As a … | I want to … | So that … |
 |---|---|---|---|
 | US-1 | Frontend developer | switch the doc viewer to `staging` and see the staging base URL applied | I can call staging APIs without copy-pasting URLs |
-| US-2 | Backend developer | define a global header `X-Tenant-Id: 42` once for the `staging` environment | I don't have to type it on every endpoint test |
-| US-3 | QA engineer | configure a Bearer token credential per environment | I can switch envs without re-pasting tokens |
-| US-4 | Tech lead | mark a Bearer scheme as "team shared" | new joiners inherit the auth setup |
-| US-5 | Anyone | press "Send" on an endpoint and see the real response | I don't have to context-switch to Postman |
-| US-6 | Admin | review who changed which env/header/auth in the last 30 days | for compliance audit |
+| US-2 | Frontend developer | define a global header `X-Tenant-Id: 42` once for the `staging` env | I don't have to retype it on every endpoint test |
+| US-3 | QA engineer | configure a Bearer token per environment | switching env auto-switches token |
+| US-4 | QA engineer | press "Send" on an endpoint and see the real response | I don't context-switch to Postman |
+| US-5 | Privacy-sensitive user | set a master password to encrypt my saved tokens | a screen-share or stolen laptop doesn't leak credentials |
+| US-6 | Anyone | export and re-import my full config (env + headers + auth) | I can move setup between browsers / devices manually |
 
 ---
 
-## 3. Architecture overview
+## 4. Architecture overview
 
 ```
-┌─────────────────────────────┐                          ┌──────────────────────────┐
-│  csap-apidoc-ui (reader)    │                          │  csap-apidoc-devtools    │
-│  ──────────────────────     │                          │  (mgmt console + server) │
-│  • Env switcher (top bar)   │                          │  ──────────────────────  │
-│  • Headers/Auth drawer      │   GET env/headers/auth   │                          │
-│  • Try-it-out tab in detail │ ───────────────────────► │  REST API (§5)           │
-│                             │                          │      │                   │
-│                             │   POST /apidoc/proxy     │      │ JPA / MyBatis     │
-│                             │ ───────────────────────► │      ▼                   │
-│                             │                          │  Storage  (§4 / §8)      │
-└─────────────────────────────┘                          └──────────────────────────┘
-                                                              │
-                                                              ▼
-                                                     Audit log (separate table)
+┌──────────────────────────────────────────────────┐
+│             Browser (csap-apidoc-ui)             │
+│  ──────────────────────────────────────────────  │
+│  ┌──────────────┐    ┌──────────────────────┐    │
+│  │ Top bar      │    │ Detail pane          │    │
+│  │ Env switcher │    │ Config | Try it out  │    │
+│  │ Headers btn  │    │ ┌──────────────────┐ │    │
+│  │ Auth btn     │    │ │ Request form     │ │    │
+│  └──────┬───────┘    │ │ Send → ↓         │ │    │
+│         │            │ │ Response viewer  │ │    │
+│         │            │ └──────────────────┘ │    │
+│         ▼            └──────────┬───────────┘    │
+│  ┌──────────────────────────────▼─────────────┐  │
+│  │ RequestContext (in-memory + localStorage)  │  │
+│  │  - current env                             │  │
+│  │  - headers (merged from 3 scopes)          │  │
+│  │  - active auth scheme + (decrypted) creds  │  │
+│  └────────────────────────┬───────────────────┘  │
+└───────────────────────────┼──────────────────────┘
+                            │
+                            ▼
+              Direct HTTP to target service
+              (e.g. https://api-staging.example.com/orders)
+              Each service must allow CORS or be reached via a
+              user-configured dev-time proxy. See §6.
 ```
 
-The reader UI talks **only** to devtools server. The proxy hop is required so
-that:
+**Key properties**:
 
-- Browsers don't deal with target-service CORS.
-- Encrypted credentials are decrypted only on the server.
-- Every test request can be audited (who, when, which endpoint, which env).
+- No server in the loop. All persistence is browser-local.
+- `csap-apidoc-ui` already calls each service's `/apidoc` for doc data; the
+  same axios instance (configured per env) issues try-it-out requests.
+- The doc-data fetch and the try-it-out request hit the **same target
+  service**. If `/apidoc` is reachable from the browser, try-it-out is
+  reachable too (same origin, same CORS posture).
 
 ---
 
-## 4. Data model (logical)
+## 5. Data model (localStorage schema)
 
-> ⚠ Physical schema depends on the storage choice in §8. Below is logical.
+All keys are namespaced under `csap-apidoc:`. Format is JSON-stringified.
 
-### 4.1 Environment
+### 5.1 Environments
 
-| field | type | notes |
+```jsonc
+// key: csap-apidoc:environments
+{
+  "version": 1,
+  "activeId": "env_dev",
+  "items": [
+    {
+      "id": "env_dev",
+      "name": "Dev",
+      "color": "#52c41a",
+      "baseUrl": "http://localhost:8080",
+      "isDefault": true,
+      "variables": {
+        "tenantId": "42",
+        "userId": "u_123"
+      }
+    },
+    { "id": "env_staging", "name": "Staging", "color": "#fa8c16", ... }
+  ]
+}
+```
+
+Variables expand `{{key}}` template tokens inside `baseUrl`, header values,
+auth credentials, and request bodies at send time.
+
+### 5.2 Global headers
+
+```jsonc
+// key: csap-apidoc:headers
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "h_1",
+      "scope": "global",                     // 'global' | 'service' | 'environment'
+      "scopeRefId": null,                    // serviceUrl when scope=service, envId when scope=environment
+      "key": "X-App-Version",
+      "value": "1.0.0",
+      "enabled": true,
+      "isSecret": false,                     // if true, value stored in encrypted vault (§5.4)
+      "description": "App version pinned by frontend"
+    },
+    {
+      "id": "h_2",
+      "scope": "environment",
+      "scopeRefId": "env_staging",
+      "key": "X-Tenant-Id",
+      "value": "{{tenantId}}",                // resolved against env variables
+      "enabled": true,
+      "isSecret": false
+    }
+  ]
+}
+```
+
+**Resolution order** at request time (later overrides earlier on same key):
+`global` → `service` → `environment` → endpoint-declared headers from doc.
+
+### 5.3 Auth schemes
+
+```jsonc
+// key: csap-apidoc:auth-schemes
+{
+  "version": 1,
+  "activeBindings": {
+    // serviceUrl -> schemeId
+    "http://localhost:8080": "scheme_bearer_dev"
+  },
+  "items": [
+    {
+      "id": "scheme_bearer_dev",
+      "name": "Dev Bearer",
+      "type": "bearer",                      // 'bearer' | 'basic' | 'apikey' | 'oauth2_client'
+      "config": { "tokenRef": "vault:tok_1" },
+      "envBindings": {                       // optional per-env credential override
+        "env_dev":     { "tokenRef": "vault:tok_1" },
+        "env_staging": { "tokenRef": "vault:tok_2" }
+      }
+    },
+    {
+      "id": "scheme_apikey_x",
+      "type": "apikey",
+      "config": { "in": "header", "name": "X-API-Key", "valueRef": "vault:tok_3" }
+    }
+  ]
+}
+```
+
+Type-specific `config` shapes:
+
+```jsonc
+bearer:        { "tokenRef": "vault:..." }
+basic:         { "username": "user", "passwordRef": "vault:..." }
+apikey:        { "in": "header"|"query"|"cookie", "name": "...", "valueRef": "vault:..." }
+oauth2_client: { "tokenUrl": "...", "clientId": "...", "clientSecretRef": "vault:...",
+                 "scope": "...", "cachedTokenRef": "vault:..." }
+```
+
+### 5.4 Vault (sensitive values)
+
+Two modes selectable in Settings:
+
+```jsonc
+// key: csap-apidoc:vault
+// Mode A: plaintext (default for first-time users)
+{
+  "version": 1,
+  "encrypted": false,
+  "items": { "tok_1": "eyJhbGciOi...", "tok_2": "...", ... }
+}
+
+// Mode B: encrypted (after user enables master password)
+{
+  "version": 1,
+  "encrypted": true,
+  "kdf": { "name": "PBKDF2", "iter": 200000, "salt": "<base64>" },
+  "items": {
+    "tok_1": { "iv": "<base64>", "ct": "<base64>" },   // AES-GCM
+    "tok_2": { "iv": "<base64>", "ct": "<base64>" }
+  }
+}
+```
+
+Only secrets go through the vault; non-secret fields (header values without
+`isSecret`, env variables without `isSecret`) sit in their primary key for
+fast read.
+
+### 5.5 Settings
+
+```jsonc
+// key: csap-apidoc:settings
+{
+  "version": 1,
+  "vaultMode": "plaintext",                  // 'plaintext' | 'encrypted'
+  "vaultLockTimeoutMin": 30,                 // re-prompt after idle
+  "tryItOut": {
+    "timeoutMs": 30000,
+    "followRedirects": true,
+    "maxResponseBytes": 5_000_000,
+    "proxyUrl": null                         // optional CORS proxy override (§6)
+  }
+}
+```
+
+### 5.6 Storage choice rationale
+
+`localStorage` (not IndexedDB) because:
+
+- All blobs are tiny (env <100 entries × ~200B; headers <1000 × ~150B; tokens
+  <100 × ~2KB). Total <1MB, well within the 5MB localStorage cap.
+- Synchronous read at app start avoids a loading-flash on the env switcher.
+- Trivial to back up via export/import (US-6).
+
+If the data grows past 4MB we can migrate to IndexedDB behind a
+`KeyValueStore` interface; not blocking for v1.
+
+---
+
+## 6. CORS & try-it-out network strategy
+
+The browser issues real HTTP requests directly to the target service. CORS
+is the only friction. Three layers of solution, in escalating effort:
+
+| layer | when applicable | what user does |
 |---|---|---|
-| id | uuid | PK |
-| workspace_id | string | RBAC scope; matches `agent-admin-web` workspace concept |
-| service_key | string | Maps to one document service (e.g. `order-service`) |
-| name | string | `dev`, `staging`, `prod`, `mock`, ... |
-| base_url | string | e.g. `https://api-staging.example.com` |
-| color | string | UI dot colour (#hex) |
-| is_default | bool | One default per (workspace, service) |
-| created_by, created_at, updated_at | audit |
+| **L1 — same-origin / dev proxy** | Dev mode: `vite.config.ts` proxies `/api/*` to `http://localhost:8080`. Works out of the box. | Nothing |
+| **L2 — target service enables CORS** | Staging / prod where the service is reachable but blocks browsers | Backend dev adds permissive CORS to `/apidoc/**` and the API endpoints (a `csap-apidoc-cors` Spring Boot starter could be offered later) |
+| **L3 — user-configured CORS proxy** | Locked-down envs where backend can't change CORS | User sets `settings.tryItOut.proxyUrl = "https://my-corsproxy.example/?url="`. UI prepends this to outbound URLs. |
 
-### 4.2 Environment variable
-
-| field | notes |
-|---|---|
-| id, environment_id (FK) | |
-| key, value | template `{{key}}` substituted into URLs/headers |
-| is_secret | secrets stored AES-GCM encrypted |
-| description | |
-
-### 4.3 Global header
-
-| field | notes |
-|---|---|
-| id, workspace_id | |
-| scope | `environment` / `service` / `user` |
-| scope_ref_id | id of env / service_key / user_id depending on scope |
-| header_key, header_value, enabled | |
-| is_secret | encrypted if true |
-| description | |
-
-Resolution order at request time: `service` → `environment` → `user`. Later
-scopes override earlier ones for the same key.
-
-### 4.4 Auth scheme + credential
-
-```text
-auth_scheme {
-  id, workspace_id, service_key, name,
-  type: 'bearer'|'basic'|'apikey'|'oauth2_client',
-  config_json: type-specific  (e.g. apikey: { in: 'header', name: 'X-API-Key' })
-  is_team_shared: bool
-}
-
-auth_credential {
-  id, scheme_id, env_id (nullable), user_id (nullable when shared),
-  credential_cipher: AES-GCM(secret)
-}
-```
-
-`is_team_shared=false` ⇒ each user keeps their own credential row, never
-visible to others. `=true` ⇒ a single shared credential, visible to anyone with
-view rights to that service.
-
-### 4.5 Audit log entry
-
-| field | notes |
-|---|---|
-| id, workspace_id, actor_id, actor_email | |
-| target_type | `environment` / `header` / `auth_scheme` / `auth_credential` / `proxy_request` |
-| target_id | |
-| action | `create` / `update` / `delete` / `proxy_call` |
-| diff_json | for create/update, the redacted diff |
-| created_at | |
+The doc must clearly explain these three layers and recommend L1 for
+development, L2 for shared staging, L3 only as a workaround. UI surfaces a
+helpful error banner with a link to the CORS doc page when a try-it-out
+request fails CORS.
 
 ---
 
-## 5. REST API (devtools server)
+## 7. UI design (high-level)
 
-All endpoints are mounted under `/api/v1/apidoc/`. All are RBAC-guarded:
+### 7.1 Top bar (`layouts/Header/index.tsx`)
 
-- read endpoints → `viewer+`
-- write endpoints → `editor+`
-- delete & audit endpoints → `admin`
+Add three controls before the existing service selector:
 
-```
-GET    /environments?service=<key>
-POST   /environments
-GET    /environments/{id}
-PUT    /environments/{id}
-DELETE /environments/{id}
+- `<EnvironmentSwitcher />` — dropdown listing envs, leading colour dot,
+  shows current `baseUrl` on hover. Clicking the gear icon opens the
+  Environment Manager drawer.
+- `<HeadersButton />` — opens Global Headers drawer (3-scope tabs).
+- `<AuthButton />` — opens Auth Schemes drawer.
 
-GET    /headers?scope=<scope>&ref=<id>
-POST   /headers
-PUT    /headers/{id}
-DELETE /headers/{id}
+### 7.2 Detail pane (`layouts/index.tsx`)
 
-GET    /auth-schemes?service=<key>
-POST   /auth-schemes
-GET    /auth-schemes/{id}
-PUT    /auth-schemes/{id}
-DELETE /auth-schemes/{id}
+Existing parameter table stays under a `Config` tab. Add a sibling tab:
 
-GET    /auth-schemes/{id}/credentials              -- self only unless shared
-POST   /auth-schemes/{id}/credentials              -- save my credential
-DELETE /auth-schemes/{id}/credentials/{credId}
+- `<TryItOutPanel />`
+  - Auto-built form from API definition (path params, query, headers, body)
+  - Pre-fills body using `example` values from doc
+  - "Active context" pill row above Send button: `Dev · 3 headers · Bearer`
+  - Send button → fetch → response viewer (status code badge, latency,
+    headers table, formatted JSON / text body, raw toggle)
 
-POST   /proxy
-       body: { service, env_id, method, path, query, body, override_headers }
-       resp: { status, latency_ms, headers, body }
+### 7.3 Drawers
 
-GET    /audit?target_type=&from=&to=               -- admin
-```
+All three managers (Env, Headers, Auth) follow the same layout: left list +
+right form. CRUD via Modal. Reuse existing `BaseTable` and `BaseModal` styles
+so no new design system work is needed.
 
-Response envelope follows existing `ApidocResult<T>` (see `DevtoolsController`).
+### 7.4 Settings page
 
----
+Tiny modal triggered from a gear icon next to AuthButton:
 
-## 6. UI design (high-level)
-
-### 6.1 Reader (`csap-apidoc-ui`)
-
-- **Top bar**: add `EnvironmentSwitcher` (dropdown with coloured dot) +
-  `RequestContextButton` (opens drawer with tabs: Headers / Auth).
-- **Detail pane**: existing tabs become `Config | Example | Try it out`.
-  - `Try it out` builds a form from the API definition, pre-fills body using
-    `example` values, shows a `Send` button, and renders response in a
-    Monaco/CodeMirror viewer.
-- All env/header/auth UI is **read-only for `viewer` role** (form fields
-  disabled, a hint banner explains).
-
-### 6.2 Manager (`csap-apidoc-devtools` console)
-
-- Sidebar gets three new entries under a "Runtime context" group:
-  `Environments`, `Global Headers`, `Auth Schemes`.
-- Each is a standard table + create/edit Modal, reusing the existing
-  `RequestParamModal` / `ValidateTableModal` styling.
-- `Auth Schemes` page has a sub-tab for "My credentials" (per-user cred mgmt).
+- Vault mode toggle (plaintext ↔ encrypted, with master password prompt)
+- Vault lock timeout
+- Try-it-out timeout / max response size / proxy URL
+- Export / Import config (JSON download / upload)
+- Reset all
 
 ---
 
-## 7. Milestones (each = 1 PR into `develop`)
+## 8. Milestones (each = 1 PR into `develop`)
+
+All in `csap-apidoc-ui` unless noted.
 
 | # | PR title | Scope | Estimate |
 |---|---|---|---|
-| M1 | `feat(env): data model + REST api + tests` | Storage adapter + EnvironmentService + 5 endpoints + JUnit | 2-3d |
-| M2 | `feat(env-ui): devtools console for environments` | React table + Modal + i18n keys | 1-2d |
-| M3 | `feat(headers): scoped global headers (model+api+ui)` | Both reader and console | 2-3d |
-| M4 | `feat(auth): four auth schemes with encrypted credentials` | AES-GCM, 4 type forms, per-user creds | 3-4d |
-| M5 | `feat(proxy): try-it-out backend proxy + reader UI panel` | `/proxy` endpoint + request/response panes | 2-3d |
-| M6 | `feat(reader): env switcher + auto-injection wiring` | Glue M1-M4 into reader top bar | 1-2d |
-| M7 | `feat(audit): audit log for env/header/auth/proxy` | Cross-cutting interceptor | 1d |
-| M8 | `test+docs: e2e playwright happy path + README` | Quality gate | 2d |
+| M1 | `feat(env): environment model + switcher (localStorage)` | `EnvironmentStore` (localStorage CRUD), `EnvironmentSwitcher` top-bar component, manager drawer, variable resolver | 1-2d |
+| M2 | `feat(headers): scoped global headers + merge resolver` | `HeadersStore`, drawer with 3-scope tabs, header-merge function with override rules | 1-2d |
+| M3 | `feat(auth): four auth schemes + vault (plaintext mode)` | `AuthStore`, `Vault` wrapper (plaintext only), 4 type forms, OAuth2-cc token cache | 2-3d |
+| M4 | `feat(try-it-out): request panel + response viewer` | `TryItOutPanel`, request builder, axios send, response renderer (handle JSON / text / binary / SSE preview) | 2-3d |
+| M5 | `feat(reader): wire env+headers+auth into try-it-out` | `RequestContext` aggregator, header merge applied at send time, env-bound credential resolution | 1-2d |
+| M6 | `feat(security): Web Crypto vault encryption + master password` | PBKDF2 + AES-GCM, lock/unlock UI, idle timeout, migration from plaintext vault | 1-2d |
+| M7 | `feat(devtools): @DocGlobalHeader / @DocAuth annotation hints` *(optional, may defer)* | Annotations in `csap-apidoc-annotation`, scanner emits hints in `CsapDocModel`, ui shows them as suggested presets | 1-2d |
+| M8 | `test+docs+i18n` | Vitest unit tests, Playwright E2E for try-it-out happy path, README section, zh-CN + en-US strings, CORS doc page | 1-2d |
 
-**Total**: ~14-20 working days.
+**Total** ~10-18 working days. Each milestone = its own PR into `develop`.
+M1 only depends on nothing; M2/M3 only depend on M1; M4 standalone; M5 fans
+in M1+M2+M3+M4; M6 depends on M3; M7 standalone (optional); M8 last.
 
-Each milestone PR:
-- Targets `develop`, not `main`.
-- Must include unit tests and at least one integration test.
-- Must update this doc's "Implementation status" section (§9) to keep it live.
-- Auto-runs the existing `ci.yml` + `security-scan.yml`.
-
-When all M1-M8 merged: a single release PR `develop → main`, tagged `v0.x.0`.
+When all merged, a single release PR `develop → main`, tagged `v0.x.0`.
 
 ---
 
-## 8. Decisions (locked in 2026-04-18)
+## 9. Decisions
 
-### ✅ D-1. Storage backend — **SQLite default, Postgres opt-in**
+### ✅ D-1. Storage: `localStorage` only
 
-JPA / Hibernate entities written once; `csap.apidoc.datasource.type=sqlite|postgres`
-selects driver at boot. Flyway migrations are SQL-92 compatible across both.
+JSON under `csap-apidoc:*` keys. ~1MB ceiling expected. IndexedDB migration
+behind `KeyValueStore` interface if needed later. **Locked.**
 
-- SQLite path: `${user.home}/.csap-apidoc/data.db`, auto-created on first run
-- Postgres path: standard `spring.datasource.url`, opt-in for team deployments
-- BLOB / BYTEA used for encrypted secret columns (not VARCHAR + base64)
+### ✅ D-2. Crypto for sensitive fields: Web Crypto AES-GCM + PBKDF2-derived key
 
-**Why**: zero-friction onboarding for individual open-source users while
-keeping the door open for team / enterprise deployments without a code rewrite.
+Optional, off by default. User opts in by setting a master password in
+Settings. KDF: PBKDF2-SHA256, 200_000 iterations, 16-byte random salt
+per-browser. AES-GCM 12-byte random IV per item. Key never leaves browser
+memory; locks on tab close or idle timeout. **Locked.**
 
-### ✅ D-2. Encryption key — **env var `CSAP_APIDOC_SECRET_KEY` + `SecretProvider` interface**
+### ✅ D-3. UI library: Antd 4 (no upgrade in this branch)
 
-```java
-public interface SecretProvider {
-    byte[] encrypt(byte[] plaintext);
-    byte[] decrypt(byte[] ciphertext);
-    String keyId();
-}
-```
+Antd 4 / Vite 3 / TS 4.6 stay. Antd 5 upgrade happens in a separate
+`chore/antd5-upgrade` branch. Antd 4's Drawer / Form / Tabs / Table cover
+all UI needs of M1–M6. **Locked.**
 
-Default impl: `EnvVarSecretProvider`. Future plug-ins (`AwsKmsSecretProvider`,
-`JceksSecretProvider`) ship in separate PRs without touching call sites.
+### ✅ D-4. Try-it-out request transport: browser-native `fetch` (no axios proxy hop)
 
-- AES-GCM, 12-byte random nonce per encryption, never reused
-- If env var unset on first boot: generate random 32-byte key, persist in a
-  dedicated `_secret_key` table, log a WARNING with explicit guidance to set
-  `CSAP_APIDOC_SECRET_KEY` for production
+Reuse the existing `csap-axios` instance for consistency with
+documentation-data fetches. No backend proxy. CORS handled per §6.
+**Locked.**
 
-**Why**: balances "open the box and it just works" with a clean upgrade path
-to KMS-grade key management.
+### ⚠ D-5. CORS proxy default behaviour
 
-### ✅ D-3. RBAC / Identity — **devtools owns it; `IdentityProvider` interface for future SSO**
+When a try-it-out request fails the browser CORS check, what does the UI
+show?
 
-```java
-public interface IdentityProvider {
-    Optional<UserPrincipal> authenticate(HttpServletRequest req);
-    UserPrincipal currentUser();
-}
-```
+| option | behaviour |
+|---|---|
+| **A** (recommended) | Show a clear error banner explaining the three layers (§6), with a one-click switch to set a CORS proxy. No automatic proxying. |
+| B | Auto-detect and offer to retry through a user-configured proxy without re-clicking Send |
+| C | Ship with a hard-coded public CORS proxy fallback |
 
-Default: `LocalDbIdentityProvider` (Session cookie, BCrypt password hashes).
+C is dangerous (public proxies see all request bodies, including tokens).
+B's auto-retry can be confusing. **Recommend A**, ask user to confirm.
 
-Three roles aligned with `agent-admin-web` semantics:
+### ⚠ D-6. M7 (devtools annotation hints): in this feature or defer?
 
-| role | env / header / auth scheme | own credential | others' credentials | audit log |
-|---|---|---|---|---|
-| `viewer` | read | read+write | hidden | hidden |
-| `editor` | create / update / delete | read+write | hidden (presence only) | hidden |
-| `admin`  | full | read+write | hidden (presence only)* | full read |
+M7 needs touching `csap-apidoc-annotation` and `csap-apidoc-core` (Java),
+adding ~2 days. Two paths:
 
-\* **Even `admin` cannot decrypt others' personal credentials.** This is a
-hard rule, not a permission setting — it protects the compliance story for
-finance / healthcare customers.
+| option | trade-off |
+|---|---|
+| Include M7 | One coherent feature; backend hint → frontend preset; better onboarding for new ui users |
+| Defer M7 | Smaller diff; ui-only feature ships faster; M7 becomes its own focused PR |
 
-First-boot flow: when user table is empty, redirect to `/setup` to create the
-initial `admin` account (Gitea / Wiki.js style).
-
-`workspace_id` column is present on every table from day one even though
-single-user mode only ever has one workspace; this avoids a schema migration
-when multi-tenant is enabled later.
-
-**Why**: open-source product must work standalone. Commercial SSO integration
-ships as a separate plug-in without touching this codebase.
-
-### ✅ D-4. Frontend UI library — **stick with Antd 4 for this feature; spin up `chore/antd5-upgrade` in parallel**
-
-Reader UI (`csap-apidoc-ui`) stays on Antd 4 / Vite 3 / TS 4.6 for the entire
-duration of this feature. All new components in this branch use Antd 4 APIs
-only.
-
-Antd 4 vs 5 cannot coexist in one React tree (style conflicts), so a partial
-upgrade is not viable. The full upgrade is tracked separately:
-
-- Branch: `chore/antd5-upgrade` (created after this feature lands)
-- Out of scope here: anything in `csap-apidoc-ui/` outside the new code paths
-
-The devtools console (`csap-apidoc-devtools/devtools/`) is **already on Antd
-5.12** and will use v5 APIs for new screens — no inconsistency within that
-sub-app.
-
-**Why**: keeps PR diffs reviewable; framework upgrade is its own engineering
-risk that deserves dedicated review and test attention.
+**Recommend defer**. Ship M1–M6 + M8 as the v0.x.0 release; M7 follows as
+v0.(x+1).0.
 
 ---
 
-## 9. Implementation status
+## 10. Implementation status
 
 > Updated by each milestone PR.
 
-- [ ] M1 — environment data model + REST API
-- [ ] M2 — devtools console UI for environments
-- [ ] M3 — global headers (model + API + UI)
-- [ ] M4 — auth schemes + encrypted credentials
-- [ ] M5 — try-it-out proxy + reader panel
-- [ ] M6 — reader env switcher wiring
-- [ ] M7 — audit log
-- [ ] M8 — E2E tests + docs
+- [ ] M1 — environment store + switcher
+- [ ] M2 — global headers + merge
+- [ ] M3 — auth schemes + plaintext vault
+- [ ] M4 — try-it-out request/response panel
+- [ ] M5 — wire env+headers+auth into requests
+- [ ] M6 — Web Crypto vault encryption
+- [ ] M7 — devtools annotation hints (optional, may defer)
+- [ ] M8 — tests + docs + i18n
 
 ---
 
-## 10. References
+## 11. References
 
-- Devtools roadmap (Phase 1.1, 1.5, 1.6): `csap-apidoc-devtools/APIDOC开发工具产品路线图.md`
-- Existing controller pattern: `csap-apidoc-devtools/src/main/java/ai/csap/apidoc/devtools/DevtoolsController.java`
-- Reader layout: `csap-apidoc-ui/src/layouts/index.tsx` (970 LoC, top-level container)
-- RBAC reference (sister product): `products/csap/src/agent-admin-web/backend/app/core/auth.py`
+- Module layout & roles confirmed in `pom.xml` (parent), `csap-apidoc-boot`
+  starter, and `csap-apidoc-devtools/src/main/java/.../DevtoolsViewController.java`
+- Reader entry: `csap-apidoc-ui/src/layouts/index.tsx` (970 LoC)
+- Existing axios: `csap-apidoc-ui/src/api/index.ts` (`csap-axios` wrapper,
+  no auth interceptor — to be augmented in M5)
+- Devtools roadmap (Phase 1.1 in-line testing): `csap-apidoc-devtools/APIDOC开发工具产品路线图.md`
+
+---
+
+## 12. Design history
+
+**v1 (2026-04-18 initial draft)** assumed `csap-apidoc-ui` and
+`csap-apidoc-devtools` formed a client–server pair, and proposed
+server-side persistence (SQLite/Postgres + JPA + Flyway), RBAC with three
+roles, AES-GCM encryption with a server-held master key, and a
+`/api/v1/apidoc/proxy` endpoint for try-it-out requests.
+
+**This was wrong.** The two modules are independent: `-ui` is a standalone
+SPA for **frontend developers**; `-devtools` is an embedded Spring Boot
+starter for **backend developers** to manage doc metadata inside their own
+application at runtime. They share neither a server nor a database.
+
+**v2 (this document)** moves all personalisation into the browser. No
+servers, no accounts, no central database. The feature is a pure
+frontend addition, and ships as `csap-apidoc-ui`-only PRs into `develop`.
+
+If a future enterprise SKU wants cross-device sync, that can layer on top
+by syncing the same JSON blobs to `agent-admin-web`, but that is explicitly
+out of scope for the open-source framework.
