@@ -1,4 +1,5 @@
 import LayoutHeader from './Header';
+import VaultLockBanner from '@/components/VaultLockBanner';
 import { Tree, Input, Table, message, Tooltip, Result, Button, Spin, Tag } from 'antd';
 import { FileTextOutlined, ApiOutlined, FileSearchOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import type { DirectoryTreeProps } from 'antd/es/tree';
@@ -802,6 +803,10 @@ const LayoutIndex = () => {
         ref={selectRefValue}
         onExport={handleExport}
       />
+      {/* C3 — banner sits in the layout chrome (just under the top bar)
+          rather than as the outermost overlay above <App>. Renders null
+          unless the vault is in 'encrypted-locked' state. */}
+      <VaultLockBanner />
       {/* 调试按钮 - 开发时可启用 */}
       {/* <Button
         style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 999 }}

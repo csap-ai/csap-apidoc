@@ -57,8 +57,7 @@ import {
 import { environmentStore, ENV_STORAGE_KEY } from '@/stores/environmentStore';
 import { headersStore, HEADERS_STORAGE_KEY } from '@/stores/headersStore';
 import { authStore, AUTH_STORAGE_KEY } from '@/stores/authStore';
-import VaultLockBanner from '@/components/VaultLockBanner';
-
+// banner is now mounted inside Layout — see layouts/index.tsx
 const ACTIVITY_EVENTS = ['mousemove', 'keydown', 'click'] as const;
 const ACTIVITY_DEBOUNCE_MS = 5_000;
 const IDLE_TICK_MS = 30_000;
@@ -406,10 +405,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   return (
-    <VaultContext.Provider value={value}>
-      <VaultLockBanner />
-      {children}
-    </VaultContext.Provider>
+    <VaultContext.Provider value={value}>{children}</VaultContext.Provider>
   );
 };
 

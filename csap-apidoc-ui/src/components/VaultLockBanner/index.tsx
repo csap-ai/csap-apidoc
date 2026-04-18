@@ -7,9 +7,10 @@
  * itself when something tried to read a secret while locked (a hint for
  * the user that the page is currently degraded).
  *
- * Mounted globally inside <VaultProvider> via App.tsx wrapping. The
- * actual unlock UX lives in <MasterPasswordModal mode="unlock">, opened
- * by the "解锁" button here.
+ * Mounted by `layouts/index.tsx` immediately under the top bar so the
+ * banner sits in the natural visual flow rather than overlaying the page
+ * header. The actual unlock UX lives in <MasterPasswordModal
+ * mode="unlock">, opened by the "解锁" button here.
  */
 
 import React, { useEffect, useState } from 'react';
