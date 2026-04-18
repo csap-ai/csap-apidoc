@@ -421,14 +421,17 @@ Deferred to follow-up PRs:
 
 **Locked.**
 
-### ✅ D-6. M7 (devtools annotation hints) deferred to a follow-up release
+### ✅ D-6. M7 (devtools annotation hints) — superseded; landed in v0.x.0
 
-M1–M6 + M8 ship as the first feature release of `csap-apidoc-ui`
-(targeting tag `v0.x.0`). M7 (`@DocGlobalHeader` / `@DocAuth`
-annotations in `csap-apidoc-annotation` + scanner emission in
-`csap-apidoc-core`) is split into its own focused PR / release
-(`v0.(x+1).0`). This keeps the first PR set ui-only and minimises the
-scope of breaking-change risk for early adopters. **Locked.**
+Originally deferred to a follow-up release. Subsequently picked up
+in the same multi-track Round 2 push that delivered M8.2 + the
+C-bundle UI polish, because the Java-side surface area was small,
+zero-overlap with the TypeScript work, and let `csap-apidoc-devtools`
+ship matching capability without a second release cycle. The
+annotations (`@DocGlobalHeader`, `@DocAuth`) live in
+`csap-apidoc-annotation` and the scanner emission in
+`csap-apidoc-core/src/main/java/ai/csap/apidoc/scanner/DocHintsCollector.java`.
+**Superseded — see §10.**
 
 ---
 
@@ -442,8 +445,11 @@ scope of breaking-change risk for early adopters. **Locked.**
 - [x] M4 — try-it-out request/response panel
 - [x] M5 — wire env+headers+auth into requests
 - [x] M6 — Web Crypto vault encryption
-- [ ] M7 — devtools annotation hints (deferred to v0.(x+1).0 per D-6)
-- [x] M8 — tests + docs (i18n + Playwright deferred — see §9 D-7)
+- [x] M7 — devtools annotation hints (delivered alongside v0.x.0 — D-6 superseded)
+- [x] M8 — tests + docs (i18n deferred — see §9 D-7)
+- [x] M8.2 — Playwright E2E (try-it-out happy path) — D-7 partially landed
+- [x] C-bundle — UI polish: serviceRefId canonicalization (C1), VaultLockBanner reposition (C3), withCredentials switch (C4), composer warnings Alert (C2)
+- [ ] M8.1 — i18n bootstrap (still deferred to v0.(x+1).0 per D-7)
 
 ---
 
