@@ -1,0 +1,26 @@
+.headers-btn {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+
+  &:hover,
+  &:focus {
+    background-color: rgba(255, 255, 255, 0.28) !important;
+    border-color: rgba(255, 255, 255, 0.55) !important;
+    color: #ffffff !important;
+  }
+
+  .anticon {
+    color: #ffffff;
+  }
+}
+
+.headers-btn__badge {
+  // Antd 4 Badge renders a sup inside; make the count pop against the
+  // dark gradient header.
+  .ant-badge-count {
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
+  }
+}

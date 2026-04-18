@@ -4,6 +4,7 @@ import {DownloadOutlined, FileTextOutlined, ApiOutlined, DownOutlined} from '@an
 import type {MenuProps} from 'antd';
 import CSAP from '@/assets/ICON.png';
 import EnvironmentSwitcher from '@/components/EnvironmentSwitcher';
+import HeadersButton from '@/components/HeadersButton';
 import './index.less';
 
 const {Header} = Layout;
@@ -119,6 +120,9 @@ const LayoutHeader = (props: IProps, ref) => {
                             <Option value="default1">v1</Option>
                             <Option value="default2">v2</Option>
                         </Select>
+                    </div>
+                    <div className="api-item">
+                        <HeadersButton knownServices={props.apiOptions?.map(o => ({ url: o.url, name: o.name }))} />
                     </div>
                     <div className="api-item">
                         <Dropdown menu={{items: exportMenuItems}} placement="bottomRight">
