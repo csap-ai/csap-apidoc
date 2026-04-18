@@ -21,6 +21,7 @@ import ai.csap.apidoc.model.CsapDocModelController;
 import ai.csap.apidoc.model.CsapDocParameter;
 import ai.csap.apidoc.model.CsapDocResponse;
 import ai.csap.apidoc.properties.CsapDocConfig;
+import ai.csap.apidoc.scanner.DocHintsCollector;
 import ai.csap.apidoc.strategy.ApidocStrategy;
 import ai.csap.apidoc.strategy.AsyncTaskUtil;
 import ai.csap.apidoc.util.ApidocUtils;
@@ -509,6 +510,10 @@ public final class ApiDocService extends AbstractApiDocService implements Filter
         }
         getValidateFactory().clear(docController.getName() + DOT + method.getName());
         headers(apiOperation, docMethod);
+        // M7: 收集 @DocGlobalHeader / @DocAuth 提示（仅供 try-it-out UI 预填）
+        Class<?> controllerClass = typeVariableModel.getAClass();
+        docMethod.setGlobalHeaderHints(DocHintsCollector.collectGlobalHeaderHints(controllerClass, method));
+        docMethod.setAuthHint(DocHintsCollector.resolveAuthHint(controllerClass, method));
         docController.getGroup().addAll(docMethod.getGroup());
         docController.getVersion().addAll(docMethod.getVersion());
         docMethod.getSearch().add(docMethod.getValue());

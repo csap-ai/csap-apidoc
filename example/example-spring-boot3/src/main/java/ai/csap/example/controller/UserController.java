@@ -2,6 +2,8 @@ package ai.csap.example.controller;
 
 import ai.csap.apidoc.annotation.Api;
 import ai.csap.apidoc.annotation.ApiOperation;
+import ai.csap.apidoc.annotation.DocAuth;
+import ai.csap.apidoc.annotation.DocGlobalHeader;
 import ai.csap.example.model.Response;
 import ai.csap.example.model.User;
 import ai.csap.example.model.UserStatus;
@@ -26,6 +28,9 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/users")
 @Api(value = "用户管理", description = "用户增删改查相关接口")
+@DocGlobalHeader(name = "X-Tenant-Id", description = "租户标识，try-it-out 时必传", example = "demo", required = true)
+@DocGlobalHeader(name = "X-Trace-Id", description = "可选客户端追踪 ID", example = "trace-12345")
+@DocAuth(scheme = "bearer", description = "由 /auth/login 颁发的 JWT")
 public class UserController {
 
     /**

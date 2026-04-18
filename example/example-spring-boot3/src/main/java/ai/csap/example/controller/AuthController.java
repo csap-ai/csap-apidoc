@@ -4,6 +4,7 @@ import ai.csap.apidoc.annotation.Api;
 import ai.csap.apidoc.annotation.ApiModel;
 import ai.csap.apidoc.annotation.ApiModelProperty;
 import ai.csap.apidoc.annotation.ApiOperation;
+import ai.csap.apidoc.annotation.DocAuth;
 import ai.csap.example.model.Response;
 import ai.csap.example.security.JwtService;
 import ai.csap.example.security.SecurityProperties;
@@ -31,6 +32,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/auth")
 @Api(value = "示例：认证（仅启用 demo 鉴权时存在）", description = "登录换取 JWT，并查看当前身份信息")
+@DocAuth(scheme = "none", description = "/auth/login 用于换取 token，自身无需鉴权")
 @ConditionalOnProperty(prefix = "csap.example.security", name = "enabled", havingValue = "true")
 public class AuthController {
 
