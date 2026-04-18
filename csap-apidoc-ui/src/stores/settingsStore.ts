@@ -23,6 +23,14 @@ export interface SettingsState {
   tryItOutProxyUrl: string | null;
   /** Try-it-out request timeout in ms. */
   tryItOutTimeoutMs: number;
+  /**
+   * Whether Try-it-out should set `withCredentials` on the underlying
+   * XHR/fetch so cross-origin requests carry the user's cookies (and any
+   * cookie-bound API key from an Auth scheme is actually honoured by the
+   * browser). Default `false` because enabling this globally is a
+   * privacy footgun — the user must opt in per workstation.
+   */
+  tryItOutWithCredentials: boolean;
   /** UI language. M8 wires actual i18n; M6 just persists the preference. */
   language: string;
 }
@@ -33,6 +41,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
   vaultLockTimeoutMin: 30,
   tryItOutProxyUrl: null,
   tryItOutTimeoutMs: 30_000,
+  tryItOutWithCredentials: false,
   language: 'zh-CN',
 };
 
@@ -45,7 +54,11 @@ function isValidSettings(value: unknown): value is SettingsState {
     typeof s.vaultLockTimeoutMin === 'number' &&
     typeof s.tryItOutTimeoutMs === 'number' &&
     typeof s.language === 'string' &&
-    (s.tryItOutProxyUrl === null || typeof s.tryItOutProxyUrl === 'string')
+    (s.tryItOutProxyUrl === null || typeof s.tryItOutProxyUrl === 'string') &&
+    // tryItOutWithCredentials added later; absence is OK (DEFAULT_SETTINGS
+    // backfills via the {...defaults, ...parsed} merge in safeRead).
+    (s.tryItOutWithCredentials === undefined ||
+      typeof s.tryItOutWithCredentials === 'boolean')
   );
 }
 

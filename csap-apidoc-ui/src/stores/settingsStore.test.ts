@@ -18,6 +18,11 @@ describe('settingsStore.getState', () => {
     const s = settingsStore.getState();
     expect(s).toEqual(DEFAULT_SETTINGS);
   });
+
+  it('defaults tryItOutWithCredentials to false (privacy-safe)', () => {
+    expect(DEFAULT_SETTINGS.tryItOutWithCredentials).toBe(false);
+    expect(settingsStore.getState().tryItOutWithCredentials).toBe(false);
+  });
 });
 
 /**
@@ -90,6 +95,17 @@ describe('settingsStore.update', () => {
     const parsed = JSON.parse(raw as string);
     expect(parsed.language).toBe('en');
     expect(parsed.version).toBe(1);
+  });
+
+  it('toggles tryItOutWithCredentials and persists the new value', () => {
+    const next = settingsStore.update({ tryItOutWithCredentials: true });
+    expect(next.tryItOutWithCredentials).toBe(true);
+    expect(settingsStore.getState().tryItOutWithCredentials).toBe(true);
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    expect(JSON.parse(raw as string).tryItOutWithCredentials).toBe(true);
+    // and back off
+    settingsStore.update({ tryItOutWithCredentials: false });
+    expect(settingsStore.getState().tryItOutWithCredentials).toBe(false);
   });
 
   it('always pins version back to 1', () => {

@@ -129,6 +129,10 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
     settingsStore.update({ tryItOutTimeoutMs: ms });
   };
 
+  const setWithCredentials = (v: boolean): void => {
+    settingsStore.update({ tryItOutWithCredentials: v });
+  };
+
   /* -------- data: export / import / reset -------- */
 
   const handleExport = (): void => {
@@ -319,6 +323,18 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
               onChange={setTimeoutMs}
               style={{ width: 200 }}
             />
+          </Form.Item>
+          <Form.Item label="跨域请求附带 Cookie (withCredentials)">
+            <Switch
+              checked={settings.tryItOutWithCredentials}
+              onChange={setWithCredentials}
+              checkedChildren="开"
+              unCheckedChildren="关"
+            />
+            <Text type="secondary" className="settings-drawer__hint">
+              启用后,试运行的跨域请求会携带浏览器 Cookie。需要目标接口配置
+              Access-Control-Allow-Credentials: true 与具体的 origin 才能生效。
+            </Text>
           </Form.Item>
         </Form>
       </section>

@@ -51,6 +51,7 @@ import {
   newCancelTokenSource,
   sendTryItOutRequest,
 } from '@/services/tryItOutClient';
+import { settingsStore } from '@/stores/settingsStore';
 import './index.less';
 
 interface KvRow {
@@ -181,6 +182,19 @@ const TryItOutPanel: React.FC<Props> = ({
   );
   const cancelRef = useRef<ReturnType<typeof newCancelTokenSource> | null>(null);
 
+  // C4 — read tryItOutWithCredentials live from settingsStore so flipping
+  // the SettingsDrawer switch takes effect on the very next send without
+  // remounting the panel. Subscribe with a tracked snapshot rather than
+  // calling getState() inline so React stays in sync with the store.
+  const [withCredentials, setWithCredentials] = useState<boolean>(
+    () => settingsStore.getState().tryItOutWithCredentials,
+  );
+  useEffect(() => {
+    return settingsStore.subscribe((s) =>
+      setWithCredentials(s.tryItOutWithCredentials),
+    );
+  }, []);
+
   // Re-seed when caller swaps to a new endpoint.
   useEffect(() => {
     setMethod(initial.method);
@@ -257,6 +271,7 @@ const TryItOutPanel: React.FC<Props> = ({
               : spec.body,
           timeoutMs,
           proxyUrl,
+          withCredentials,
         },
         { cancelToken: cancelRef.current.token },
       );

@@ -41,6 +41,15 @@ export interface TryItOutRequest {
   timeoutMs?: number;
   /** Append to outgoing URL (used for the L3 user-configured CORS proxy). */
   proxyUrl?: string | null;
+  /**
+   * When true, the underlying axios/XHR layer will set `withCredentials`
+   * so cross-origin requests carry cookies and HTTP-auth (and any
+   * cookie-bound API key from the active auth scheme is actually
+   * honoured by the browser). Default false. The target server must
+   * still set `Access-Control-Allow-Credentials: true` and a concrete
+   * origin for the request to succeed in the browser.
+   */
+  withCredentials?: boolean;
 }
 
 export type TryItOutBodyKind =
@@ -248,6 +257,10 @@ export async function sendTryItOutRequest(
     // render 4xx/5xx bodies properly. Network errors still go to .catch.
     validateStatus: () => true,
     cancelToken: options?.cancelToken,
+    // Per-call withCredentials. We only set the flag when the caller
+    // explicitly opts in so we never override the axios default for
+    // unrelated traffic; same-origin requests carry cookies regardless.
+    ...(req.withCredentials ? { withCredentials: true } : {}),
   };
 
   if (req.body !== undefined && req.body !== null) {
