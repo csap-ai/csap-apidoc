@@ -393,32 +393,23 @@ Reuse the existing `csap-axios` instance for consistency with
 documentation-data fetches. No backend proxy. CORS handled per §6.
 **Locked.**
 
-### ⚠ D-5. CORS proxy default behaviour
+### ✅ D-5. CORS-failure UX: explanatory banner + manual proxy switch
 
-When a try-it-out request fails the browser CORS check, what does the UI
-show?
+When a try-it-out request fails the browser CORS check, the UI shows a
+clear error banner explaining the three layers (§6) with a one-click
+shortcut into Settings → "Set CORS proxy URL". No automatic proxying, no
+hard-coded public fallback (which would be dangerous: a public proxy
+would see all request bodies, including bearer tokens). User opts in
+explicitly per browser. **Locked.**
 
-| option | behaviour |
-|---|---|
-| **A** (recommended) | Show a clear error banner explaining the three layers (§6), with a one-click switch to set a CORS proxy. No automatic proxying. |
-| B | Auto-detect and offer to retry through a user-configured proxy without re-clicking Send |
-| C | Ship with a hard-coded public CORS proxy fallback |
+### ✅ D-6. M7 (devtools annotation hints) deferred to a follow-up release
 
-C is dangerous (public proxies see all request bodies, including tokens).
-B's auto-retry can be confusing. **Recommend A**, ask user to confirm.
-
-### ⚠ D-6. M7 (devtools annotation hints): in this feature or defer?
-
-M7 needs touching `csap-apidoc-annotation` and `csap-apidoc-core` (Java),
-adding ~2 days. Two paths:
-
-| option | trade-off |
-|---|---|
-| Include M7 | One coherent feature; backend hint → frontend preset; better onboarding for new ui users |
-| Defer M7 | Smaller diff; ui-only feature ships faster; M7 becomes its own focused PR |
-
-**Recommend defer**. Ship M1–M6 + M8 as the v0.x.0 release; M7 follows as
-v0.(x+1).0.
+M1–M6 + M8 ship as the first feature release of `csap-apidoc-ui`
+(targeting tag `v0.x.0`). M7 (`@DocGlobalHeader` / `@DocAuth`
+annotations in `csap-apidoc-annotation` + scanner emission in
+`csap-apidoc-core`) is split into its own focused PR / release
+(`v0.(x+1).0`). This keeps the first PR set ui-only and minimises the
+scope of breaking-change risk for early adopters. **Locked.**
 
 ---
 
