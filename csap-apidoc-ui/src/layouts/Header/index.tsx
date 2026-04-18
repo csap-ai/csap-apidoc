@@ -6,6 +6,7 @@ import CSAP from '@/assets/ICON.png';
 import EnvironmentSwitcher from '@/components/EnvironmentSwitcher';
 import HeadersButton from '@/components/HeadersButton';
 import AuthButton from '@/components/AuthButton';
+import SettingsButton from '@/components/SettingsButton';
 import './index.less';
 
 const {Header} = Layout;
@@ -127,6 +128,9 @@ const LayoutHeader = (props: IProps, ref) => {
                     </div>
                     <div className="api-item">
                         <AuthButton knownServices={props.apiOptions?.map(o => ({ url: o.url, name: o.name }))} />
+                    </div>
+                    <div className="api-item">
+                        <SettingsButton />
                     </div>
                     <div className="api-item">
                         <Dropdown menu={{items: exportMenuItems}} placement="bottomRight">

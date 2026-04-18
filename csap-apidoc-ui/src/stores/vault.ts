@@ -7,107 +7,120 @@
  * `vault:<id>` reference and dereferences it through this module right
  * before sending the request.
  *
- * M3 ships **plaintext mode only** — the secrets sit in
- * `localStorage[csap-apidoc:vault]` as a flat `{ id: value }` map. This
- * keeps the wire-format and consumer API identical to the M6 encrypted
- * variant, so M6 can swap the storage shape without touching authStore /
- * authResolver / any UI form. The migration path is documented in §5.4 of
- * docs/features/environment-auth-headers.md.
+ * Two storage backends ("drivers") implement the same interface:
+ *   - PlaintextDriver — M3 default; values land in `csap-apidoc:vault`.
+ *   - EncryptedDriver — M6; values land in `csap-apidoc:vault.encrypted`
+ *     under AES-GCM, keyed by a PBKDF2-derived master password key that
+ *     never leaves browser memory.
  *
- * Public API:
+ * The driver swap is orchestrated by `VaultContext` at startup (and on
+ * Settings → enable/disable encryption). Consumers (`authStore`,
+ * `authResolver`, `AuthSchemesDrawer`) keep using the same `vault.put` /
+ * `vault.get` surface — the only new behaviour they may observe is
+ * `vault.get(...)` returning `null` when the encrypted vault is currently
+ * locked. A custom event `csap-apidoc:vault-locked-access` fires on the
+ * window in that case so a UI banner can prompt the user to unlock.
+ *
+ * Public API (unchanged from M3, plus `getDriverState`):
  *   vault.put(value, existingRef?)   → "vault:tok_xxxx"
  *   vault.get(ref)                   → string | null
  *   vault.remove(ref)                → void
  *   vault.isVaultRef(s)              → boolean
  *   vault.subscribe(fn)              → unsubscribe
+ *   vault.retainOnly(refs)           → void
+ *   vault.reset()                    → void
+ *   vault.getDriverState()           → 'plaintext' | 'encrypted-locked' | 'encrypted-unlocked'
+ *   vault.__installDriver(driver)    → @internal — used by VaultContext
  */
 
-const STORAGE_KEY = 'csap-apidoc:vault';
-const SCHEMA_VERSION = 1;
-const REF_PREFIX = 'vault:';
+import {
+  PlaintextDriver,
+  EncryptedDriver,
+  NoopDriver,
+  VaultDriver,
+  VaultRef,
+  isVaultRef as driverIsVaultRef,
+  hasEncryptedVaultData,
+  readEncryptedHeader,
+  decodeSalt,
+  PLAINTEXT_STORAGE_KEY,
+  ENCRYPTED_STORAGE_KEY,
+} from './vaultDriver';
 
-export type VaultRef = `${typeof REF_PREFIX}${string}`;
+export type { VaultRef } from './vaultDriver';
+export const VAULT_STORAGE_KEY = PLAINTEXT_STORAGE_KEY;
+export const VAULT_ENCRYPTED_STORAGE_KEY = ENCRYPTED_STORAGE_KEY;
 
-export interface PlaintextVaultState {
-  version: 1;
-  encrypted: false;
-  items: Record<string, string>;
-}
+export type VaultDriverState =
+  | 'plaintext'
+  | 'encrypted-locked'
+  | 'encrypted-unlocked';
 
-const DEFAULT_STATE: PlaintextVaultState = {
-  version: SCHEMA_VERSION,
-  encrypted: false,
-  items: {},
-};
+export const VAULT_LOCKED_ACCESS_EVENT = 'csap-apidoc:vault-locked-access';
 
-function genId(): string {
-  return 'tok_' + Math.random().toString(36).slice(2, 10);
-}
-
-function isPlaintextState(value: unknown): value is PlaintextVaultState {
-  if (!value || typeof value !== 'object') return false;
-  const v = value as Partial<PlaintextVaultState>;
-  return (
-    v.version === SCHEMA_VERSION &&
-    v.encrypted === false &&
-    !!v.items &&
-    typeof v.items === 'object'
-  );
-}
-
-function safeRead(): PlaintextVaultState {
-  if (typeof window === 'undefined') return { ...DEFAULT_STATE, items: {} };
+/**
+ * Initial driver — picked synchronously at module load so existing
+ * consumers don't see a temporarily-empty vault before the React
+ * VaultProvider mounts.
+ *
+ * Heuristic:
+ *   - If encrypted storage exists, install a LOCKED encrypted shell. The
+ *     driver carries the salt + iterations from disk so VaultContext can
+ *     unlock it later without re-reading the file. We don't have the user's
+ *     password here so plaintext stays empty until unlock.
+ *   - Otherwise, install the plaintext driver.
+ *
+ * SSR safety: when window is undefined we install a NoopDriver. The
+ * VaultProvider will swap in a real driver on hydration.
+ */
+function pickInitialDriver(): VaultDriver {
+  if (typeof window === 'undefined') return new NoopDriver();
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_STATE, items: {} };
-    const parsed = JSON.parse(raw);
-    if (!isPlaintextState(parsed)) {
-      // M6 encrypted-mode payloads are intentionally NOT decoded here. Once
-      // M6 lands it will install its own driver before vault.* is called.
-      console.warn(
-        '[csap-apidoc] vault payload is not in plaintext mode; ignoring',
-      );
-      return { ...DEFAULT_STATE, items: {} };
+    if (hasEncryptedVaultData()) {
+      const header = readEncryptedHeader();
+      if (header) {
+        return new EncryptedDriver({
+          key: null,
+          salt: decodeSalt(header.salt),
+          iterations: header.iterations,
+        });
+      }
     }
-    return {
-      version: SCHEMA_VERSION,
-      encrypted: false,
-      items: { ...parsed.items },
-    };
   } catch (err) {
-    console.warn('[csap-apidoc] failed to read vault from localStorage', err);
-    return { ...DEFAULT_STATE, items: {} };
+    console.warn('[csap-apidoc] vault initial driver pick failed', err);
   }
+  return new PlaintextDriver();
 }
 
-function safeWrite(state: PlaintextVaultState): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch (err) {
-    console.warn('[csap-apidoc] failed to write vault to localStorage', err);
-  }
-}
+let driver: VaultDriver = pickInitialDriver();
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
-let cache: PlaintextVaultState | null = null;
 
-function getState(): PlaintextVaultState {
-  if (cache === null) cache = safeRead();
-  return cache;
+function notify(): void {
+  listeners.forEach((l) => {
+    try {
+      l();
+    } catch (err) {
+      console.warn('[csap-apidoc] vault listener threw', err);
+    }
+  });
 }
 
-function setState(next: PlaintextVaultState): void {
-  cache = next;
-  safeWrite(next);
-  listeners.forEach((l) => l());
+function emitLockedAccess(ref: string | null | undefined): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.dispatchEvent(
+      new CustomEvent(VAULT_LOCKED_ACCESS_EVENT, { detail: { ref } }),
+    );
+  } catch {
+    /* CustomEvent may not exist in some test envs; non-fatal. */
+  }
 }
 
-function refToId(ref: string): string | null {
-  if (!ref.startsWith(REF_PREFIX)) return null;
-  const id = ref.slice(REF_PREFIX.length);
-  return id || null;
+function getDriverState(): VaultDriverState {
+  if (driver.mode === 'plaintext') return 'plaintext';
+  return driver.isLocked() ? 'encrypted-locked' : 'encrypted-unlocked';
 }
 
 export const vault = {
@@ -117,40 +130,38 @@ export const vault = {
    * Pass `existingRef` to overwrite an existing slot in place — important so
    * editing a Bearer token in the UI doesn't leak orphan slots into the
    * vault on every keystroke.
+   *
+   * When the vault is encrypted-locked this is a no-op that returns a
+   * sentinel ref (or `existingRef` if supplied). UI should disable Save
+   * buttons in that state; this is just the safety net.
    */
   put(value: string, existingRef?: string | null): VaultRef {
-    const s = getState();
-    let id = existingRef ? refToId(existingRef) : null;
-    if (!id || !Object.prototype.hasOwnProperty.call(s.items, id)) {
-      id = genId();
-    }
-    setState({ ...s, items: { ...s.items, [id]: value } });
-    return (REF_PREFIX + id) as VaultRef;
+    const wasLocked = driver.isLocked();
+    const ref = driver.put(value, existingRef);
+    if (!wasLocked) notify();
+    else emitLockedAccess(existingRef ?? null);
+    return ref;
   },
 
-  /** Returns the stored secret, or `null` for unknown / malformed refs. */
+  /** Returns the stored secret, or `null` for unknown / malformed refs / locked vault. */
   get(ref: string | null | undefined): string | null {
     if (!ref) return null;
-    const id = refToId(ref);
-    if (!id) return null;
-    const s = getState();
-    return Object.prototype.hasOwnProperty.call(s.items, id) ? s.items[id] : null;
+    if (driver.isLocked()) {
+      emitLockedAccess(ref);
+      return null;
+    }
+    return driver.get(ref);
   },
 
   /** Drops a secret. Safe to call with unknown refs. */
   remove(ref: string | null | undefined): void {
     if (!ref) return;
-    const id = refToId(ref);
-    if (!id) return;
-    const s = getState();
-    if (!Object.prototype.hasOwnProperty.call(s.items, id)) return;
-    const next = { ...s.items };
-    delete next[id];
-    setState({ ...s, items: next });
+    driver.remove(ref);
+    notify();
   },
 
   isVaultRef(s: unknown): s is VaultRef {
-    return typeof s === 'string' && s.startsWith(REF_PREFIX);
+    return driverIsVaultRef(s);
   },
 
   /**
@@ -159,24 +170,55 @@ export const vault = {
    * supplies the live ref set so vault stays decoupled from authStore.
    */
   retainOnly(liveRefs: Set<string>): void {
-    const s = getState();
-    const next: Record<string, string> = {};
-    for (const id of Object.keys(s.items)) {
-      if (liveRefs.has(REF_PREFIX + id)) next[id] = s.items[id];
-    }
-    if (Object.keys(next).length === Object.keys(s.items).length) return;
-    setState({ ...s, items: next });
+    driver.retainOnly(liveRefs);
+    notify();
   },
 
   subscribe(listener: Listener): () => void {
     listeners.add(listener);
-    return () => listeners.delete(listener);
+    return () => {
+      listeners.delete(listener);
+    };
   },
 
   /** Mainly for unit tests / Settings → Reset. */
   reset(): void {
-    setState({ ...DEFAULT_STATE, items: {} });
+    if (driver.mode === 'plaintext') {
+      driver = new PlaintextDriver({});
+    } else {
+      // For encrypted mode, hydrate-empty would require the key. The
+      // resetAll() flow in VaultContext blows away storage and rebuilds
+      // a fresh PlaintextDriver instead.
+      driver = new PlaintextDriver({});
+      try {
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(ENCRYPTED_STORAGE_KEY);
+        }
+      } catch {
+        /* noop */
+      }
+    }
+    notify();
+  },
+
+  /** Current driver state (for the lock banner / settings UI). */
+  getDriverState,
+
+  /**
+   * @internal — used by VaultContext to swap drivers (lock / unlock /
+   * enable encryption / disable encryption / import). Not part of the
+   * stable public API; do not call from feature code.
+   */
+  __installDriver(next: VaultDriver): void {
+    driver = next;
+    notify();
+  },
+
+  /**
+   * @internal — handle to the live driver for advanced operations
+   * (e.g. EncryptedDriver.flushNow during migration). Not for general use.
+   */
+  __getDriver(): VaultDriver {
+    return driver;
   },
 };
-
-export const VAULT_STORAGE_KEY = STORAGE_KEY;
