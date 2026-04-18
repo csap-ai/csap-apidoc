@@ -8,7 +8,10 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {
     "@uiw/codemirror-theme-github": "^4.25.1",
@@ -25,6 +28,7 @@
     "react-transition-group": "^4.4.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.45.0",
     "@types/nprogress": "^0.2.0",
     "@types/react": "^18.0.24",
     "@types/react-dom": "^18.0.8",
