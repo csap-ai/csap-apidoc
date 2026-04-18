@@ -15,7 +15,9 @@ import { exportToOpenApi, downloadOpenApiDoc } from '@/utils/exportOpenApi';
 import { exportToPostman, downloadPostmanCollection } from '@/utils/exportPostman';
 import { exportToMarkdown, downloadMarkdown } from '@/utils/exportMarkdown';
 import { groupParametersByType, getNonEmptyParamTypes, getParamTypeLabel, buildRequestData, replacePathParams } from '@/utils/paramTypeUtils';
-import { ExclamationCircleFilled } from '@ant-design/icons';
+import { ExclamationCircleFilled, ThunderboltOutlined } from '@ant-design/icons';
+import TryItOutPanel, { RequestSpec } from '@/components/TryItOutPanel';
+import type { HttpMethod } from '@/services/tryItOutClient';
 
 import './index.less';
 
@@ -39,6 +41,7 @@ const LayoutIndex = () => {
   });
   const [finalData, setFinalData] = useState([]);
   const [DocText, setDocText] = useState(false);
+  const [tryV2, setTryV2] = useState(false);
   const [ObjQuery, setObjQuery] = useState<any>({});
   const [loading, setLoading] = useState(false);
   const [totalApis, setTotalApis] = useState(0);
@@ -863,9 +866,10 @@ const LayoutIndex = () => {
                   <div className="api-actions">
                     <div className="postContent">
                       <div
-                        className={`postGet ${!DocText ? 'active' : ''}`}
+                        className={`postGet ${!DocText && !tryV2 ? 'active' : ''}`}
                         onClick={() => {
                           setDocText(false);
+                          setTryV2(false);
                           setRespCode({});
                           setRequestStatus(null);
                         }}
@@ -873,17 +877,30 @@ const LayoutIndex = () => {
                         参数文档
                       </div>
                       <div
-                        className={`postGet ${DocText ? 'active' : ''}`}
+                        className={`postGet ${DocText && !tryV2 ? 'active' : ''}`}
                         onClick={() => {
                           setDocText(true);
+                          setTryV2(false);
                           setRespCode({});
                           setRequestStatus(null);
                         }}
                       >
                         在线测试
                       </div>
+                      <div
+                        className={`postGet ${tryV2 ? 'active' : ''}`}
+                        onClick={() => {
+                          setTryV2(true);
+                          setDocText(false);
+                          setRespCode({});
+                          setRequestStatus(null);
+                        }}
+                      >
+                        <ThunderboltOutlined style={{ marginRight: 4 }} />
+                        试运行 v2
+                      </div>
                     </div>
-                    {DocText && (
+                    {DocText && !tryV2 && (
                       <Button
                         type="primary"
                         onClick={handleRequest}
@@ -896,7 +913,22 @@ const LayoutIndex = () => {
                 </div>
               </div>
 
-              {DocText ? (
+              {tryV2 ? (
+                <TryItOutPanel
+                  initial={(() => {
+                    const baseUrl = selectRefValue.current?.value
+                      ? selectRefValue.current.value.replace('/csap/apidoc/parent', '')
+                      : (import.meta.env.VITE_API_URL ?? '');
+                    const path = dataObj.patch || '';
+                    const url = baseUrl ? `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}` : path;
+                    const spec: RequestSpec = {
+                      method: ((dataObj.method || 'GET').toUpperCase() as HttpMethod),
+                      url,
+                    };
+                    return spec;
+                  })()}
+                />
+              ) : DocText ? (
                 <div className="jsonDiv">
                   <div>
                     <div className="jsonDiv-title">
