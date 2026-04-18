@@ -421,8 +421,8 @@ scope of breaking-change risk for early adopters. **Locked.**
 - [x] M2 — global headers + merge
 - [x] M3 — auth schemes + plaintext vault
 - [x] M4 — try-it-out request/response panel
-- [ ] M5 — wire env+headers+auth into requests
-- [ ] M6 — Web Crypto vault encryption
+- [x] M5 — wire env+headers+auth into requests
+- [x] M6 — Web Crypto vault encryption
 - [ ] M7 — devtools annotation hints (optional, may defer)
 - [ ] M8 — tests + docs + i18n
 
