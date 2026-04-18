@@ -1,0 +1,92 @@
+# Gateway Configuration Example
+# This configuration demonstrates how to aggregate multiple microservice API documentations
+# in an API Gateway scenario
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: csap-apidoc-gateway
+
+  # Spring Cloud Gateway Configuration (if using Spring Cloud Gateway)
+  cloud:
+    gateway:
+      routes:
+        # Admin Service Route
+        - id: example-admin-api
+          uri: lb://example-admin-service
+          predicates:
+            - Path=/example-admin-api/**
+          filters:
+            - StripPrefix=0
+
+        # Store Service Route
+        - id: example-store-api
+          uri: lb://example-store-service
+          predicates:
+            - Path=/example-store-api/**
+          filters:
+            - StripPrefix=0
+
+        # Other Service Route
+        - id: example-other-api
+          uri: lb://example-other-service
+          predicates:
+            - Path=/example-other-api/**
+          filters:
+            - StripPrefix=0
+
+# CSAP API Doc Configuration for Gateway Aggregation
+csap:
+  apidoc:
+    # Aggregate multiple service documentations
+    resources:
+      - name: 总后台API
+        url: /example-admin-api/csap/apidoc/parent
+        version: v1.0
+      - name: 门店API
+        url: /example-store-api/csap/apidoc/parent
+        version: v1.0
+      - name: 其他API
+        url: /example-other-api/csap/apidoc/parent
+        version: v1.0
+
+    # DevTools Configuration (optional)
+    devtool:
+      enabled: true   # Enable DevTools UI
+      cache: true     # Enable caching
+
+    # API Info (optional)
+    api-info:
+      title: "API Gateway Documentation"
+      description: "Aggregated API documentation for all microservices"
+      version: "1.0.0"
+      contact:
+        name: "API Team"
+        email: "api-team@example.com"
+
+# Logging Configuration
+logging:
+  level:
+    com.csap.framework: DEBUG
+    org.springframework.cloud.gateway: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+---
+# Production Profile Configuration
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+csap:
+  apidoc:
+    devtool:
+      enabled: false  # Disable DevTools in production
+
+logging:
+  level:
+    com.csap.framework: INFO
+

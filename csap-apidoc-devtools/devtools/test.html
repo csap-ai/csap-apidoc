@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>React Test</title>
+</head>
+<body>
+  <h1 style="color: red; padding: 50px;">如果你能看到这个HTML，说明服务器正常</h1>
+  <div id="root"></div>
+  <script type="module">
+    import React from '/node_modules/.vite/deps/react.js';
+    import ReactDOM from '/node_modules/.vite/deps/react-dom_client.js';
+    
+    console.log('Script loaded');
+    const root = document.getElementById('root');
+    console.log('Root:', root);
+    
+    if (root) {
+      ReactDOM.createRoot(root).render(
+        React.createElement('div', {
+          style: {
+            padding: '50px',
+            background: 'yellow',
+            fontSize: '30px',
+            color: 'blue',
+            border: '5px solid red'
+          }
+        }, '🎉 React 成功渲染！')
+      );
+      console.log('Rendered');
+    }
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,142 @@
+name: Security Scan
+
+on:
+  # Weekly scan every Monday at 09:00 UTC
+  schedule:
+    - cron: "0 9 * * 1"
+
+  # Also run on every push to main so new dependencies are checked immediately
+  push:
+    branches:
+      - main
+
+  # Allow manual execution
+  workflow_dispatch:
+
+concurrency:
+  group: security-scan-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: "17"
+  JAVA_DISTRIBUTION: "temurin"
+  NVD_CACHE_DIR: ~/.m2/repository/org/owasp/dependency-check-data
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # 1. OWASP Dependency-Check — scans Maven dependency tree for known CVEs
+  # ──────────────────────────────────────────────────────────────────────────
+  dependency-check:
+    name: OWASP Dependency Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+
+      # Cache the NVD database so weekly scans are fast
+      - name: Cache NVD database
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NVD_CACHE_DIR }}
+          key: nvd-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            nvd-${{ runner.os }}-
+
+      - name: Run OWASP dependency:check
+        # Continue so the report artifact is always uploaded
+        continue-on-error: true
+        run: |
+          mvn -B dependency:check \
+            --file pom.xml \
+            -DfailBuildOnCVSS=9 \
+            -DsuppressionFile=.github/owasp-suppressions.xml \
+            -Dformats=HTML,JSON,SARIF \
+            -DretireJsAnalyzerEnabled=false \
+            -DnodeAnalyzerEnabled=false
+
+      - name: Upload dependency-check report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-report-${{ github.run_number }}
+          path: |
+            **/target/dependency-check-report.*
+          retention-days: 30
+
+      - name: Upload SARIF to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: target/dependency-check-report.sarif
+          category: owasp-dependency-check
+        continue-on-error: true   # SARIF upload needs Advanced Security; skip gracefully
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 2. Trivy — container/filesystem vulnerability scanner
+  # ──────────────────────────────────────────────────────────────────────────
+  trivy-scan:
+    name: Trivy Vulnerability Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
+
+      - name: Build JARs (skip tests for speed)
+        run: mvn -B package --file pom.xml -DskipTests=true
+
+      - name: Run Trivy on built JARs
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret
+          # Only flag HIGH and CRITICAL
+          severity: HIGH,CRITICAL
+          format: sarif
+          output: trivy-results.sarif
+          exit-code: "0"   # Report but do not fail the workflow
+
+      - name: Upload Trivy SARIF to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
+        continue-on-error: true   # Requires Advanced Security
+
+      - name: Upload Trivy results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-results-${{ github.run_number }}
+          path: trivy-results.sarif
+          retention-days: 30
+
+      - name: Write security summary
+        if: always()
+        run: |
+          echo "## Security Scan Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Scanner | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| OWASP Dependency Check | see \`dependency-check\` job |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Trivy (HIGH/CRITICAL) | see \`trivy-scan\` job |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Full reports are available as workflow artifacts (retained 30 days)." >> "$GITHUB_STEP_SUMMARY"

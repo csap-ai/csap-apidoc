@@ -1,0 +1,43 @@
+# Code Owners for CSAP Framework API Doc
+#
+# These owners will be the default owners for everything in the repo.
+# Unless a later match takes precedence, they will be requested for
+# review when someone opens a pull request.
+
+# Global owners
+* @csap-team
+
+# Core modules
+/csap-framework-apidoc-core/ @csap-team
+/csap-framework-apidoc-annotation/ @csap-team
+/csap-framework-apidoc-common/ @csap-team
+
+# Boot starter
+/csap-framework-apidoc-boot/ @csap-team
+
+# Storage strategies
+/csap-framework-apidoc-strategy/ @csap-team
+/csap-framework-apidoc-sqlite/ @csap-team
+/csap-framework-apidoc-yaml/ @csap-team
+
+# Frontend / DevTools
+/csap-framework-apidoc-devtools/ @csap-team
+/csap-framework-apidoc-web/ @csap-team
+
+# Validation
+/csap-framework-validation-core/ @csap-team
+
+# Documentation
+*.md @csap-team
+/docs/ @csap-team
+
+# Configuration files
+*.yml @csap-team
+*.yaml @csap-team
+*.json @csap-team
+pom.xml @csap-team
+package.json @csap-team
+
+# CI/CD
+/.github/ @csap-team
+

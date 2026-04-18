@@ -1,0 +1,126 @@
+.ant-layout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  padding: 0 32px;
+  background: linear-gradient(135deg, #4a6fa5 0%, #3d5a80 50%, #2d4a6a 100%) !important;
+  border-bottom: none;
+  box-shadow: @shadow-lg;
+  position: relative;
+  z-index: 10;
+
+  .header-lf {
+    display: flex;
+    align-items: center;
+    user-select: none;
+    
+    span {
+      font-size: 20px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: 0.8px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    img {
+      display: inline-block;
+      width: 32px;
+      height: 32px;
+      margin-right: 12px;
+      transition: all 0.3s ease;
+      animation: scaleIn 0.5s ease-out;
+      
+      &:hover {
+        transform: scale(1.1) rotate(5deg);
+      }
+    }
+  }
+
+  .header-ri {
+    display: flex;
+    align-items: center;
+    
+    .apiList {
+      display: flex;
+      
+      .api-item {
+        display: flex;
+        margin-left: 12px;
+        align-items: center;
+        user-select: none;
+        
+        div {
+          margin-right: 10px;
+          color: #ffffff;
+          font-weight: 500;
+        }
+        
+        .ant-select {
+          min-width: 200px;
+          
+          .ant-select-selector {
+            background-color: rgba(255, 255, 255, 0.2) !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            color: #ffffff !important;
+            border-radius: @border-radius-md;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            
+            &:hover {
+              background-color: rgba(255, 255, 255, 0.3) !important;
+              border-color: rgba(255, 255, 255, 0.5) !important;
+            }
+            
+            .ant-select-selection-placeholder {
+              color: rgba(255, 255, 255, 0.7);
+            }
+          }
+          
+          .ant-select-arrow {
+            color: #ffffff;
+          }
+        }
+
+        .ant-btn-primary {
+          background-color: rgba(255, 255, 255, 0.25) !important;
+          border: 1px solid rgba(255, 255, 255, 0.4) !important;
+          color: #ffffff !important;
+          backdrop-filter: blur(10px);
+          font-weight: 500;
+          transition: all 0.3s ease;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+
+          &:hover:not(:disabled) {
+            background-color: rgba(255, 255, 255, 0.35) !important;
+            border-color: rgba(255, 255, 255, 0.6) !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+          }
+
+          &:active {
+            transform: translateY(0);
+          }
+
+          .anticon {
+            color: #ffffff;
+          }
+        }
+      }
+    }
+    
+    .username {
+      margin: 0 10px 0 10px;
+      font-size: 15px;
+      color: #ffffff;
+      user-select: none;
+      font-weight: 500;
+    }
+  }
+}
+
+
+.ant-divider-with-text::before,
+.ant-divider-with-text::after {
+  border-top: 1px solid #dcdfe6 !important;
+}

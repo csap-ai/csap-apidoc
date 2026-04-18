@@ -1,0 +1,62 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: example-spring-boot2
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+# CSAP API Doc 配置
+csap:
+  apidoc:
+    enabled: true
+    title: CSAP API Doc - Spring Boot 2.x Example
+    version: 1.0.0
+    description: 基于 Spring Boot 2.7.x (javax.servlet) 的 API 文档示例
+    base-package: ai.csap.apidoc.example
+    # 文档存储策略：standard (内存), yaml (YAML文件), sqlite (SQLite数据库)
+    strategy: standard
+    
+  # 验证框架配置
+  validation:
+    enabled: true
+    
+  # Web 配置
+  web:
+    enabled: true
+    # 分页参数配置
+    page-param:
+      column-keys: [sort, orderBy]
+      asc-keys: [order, asc]
+      size-keys: [size, pageSize, limit]
+      current-keys: [current, page, pageNum]
+
+# Management Endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+  health:
+    defaults:
+      enabled: true
+
+# Logging
+logging:
+  level:
+    root: INFO
+    ai.csap.apidoc: DEBUG
+    com.csap.framework: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

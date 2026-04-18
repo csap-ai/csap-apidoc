@@ -1,0 +1,27 @@
+# YAML Strategy Example Configuration
+# Activate with: --spring.profiles.active=yaml
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: csap-apidoc-example-yaml
+
+# CSAP API Doc Configuration
+csap:
+  apidoc:
+    devtool:
+      enabled: true
+      cache: true
+
+# Logging
+logging:
+  level:
+    com.csap.framework: DEBUG
+    root: INFO
+
+# Note:
+# YAML strategy is configured in @EnableApidoc annotation
+# The path is specified directly in the annotation, not here
+

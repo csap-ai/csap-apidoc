@@ -1,0 +1,12 @@
+info:
+  version: 1.0
+  title: 标题
+  description: 描述
+  serviceUrl: http://localhost:8081
+  license: 2.0
+  licenseUrl: http://www.apache.org/licenses/LICENSE-2.0
+  contact:
+    name: 张三
+    url: http://www.apache.org/licenses/LICENSE-2.0
+    email: 772395012@qq.com
+

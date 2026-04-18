@@ -1,0 +1,41 @@
+##controller
+ai.csap.apidoc.web.YamlController1:
+  ## 描述名称，简称
+  value: yaml接口测试
+  ##筛选关键字
+  search:
+    - yaml
+    - 接口
+    - 测试
+  ##具体名称
+  name: YamlController
+  ##路径
+  path:
+    - yaml
+  ##详细描述
+  description: 描述
+  ##排序位置
+  position: 1
+  ##标签
+  tags:
+    - yaml
+    - 测试
+    - 接口
+  ##接口分组
+  group:
+    - test
+    - yaml
+  ##接口版本
+  version:
+    - 1.0
+    - 2.0
+  ##状态
+  status: FINISH
+  ##协议
+  protocols: HTTP
+  ##是否隐藏
+  hidden: false
+  ##当前方法接口
+  methods:
+    - getYaml
+    - addYaml

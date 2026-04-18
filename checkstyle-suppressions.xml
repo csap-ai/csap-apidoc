@@ -1,0 +1,83 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+        "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+        "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+
+<!--
+    Checkstyle Suppressions for CSAP Framework
+    
+    Use this file to suppress specific checkstyle warnings for files or patterns
+    that cannot comply with the standard rules.
+    
+    Note: Use suppressions sparingly and document the reason.
+-->
+
+<suppressions>
+    <!-- Suppress checks for generated code -->
+    <suppress checks=".*" files=".*[\\/]target[\\/]generated-sources[\\/].*"/>
+    <suppress checks=".*" files=".*[\\/]generated[\\/].*"/>
+    
+    <!-- Suppress checks for test resources -->
+    <suppress checks=".*" files=".*[\\/]src[\\/]test[\\/]resources[\\/].*"/>
+    
+    <!-- =============================================== -->
+    <!-- 临时抑制规则 - 逐步修复后请移除这些规则        -->
+    <!-- =============================================== -->
+    
+    <!-- JavaDoc 检查已启用 - 要求 public 类和方法有 JavaDoc -->
+    <!-- 但允许缺少 @param 和 @return 标签 -->
+    
+    <!-- 临时抑制测试代码的 JavaDoc -->
+    <suppress checks="JavadocMethod" files=".*Test\.java"/>
+    <suppress checks="MissingJavadocType" files=".*Test\.java"/>
+    <suppress checks="JavadocStyle" files=".*Test\.java"/>
+    
+    <!-- 临时抑制测试代码的魔术数字 -->
+    <suppress checks="MagicNumber" files=".*[\\/]test[\\/].*"/>
+    
+    <!-- 抑制annotation/apidoc目录的PackageDeclaration警告（目录结构历史原因） -->
+    <suppress checks="PackageDeclaration" files=".*[\\/]annotation[\\/]apidoc[\\/].*"/>
+    
+    <!-- 抑制AbstractApidocStrategy的VisibilityModifier警告（public final字段用于依赖注入） -->
+    <suppress checks="VisibilityModifier" files=".*AbstractApidocStrategy\.java"/>
+    
+    <!-- 抑制Postman相关命名规范（Postman API规范要求使用下划线前缀） -->
+    <suppress checks="MemberName|MethodName|ParameterName" files=".*PostmanConverterService\.java"/>
+    
+    <!-- 抑制TODO注释检查 -->
+    <suppress checks="TodoComment" files=".*"/>
+    
+    <!-- 抑制常量接口检查（历史代码设计） -->
+    <suppress checks="InterfaceIsType" files=".*ApiParamStrategyType\.java"/>
+    
+    <!-- 抑制异常类可变字段检查（需要业务灵活设置） -->
+    <suppress checks="MutableException" files=".*ValidateException\.java"/>
+    
+    <!-- =============================================== -->
+    <!-- 特定文件/目录的抑制规则                        -->
+    <!-- =============================================== -->
+    
+    <!-- 示例：抑制 URL 常量文件的行长度限制 -->
+    <!-- <suppress checks="LineLength" files=".*Constants\.java"/> -->
+    
+    <!-- 示例：抑制内部实现类的可见性检查 -->
+    <!-- <suppress checks="VisibilityModifier" files=".*[\\/]internal[\\/].*"/> -->
+    
+    <!-- 示例：抑制 DTO 类的某些检查 -->
+    <!-- <suppress checks="VisibilityModifier" files=".*DTO\.java"/> -->
+    <!-- <suppress checks="HideUtilityClassConstructor" files=".*DTO\.java"/> -->
+    
+    <!-- =============================================== -->
+    <!-- 已修复的模块（取消注释表示该模块已修复）        -->
+    <!-- =============================================== -->
+    
+    <!-- 模块 1: csap-apidoc-common（待修复）-->
+    <!-- <suppress checks=".*" files=".*[\\/]csap-apidoc-common[\\/].*"/> -->
+    
+    <!-- 模块 2: csap-apidoc-core（待修复）-->
+    <!-- <suppress checks=".*" files=".*[\\/]csap-apidoc-core[\\/].*"/> -->
+    
+    <!-- 模块 3: csap-apidoc-devtools（待修复）-->
+    <!-- <suppress checks=".*" files=".*[\\/]csap-apidoc-devtools[\\/].*"/> -->
+</suppressions>
+

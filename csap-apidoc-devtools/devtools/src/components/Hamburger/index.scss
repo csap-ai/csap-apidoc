@@ -1,0 +1,30 @@
+.hamburger-wrapper {
+  padding: 0 15px;
+  cursor: pointer;
+  transition: all 0.3s;
+  border-radius: 4px;
+
+  &:hover {
+    background: rgba(24, 144, 255, 0.1);
+
+    .hamburger {
+      fill: #1890ff;
+    }
+  }
+
+  .hamburger {
+    display: inline-block;
+    vertical-align: middle;
+    width: 20px;
+    height: 20px;
+    transition: all 0.38s;
+    transform-origin: center;
+    fill: #333;
+
+    &.is-active {
+      transform: rotate(180deg);
+      fill: #1890ff;
+    }
+  }
+}
+

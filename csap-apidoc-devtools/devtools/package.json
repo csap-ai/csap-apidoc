@@ -1,0 +1,62 @@
+{
+  "name": "csap-manage-devtools",
+  "version": "1.0.0",
+  "description": "A csap devtools is api manager ops",
+  "author": "772395012@qq.com",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "build:prod": "tsc && vite build --mode production",
+    "build:stage": "tsc && vite build --mode staging",
+    "build:test": "tsc && vite build --mode test",
+    "preview": "vite preview",
+    "lint": "eslint --ext .ts,.tsx src"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^5.2.6",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@types/react-resizable": "^3.0.8",
+    "antd": "^5.12.0",
+    "axios": "^1.6.2",
+    "js-cookie": "^3.0.5",
+    "normalize.css": "^8.0.1",
+    "nprogress": "^0.2.0",
+    "path-to-regexp": "^6.2.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-resizable": "^3.0.5",
+    "react-router-dom": "^6.20.0",
+    "zustand": "^4.4.7"
+  },
+  "devDependencies": {
+    "@types/js-cookie": "^3.0.6",
+    "@types/node": "^20.10.5",
+    "@types/nprogress": "^0.2.3",
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.55.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "sass": "^1.69.5",
+    "terser": "^5.44.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.8",
+    "vite-plugin-svgr": "^4.2.0"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">= 7.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions"
+  ]
+}

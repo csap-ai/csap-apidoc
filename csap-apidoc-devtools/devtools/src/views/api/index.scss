@@ -1,0 +1,317 @@
+.api-container {
+  height: calc(100vh - 84px);
+  display: flex;
+  background: #f0f2f5;
+
+  .api-sidebar {
+    width: 280px;
+    min-width: 240px;
+    max-width: 400px;
+    background: #fff;
+    border-right: 2px solid #e8e8e8;
+    overflow-y: auto;
+    resize: horizontal;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+
+    .home-button {
+      padding: 16px;
+      border-bottom: 2px solid #e8e8e8;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #666;
+      background: #fafafa;
+
+      &:hover {
+        background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%);
+        color: #1890ff;
+        box-shadow: 0 2px 8px rgba(24, 144, 255, 0.2);
+      }
+
+      &.active {
+        background: linear-gradient(135deg, #1890ff 0%, #36cfc9 100%);
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
+        border-left: 4px solid #0050b3;
+      }
+    }
+
+    .controller-search {
+      padding: 12px;
+      border-bottom: 1px solid #f0f0f0;
+      background: #fafafa;
+      flex-shrink: 0;
+
+      :global {
+        .ant-input-affix-wrapper {
+          border-radius: 4px;
+
+          &:hover, &:focus, &:focus-within {
+            border-color: #1890ff;
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+          }
+        }
+      }
+    }
+
+    .controller-list {
+      flex: 1;
+      overflow-y: auto;
+      .controller-item {
+        padding: 12px;
+        border-bottom: 1px solid #f0f0f0;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+
+        &:hover {
+          background: linear-gradient(90deg, #f5f5f5 0%, #fafafa 100%);
+          border-left: 2px solid #69c0ff;
+        }
+
+        &.active {
+          background: linear-gradient(90deg, #e6f7ff 0%, #f0f9ff 100%);
+          border-left: 3px solid #1890ff;
+          color: #1890ff;
+          box-shadow: inset 0 0 0 1px rgba(24, 144, 255, 0.1);
+        }
+
+        .controller-name {
+          font-size: 13px;
+          font-weight: 600;
+          overflow: hidden;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+        }
+
+        .controller-desc {
+          font-size: 11px;
+          color: #999;
+          margin: 0;
+          overflow: hidden;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+        }
+      }
+    }
+  }
+
+  .api-content {
+    flex: 1;
+    padding: 12px;
+    overflow-y: auto;
+
+    .api-info {
+      background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      border-radius: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      border: 1px solid #e0e4e8;
+
+      p {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.8;
+        color: #333;
+
+        strong {
+          margin-right: 6px;
+          color: #1890ff;
+          font-weight: 600;
+        }
+      }
+    }
+
+    .method-search {
+      :global {
+        .ant-input-affix-wrapper {
+          border-radius: 6px;
+
+          &:hover, &:focus, &:focus-within {
+            border-color: #1890ff;
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+          }
+        }
+      }
+    }
+
+    .action-buttons {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: nowrap;
+
+      button {
+        margin: 0;
+        padding: 3px 10px;
+        font-size: 12px;
+        height: 28px;
+        min-width: 68px;
+        border-radius: 4px;
+        transition: all 0.2s;
+        font-weight: 500;
+
+        &:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 3px 6px rgba(24, 144, 255, 0.3);
+        }
+
+        &:active {
+          transform: translateY(0);
+        }
+      }
+    }
+
+    // 表格样式优化
+    :global {
+      .ant-table {
+        font-size: 13px;
+
+        .ant-table-thead > tr > th {
+          background: #fafafa;
+          font-weight: 600;
+          padding: 10px 8px;
+        }
+
+        .ant-table-tbody > tr > td {
+          padding: 8px;
+        }
+
+        .ant-tag {
+          margin: 0;
+          font-size: 11px;
+          padding: 1px 6px;
+          border-radius: 3px;
+        }
+      }
+    }
+
+    .placeholder {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+      font-size: 16px;
+    }
+
+    // 统计大屏样式
+    .dashboard {
+      .dashboard-header {
+        text-align: center;
+        padding: 40px 20px 20px;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-radius: 12px;
+        margin-bottom: 24px;
+
+        h1 {
+          animation: fadeInDown 0.6s ease-out;
+        }
+
+        p {
+          animation: fadeInUp 0.6s ease-out;
+        }
+      }
+
+      .stat-card {
+        transition: all 0.3s;
+        border-radius: 12px;
+        overflow: hidden;
+
+        &:hover {
+          transform: translateY(-8px);
+          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        :global {
+          .ant-card-body {
+            padding: 20px;
+          }
+
+          .ant-statistic-title {
+            margin-bottom: 8px;
+          }
+        }
+      }
+    }
+
+    @keyframes fadeInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    // 正在编辑行的脉冲动画
+    @keyframes editingPulse {
+      0%, 100% {
+        box-shadow: 0 2px 8px rgba(24, 144, 255, 0.2);
+      }
+      50% {
+        box-shadow: 0 2px 12px rgba(24, 144, 255, 0.4);
+      }
+    }
+  }
+}
+
+// 全局样式 - 确保高亮样式生效
+:global {
+  // 匹配所有可能的表格结构
+  .ant-table-tbody tr.editing-row,
+  .ant-table-tbody > tr.editing-row,
+  table.ant-table tbody tr.editing-row {
+    background: linear-gradient(90deg, #e6f7ff 0%, #f0f9ff 100%) !important;
+    box-shadow: 0 2px 8px rgba(24, 144, 255, 0.2) !important;
+    position: relative !important;
+
+    // 添加脉冲动画
+    animation: editingPulse 2s ease-in-out infinite;
+
+    &:hover {
+      background: linear-gradient(90deg, #bae7ff 0%, #d6f4ff 100%) !important;
+      box-shadow: 0 2px 12px rgba(24, 144, 255, 0.4) !important;
+    }
+
+    // 确保所有单元格都有样式
+    td {
+      font-weight: 500 !important;
+      color: #1890ff !important;
+      background: transparent !important;
+    }
+  }
+
+  // 脉冲动画定义
+  @keyframes editingPulse {
+    0%, 100% {
+      box-shadow: 0 2px 8px rgba(24, 144, 255, 0.2);
+    }
+    50% {
+      box-shadow: 0 2px 12px rgba(24, 144, 255, 0.4);
+    }
+  }
+}

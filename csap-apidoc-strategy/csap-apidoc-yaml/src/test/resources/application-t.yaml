@@ -1,0 +1,28 @@
+---
+ai.csap.apidoc.web.YamlController:
+  hidden: "false"
+  methods:
+    - "getYaml"
+    - "addYaml"
+  description: "描述"
+  version:
+    - "1.0"
+    - "2.0"
+  tags:
+    - "yaml"
+    - "测试"
+    - "接口"
+  path:
+    - "yaml"
+  search:
+    - "yaml"
+    - "接口"
+    - "测试"
+  name: "YamlController"
+  position: "1"
+  protocols: "HTTP"
+  value: "yaml接口测试"
+  group:
+    - "test"
+    - "yaml"
+  status: "FINISH"

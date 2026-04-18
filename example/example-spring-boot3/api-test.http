@@ -1,0 +1,147 @@
+### CSAP API Doc Example - HTTP Test File
+### Use with IntelliJ IDEA HTTP Client or VS Code REST Client extension
+
+@baseUrl = http://localhost:8080
+@contentType = application/json
+
+### ========================================
+### User Management API
+### ========================================
+
+### 1. Get user list
+GET {{baseUrl}}/api/users?page=1&pageSize=10
+Accept: {{contentType}}
+
+### 2. Search users by keyword
+GET {{baseUrl}}/api/users?page=1&pageSize=10&keyword=john
+Accept: {{contentType}}
+
+### 3. Get user by ID
+GET {{baseUrl}}/api/users/1001
+Accept: {{contentType}}
+
+### 4. Create new user
+POST {{baseUrl}}/api/users
+Content-Type: {{contentType}}
+
+{
+  "username": "john_doe",
+  "email": "john@example.com",
+  "phone": "13800138000",
+  "age": 25
+}
+
+### 5. Create user with validation (should fail - invalid email)
+POST {{baseUrl}}/api/users
+Content-Type: {{contentType}}
+
+{
+  "username": "jo",
+  "email": "invalid-email",
+  "phone": "12345",
+  "age": 15
+}
+
+### 6. Update user
+PUT {{baseUrl}}/api/users/1001
+Content-Type: {{contentType}}
+
+{
+  "username": "john_doe_updated",
+  "email": "john.updated@example.com",
+  "phone": "13800138001",
+  "age": 26
+}
+
+### 7. Update user status to LOCKED
+PATCH {{baseUrl}}/api/users/1001/status?status=LOCKED
+Accept: {{contentType}}
+
+### 8. Update user status to ACTIVE
+PATCH {{baseUrl}}/api/users/1001/status?status=ACTIVE
+Accept: {{contentType}}
+
+### 9. Delete user
+DELETE {{baseUrl}}/api/users/1001
+Accept: {{contentType}}
+
+### ========================================
+### Product Management API
+### ========================================
+
+### 1. Get product list
+GET {{baseUrl}}/api/products?page=1&pageSize=10
+Accept: {{contentType}}
+
+### 2. Get products with filters
+GET {{baseUrl}}/api/products?page=1&pageSize=10&categoryId=1&minPrice=1000&maxPrice=10000&onSale=true
+Accept: {{contentType}}
+
+### 3. Get product by ID
+GET {{baseUrl}}/api/products/2001
+Accept: {{contentType}}
+
+### 4. Create new product
+POST {{baseUrl}}/api/products
+Content-Type: {{contentType}}
+
+{
+  "name": "iPhone 15 Pro",
+  "description": "最新款苹果手机，A17 Pro芯片，钛金属边框",
+  "price": 7999.00,
+  "stock": 100,
+  "categoryId": 1,
+  "onSale": true
+}
+
+### 5. Create product with validation (should fail - negative price)
+POST {{baseUrl}}/api/products
+Content-Type: {{contentType}}
+
+{
+  "name": "",
+  "description": "Test",
+  "price": -100,
+  "stock": -10,
+  "categoryId": 1,
+  "onSale": true
+}
+
+### 6. Update product
+PUT {{baseUrl}}/api/products/2001
+Content-Type: {{contentType}}
+
+{
+  "name": "iPhone 15 Pro Max",
+  "description": "升级版",
+  "price": 8999.00,
+  "stock": 50,
+  "categoryId": 1,
+  "onSale": true
+}
+
+### 7. Update product stock
+PATCH {{baseUrl}}/api/products/2001/stock?stock=200
+Accept: {{contentType}}
+
+### 8. Delete product
+DELETE {{baseUrl}}/api/products/2001
+Accept: {{contentType}}
+
+### 9. Batch delete products
+DELETE {{baseUrl}}/api/products/batch
+Content-Type: {{contentType}}
+
+[2001, 2002, 2003]
+
+### ========================================
+### API Documentation Endpoints
+### ========================================
+
+### Get API documentation JSON
+GET {{baseUrl}}/api/csap/doc
+Accept: {{contentType}}
+
+### Access API documentation UI
+### Open in browser: {{baseUrl}}/csap-api.html
+

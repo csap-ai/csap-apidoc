@@ -1,0 +1,39 @@
+{
+  "groups": [
+    {
+      "sourceType": "ai.csap.validation.properties.ValidationProperties",
+      "name": "csap.validation",
+      "type": "ai.csap.validation.properties.ValidationProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "csap.validation.code",
+      "type": "java.lang.String",
+      "description": " 错误码的名称.",
+      "defaultValue": "code",
+      "sourceType": "ai.csap.validation.properties.ValidationProperties"
+    },
+    {
+      "name": "csap.validation.message",
+      "type": "java.lang.String",
+      "description": " 错误描述的名称.",
+      "defaultValue": "message",
+      "sourceType": "ai.csap.validation.properties.ValidationProperties"
+    },
+    {
+      "name": "csap.validation.enabled",
+      "type": "java.lang.Boolean",
+      "description": " 是否可用.",
+      "defaultValue": "true",
+      "sourceType": "ai.csap.validation.properties.ValidationProperties"
+    },
+    {
+      "name": "csap.validation.tip-type",
+      "type": "ai.csap.validation.type.ValidationTipType",
+      "description": " 验证提示的类型.",
+      "defaultValue": "TIP_1",
+      "sourceType": "ai.csap.validation.properties.ValidationProperties"
+    }
+  ]
+}

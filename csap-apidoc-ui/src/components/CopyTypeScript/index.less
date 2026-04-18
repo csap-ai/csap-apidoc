@@ -1,0 +1,63 @@
+// TypeScript按钮样式优化
+.copy-typescript-btn {
+  background: linear-gradient(135deg, #6fd4c8, #7dd3c0);
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(111, 212, 200, 0.25);
+  transition: all 0.3s ease;
+  font-weight: 500;
+  
+  &:hover {
+    background: linear-gradient(135deg, #7dd3c0, #8de4d0);
+    box-shadow: 0 4px 16px rgba(111, 212, 200, 0.35);
+    transform: translateY(-2px);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+// Modal内的按钮样式
+.typescript-modal {
+  .ant-modal-header {
+    border-bottom: 2px solid rgba(111, 212, 200, 0.2);
+    padding: 20px 24px;
+  }
+  
+  .ant-modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+  }
+  
+  .ant-modal-body {
+    padding: 24px;
+  }
+  
+  .ant-modal-footer {
+    border-top: 1px solid #f1f5f9;
+    padding: 16px 24px;
+    
+    .ant-btn-primary {
+      background: linear-gradient(135deg, #6fd4c8, #7dd3c0);
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(111, 212, 200, 0.25);
+      font-weight: 500;
+      
+      &:hover {
+        background: linear-gradient(135deg, #7dd3c0, #8de4d0);
+        box-shadow: 0 4px 12px rgba(111, 212, 200, 0.3);
+        transform: translateY(-1px);
+      }
+    }
+  }
+  
+  pre {
+    font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+}
+

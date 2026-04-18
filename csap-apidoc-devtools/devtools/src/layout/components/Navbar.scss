@@ -1,0 +1,129 @@
+.navbar {
+  height: 50px;
+  overflow: hidden;
+  position: relative;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,21,41,.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  .navbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .hamburger-container {
+    line-height: 46px;
+    height: 100%;
+    cursor: pointer;
+    transition: all .3s;
+    -webkit-tap-highlight-color:transparent;
+    display: flex;
+    align-items: center;
+    padding: 0 5px;
+    margin-left: 5px;
+
+    &:hover {
+      background: rgba(24, 144, 255, 0.08);
+      border-radius: 4px;
+    }
+  }
+
+  .logo-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 6px;
+    margin-left: 8px;
+
+    &:hover {
+      background: rgba(24, 144, 255, 0.05);
+      
+      .navbar-title {
+        color: #1890ff;
+      }
+    }
+
+    .navbar-logo {
+      width: 36px;
+      height: 36px;
+      transition: transform 0.3s;
+    }
+
+    &:hover .navbar-logo {
+      transform: scale(1.1);
+    }
+
+    .navbar-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1890ff;
+      letter-spacing: 1px;
+      transition: color 0.3s;
+      white-space: nowrap;
+    }
+  }
+
+  .breadcrumb-container {
+    margin-left: 20px;
+  }
+
+  .right-menu {
+    float: right;
+    height: 100%;
+    line-height: 50px;
+
+    &:focus {
+      outline: none;
+    }
+
+    .right-menu-item {
+      display: inline-block;
+      padding: 0 8px;
+      height: 100%;
+      font-size: 18px;
+      color: #5a5e66;
+      vertical-align: text-bottom;
+
+      &.hover-effect {
+        cursor: pointer;
+        transition: background .3s;
+
+        &:hover {
+          background: rgba(0, 0, 0, .025)
+        }
+      }
+    }
+
+    .avatar-container {
+      margin-right: 30px;
+      cursor: pointer;
+
+      .avatar-wrapper {
+        margin-top: 5px;
+        position: relative;
+        display: flex;
+        align-items: center;
+
+        .user-avatar {
+          cursor: pointer;
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
+        }
+
+        .el-icon-caret-bottom {
+          cursor: pointer;
+          margin-left: 8px;
+          font-size: 12px;
+        }
+      }
+    }
+  }
+}
+

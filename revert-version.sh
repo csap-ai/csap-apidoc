@@ -1,0 +1,2 @@
+mvn versions:revert
+

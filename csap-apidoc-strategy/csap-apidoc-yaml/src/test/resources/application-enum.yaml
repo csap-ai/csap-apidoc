@@ -1,0 +1,6 @@
+##枚举
+ai.csap.apidoc.enums.YamlEnum:
+  - code: 1
+    message: 成功
+  - code: 2
+    message: 失败

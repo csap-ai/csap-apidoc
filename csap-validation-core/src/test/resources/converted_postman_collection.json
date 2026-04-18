@@ -1,0 +1,619 @@
+{
+  "info" : {
+    "_postman_id" : "2f7ffdb2-a761-4212-b159-3beaef650a48",
+    "name" : "Api Documentation",
+    "schema" : "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item" : [ {
+    "name" : "根据id查询",
+    "event" : [ ],
+    "request" : {
+      "method" : "GET",
+      "header" : [ {
+        "key" : "Content-Type",
+        "value" : "application/json",
+        "description" : "上下文类型"
+      } ],
+      "url" : {
+        "raw" : "urn:tos/dept/findById",
+        "protocol" : "https",
+        "host" : [ "urn:tos" ],
+        "path" : [ "dept", "findById" ],
+        "query" : [ {
+          "key" : "id",
+          "value" : "",
+          "description" : "ID",
+          "disabled" : false
+        } ]
+      },
+      "description" : ""
+    },
+    "response" : [ {
+      "name" : "Response: 公用参数说明",
+      "status" : "OK",
+      "code" : 200,
+      "_postman_previewlanguage" : "json",
+      "header" : [ {
+        "key" : "Content-Type",
+        "value" : "application/json"
+      } ],
+      "cookie" : [ ],
+      "body" : "{\n  \"code\" : \"0\",\n  \"data\" : \"\",\n  \"language\" : \"\",\n  \"time\" : \"1540483321460\",\n  \"message\" : \"成功\"\n}"
+    } ]
+  }, {
+    "name" : "分页查询",
+    "event" : [ ],
+    "request" : {
+      "method" : "GET",
+      "header" : [ {
+        "key" : "Content-Type",
+        "value" : "application/json",
+        "description" : "上下文类型"
+      } ],
+      "url" : {
+        "raw" : "urn:tos/dept/queryListPage",
+        "protocol" : "https",
+        "host" : [ "urn:tos" ],
+        "path" : [ "dept", "queryListPage" ],
+        "query" : [ {
+          "key" : "isSearchCount",
+          "value" : "true",
+          "description" : "是否查询总条数",
+          "disabled" : true
+        }, {
+          "key" : "pageSize",
+          "value" : "20",
+          "description" : "每页显示条数",
+          "disabled" : true
+        }, {
+          "key" : "currentPage",
+          "value" : "1",
+          "description" : "当前页数",
+          "disabled" : true
+        }, {
+          "key" : "column",
+          "value" : "create_time",
+          "description" : "排序字段 ",
+          "disabled" : true
+        }, {
+          "key" : "asc",
+          "value" : "true",
+          "description" : "是否正序排列 接收数组形式参数,该参数和cloum排序字段一一对应",
+          "disabled" : true
+        } ]
+      },
+      "description" : ""
+    },
+    "response" : [ {
+      "name" : "Response: 公用参数说明",
+      "status" : "OK",
+      "code" : 200,
+      "_postman_previewlanguage" : "json",
+      "header" : [ {
+        "key" : "Content-Type",
+        "value" : "application/json"
+      } ],
+      "cookie" : [ ],
+      "body" : "{\n  \"code\" : \"0\",\n  \"data\" : \"\",\n  \"language\" : \"\",\n  \"time\" : \"1540483321460\",\n  \"message\" : \"成功\"\n}"
+    } ]
+  }, {
+    "name" : "分页查询返回总条数",
+    "event" : [ ],
+    "request" : {
+      "method" : "GET",
+      "header" : [ {
+        "key" : "Content-Type",
+        "value" : "application/json",
+        "description" : "上下文类型"
+      } ],
+      "url" : {
+        "raw" : "urn:tos/dept/queryManagerListPage",
+        "protocol" : "https",
+        "host" : [ "urn:tos" ],
+        "path" : [ "dept", "queryManagerListPage" ],
+        "query" : [ {
+          "key" : "isSearchCount",
+          "value" : "true",
+          "description" : "是否查询总条数",
+          "disabled" : true
+        }, {
+          "key" : "pageSize",
+          "value" : "20",
+          "description" : "每页显示条数",
+          "disabled" : true
+        }, {
+          "key" : "currentPage",
+          "value" : "1",
+          "description" : "当前页数",
+          "disabled" : true
+        }, {
+          "key" : "column",
+          "value" : "create_time",
+          "description" : "排序字段 ",
+          "disabled" : true
+        }, {
+          "key" : "asc",
+          "value" : "true",
+          "description" : "是否正序排列 接收数组形式参数,该参数和cloum排序字段一一对应",
+          "disabled" : true
+        } ]
+      },
+      "description" : ""
+    },
+    "response" : [ {
+      "name" : "Response: 公用参数说明",
+      "status" : "OK",
+      "code" : 200,
+      "_postman_previewlanguage" : "json",
+      "header" : [ {
+        "key" : "Content-Type",
+        "value" : "application/json"
+      } ],
+      "cookie" : [ ],
+      "body" : "{\n  \"code\" : \"0\",\n  \"data\" : \"\",\n  \"language\" : \"\",\n  \"time\" : \"1540483321460\",\n  \"message\" : \"成功\"\n}"
+    } ]
+  }, {
+    "name" : "根据ID删除",
+    "event" : [ ],
+    "request" : {
+      "method" : "DELETE",
+      "header" : [ {
+        "key" : "Content-Type",
+        "value" : "application/json",
+        "description" : "上下文类型"
+      } ],
+      "url" : {
+        "raw" : "urn:tos/dept/removeById",
+        "protocol" : "https",
+        "host" : [ "urn:tos" ],
+        "path" : [ "dept", "removeById" ],
+        "query" : [ {
+          "key" : "id",
+          "value" : "",
+          "description" : "ID",
+          "disabled" : false
+        } ]
+      },
+      "description" : ""
+    },
+    "response" : [ {
+      "name" : "Response: 公用参数说明",
+      "status" : "OK",
+      "code" : 200,
+      "_postman_previewlanguage" : "json",
+      "header" : [ {
+        "key" : "Content-Type",
+        "value" : "application/json"
+      } ],
+      "cookie" : [ ],
+      "body" : "{\n  \"code\" : \"0\",\n  \"data\" : \"\",\n  \"language\" : \"\",\n  \"time\" : \"1540483321460\",\n  \"message\" : \"成功\"\n}"
+    } ]
+  }, {
+    "name" : "根据ID数组删除",
+    "event" : [ ],
+    "request" : {
+      "method" : "DELETE",
+      "header" : [ {
+        "key" : "Content-Type",
+        "value" : "application/json",
+        "description" : "上下文类型"
+      } ],
+      "url" : {
+        "raw" : "urn:tos/dept/removeByIdList",
+        "protocol" : "https",
+        "host" : [ "urn:tos" ],
+        "path" : [ "dept", "removeByIdList" ],
+        "query" : [ {
+          "key" : "ids",
+          "value" : "",
+          "description" : "1,2,3",
+          "disabled" : false
+        } ]
+      },
+      "description" : ""
+    },
+    "response" : [ {
+      "name" : "Response: 公用参数说明",
+      "status" : "OK",
+      "code" : 200,
+      "_postman_previewlanguage" : "json",
+      "header" : [ {
+        "key" : "Content-Type",
+        "value" : "application/json"
+      } ],
+      "cookie" : [ ],
+      "body" : "{\n  \"code\" : \"0\",\n  \"data\" : \"\",\n  \"language\" : \"\",\n  \"time\" : \"1540483321460\",\n  \"message\" : \"成功\"\n}"
+    } ]
+  }, {
+    "name" : "新增",
+    "event" : [ ],
+    "request" : {
+      "method" : "POST",
+      "header" : [ {
+        "key" : "Content-Type",
+        "value" : "application/json",
+        "description" : "上下文类型"
+      } ],
+      "url" : {
+        "raw" : "urn:tos/dept/save",
+        "protocol" : "https",
+        "host" : [ "urn:tos" ],
+        "path" : [ "dept", "save" ],
+        "query" : [ {
+          "key" : "leader",
+          "value" : "",
+          "description" : "负责人",
+          "disabled" : false
+        }, {
+          "key" : "updateTime",
+          "value" : "",
+          "description" : "最后修改时间",
+          "disabled" : true
+        }, {
+          "key" : "del",
+          "value" : "",
+          "description" : "是否删除",
+          "disabled" : true
+        }, {
+          "key" : "parentId",
+          "value" : "",
+          "description" : "上级ID",
+          "disabled" : false
+        }, {
+          "key" : "updateId",
+          "value" : "",
+          "description" : "修改的用户",
+          "disabled" : true
+        }, {
+          "key" : "createTime",
+          "value" : "",
+          "description" : "创建时间",
+          "disabled" : true
+        }, {
+          "key" : "phone",
+          "value" : "",
+          "description" : "联系电话",
+          "disabled" : true
+        }, {
+          "key" : "createId",
+          "value" : "",
+          "description" : "添加的用户",
+          "disabled" : true
+        }, {
+          "key" : "name",
+          "value" : "",
+          "description" : "部门名称",
+          "disabled" : true
+        }, {
+          "key" : "id",
+          "value" : "",
+          "description" : "ID",
+          "disabled" : true
+        }, {
+          "key" : "seq",
+          "value" : "",
+          "description" : "排序",
+          "disabled" : true
+        }, {
+          "key" : "status",
+          "value" : "",
+          "description" : "状态1正常2停用",
+          "disabled" : true
+        } ]
+      },
+      "body" : {
+        "mode" : "raw",
+        "raw" : "{\"leader\":\"\",\"updateId\":\"\",\"createTime\":\"\",\"phone\":\"\",\"createId\":\"\",\"name\":\"\",\"updateTime\":\"\",\"del\":\"\",\"id\":\"\",\"parentId\":\"\",\"seq\":\"\",\"status\":\"\"}"
+      },
+      "description" : ""
+    },
+    "response" : [ {
+      "name" : "Response: 公用参数说明",
+      "status" : "OK",
+      "code" : 200,
+      "_postman_previewlanguage" : "json",
+      "header" : [ {
+        "key" : "Content-Type",
+        "value" : "application/json"
+      } ],
+      "cookie" : [ ],
+      "body" : "{\n  \"code\" : \"0\",\n  \"data\" : \"\",\n  \"language\" : \"\",\n  \"time\" : \"1540483321460\",\n  \"message\" : \"成功\"\n}"
+    } ]
+  }, {
+    "name" : "保存或者修改",
+    "event" : [ ],
+    "request" : {
+      "method" : "POST",
+      "header" : [ {
+        "key" : "Content-Type",
+        "value" : "application/json",
+        "description" : "上下文类型"
+      } ],
+      "url" : {
+        "raw" : "urn:tos/dept/saveOrUpdate",
+        "protocol" : "https",
+        "host" : [ "urn:tos" ],
+        "path" : [ "dept", "saveOrUpdate" ],
+        "query" : [ {
+          "key" : "leader",
+          "value" : "",
+          "description" : "负责人",
+          "disabled" : true
+        }, {
+          "key" : "updateTime",
+          "value" : "",
+          "description" : "最后修改时间",
+          "disabled" : true
+        }, {
+          "key" : "del",
+          "value" : "",
+          "description" : "是否删除",
+          "disabled" : true
+        }, {
+          "key" : "parentId",
+          "value" : "",
+          "description" : "上级ID",
+          "disabled" : true
+        }, {
+          "key" : "updateId",
+          "value" : "",
+          "description" : "修改的用户",
+          "disabled" : true
+        }, {
+          "key" : "createTime",
+          "value" : "",
+          "description" : "创建时间",
+          "disabled" : true
+        }, {
+          "key" : "phone",
+          "value" : "",
+          "description" : "联系电话",
+          "disabled" : true
+        }, {
+          "key" : "createId",
+          "value" : "",
+          "description" : "添加的用户",
+          "disabled" : true
+        }, {
+          "key" : "name",
+          "value" : "",
+          "description" : "部门名称",
+          "disabled" : true
+        }, {
+          "key" : "id",
+          "value" : "",
+          "description" : "ID",
+          "disabled" : true
+        }, {
+          "key" : "seq",
+          "value" : "",
+          "description" : "排序",
+          "disabled" : true
+        }, {
+          "key" : "status",
+          "value" : "",
+          "description" : "状态1正常2停用",
+          "disabled" : true
+        } ]
+      },
+      "body" : {
+        "mode" : "raw",
+        "raw" : "{\"leader\":\"\",\"updateId\":\"\",\"createTime\":\"\",\"phone\":\"\",\"createId\":\"\",\"name\":\"\",\"updateTime\":\"\",\"del\":\"\",\"id\":\"\",\"parentId\":\"\",\"seq\":\"\",\"status\":\"\"}"
+      },
+      "description" : ""
+    },
+    "response" : [ {
+      "name" : "Response: 公用参数说明",
+      "status" : "OK",
+      "code" : 200,
+      "_postman_previewlanguage" : "json",
+      "header" : [ {
+        "key" : "Content-Type",
+        "value" : "application/json"
+      } ],
+      "cookie" : [ ],
+      "body" : "{\n  \"code\" : \"0\",\n  \"data\" : \"\",\n  \"language\" : \"\",\n  \"time\" : \"1540483321460\",\n  \"message\" : \"成功\"\n}"
+    } ]
+  }, {
+    "name" : "批量保存或者修改",
+    "event" : [ ],
+    "request" : {
+      "method" : "POST",
+      "header" : [ {
+        "key" : "Content-Type",
+        "value" : "application/json",
+        "description" : "上下文类型"
+      } ],
+      "url" : {
+        "raw" : "urn:tos/dept/saveOrUpdateBatch",
+        "protocol" : "https",
+        "host" : [ "urn:tos" ],
+        "path" : [ "dept", "saveOrUpdateBatch" ],
+        "query" : [ {
+          "key" : "leader",
+          "value" : "",
+          "description" : "负责人",
+          "disabled" : true
+        }, {
+          "key" : "updateTime",
+          "value" : "",
+          "description" : "最后修改时间",
+          "disabled" : true
+        }, {
+          "key" : "del",
+          "value" : "",
+          "description" : "是否删除",
+          "disabled" : true
+        }, {
+          "key" : "parentId",
+          "value" : "",
+          "description" : "上级ID",
+          "disabled" : true
+        }, {
+          "key" : "updateId",
+          "value" : "",
+          "description" : "修改的用户",
+          "disabled" : true
+        }, {
+          "key" : "createTime",
+          "value" : "",
+          "description" : "创建时间",
+          "disabled" : true
+        }, {
+          "key" : "phone",
+          "value" : "",
+          "description" : "联系电话",
+          "disabled" : true
+        }, {
+          "key" : "createId",
+          "value" : "",
+          "description" : "添加的用户",
+          "disabled" : true
+        }, {
+          "key" : "name",
+          "value" : "",
+          "description" : "部门名称",
+          "disabled" : true
+        }, {
+          "key" : "id",
+          "value" : "",
+          "description" : "ID",
+          "disabled" : true
+        }, {
+          "key" : "seq",
+          "value" : "",
+          "description" : "排序",
+          "disabled" : true
+        }, {
+          "key" : "status",
+          "value" : "",
+          "description" : "状态1正常2停用",
+          "disabled" : true
+        } ]
+      },
+      "body" : {
+        "mode" : "raw",
+        "raw" : "{\"leader\":\"\",\"updateId\":\"\",\"createTime\":\"\",\"phone\":\"\",\"createId\":\"\",\"name\":\"\",\"updateTime\":\"\",\"del\":\"\",\"id\":\"\",\"parentId\":\"\",\"seq\":\"\",\"status\":\"\"}"
+      },
+      "description" : ""
+    },
+    "response" : [ {
+      "name" : "Response: 公用参数说明",
+      "status" : "OK",
+      "code" : 200,
+      "_postman_previewlanguage" : "json",
+      "header" : [ {
+        "key" : "Content-Type",
+        "value" : "application/json"
+      } ],
+      "cookie" : [ ],
+      "body" : "{\n  \"code\" : \"0\",\n  \"data\" : \"\",\n  \"language\" : \"\",\n  \"time\" : \"1540483321460\",\n  \"message\" : \"成功\"\n}"
+    } ]
+  }, {
+    "name" : "根据主键修改",
+    "event" : [ ],
+    "request" : {
+      "method" : "PUT",
+      "header" : [ {
+        "key" : "Content-Type",
+        "value" : "application/json",
+        "description" : "上下文类型"
+      } ],
+      "url" : {
+        "raw" : "urn:tos/dept/updateById",
+        "protocol" : "https",
+        "host" : [ "urn:tos" ],
+        "path" : [ "dept", "updateById" ],
+        "query" : [ {
+          "key" : "leader",
+          "value" : "",
+          "description" : "负责人",
+          "disabled" : true
+        }, {
+          "key" : "updateTime",
+          "value" : "",
+          "description" : "最后修改时间",
+          "disabled" : true
+        }, {
+          "key" : "del",
+          "value" : "",
+          "description" : "是否删除",
+          "disabled" : true
+        }, {
+          "key" : "parentId",
+          "value" : "",
+          "description" : "上级ID",
+          "disabled" : true
+        }, {
+          "key" : "updateId",
+          "value" : "",
+          "description" : "修改的用户",
+          "disabled" : true
+        }, {
+          "key" : "createTime",
+          "value" : "",
+          "description" : "创建时间",
+          "disabled" : true
+        }, {
+          "key" : "phone",
+          "value" : "",
+          "description" : "联系电话",
+          "disabled" : true
+        }, {
+          "key" : "createId",
+          "value" : "",
+          "description" : "添加的用户",
+          "disabled" : true
+        }, {
+          "key" : "name",
+          "value" : "",
+          "description" : "部门名称",
+          "disabled" : true
+        }, {
+          "key" : "id",
+          "value" : "",
+          "description" : "ID",
+          "disabled" : true
+        }, {
+          "key" : "seq",
+          "value" : "",
+          "description" : "排序",
+          "disabled" : true
+        }, {
+          "key" : "status",
+          "value" : "",
+          "description" : "状态1正常2停用",
+          "disabled" : true
+        } ]
+      },
+      "body" : {
+        "mode" : "raw",
+        "raw" : "{\"leader\":\"\",\"updateId\":\"\",\"createTime\":\"\",\"phone\":\"\",\"createId\":\"\",\"name\":\"\",\"updateTime\":\"\",\"del\":\"\",\"id\":\"\",\"parentId\":\"\",\"seq\":\"\",\"status\":\"\"}"
+      },
+      "description" : ""
+    },
+    "response" : [ {
+      "name" : "Response: 公用参数说明",
+      "status" : "OK",
+      "code" : 200,
+      "_postman_previewlanguage" : "json",
+      "header" : [ {
+        "key" : "Content-Type",
+        "value" : "application/json"
+      } ],
+      "cookie" : [ ],
+      "body" : "{\n  \"code\" : \"0\",\n  \"data\" : \"\",\n  \"language\" : \"\",\n  \"time\" : \"1540483321460\",\n  \"message\" : \"成功\"\n}"
+    } ]
+  } ],
+  "auth" : {
+    "type" : "oauth2",
+    "apikey" : [ {
+      "token" : "{{access_token}}"
+    } ]
+  },
+  "event" : [ ],
+  "variable" : [ {
+    "key" : "baseUrl",
+    "value" : "urn:tos"
+  } ]
+}

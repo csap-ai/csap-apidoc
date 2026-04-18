@@ -1,0 +1,37 @@
+/* 列宽调整样式 */
+.react-resizable {
+  position: relative;
+  background-clip: padding-box;
+}
+
+.react-resizable-handle {
+  position: absolute;
+  right: -5px;
+  bottom: 0;
+  z-index: 1;
+  width: 10px;
+  height: 100%;
+  cursor: col-resize;
+}
+
+.react-resizable-handle:hover {
+  background-color: rgba(24, 144, 255, 0.2);
+}
+
+/* 调整 Ant Design Table 的样式 */
+.resizable-table {
+  .ant-table {
+    overflow: auto;
+  }
+
+  .ant-table-thead > tr > th {
+    position: relative;
+  }
+
+  /* 确保拖动手柄在表头上层 */
+  .react-resizable-handle {
+    right: -5px;
+    width: 10px;
+  }
+}
+

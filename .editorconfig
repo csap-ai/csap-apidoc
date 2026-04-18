@@ -1,0 +1,99 @@
+# EditorConfig for CSAP Framework API Doc
+# https://editorconfig.org
+
+# Top-most EditorConfig file
+root = true
+
+# All files
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# Java files
+[*.java]
+indent_style = space
+indent_size = 4
+max_line_length = 120
+continuation_indent_size = 8
+
+# Kotlin files
+[*.kt]
+indent_style = space
+indent_size = 4
+max_line_length = 120
+
+# Groovy files
+[*.{groovy,gradle}]
+indent_style = space
+indent_size = 4
+
+# XML files (pom.xml, etc.)
+[*.xml]
+indent_style = space
+indent_size = 4
+
+# Properties files
+[*.properties]
+indent_style = space
+indent_size = 2
+
+# YAML files
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# Markdown files
+[*.md]
+trim_trailing_whitespace = false
+max_line_length = off
+
+# Shell scripts
+[*.sh]
+indent_style = space
+indent_size = 4
+end_of_line = lf
+
+# Batch files
+[*.{bat,cmd}]
+end_of_line = crlf
+
+# JSON files
+[*.json]
+indent_style = space
+indent_size = 2
+
+# JavaScript/TypeScript
+[*.{js,ts,jsx,tsx}]
+indent_style = space
+indent_size = 2
+
+# CSS/SCSS/LESS
+[*.{css,scss,less}]
+indent_style = space
+indent_size = 2
+
+# SQL files
+[*.sql]
+indent_style = space
+indent_size = 2
+
+# HTML files
+[*.html]
+indent_style = space
+indent_size = 2
+
+# Vue files
+[*.vue]
+indent_style = space
+indent_size = 2
+
+# Python files
+[*.py]
+indent_style = space
+indent_size = 4
+max_line_length = 120
+

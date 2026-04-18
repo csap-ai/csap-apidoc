@@ -1,0 +1,20 @@
+@import "@/styles/variables.scss";
+
+.sidebar-menu-wrapper {
+  height: calc(100vh - 50px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  
+  .sidebar-menu {
+    border: none;
+    height: 100%;
+    width: 100% !important;
+  }
+}
+
+.has-logo {
+  .sidebar-menu-wrapper {
+    height: calc(100vh - 50px);
+  }
+}
+

@@ -1,0 +1,27 @@
+# SQLite Strategy Example Configuration
+# Activate with: --spring.profiles.active=sqlite
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: csap-apidoc-example-sqlite
+
+# CSAP API Doc Configuration
+csap:
+  apidoc:
+    devtool:
+      enabled: true
+      cache: true
+
+# Logging
+logging:
+  level:
+    com.csap.framework: DEBUG
+    root: INFO
+
+# Note: 
+# SQLite strategy is configured in @EnableApidoc annotation
+# The path and fileName are specified directly in the annotation, not here
+

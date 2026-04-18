@@ -1,0 +1,48 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "alwaysStrict": true,
+    "declaration": true,
+    "isolatedModules": true,
+    "importHelpers": false,
+    "moduleResolution": "Node",
+    "module": "esnext", // 修改 commonjs -- esnext
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "moduleDetection": "force",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "sourceMap": false,
+    "pretty": true,
+    "diagnostics": false, // 打印诊断信息
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "checkJs": true,
+    "suppressImplicitAnyIndexErrors": true,
+    "strictPropertyInitialization": false,
+    "downlevelIteration": true,
+    "strictNullChecks": false,
+    // 检查未使用的函数参数(只提示不报错)
+    "noFallthroughCasesInSwitch": true,
+    // 防止switch语句贯穿(即如果没有break语句后面不会执行)
+    "noImplicitReturns": true,
+    "noUnusedLocals": false,
+    "noImplicitAny": false,
+    "noImplicitThis": true,
+    "removeComments": false,
+    "strictFunctionTypes": false,
+    "jsx": "react-jsx",
+    // 解析非相对模块名的基准目录
+		"baseUrl": "./",
+		// 模块名到基于 baseUrl的路径映射的列表。
+		"paths": {
+			"@": ["src"],
+			"@/*": ["src/*"]
+		}
+  },
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "vite.config.ts"],
+  "exclude": ["node_modules", "dist", "**/*.js"]
+}

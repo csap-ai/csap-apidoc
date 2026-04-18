@@ -1,0 +1,171 @@
+##参数
+ai.csap.apidoc.web.YamlController:
+  ##参数父类名称
+  yamlModel:
+    value: 测试model
+    name: ai.csap.apidoc.model.YamlModel
+    description: 测试model
+    modelType: OBJECT
+    group:
+      - yaml
+    version:
+      - 1.0
+    yamlParameter:
+      ##参数名称
+      yamls:
+        ## 参数描述
+        value: 名称
+        ##名称
+        name: name
+        ##描述
+        description: 描述名称
+        ##示例
+        example: 张三
+        ##默认值
+        defaultValue: ''
+        ## 是否必传
+        required: true
+        ##数据类型
+        dataType: List<YamlModel>
+        ##数据类型全称
+        longDataType: java.util.List<ai.csap.apidoc.model.YamlModel>
+        ##排序位置
+        position: 1
+        ##长度
+        length: 0
+        ##小数
+        decimals: 0
+        ##当前参数分组
+        group:
+          - yaml
+        ##版本
+        version:
+          - 1.0,
+          - 2.0
+      ##参数名称
+      yaml:
+        ## 参数描述
+        value: 名称
+        ##名称
+        name: yaml
+        ##描述
+        description: 描述名称
+        ##示例
+        example: 张三
+        ##默认值
+        defaultValue:
+        ## 是否必传
+        required: true
+        ##数据类型
+        dataType: YamlModel
+        ##数据类型全称
+        longDataType: ai.csap.apidoc.model.YamlModel
+        ##排序位置
+        position: 1
+        ##长度
+        length: 28
+        ##小数
+        decimals: 0
+        ##当前参数分组
+        group:
+          - yaml
+        ##版本
+        version:
+          - 1.0
+          - 2.0
+      ##参数名称
+      age:
+        ## 参数描述
+        value: 年龄
+        ##名称
+        name: age
+        ##描述
+        description: 年龄
+        ##示例
+        example: 18
+        ##默认值
+        defaultValue: 18
+        ## 是否必传
+        required: true
+        ##数据类型
+        dataType: Integer
+        ##数据类型全称
+        longDataType: java.lang.Integer
+        ##排序位置
+        position: 1
+        ##长度
+        length: 18
+        ##小数
+        decimals: 0
+        ##当前参数分组
+        group:
+          - yaml
+        ##版本
+        version:
+          - 1.0
+          - 2.0
+      ##参数名称
+      sex:
+        ## 参数描述
+        value: 性别
+        ##名称
+        name: sex
+        ##描述
+        description: 1男2女3未知
+        ##示例
+        example: 2
+        ##默认值
+        defaultValue: 3
+        ## 是否必传
+        required: true
+        ##数据类型
+        dataType: Integer
+        ##数据类型全称
+        longDataType: java.lang.Integer
+        ##排序位置
+        position: 1
+        ##长度
+        length: 3
+        ##小数
+        decimals: 0
+        ##当前参数分组
+        group:
+          - yaml
+        ##版本
+        version:
+          - 1.0
+          - 2.0
+      ##参数名称
+      name:
+        ## 参数描述
+        value: 名称
+        ##名称
+        name: name
+        ##描述
+        description: 描述名称
+        ##示例
+        example: 张三
+        ##默认值
+        defaultValue:
+        ## 是否必传
+        required: true
+        ##数据类型
+        dataType: String
+        ##数据类型全称
+        longDataType: java.lang.String
+        ##排序位置
+        position: 1
+        ##长度
+        length: 28
+        ##小数
+        decimals: 0
+        ##当前参数分组
+        group:
+          - yaml
+        ##版本
+        version:
+          - 1.0
+          - 2.0
+
+
+

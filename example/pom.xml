@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>csap-apidoc-build</artifactId>
+        <groupId>ai.csap.apidoc</groupId>
+        <version>1.0.0</version>
+        <relativePath>../csap-apidoc-build</relativePath>
+    </parent>
+    <packaging>pom</packaging>
+    <modules>
+        <module>example-spring-boot2</module>
+        <module>example-spring-boot3</module>
+    </modules>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>example</artifactId>
+
+    <description>
+        示例项目集合
+        - example-spring-boot2: Spring Boot 2.x 示例（javax.servlet）
+        - example-spring-boot3: Spring Boot 3.x 示例（jakarta.servlet）
+    </description>
+
+</project>
