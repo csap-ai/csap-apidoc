@@ -30,6 +30,24 @@ export interface ContextBadge {
   color?: string;
 }
 
+/**
+ * Discriminated union of non-fatal issues the composer encountered while
+ * folding env / headers / auth into the outbound spec. The TryItOutPanel
+ * surfaces these as AntD `<Alert type="warning" />` so the user understands
+ * why the request being sent doesn't fully match what their auth scheme
+ * intended.
+ *
+ * Designed to grow — add new `kind` variants as more silent-drop or
+ * coercion cases appear (e.g. proxied-url, header-stripped, etc.).
+ */
+export type ComposerWarning =
+  | { kind: 'cookies-dropped'; names: string[] };
+
+export interface ComposeResult {
+  spec: RequestSpec;
+  warnings: ComposerWarning[];
+}
+
 export interface ComposeInput {
   spec: RequestSpec;
   env: Environment | null;
@@ -75,11 +93,17 @@ function mergeHeadersCaseInsensitive(
  *     for already-expanded values).
  *   - Query: spec.query then authPatch.query. Auth overrides on conflict
  *     because the user explicitly bound this scheme to the service.
- *   - Cookies: dropped with a console.warn — browsers refuse to set the
+ *   - Cookies: dropped with a `cookies-dropped` warning emitted into the
+ *     `warnings` array AND a console.warn — browsers refuse to set the
  *     `Cookie` header from JS for cross-origin XHR / fetch.
+ *
+ * Returns `{ spec, warnings }`. The TryItOutPanel surfaces non-empty
+ * warnings as an AntD Alert above the response area so silent drops are
+ * visible to the user.
  */
-export function composeTryItOutSpec(input: ComposeInput): RequestSpec {
+export function composeTryItOutSpec(input: ComposeInput): ComposeResult {
   const { spec, env, resolvedHeaders, authPatch } = input;
+  const warnings: ComposerWarning[] = [];
   // Defensive — normalize at this seam so future logic (cookie scoping,
   // per-service proxy hints, etc.) can rely on a stable key. The composer
   // itself doesn't currently branch on it.
@@ -102,11 +126,13 @@ export function composeTryItOutSpec(input: ComposeInput): RequestSpec {
   const finalQuery = resolveDeep(mergedQuery, env);
 
   if (authPatch.cookies && Object.keys(authPatch.cookies).length > 0) {
+    const names = Object.keys(authPatch.cookies);
+    warnings.push({ kind: 'cookies-dropped', names });
     console.warn(
       '[csap-apidoc] Auth scheme produced cookies, but browsers cannot set ' +
         'the Cookie header for cross-origin requests from JavaScript. ' +
         'Skipping: ' +
-        Object.keys(authPatch.cookies).join(', '),
+        names.join(', '),
     );
   }
 
@@ -117,7 +143,7 @@ export function composeTryItOutSpec(input: ComposeInput): RequestSpec {
     query: finalQuery,
     body: spec.body,
   };
-  return out;
+  return { spec: out, warnings };
 }
 
 /**

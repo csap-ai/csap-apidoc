@@ -782,8 +782,10 @@ const LayoutIndex = () => {
   );
 
   const tryItOutEnrich = React.useCallback(
-    async (spec: RequestSpec): Promise<RequestSpec> => {
+    async (spec: RequestSpec) => {
       const authPatch = await applyAuth(serviceRefId);
+      // C2 — composer now returns { spec, warnings }; thread both through
+      // so TryItOutPanel can surface non-fatal drops (e.g. cookies) as Alert.
       return composeTryItOutSpec({
         spec,
         env,

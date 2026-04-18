@@ -24,7 +24,8 @@ describe('composeTryItOutSpec', () => {
       resolvedHeaders: {},
       authPatch: emptyAuth,
     });
-    expect(out.url).toBe('https://api.staging.example.com/users/42');
+    expect(out.spec.url).toBe('https://api.staging.example.com/users/42');
+    expect(out.warnings).toEqual([]);
   });
 
   it('passes absolute URLs through unchanged', () => {
@@ -35,7 +36,8 @@ describe('composeTryItOutSpec', () => {
       resolvedHeaders: {},
       authPatch: emptyAuth,
     });
-    expect(out.url).toBe('https://other.example/x');
+    expect(out.spec.url).toBe('https://other.example/x');
+    expect(out.warnings).toEqual([]);
   });
 
   it('leaves the URL untouched when no env is active', () => {
@@ -46,7 +48,7 @@ describe('composeTryItOutSpec', () => {
       resolvedHeaders: {},
       authPatch: emptyAuth,
     });
-    expect(out.url).toBe('/users');
+    expect(out.spec.url).toBe('/users');
   });
 
   it('merges headers with case-insensitive last-write-wins (resolved → spec → auth)', () => {
@@ -61,7 +63,7 @@ describe('composeTryItOutSpec', () => {
       resolvedHeaders: { 'X-Tenant': 'from-resolved' },
       authPatch: { headers: {}, query: {}, cookies: {} },
     });
-    expect(out.headers).toEqual({ 'x-tenant': 'spec-overrides' });
+    expect(out.spec.headers).toEqual({ 'x-tenant': 'spec-overrides' });
   });
 
   it('auth headers override both spec and resolved headers', () => {
@@ -76,7 +78,7 @@ describe('composeTryItOutSpec', () => {
       resolvedHeaders: { authorization: 'Bearer resolved-token' },
       authPatch: { headers: { Authorization: 'Bearer auth-token' }, query: {}, cookies: {} },
     });
-    expect(out.headers).toEqual({ Authorization: 'Bearer auth-token' });
+    expect(out.spec.headers).toEqual({ Authorization: 'Bearer auth-token' });
   });
 
   it('expands {{vars}} inside header and query values via resolveDeep', () => {
@@ -87,8 +89,8 @@ describe('composeTryItOutSpec', () => {
       resolvedHeaders: {},
       authPatch: emptyAuth,
     });
-    expect(out.headers).toEqual({ 'X-T': '42' });
-    expect(out.query).toEqual({ t: '42' });
+    expect(out.spec.headers).toEqual({ 'X-T': '42' });
+    expect(out.spec.query).toEqual({ t: '42' });
   });
 
   it('merges query params with auth winning on conflict', () => {
@@ -99,7 +101,7 @@ describe('composeTryItOutSpec', () => {
       resolvedHeaders: {},
       authPatch: { headers: {}, query: { api_key: 'auth' }, cookies: {} },
     });
-    expect(out.query).toEqual({ api_key: 'auth' });
+    expect(out.spec.query).toEqual({ api_key: 'auth' });
   });
 
   it('warns and drops cookies the auth scheme tried to set', () => {
@@ -113,8 +115,38 @@ describe('composeTryItOutSpec', () => {
     });
     expect(warn).toHaveBeenCalled();
     // Cookies are not surfaced anywhere on the RequestSpec
-    expect((out as any).cookies).toBeUndefined();
+    expect((out.spec as any).cookies).toBeUndefined();
     warn.mockRestore();
+  });
+
+  it('emits a cookies-dropped warning with the dropped cookie names', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const out = composeTryItOutSpec({
+      spec: { method: 'GET', url: '/x' },
+      env: null,
+      serviceRefId: null,
+      resolvedHeaders: {},
+      authPatch: {
+        headers: {},
+        query: {},
+        cookies: { session: 'abc', csrf: 'def' },
+      },
+    });
+    expect(out.warnings).toEqual([
+      { kind: 'cookies-dropped', names: ['session', 'csrf'] },
+    ]);
+    warn.mockRestore();
+  });
+
+  it('returns an empty warnings array when nothing is dropped', () => {
+    const out = composeTryItOutSpec({
+      spec: { method: 'GET', url: '/x' },
+      env: null,
+      serviceRefId: null,
+      resolvedHeaders: {},
+      authPatch: emptyAuth,
+    });
+    expect(out.warnings).toEqual([]);
   });
 
   it('preserves the body verbatim', () => {
@@ -125,7 +157,7 @@ describe('composeTryItOutSpec', () => {
       resolvedHeaders: {},
       authPatch: emptyAuth,
     });
-    expect(out.body).toBe('{"a":1}');
+    expect(out.spec.body).toBe('{"a":1}');
   });
 });
 

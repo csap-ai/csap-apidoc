@@ -52,6 +52,7 @@ import {
   sendTryItOutRequest,
 } from '@/services/tryItOutClient';
 import { settingsStore } from '@/stores/settingsStore';
+import type { ComposerWarning } from '@/services/requestComposer';
 import './index.less';
 
 interface KvRow {
@@ -86,9 +87,18 @@ interface Props {
   /**
    * Hook for M5 to inject env/headers/auth into the outbound request right
    * before sending. Receives the user-edited spec and returns the final
-   * spec to send. Default = identity.
+   * spec to send PLUS any non-fatal `ComposerWarning`s the panel should
+   * surface to the user. Default = identity (no warnings).
+   *
+   * For backwards compatibility a bare `RequestSpec` return is still
+   * accepted and treated as zero warnings.
    */
-  enrichRequest?: (spec: RequestSpec) => Promise<RequestSpec> | RequestSpec;
+  enrichRequest?: (
+    spec: RequestSpec,
+  ) =>
+    | Promise<RequestSpec | { spec: RequestSpec; warnings: ComposerWarning[] }>
+    | RequestSpec
+    | { spec: RequestSpec; warnings: ComposerWarning[] };
 }
 
 const METHODS: HttpMethod[] = [
@@ -180,6 +190,12 @@ const TryItOutPanel: React.FC<Props> = ({
   const [responseTab, setResponseTab] = useState<'body' | 'headers' | 'raw'>(
     'body',
   );
+  // C2 — non-fatal warnings emitted by enrichRequest (e.g. cookies the auth
+  // scheme tried to set that the browser would refuse). Cleared at the start
+  // of each send so users can dismiss without affecting the next attempt.
+  const [composerWarnings, setComposerWarnings] = useState<ComposerWarning[]>(
+    [],
+  );
   const cancelRef = useRef<ReturnType<typeof newCancelTokenSource> | null>(null);
 
   // C4 — read tryItOutWithCredentials live from settingsStore so flipping
@@ -244,9 +260,17 @@ const TryItOutPanel: React.FC<Props> = ({
           : JSON.stringify(parsedBody),
     };
 
+    let nextWarnings: ComposerWarning[] = [];
     if (enrichRequest) {
       try {
-        spec = await enrichRequest(spec);
+        const enriched = await enrichRequest(spec);
+        if (enriched && typeof enriched === 'object' && 'spec' in enriched) {
+          spec = (enriched as { spec: RequestSpec }).spec;
+          nextWarnings =
+            (enriched as { warnings?: ComposerWarning[] }).warnings ?? [];
+        } else {
+          spec = enriched as RequestSpec;
+        }
       } catch (err) {
         message.error(`enrichRequest 失败：${(err as Error).message}`);
         return;
@@ -256,6 +280,7 @@ const TryItOutPanel: React.FC<Props> = ({
     cancelRef.current = newCancelTokenSource();
     setSending(true);
     setResult(null);
+    setComposerWarnings(nextWarnings);
     try {
       const r = await sendTryItOutRequest(
         {
@@ -600,11 +625,44 @@ const TryItOutPanel: React.FC<Props> = ({
         ]}
       />
 
+      {composerWarnings.length > 0 && (
+        <Alert
+          className="tryout__composer-warning"
+          type="warning"
+          showIcon
+          closable
+          onClose={() => setComposerWarnings([])}
+          message="部分注入项被静默丢弃"
+          description={
+            <ul style={{ paddingLeft: 20, margin: 0 }}>
+              {composerWarnings.map((w, i) => (
+                <li key={i}>{describeComposerWarning(w)}</li>
+              ))}
+            </ul>
+          }
+        />
+      )}
+
       <div className="tryout__divider">响应</div>
       {renderResponse()}
     </div>
   );
 };
+
+function describeComposerWarning(w: ComposerWarning): string {
+  switch (w.kind) {
+    case 'cookies-dropped':
+      return (
+        '认证方案试图设置 Cookie（' +
+        w.names.join(', ') +
+        '），但浏览器拒绝在跨域请求中由 JavaScript 写入 Cookie 头。' +
+        '如需携带 Cookie，请改用 Authorization / API Key 等头部传递；' +
+        '或在「设置」中启用「跨域请求附带 Cookie (withCredentials)」并配合后端 CORS 配置。'
+      );
+    default:
+      return JSON.stringify(w);
+  }
+}
 
 function safeParse(s: string): object | string {
   try {
