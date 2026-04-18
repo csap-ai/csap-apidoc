@@ -1,7 +1,7 @@
 # Feature: Environment + Global Headers + Auth Schemes + Try-it-out
 
 > Branch: `feat/environment-auth-headers`
-> Status: **DRAFT — pending decisions in §8**
+> Status: **APPROVED — ready for M1**
 > Owner: yangchengfu
 > Last updated: 2026-04-18
 
@@ -246,58 +246,92 @@ When all M1-M8 merged: a single release PR `develop → main`, tagged `v0.x.0`.
 
 ---
 
-## 8. Open decisions (require sign-off before M1 kicks off)
+## 8. Decisions (locked in 2026-04-18)
 
-### D-1. Storage backend for devtools server
+### ✅ D-1. Storage backend — **SQLite default, Postgres opt-in**
 
-**Context**: `csap-apidoc-devtools` server has no DB today
-(`src/main/resources/` only contains `static/`, no Flyway/Liquibase).
+JPA / Hibernate entities written once; `csap.apidoc.datasource.type=sqlite|postgres`
+selects driver at boot. Flyway migrations are SQL-92 compatible across both.
 
-| option | pros | cons |
-|---|---|---|
-| **A. SQLite** (recommended) | zero ops; single file; fits "developer tool" persona; works offline | weak concurrent writes; no team server unless mounted on shared volume |
-| B. PostgreSQL | scales to team server; matches `agent-admin-web` stack | adds operational dependency for solo users |
-| C. JSON files in `~/.csap-apidoc/` | dead simple; no driver | no concurrency; no migrations; awkward for team mode |
+- SQLite path: `${user.home}/.csap-apidoc/data.db`, auto-created on first run
+- Postgres path: standard `spring.datasource.url`, opt-in for team deployments
+- BLOB / BYTEA used for encrypted secret columns (not VARCHAR + base64)
 
-**Recommendation**: **A (SQLite)** as default with **opt-in B (Postgres)** via
-config `csap.apidoc.datasource.type=postgres`. JPA / Hibernate works against
-both with same entities.
+**Why**: zero-friction onboarding for individual open-source users while
+keeping the door open for team / enterprise deployments without a code rewrite.
 
-### D-2. Encryption key management
+### ✅ D-2. Encryption key — **env var `CSAP_APIDOC_SECRET_KEY` + `SecretProvider` interface**
 
-| option | pros | cons |
-|---|---|---|
-| **A. Env var `CSAP_APIDOC_SECRET_KEY`** (recommended for v1) | simple; standard 12-factor | user must rotate manually |
-| B. JCEKS keystore on disk | nicer UX | harder to deploy / containerise |
-| C. KMS integration (AWS/GCP/Aliyun) | enterprise grade | adds dependency, slows onboarding |
+```java
+public interface SecretProvider {
+    byte[] encrypt(byte[] plaintext);
+    byte[] decrypt(byte[] ciphertext);
+    String keyId();
+}
+```
 
-**Recommendation**: **A** for this iteration; **C** behind an interface for a
-future enterprise PR.
+Default impl: `EnvVarSecretProvider`. Future plug-ins (`AwsKmsSecretProvider`,
+`JceksSecretProvider`) ship in separate PRs without touching call sites.
 
-### D-3. Workspace / RBAC source
+- AES-GCM, 12-byte random nonce per encryption, never reused
+- If env var unset on first boot: generate random 32-byte key, persist in a
+  dedicated `_secret_key` table, log a WARNING with explicit guidance to set
+  `CSAP_APIDOC_SECRET_KEY` for production
 
-`agent-admin-web` already implements workspace + JWT + role middleware. Two
-choices for devtools:
+**Why**: balances "open the box and it just works" with a clean upgrade path
+to KMS-grade key management.
 
-| option | pros | cons |
-|---|---|---|
-| **A. Devtools owns its own auth** (single-user default; basic RBAC opt-in) | independent open-source product; works standalone | duplicate effort with main platform |
-| B. Devtools delegates to `agent-admin-web` SSO | one identity across products | couples open-source apidoc to commercial platform; kills standalone use |
+### ✅ D-3. RBAC / Identity — **devtools owns it; `IdentityProvider` interface for future SSO**
 
-**Recommendation**: **A**. Provide a clean `IdentityProvider` interface so
-enterprise users can plug in their own SSO (or `agent-admin-web`) later.
+```java
+public interface IdentityProvider {
+    Optional<UserPrincipal> authenticate(HttpServletRequest req);
+    UserPrincipal currentUser();
+}
+```
 
-### D-4. Frontend UI library version
+Default: `LocalDbIdentityProvider` (Session cookie, BCrypt password hashes).
 
-`csap-apidoc-ui` is on **Antd 4** (2+ years old). Two choices for this feature:
+Three roles aligned with `agent-admin-web` semantics:
 
-| option | pros | cons |
-|---|---|---|
-| **A. Build with Antd 4** (recommended) | smaller diff; no upgrade noise mixed in | new components limited to v4 API |
-| B. Upgrade to Antd 5 first | cleaner long-term | turns this PR into 2 PRs and risks breakage |
+| role | env / header / auth scheme | own credential | others' credentials | audit log |
+|---|---|---|---|---|
+| `viewer` | read | read+write | hidden | hidden |
+| `editor` | create / update / delete | read+write | hidden (presence only) | hidden |
+| `admin`  | full | read+write | hidden (presence only)* | full read |
 
-**Recommendation**: **A**. Open a separate `chore/antd5-upgrade` branch after
-this feature lands.
+\* **Even `admin` cannot decrypt others' personal credentials.** This is a
+hard rule, not a permission setting — it protects the compliance story for
+finance / healthcare customers.
+
+First-boot flow: when user table is empty, redirect to `/setup` to create the
+initial `admin` account (Gitea / Wiki.js style).
+
+`workspace_id` column is present on every table from day one even though
+single-user mode only ever has one workspace; this avoids a schema migration
+when multi-tenant is enabled later.
+
+**Why**: open-source product must work standalone. Commercial SSO integration
+ships as a separate plug-in without touching this codebase.
+
+### ✅ D-4. Frontend UI library — **stick with Antd 4 for this feature; spin up `chore/antd5-upgrade` in parallel**
+
+Reader UI (`csap-apidoc-ui`) stays on Antd 4 / Vite 3 / TS 4.6 for the entire
+duration of this feature. All new components in this branch use Antd 4 APIs
+only.
+
+Antd 4 vs 5 cannot coexist in one React tree (style conflicts), so a partial
+upgrade is not viable. The full upgrade is tracked separately:
+
+- Branch: `chore/antd5-upgrade` (created after this feature lands)
+- Out of scope here: anything in `csap-apidoc-ui/` outside the new code paths
+
+The devtools console (`csap-apidoc-devtools/devtools/`) is **already on Antd
+5.12** and will use v5 APIs for new screens — no inconsistency within that
+sub-app.
+
+**Why**: keeps PR diffs reviewable; framework upgrade is its own engineering
+risk that deserves dedicated review and test attention.
 
 ---
 
