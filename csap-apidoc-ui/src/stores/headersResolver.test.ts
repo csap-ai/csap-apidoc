@@ -90,6 +90,38 @@ describe('mergeHeaders precedence', () => {
     expect(mergeHeaders({ rules, serviceRefId: 'svc-1' })).toEqual({});
   });
 
+  it('matches service rules across trailing-slash differences (C1)', () => {
+    const rules = [
+      rule({
+        key: 'X',
+        value: 'svc',
+        scope: 'service',
+        scopeRefId: 'https://api.example.com/csap/apidoc/parent/',
+      }),
+    ];
+    const out = mergeHeaders({
+      rules,
+      serviceRefId: 'https://api.example.com/csap/apidoc/parent',
+    });
+    expect(out).toEqual({ X: 'svc' });
+  });
+
+  it('matches service rules across host-case differences (C1)', () => {
+    const rules = [
+      rule({
+        key: 'X',
+        value: 'svc',
+        scope: 'service',
+        scopeRefId: 'https://API.example.com/foo',
+      }),
+    ];
+    const out = mergeHeaders({
+      rules,
+      serviceRefId: 'HTTPS://api.example.com/foo',
+    });
+    expect(out).toEqual({ X: 'svc' });
+  });
+
   it('does not apply env rules when envId is null', () => {
     const rules = [
       rule({ key: 'X', value: 'env', scope: 'environment', scopeRefId: 'env_a' }),

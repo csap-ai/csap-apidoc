@@ -15,6 +15,8 @@
  * is always stored in plaintext under `value`.
  */
 
+import { serviceRefIdFor } from './serviceRefId';
+
 const STORAGE_KEY = 'csap-apidoc:headers';
 const SCHEMA_VERSION = 1;
 
@@ -121,10 +123,16 @@ export const headersStore = {
   },
 
   add(input: HeaderRuleInput): HeaderRule {
+    const rawScopeRef =
+      input.scope === 'global' ? null : input.scopeRefId ?? null;
     const rule: HeaderRule = {
       id: genId(),
       scope: input.scope,
-      scopeRefId: input.scope === 'global' ? null : input.scopeRefId ?? null,
+      // Service bindings live under the canonical key so trailing-slash /
+      // host-case variants don't fragment the lookup. Env / global use the
+      // raw value (env id is already canonical, global is always null).
+      scopeRefId:
+        input.scope === 'service' ? serviceRefIdFor(rawScopeRef) : rawScopeRef,
       key: input.key,
       value: input.value,
       enabled: input.enabled ?? true,
@@ -143,7 +151,11 @@ export const headersStore = {
     const idx = s.items.findIndex((h) => h.id === id);
     if (idx < 0) return null;
     const next: HeaderRule = { ...s.items[idx], ...patch, id };
-    if (next.scope === 'global') next.scopeRefId = null;
+    if (next.scope === 'global') {
+      next.scopeRefId = null;
+    } else if (next.scope === 'service') {
+      next.scopeRefId = serviceRefIdFor(next.scopeRefId);
+    }
     const items = [...s.items];
     items[idx] = next;
     setState({ ...s, items });
@@ -158,9 +170,17 @@ export const headersStore = {
   /** Remove every rule that references a now-deleted env / service id. */
   removeByScopeRef(scope: HeaderScope, scopeRefId: string): void {
     const s = getState();
-    const items = s.items.filter(
-      (h) => !(h.scope === scope && h.scopeRefId === scopeRefId),
-    );
+    // Match canonical-vs-stored for service scope so callers that pass the
+    // raw URL (or a canonical form) both clean up legacy entries.
+    const targetCanonical =
+      scope === 'service' ? serviceRefIdFor(scopeRefId) : scopeRefId;
+    const items = s.items.filter((h) => {
+      if (h.scope !== scope) return true;
+      if (scope === 'service') {
+        return serviceRefIdFor(h.scopeRefId) !== targetCanonical;
+      }
+      return h.scopeRefId !== scopeRefId;
+    });
     if (items.length !== s.items.length) setState({ ...s, items });
   },
 

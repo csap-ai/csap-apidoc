@@ -22,6 +22,7 @@ import {
   resolveDeep,
   resolveVariables,
 } from '@/stores/variableResolver';
+import { serviceRefIdFor } from '@/stores/serviceRefId';
 
 export interface ContextBadge {
   label: string;
@@ -79,6 +80,10 @@ function mergeHeadersCaseInsensitive(
  */
 export function composeTryItOutSpec(input: ComposeInput): RequestSpec {
   const { spec, env, resolvedHeaders, authPatch } = input;
+  // Defensive — normalize at this seam so future logic (cookie scoping,
+  // per-service proxy hints, etc.) can rely on a stable key. The composer
+  // itself doesn't currently branch on it.
+  serviceRefIdFor(input.serviceRefId);
 
   const expandedUrl = resolveVariables(spec.url ?? '', env);
   const url = joinBaseUrl(expandedUrl, env);

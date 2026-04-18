@@ -20,6 +20,7 @@
 import type { HeaderRule } from './headersStore';
 import type { Environment } from './environmentStore';
 import { resolveVariables } from './variableResolver';
+import { serviceRefIdFor } from './serviceRefId';
 
 export interface HeaderMergeContext {
   rules: HeaderRule[];
@@ -52,13 +53,16 @@ export function mergeHeaders(ctx: HeaderMergeContext): Record<string, string> {
     out.set(key.toLowerCase(), { key, value: expanded });
   };
 
+  // Canonicalize once so we don't re-parse the URL for every rule.
+  const canonicalServiceRefId = serviceRefIdFor(serviceRefId);
+
   const globals = rules.filter((r) => r.enabled && r.scope === 'global');
   const services = rules.filter(
     (r) =>
       r.enabled &&
       r.scope === 'service' &&
-      serviceRefId !== null &&
-      r.scopeRefId === serviceRefId,
+      canonicalServiceRefId !== null &&
+      serviceRefIdFor(r.scopeRefId) === canonicalServiceRefId,
   );
   const envs = rules.filter(
     (r) =>
@@ -85,11 +89,17 @@ export function mergeHeaders(ctx: HeaderMergeContext): Record<string, string> {
  */
 export function explainActiveRules(ctx: HeaderMergeContext): HeaderRule[] {
   const { rules = [], serviceRefId = null, envId = null } = ctx;
+  const canonicalServiceRefId = serviceRefIdFor(serviceRefId);
   const out: HeaderRule[] = [];
   for (const r of rules) {
     if (!r.enabled) continue;
     if (r.scope === 'global') out.push(r);
-    else if (r.scope === 'service' && r.scopeRefId === serviceRefId) out.push(r);
+    else if (
+      r.scope === 'service' &&
+      canonicalServiceRefId !== null &&
+      serviceRefIdFor(r.scopeRefId) === canonicalServiceRefId
+    )
+      out.push(r);
     else if (r.scope === 'environment' && r.scopeRefId === envId) out.push(r);
   }
   return out;

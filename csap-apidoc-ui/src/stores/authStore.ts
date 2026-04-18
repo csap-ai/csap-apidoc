@@ -16,6 +16,7 @@
  */
 
 import { vault } from './vault';
+import { serviceRefIdFor } from './serviceRefId';
 
 const STORAGE_KEY = 'csap-apidoc:auth-schemes';
 const SCHEMA_VERSION = 1;
@@ -259,16 +260,40 @@ export const authStore = {
   bindToService(serviceRefId: string, schemeId: string | null): void {
     const s = getState();
     const activeBindings = { ...s.activeBindings };
-    if (schemeId == null) delete activeBindings[serviceRefId];
-    else activeBindings[serviceRefId] = schemeId;
+    // Always store under the canonical key so subsequent lookups by raw
+    // URL (with or without a trailing slash etc.) resolve identically.
+    const canonical =
+      serviceRefId === '*' ? '*' : serviceRefIdFor(serviceRefId) ?? serviceRefId;
+    if (schemeId == null) {
+      delete activeBindings[canonical];
+      // Defensive: remove a stale legacy entry stored under the raw key.
+      if (canonical !== serviceRefId) delete activeBindings[serviceRefId];
+    } else {
+      activeBindings[canonical] = schemeId;
+      // Defensive: drop a stale legacy entry under the raw form so we
+      // don't leave two competing rows for the same logical service.
+      if (canonical !== serviceRefId) delete activeBindings[serviceRefId];
+    }
     setState({ ...s, activeBindings });
   },
 
   /** Look up the active scheme for a service ref, falling back to a global default if any. */
   getActiveSchemeFor(serviceRefId: string | null | undefined): AuthScheme | null {
     const s = getState();
-    if (serviceRefId) {
-      const schemeId = s.activeBindings[serviceRefId];
+    const canonical = serviceRefIdFor(serviceRefId);
+    if (canonical) {
+      // Direct hit on the canonical key.
+      let schemeId: string | undefined = s.activeBindings[canonical];
+      // Pre-existing un-canonicalized data: scan and canonicalize on the fly.
+      if (!schemeId) {
+        for (const [k, v] of Object.entries(s.activeBindings)) {
+          if (k === '*') continue;
+          if (serviceRefIdFor(k) === canonical) {
+            schemeId = v;
+            break;
+          }
+        }
+      }
       if (schemeId) {
         const scheme = s.items.find((x) => x.id === schemeId);
         if (scheme) return scheme;

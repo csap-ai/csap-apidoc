@@ -36,6 +36,7 @@ import {
   HeaderRule,
   HeaderScope,
 } from '@/stores/headersStore';
+import { serviceRefIdFor } from '@/stores/serviceRefId';
 import './index.less';
 
 interface Props {
@@ -113,6 +114,10 @@ const HeadersManagerDrawer: React.FC<Props> = ({
     }
     // scope === 'service'
     if (knownServices && knownServices.length > 0) {
+      // Stored value is canonical (headersStore normalizes on write); the
+      // dropdown surfaces the user-typed URL as a label but the value is
+      // also canonicalized so a stored binding under one form matches the
+      // option for another form (e.g. trailing-slash differences).
       return (
         <Select
           size="small"
@@ -123,11 +128,14 @@ const HeadersManagerDrawer: React.FC<Props> = ({
           allowClear
           showSearch
         >
-          {knownServices.map((s) => (
-            <Select.Option key={s.url} value={s.url}>
-              {s.name} <span className="headers-drawer__muted">({s.url})</span>
-            </Select.Option>
-          ))}
+          {knownServices.map((s) => {
+            const canonical = serviceRefIdFor(s.url) ?? s.url;
+            return (
+              <Select.Option key={canonical} value={canonical}>
+                {s.name} <span className="headers-drawer__muted">({s.url})</span>
+              </Select.Option>
+            );
+          })}
         </Select>
       );
     }

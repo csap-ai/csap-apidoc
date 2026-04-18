@@ -47,6 +47,7 @@ import {
   defaultConfigFor,
 } from '@/stores/authStore';
 import { vault } from '@/stores/vault';
+import { serviceRefIdFor } from '@/stores/serviceRefId';
 import './index.less';
 
 interface Props {
@@ -563,7 +564,14 @@ const BindingsEditor: React.FC<{
 
   const candidates = useMemo(() => {
     const known = knownServices ?? [];
-    return known.filter((s) => !boundServices.includes(s.url));
+    // Compare by canonical key so `https://x/.../parent/` and
+    // `https://x/.../parent` aren't treated as two distinct services.
+    const boundCanonical = new Set(
+      boundServices.map((s) => serviceRefIdFor(s) ?? s),
+    );
+    return known.filter(
+      (s) => !boundCanonical.has(serviceRefIdFor(s.url) ?? s.url),
+    );
   }, [knownServices, boundServices]);
 
   const handleAdd = () => {
@@ -575,16 +583,26 @@ const BindingsEditor: React.FC<{
     setDraftService(undefined);
   };
 
-  const rows = boundServices.map((svc) => ({
-    key: svc,
-    service: svc,
-    name: knownServices?.find((s) => s.url === svc)?.name ?? null,
-  }));
+  const rows = boundServices.map((svc) => {
+    const canonical = serviceRefIdFor(svc) ?? svc;
+    return {
+      key: svc,
+      service: svc,
+      name:
+        knownServices?.find(
+          (s) => (serviceRefIdFor(s.url) ?? s.url) === canonical,
+        )?.name ?? null,
+    };
+  });
 
   return (
     <div className="auth-drawer__bindings">
       <div className="auth-drawer__bindings-add">
         {candidates.length > 0 || (knownServices && knownServices.length > 0) ? (
+          // Surface the user-typed URL as a label but submit the canonical
+          // form as the value — the store will canonicalize again, but
+          // doing it here too means React-Select's `value`/`option` match
+          // when comparing already-canonicalized stored bindings.
           <Select
             value={draftService}
             onChange={setDraftService}
@@ -592,7 +610,10 @@ const BindingsEditor: React.FC<{
             allowClear
             showSearch
             style={{ width: 260 }}
-            options={candidates.map((c) => ({ value: c.url, label: `${c.name} (${c.url})` }))}
+            options={candidates.map((c) => ({
+              value: serviceRefIdFor(c.url) ?? c.url,
+              label: `${c.name} (${c.url})`,
+            }))}
           />
         ) : (
           <Input
