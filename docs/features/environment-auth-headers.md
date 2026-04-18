@@ -402,6 +402,25 @@ hard-coded public fallback (which would be dangerous: a public proxy
 would see all request bodies, including bearer tokens). User opts in
 explicitly per browser. **Locked.**
 
+### ✅ D-7. M8 trimmed: ship vitest + docs in v0.x.0; defer i18n + Playwright
+
+M8 was originally scoped as `Vitest unit tests + Playwright E2E + README + zh-CN/en-US strings + CORS doc page` at a 1–2d estimate. Reality at landing time:
+
+- `csap-apidoc-ui` had **no test framework, no Playwright, no i18n infrastructure** (hard-coded Chinese labels). Bootstrapping all three in one milestone would have cost a working week.
+- Splitting kept the v0.x.0 train moving with high-value pieces (regression-proof pure-logic tests + user-facing docs) while not delaying for ergonomics work.
+
+Shipped in v0.x.0:
+- vitest 1.6.1 + jsdom 24 (only two new devDeps); `npm test` script; **127 unit tests** across 8 modules (variableResolver, headersResolver, authResolver, requestComposer, vaultCrypto, vaultDriver, vault, settingsStore) at 93.7% line coverage overall
+- `csap-apidoc-ui/README.md` (feature overview, quick-start, usage guide, privacy)
+- `docs/cors.md` (standalone CORS troubleshooting page distilled from §6)
+
+Deferred to follow-up PRs:
+- **M8.1** — i18n bootstrap (react-i18next + zh-CN/en-US namespaces) targeting `v0.(x+1).0`
+- **M8.2** — Playwright E2E (try-it-out happy path + auth scheme flow + vault unlock) targeting `v0.(x+1).0` or later
+- React component tests (Testing Library) deferred to land alongside M8.2
+
+**Locked.**
+
 ### ✅ D-6. M7 (devtools annotation hints) deferred to a follow-up release
 
 M1–M6 + M8 ship as the first feature release of `csap-apidoc-ui`
@@ -423,8 +442,8 @@ scope of breaking-change risk for early adopters. **Locked.**
 - [x] M4 — try-it-out request/response panel
 - [x] M5 — wire env+headers+auth into requests
 - [x] M6 — Web Crypto vault encryption
-- [ ] M7 — devtools annotation hints (optional, may defer)
-- [ ] M8 — tests + docs + i18n
+- [ ] M7 — devtools annotation hints (deferred to v0.(x+1).0 per D-6)
+- [x] M8 — tests + docs (i18n + Playwright deferred — see §9 D-7)
 
 ---
 
