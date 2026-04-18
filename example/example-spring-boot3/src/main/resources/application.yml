@@ -23,6 +23,35 @@ csap:
   validation:
     enabled: true
 
+  # ─────────────────────────────────────────────────────────────────────
+  # Demo Security (JWT, in-memory users)
+  #
+  # Default OFF — when off, every endpoint is public, exactly as before.
+  # Switch on to demo the "configure a Bearer token in csap-apidoc-ui →
+  # Try it out → 200" flow. See docs/SECURITY.md.
+  #
+  # Public endpoints when enabled (no token required):
+  #   /csap-apidoc/**, /csap-api.html, /csap-api-devtools.html,
+  #   /devtools-ui/**, /api/devtools/**, /auth/**, /actuator/health,
+  #   /error, /static/**, /favicon.ico
+  # Everything else (notably /api/users, /api/products) requires a JWT.
+  # ─────────────────────────────────────────────────────────────────────
+  example:
+    security:
+      enabled: false
+      jwt-secret: "csap-apidoc-demo-jwt-secret-please-override-in-production-32b+"
+      jwt-expiration-minutes: 60
+      issuer: "csap-apidoc-example"
+      # Optional explicit user list. Omit / leave empty to fall back to the
+      # built-in admin/admin123 + user/user123 demo pair.
+      # users:
+      #   - username: alice
+      #     password: alice-pw
+      #     roles: [ADMIN]
+      #   - username: bob
+      #     password: bob-pw
+      #     roles: [USER]
+
 # Management Endpoints (Spring Boot 3.x 改进的 Actuator)
 management:
   endpoints:
