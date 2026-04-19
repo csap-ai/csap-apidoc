@@ -145,6 +145,9 @@ dist
 /coverage
 /.nyc_output
 .grunt
+# JUnit Console Launcher output (used to bypass parent-pom skipTests)
+test-output/
+**/test-output/
 
 # Environment
 .env

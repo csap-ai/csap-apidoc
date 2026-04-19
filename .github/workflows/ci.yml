@@ -10,8 +10,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        java: [ '8', '11', '17', '21' ]
+        # Java 8 dropped: maven-checkstyle-plugin 3.3.x ships checkstyle 10.x
+        # which is compiled at class file version 55 (Java 11+). Spring Boot
+        # 3.x in this repo also already requires Java 17+ at runtime.
+        java: [ '11', '17', '21' ]
         
     steps:
     - name: Checkout code
@@ -44,28 +48,28 @@ jobs:
         
   frontend-build:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'npm'
-        cache-dependency-path: csap-framework-apidoc-devtools/devtools/package-lock.json
-        
+        cache-dependency-path: csap-apidoc-ui/package-lock.json
+
     - name: Install dependencies
-      working-directory: csap-framework-apidoc-devtools/devtools
+      working-directory: csap-apidoc-ui
       run: npm ci
-      
-    - name: Build frontend
-      working-directory: csap-framework-apidoc-devtools/devtools
+
+    - name: Type check & build
+      working-directory: csap-apidoc-ui
       run: npm run build
-      
-    - name: Run frontend tests
-      working-directory: csap-framework-apidoc-devtools/devtools
+
+    - name: Run unit tests
+      working-directory: csap-apidoc-ui
       run: npm test
       
   code-quality:
