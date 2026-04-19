@@ -435,6 +435,24 @@ ship matching capability without a second release cycle. The
 annotations (`@DocGlobalHeader`, `@DocAuth`) live in
 `csap-apidoc-annotation` and the scanner emission in
 `csap-apidoc-core/src/main/java/ai/csap/apidoc/scanner/DocHintsCollector.java`.
+
+**Multi-source addendum (post-ship correction):** The framework
+exposes three doc sources via `@EnableApidoc.type` —
+`annotation` (default, auto-wired), `yaml` (`YamlApidocStrategy`),
+`sql_lite` (`SqliteApidocStrategy`). M7 originally framed itself as
+annotation-only; that was incomplete. The hint *fields* live on
+`CsapDocMethod`, so:
+
+| Source | M7 hint support | Cost | Status |
+|--------|------------------|------|--------|
+| Annotation (`docType=annotation`) | Full — `DocHintsCollector` walks method → class → package | shipped in M7 | ✅ v0.x.0 |
+| YAML (`docType=yaml`) | Free — `YAMLMapper` already binds `globalHeaderHints` / `authHint` onto `CsapDocMethod` (FAIL_ON_UNKNOWN_PROPERTIES=false) | docs + sample + 1 unit test | ✅ v0.x.0 (M7 follow-up patch) |
+| SQLite (`docType=sql_lite`) | Needs schema columns + loader extension in `SqliteApidocStrategy.load()` | ~0.5d | 📋 M7.1 follow-up PR |
+
+The YAML sample lives at
+`csap-apidoc-strategy/csap-apidoc-yaml/src/test/resources/application-hints-method.yaml`,
+verified by `YamlHintsTest#hintsBindFromYaml`.
+
 **Superseded — see §10.**
 
 ---
@@ -449,7 +467,7 @@ annotations (`@DocGlobalHeader`, `@DocAuth`) live in
 - [x] M4 — try-it-out request/response panel
 - [x] M5 — wire env+headers+auth into requests
 - [x] M6 — Web Crypto vault encryption
-- [x] M7 — devtools annotation hints (delivered alongside v0.x.0 — D-6 superseded)
+- [x] M7 — devtools doc hints — annotation (`DocHintsCollector`) + YAML parity (`application-hints-method.yaml` + `YamlHintsTest`); SQLite parity scoped to M7.1 follow-up PR. See §9 D-6 multi-source addendum.
 - [x] M8 — tests + docs
 - [x] M8.1 — i18n bootstrap (react-i18next + zh-CN default + en-US + LanguageSwitcher) — D-7 fully resolved
 - [x] M8.2 — Playwright E2E (try-it-out happy path)

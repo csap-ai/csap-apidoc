@@ -25,6 +25,27 @@ import ai.csap.apidoc.model.CsapDocGlobalHeaderHint;
  * 避免与重型 scanner ({@code ApiDocService}) 耦合。
  * </p>
  *
+ * <h3>多源策略说明（重要）</h3>
+ * <p>
+ * 本类仅服务 <b>{@code docType=annotation}</b> 路径。{@code globalHeaderHints} /
+ * {@code authHint} 字段定义在 {@link ai.csap.apidoc.model.CsapDocMethod}，
+ * 因此其他文档来源同样可以填充：
+ * </p>
+ * <ul>
+ *   <li><b>YAML（{@code docType=yaml}，{@code YamlApidocStrategy}）：</b>
+ *       零代码改造。{@code YAMLMapper} 配置了
+ *       {@code FAIL_ON_UNKNOWN_PROPERTIES=false} 并直接反序列化为
+ *       {@code CsapDocMethod}，所以在 {@code application-method.yaml} 的方法节点下
+ *       新增 {@code globalHeaderHints} / {@code authHint} 字段即可，
+ *       字段语义与本类输出完全一致。
+ *       样例见 {@code csap-apidoc-strategy/csap-apidoc-yaml/src/test/resources/
+ *       application-hints-method.yaml}。</li>
+ *   <li><b>SQLite（{@code docType=sql_lite}，{@code SqliteApidocStrategy}）：</b>
+ *       当前 {@code load()} 不读 hint 字段，需要为
+ *       {@code api_method} 表新增 {@code global_header_hints_json} /
+ *       {@code auth_hint_json} 列并扩展 loader。计划在 M7.1 follow-up PR 落地。</li>
+ * </ul>
+ *
  * @author yangchengfu
  * @since 1.x M7
  */
