@@ -11,6 +11,7 @@
 import React, { useMemo, useState } from 'react';
 import { Badge, Button, Tooltip } from 'antd';
 import { SafetyCertificateOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthSchemesDrawer from '@/components/AuthSchemesDrawer';
 import './index.less';
@@ -20,6 +21,7 @@ interface Props {
 }
 
 const AuthButton: React.FC<Props> = ({ knownServices }) => {
+  const { t } = useTranslation();
   const { state } = useAuth();
   const [open, setOpen] = useState(false);
 
@@ -29,11 +31,14 @@ const AuthButton: React.FC<Props> = ({ knownServices }) => {
   );
 
   const tooltip = useMemo(() => {
-    if (state.items.length === 0) return '认证方案：未配置';
+    if (state.items.length === 0) return t('auth.tooltip.empty');
     if (boundCount === 0)
-      return `认证方案：已配置 ${state.items.length} 个，尚未绑定到任何服务`;
-    return `认证方案：${state.items.length} 个方案，${boundCount} 个服务已绑定`;
-  }, [state.items.length, boundCount]);
+      return t('auth.tooltip.unbound', { count: state.items.length });
+    return t('auth.tooltip.bound', {
+      schemes: state.items.length,
+      bound: boundCount,
+    });
+  }, [state.items.length, boundCount, t]);
 
   return (
     <>
@@ -49,7 +54,7 @@ const AuthButton: React.FC<Props> = ({ knownServices }) => {
             onClick={() => setOpen(true)}
             className="auth-btn"
           >
-            认证
+            {t('auth.button.label')}
           </Button>
         </Badge>
       </Tooltip>

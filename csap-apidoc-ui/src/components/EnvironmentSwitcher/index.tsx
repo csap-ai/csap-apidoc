@@ -13,6 +13,7 @@
 import React, { useState } from 'react';
 import { Select, Tooltip, Tag } from 'antd';
 import { SettingOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { useEnvironments } from '@/contexts/EnvironmentContext';
 import EnvironmentManagerDrawer from '@/components/EnvironmentManagerDrawer';
 import './index.less';
@@ -26,6 +27,7 @@ interface Props {
 }
 
 const EnvironmentSwitcher: React.FC<Props> = ({ className }) => {
+  const { t } = useTranslation();
   const { state, active, setActive } = useEnvironments();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -50,12 +52,12 @@ const EnvironmentSwitcher: React.FC<Props> = ({ className }) => {
 
   return (
     <>
-      <span className="env-switcher__heading">环境</span>
+      <span className="env-switcher__heading">{t('env.switcher.heading')}</span>
       <Select
         size="middle"
         style={{ width: 180 }}
         value={active?.id}
-        placeholder={state.items.length === 0 ? '尚未配置环境' : '选择环境'}
+        placeholder={state.items.length === 0 ? t('env.switcher.empty') : t('env.switcher.placeholder')}
         onChange={handleChange}
         dropdownClassName="env-switcher__dropdown"
         optionLabelProp="label"
@@ -77,11 +79,11 @@ const EnvironmentSwitcher: React.FC<Props> = ({ className }) => {
             </div>
           </Option>
         ))}
-        <Option value={MANAGE_VALUE} label="管理环境...">
-          <span className="env-switcher__manage">＋ 管理环境...</span>
+        <Option value={MANAGE_VALUE} label={t('env.switcher.manageLabel')}>
+          <span className="env-switcher__manage">{t('env.switcher.manage')}</span>
         </Option>
       </Select>
-      <Tooltip title="管理环境">
+      <Tooltip title={t('env.switcher.gear.tooltip')}>
         <span
           className="env-switcher__gear"
           onClick={() => setDrawerOpen(true)}

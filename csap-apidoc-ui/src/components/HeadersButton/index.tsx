@@ -10,6 +10,7 @@
 import React, { useMemo, useState } from 'react';
 import { Badge, Button, Tooltip } from 'antd';
 import { ControlOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { useHeaders } from '@/contexts/HeadersContext';
 import { useActiveEnvironment } from '@/contexts/EnvironmentContext';
 import HeadersManagerDrawer from '@/components/HeadersManagerDrawer';
@@ -20,6 +21,7 @@ interface Props {
 }
 
 const HeadersButton: React.FC<Props> = ({ knownServices }) => {
+  const { t } = useTranslation();
   const { state } = useHeaders();
   const env = useActiveEnvironment();
   const [open, setOpen] = useState(false);
@@ -35,7 +37,7 @@ const HeadersButton: React.FC<Props> = ({ knownServices }) => {
 
   return (
     <>
-      <Tooltip title="全局请求头">
+      <Tooltip title={t('headers.button.tooltip')}>
         <Badge
           count={activeCount}
           size="small"
@@ -47,7 +49,7 @@ const HeadersButton: React.FC<Props> = ({ knownServices }) => {
             onClick={() => setOpen(true)}
             className="headers-btn"
           >
-            请求头
+            {t('headers.button.label')}
           </Button>
         </Badge>
       </Tooltip>

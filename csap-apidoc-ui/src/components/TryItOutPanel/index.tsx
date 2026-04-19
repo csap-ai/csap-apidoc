@@ -42,6 +42,8 @@ import {
   ReloadOutlined,
   CopyOutlined,
 } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import CodeMirror from '@uiw/react-codemirror';
 import { githubLight } from '@uiw/codemirror-theme-github';
 import {
@@ -172,6 +174,7 @@ const TryItOutPanel: React.FC<Props> = ({
   timeoutMs,
   enrichRequest,
 }) => {
+  const { t } = useTranslation();
   const [method, setMethod] = useState<HttpMethod>(initial.method);
   const [url, setUrl] = useState<string>(initial.url);
   const [headerRows, setHeaderRows] = useState<KvRow[]>(() =>
@@ -230,7 +233,7 @@ const TryItOutPanel: React.FC<Props> = ({
 
   const handleSend = async () => {
     if (!url.trim()) {
-      message.warning('请填写请求 URL');
+      message.warning(t('tryout.error.urlRequired'));
       return;
     }
     let parsedBody: string | object | null | undefined = undefined;
@@ -239,7 +242,7 @@ const TryItOutPanel: React.FC<Props> = ({
         try {
           parsedBody = JSON.parse(body);
         } catch (err) {
-          message.error('Body JSON 格式错误');
+          message.error(t('tryout.error.bodyJson'));
           return;
         }
       } else {
@@ -272,7 +275,7 @@ const TryItOutPanel: React.FC<Props> = ({
           spec = enriched as RequestSpec;
         }
       } catch (err) {
-        message.error(`enrichRequest 失败：${(err as Error).message}`);
+        message.error(t('tryout.error.enrich', { message: (err as Error).message }));
         return;
       }
     }
@@ -309,7 +312,7 @@ const TryItOutPanel: React.FC<Props> = ({
   };
 
   const handleAbort = () => {
-    cancelRef.current?.cancel('用户已取消');
+    cancelRef.current?.cancel(t('tryout.cancel.userMessage'));
   };
 
   const renderKvTable = (
@@ -330,16 +333,19 @@ const TryItOutPanel: React.FC<Props> = ({
             icon={<PlusOutlined />}
             onClick={() => setRows((rs) => [...rs, newRow()])}
           >
-            新增
+            {t('common.add')}
           </Button>
           <span className="tryout__muted">
-            共 {rows.length} 条 ({rows.filter((r) => r.enabled).length} 启用)
+            {t('tryout.kv.count', {
+              total: rows.length,
+              enabled: rows.filter((r) => r.enabled).length,
+            })}
           </span>
         </div>
         {rows.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="暂无"
+            description={t('tryout.kv.empty')}
             style={{ padding: '20px 0' }}
           />
         ) : (
@@ -350,7 +356,7 @@ const TryItOutPanel: React.FC<Props> = ({
             dataSource={rows}
             columns={[
               {
-                title: '启用',
+                title: t('tryout.col.enabled'),
                 dataIndex: 'enabled',
                 width: 60,
                 render: (_: boolean, row) => (
@@ -412,8 +418,8 @@ const TryItOutPanel: React.FC<Props> = ({
         <Alert
           showIcon
           type="info"
-          message="发送中…"
-          description="正在等待目标服务响应。点击「中止」可立即取消。"
+          message={t('tryout.sending.title')}
+          description={t('tryout.sending.desc')}
         />
       );
     }
@@ -421,29 +427,29 @@ const TryItOutPanel: React.FC<Props> = ({
       return (
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description="尚未发送请求"
+          description={t('tryout.empty')}
         />
       );
     }
     if (isTryItOutFailure(result)) {
       const guidance =
         result.reason === 'network'
-          ? '常见原因：跨域 (CORS)、目标服务未启动、HTTPS 证书问题、被代理拦截。'
+          ? t('tryout.failed.network')
           : result.reason === 'timeout'
-          ? '请求未在超时时间内返回。可调整超时或检查目标服务负载。'
+          ? t('tryout.failed.timeout')
           : result.reason === 'cancelled'
-          ? '请求被手动取消。'
+          ? t('tryout.failed.cancelled')
           : result.reason === 'config'
-          ? '请检查 URL / 方法 / Body 格式。'
-          : '未知错误，详见浏览器控制台。';
+          ? t('tryout.failed.config')
+          : t('tryout.failed.unknown');
       return (
         <Alert
           showIcon
           type="error"
-          message={`请求失败：${result.message}`}
+          message={t('tryout.failed.message', { message: result.message })}
           description={
             <span>
-              耗时 {result.latencyMs} ms ·{' '}
+              {t('tryout.failed.elapsed', { ms: result.latencyMs })}
               <span className="tryout__muted">{guidance}</span>
             </span>
           }
@@ -466,7 +472,7 @@ const TryItOutPanel: React.FC<Props> = ({
             </>
           )}
           <span className="tryout__response-meta-spacer" />
-          <Tooltip title="复制响应体">
+          <Tooltip title={t('tryout.copy.tooltip')}>
             <Button
               size="small"
               icon={<CopyOutlined />}
@@ -474,8 +480,8 @@ const TryItOutPanel: React.FC<Props> = ({
                 if (result.rawText != null) {
                   navigator.clipboard
                     ?.writeText(result.rawText)
-                    .then(() => message.success('已复制响应体'))
-                    .catch(() => message.error('复制失败'));
+                    .then(() => message.success(t('tryout.copy.success')))
+                    .catch(() => message.error(t('tryout.copy.failed')));
                 }
               }}
             />
@@ -488,12 +494,12 @@ const TryItOutPanel: React.FC<Props> = ({
             {
               key: 'body',
               label: 'Body',
-              children: renderResponseBody(result),
+              children: renderResponseBody(result, t),
             },
             {
               key: 'headers',
               label: `Headers (${Object.keys(result.headers).length})`,
-              children: renderResponseHeaders(result.headers),
+              children: renderResponseHeaders(result.headers, t),
             },
             {
               key: 'raw',
@@ -540,20 +546,20 @@ const TryItOutPanel: React.FC<Props> = ({
         <Input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://api.example.com/orders/{{id}}"
+          placeholder={t('tryout.urlbar.placeholder')}
           className="tryout__url-input"
           onPressEnter={handleSend}
         />
         {sending ? (
           <Button danger icon={<StopOutlined />} onClick={handleAbort}>
-            中止
+            {t('tryout.urlbar.abort')}
           </Button>
         ) : (
           <Button type="primary" icon={<SendOutlined />} onClick={handleSend}>
-            发送
+            {t('tryout.urlbar.send')}
           </Button>
         )}
-        <Tooltip title="清空响应">
+        <Tooltip title={t('tryout.urlbar.clearTooltip')}>
           <Button
             icon={<ReloadOutlined />}
             onClick={() => setResult(null)}
@@ -569,16 +575,16 @@ const TryItOutPanel: React.FC<Props> = ({
             key: 'headers',
             label: `Headers (${headerRows.filter((r) => r.enabled && r.key).length})`,
             children: renderKvTable(headerRows, setHeaderRows, {
-              key: '如 X-Tenant-Id',
-              value: '如 42 或 {{tenantId}}',
+              key: t('tryout.headers.placeholderKey'),
+              value: t('tryout.headers.placeholderValue'),
             }),
           },
           {
             key: 'query',
             label: `Query (${queryRows.filter((r) => r.enabled && r.key).length})`,
             children: renderKvTable(queryRows, setQueryRows, {
-              key: '如 page',
-              value: '如 1',
+              key: t('tryout.query.placeholderKey'),
+              value: t('tryout.query.placeholderValue'),
             }),
           },
           {
@@ -594,16 +600,16 @@ const TryItOutPanel: React.FC<Props> = ({
                     onChange={setBodyKind}
                     style={{ width: 130 }}
                     options={[
-                      { value: 'none', label: '无 Body' },
-                      { value: 'json', label: 'JSON' },
-                      { value: 'text', label: 'Plain Text' },
+                      { value: 'none', label: t('tryout.tab.bodyKind.none') },
+                      { value: 'json', label: t('tryout.tab.bodyKind.json') },
+                      { value: 'text', label: t('tryout.tab.bodyKind.text') },
                     ]}
                   />
                 </div>
                 {bodyKind === 'none' ? (
                   <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description="该请求不发送 Body"
+                    description={t('tryout.tab.body.noBody')}
                     style={{ padding: '24px 0' }}
                   />
                 ) : (
@@ -615,7 +621,7 @@ const TryItOutPanel: React.FC<Props> = ({
                     placeholder={
                       bodyKind === 'json'
                         ? '{\n  "field": "value"\n}'
-                        : '在此粘贴文本'
+                        : t('tryout.tab.body.text.placeholder')
                     }
                   />
                 )}
@@ -632,33 +638,27 @@ const TryItOutPanel: React.FC<Props> = ({
           showIcon
           closable
           onClose={() => setComposerWarnings([])}
-          message="部分注入项被静默丢弃"
+          message={t('tryout.composer.warning.title')}
           description={
             <ul style={{ paddingLeft: 20, margin: 0 }}>
               {composerWarnings.map((w, i) => (
-                <li key={i}>{describeComposerWarning(w)}</li>
+                <li key={i}>{describeComposerWarning(w, t)}</li>
               ))}
             </ul>
           }
         />
       )}
 
-      <div className="tryout__divider">响应</div>
+      <div className="tryout__divider">{t('tryout.divider.response')}</div>
       {renderResponse()}
     </div>
   );
 };
 
-function describeComposerWarning(w: ComposerWarning): string {
+function describeComposerWarning(w: ComposerWarning, t: TFunction): string {
   switch (w.kind) {
     case 'cookies-dropped':
-      return (
-        '认证方案试图设置 Cookie（' +
-        w.names.join(', ') +
-        '），但浏览器拒绝在跨域请求中由 JavaScript 写入 Cookie 头。' +
-        '如需携带 Cookie，请改用 Authorization / API Key 等头部传递；' +
-        '或在「设置」中启用「跨域请求附带 Cookie (withCredentials)」并配合后端 CORS 配置。'
-      );
+      return t('tryout.composer.warning.cookies', { names: w.names.join(', ') });
     default:
       return JSON.stringify(w);
   }
@@ -672,10 +672,13 @@ function safeParse(s: string): object | string {
   }
 }
 
-function renderResponseBody(result: Exclude<TryItOutResult, { failed: true }>) {
+function renderResponseBody(
+  result: Exclude<TryItOutResult, { failed: true }>,
+  t: TFunction,
+) {
   if (result.body == null) {
     return (
-      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无响应体" />
+      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('tryout.body.empty')} />
     );
   }
   if (result.bodyKind === 'image') {
@@ -690,8 +693,11 @@ function renderResponseBody(result: Exclude<TryItOutResult, { failed: true }>) {
       <Alert
         showIcon
         type="info"
-        message={`二进制响应（${result.contentType || 'unknown'}, ${result.byteLength} B）`}
-        description="二进制内容不可在浏览器中直接展示。如需下载请使用浏览器开发者工具的网络面板。"
+        message={t('tryout.body.binary.title', {
+          contentType: result.contentType || 'unknown',
+          bytes: result.byteLength,
+        })}
+        description={t('tryout.body.binary.desc')}
       />
     );
   }
@@ -710,7 +716,7 @@ function renderResponseBody(result: Exclude<TryItOutResult, { failed: true }>) {
   );
 }
 
-function renderResponseHeaders(headers: Record<string, string>) {
+function renderResponseHeaders(headers: Record<string, string>, t: TFunction) {
   const rows = Object.entries(headers).map(([k, v], i) => ({
     key: `${i}-${k}`,
     name: k,
@@ -718,7 +724,7 @@ function renderResponseHeaders(headers: Record<string, string>) {
   }));
   if (rows.length === 0) {
     return (
-      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无响应头" />
+      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('tryout.headers.empty')} />
     );
   }
   return (

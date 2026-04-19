@@ -30,6 +30,7 @@ import {
   DeleteOutlined,
   QuestionCircleOutlined,
 } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { useHeaders } from '@/contexts/HeadersContext';
 import { useEnvironments } from '@/contexts/EnvironmentContext';
 import {
@@ -48,20 +49,21 @@ interface Props {
 
 const TAB_KEYS: HeaderScope[] = ['global', 'service', 'environment'];
 
-const SCOPE_LABEL: Record<HeaderScope, string> = {
-  global: '全局',
-  service: '服务',
-  environment: '环境',
-};
-
 const HeadersManagerDrawer: React.FC<Props> = ({
   open,
   onClose,
   knownServices,
 }) => {
+  const { t } = useTranslation();
   const { state, add, update, remove } = useHeaders();
   const { state: envState } = useEnvironments();
   const [activeTab, setActiveTab] = useState<HeaderScope>('global');
+
+  const scopeLabel: Record<HeaderScope, string> = {
+    global: t('headers.scope.global'),
+    service: t('headers.scope.service'),
+    environment: t('headers.scope.environment'),
+  };
 
   const byScope = useMemo(() => {
     const out: Record<HeaderScope, HeaderRule[]> = {
@@ -92,7 +94,7 @@ const HeadersManagerDrawer: React.FC<Props> = ({
       return (
         <Select
           size="small"
-          placeholder="选择环境"
+          placeholder={t('headers.scopeRef.env.placeholder')}
           value={row.scopeRefId ?? undefined}
           onChange={(v) => update(row.id, { scopeRefId: v })}
           style={{ width: '100%' }}
@@ -121,7 +123,7 @@ const HeadersManagerDrawer: React.FC<Props> = ({
       return (
         <Select
           size="small"
-          placeholder="选择服务"
+          placeholder={t('headers.scopeRef.service.placeholder')}
           value={row.scopeRefId ?? undefined}
           onChange={(v) => update(row.id, { scopeRefId: v })}
           style={{ width: '100%' }}
@@ -142,7 +144,7 @@ const HeadersManagerDrawer: React.FC<Props> = ({
     return (
       <Input
         size="small"
-        placeholder="服务 URL 或标识"
+        placeholder={t('headers.scopeRef.service.input')}
         value={row.scopeRefId ?? ''}
         onChange={(e) => update(row.id, { scopeRefId: e.target.value })}
       />
@@ -152,7 +154,7 @@ const HeadersManagerDrawer: React.FC<Props> = ({
   const buildColumns = (scope: HeaderScope) => {
     const cols: any[] = [
       {
-        title: '启用',
+        title: t('headers.col.enabled'),
         dataIndex: 'enabled',
         width: 60,
         render: (_: boolean, row: HeaderRule) => (
@@ -170,7 +172,7 @@ const HeadersManagerDrawer: React.FC<Props> = ({
         render: (_: string, row: HeaderRule) => (
           <Input
             size="small"
-            placeholder="如 X-Tenant-Id"
+            placeholder={t('headers.row.key.placeholder')}
             value={row.key}
             onChange={(e) => update(row.id, { key: e.target.value })}
           />
@@ -180,7 +182,7 @@ const HeadersManagerDrawer: React.FC<Props> = ({
         title: (
           <span>
             Value{' '}
-            <Tooltip title="支持变量，如 {{tenantId}}、{{baseUrl}}；将使用当前活跃环境展开。">
+            <Tooltip title={t('headers.value.tooltip')}>
               <QuestionCircleOutlined className="headers-drawer__muted" />
             </Tooltip>
           </span>
@@ -189,7 +191,7 @@ const HeadersManagerDrawer: React.FC<Props> = ({
         render: (_: string, row: HeaderRule) => (
           <Input
             size="small"
-            placeholder="如 42 或 {{tenantId}}"
+            placeholder={t('headers.row.value.placeholder')}
             value={row.value}
             onChange={(e) => update(row.id, { value: e.target.value })}
           />
@@ -199,7 +201,7 @@ const HeadersManagerDrawer: React.FC<Props> = ({
 
     if (scope !== 'global') {
       cols.push({
-        title: scope === 'service' ? '所属服务' : '所属环境',
+        title: scope === 'service' ? t('headers.col.service') : t('headers.col.env'),
         width: '22%',
         render: (_: any, row: HeaderRule) => renderScopeRefCell(row),
       });
@@ -207,13 +209,13 @@ const HeadersManagerDrawer: React.FC<Props> = ({
 
     cols.push(
       {
-        title: '说明',
+        title: t('headers.col.description'),
         dataIndex: 'description',
         width: '18%',
         render: (_: string, row: HeaderRule) => (
           <Input
             size="small"
-            placeholder="可选"
+            placeholder={t('headers.row.description.placeholder')}
             value={row.description ?? ''}
             onChange={(e) => update(row.id, { description: e.target.value })}
           />
@@ -224,12 +226,12 @@ const HeadersManagerDrawer: React.FC<Props> = ({
         width: 44,
         render: (_: any, row: HeaderRule) => (
           <Popconfirm
-            title="删除此请求头？"
-            okText="删除"
-            cancelText="取消"
+            title={t('headers.row.deleteConfirm')}
+            okText={t('common.delete')}
+            cancelText={t('common.cancel')}
             onConfirm={() => {
               remove(row.id);
-              message.success('已删除');
+              message.success(t('common.deleted'));
             }}
           >
             <Button size="small" type="text" danger icon={<DeleteOutlined />} />
@@ -252,16 +254,19 @@ const HeadersManagerDrawer: React.FC<Props> = ({
             icon={<PlusOutlined />}
             onClick={() => handleAdd(scope)}
           >
-            新增{SCOPE_LABEL[scope]}请求头
+            {t(`headers.add.${scope}` as const)}
           </Button>
           <span className="headers-drawer__hint">
-            共 {rows.length} 条 ({rows.filter((r) => r.enabled).length} 启用)
+            {t('headers.toolbar.count', {
+              total: rows.length,
+              enabled: rows.filter((r) => r.enabled).length,
+            })}
           </span>
         </div>
         {rows.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description={`暂无${SCOPE_LABEL[scope]}请求头`}
+            description={t(`headers.empty.${scope}` as const)}
             style={{ padding: '32px 0' }}
           />
         ) : (
@@ -281,10 +286,12 @@ const HeadersManagerDrawer: React.FC<Props> = ({
     <Drawer
       title={
         <span>
-          全局请求头{' '}
+          {t('headers.drawer.title')}{' '}
           <Tag className="headers-drawer__title-tag">
-            {state.items.filter((r) => r.enabled).length} 启用 /{' '}
-            {state.items.length} 总计
+            {t('headers.drawer.summary', {
+              enabled: state.items.filter((r) => r.enabled).length,
+              total: state.items.length,
+            })}
           </Tag>
         </span>
       }
@@ -301,7 +308,7 @@ const HeadersManagerDrawer: React.FC<Props> = ({
           key: scope,
           label: (
             <span>
-              {SCOPE_LABEL[scope]}{' '}
+              {scopeLabel[scope]}{' '}
               <Tag className="headers-drawer__count-tag">
                 {byScope[scope].length}
               </Tag>
@@ -311,8 +318,9 @@ const HeadersManagerDrawer: React.FC<Props> = ({
         }))}
       />
       <div className="headers-drawer__legend">
-        <strong>合并规则</strong>：全局 → 服务 → 环境 → 接口自带请求头。
-        同名请求头（大小写不敏感）以更具体的作用域为准。
+        <strong>{t('headers.legend.title')}</strong>
+        <span className="headers-drawer__legend-sep">: </span>
+        {t('headers.legend.body')}
       </div>
     </Drawer>
   );

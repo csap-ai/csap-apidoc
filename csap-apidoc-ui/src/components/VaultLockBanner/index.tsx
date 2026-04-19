@@ -16,6 +16,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { useVault } from '@/contexts/VaultContext';
 import { VAULT_LOCKED_ACCESS_EVENT } from '@/stores/vault';
 import MasterPasswordModal from '@/components/MasterPasswordModal';
@@ -24,6 +25,7 @@ import './index.less';
 const FLASH_MS = 1500;
 
 const VaultLockBanner: React.FC = () => {
+  const { t } = useTranslation();
   const { state } = useVault();
   const [open, setOpen] = useState(false);
   const [flash, setFlash] = useState(false);
@@ -52,7 +54,7 @@ const VaultLockBanner: React.FC = () => {
           <LockOutlined />
         </span>
         <span className="vault-lock-banner__text">
-          保险库已锁定 — 已保存的凭证当前不可读取，请输入主密码以恢复 Try-it-out 能力。
+          {t('vault.banner.message')}
         </span>
         <Button
           type="primary"
@@ -60,7 +62,7 @@ const VaultLockBanner: React.FC = () => {
           onClick={() => setOpen(true)}
           className="vault-lock-banner__btn"
         >
-          解锁
+          {t('vault.banner.unlock')}
         </Button>
       </div>
       <MasterPasswordModal

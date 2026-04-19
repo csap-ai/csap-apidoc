@@ -11,6 +11,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Form, Input, Modal, Alert, Typography } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { useVault } from '@/contexts/VaultContext';
 import './index.less';
 
@@ -33,16 +34,16 @@ interface FormValues {
   unlockPassword?: string;
 }
 
-const TITLES: Record<MasterPasswordModalMode, string> = {
-  set: '设置主密码（启用加密）',
-  change: '修改主密码',
-  unlock: '解锁保险库',
+const TITLE_KEYS: Record<MasterPasswordModalMode, string> = {
+  set: 'mpModal.title.set',
+  change: 'mpModal.title.change',
+  unlock: 'mpModal.title.unlock',
 };
 
-const OK_TEXTS: Record<MasterPasswordModalMode, string> = {
-  set: '启用加密',
-  change: '修改',
-  unlock: '解锁',
+const OK_KEYS: Record<MasterPasswordModalMode, string> = {
+  set: 'mpModal.ok.set',
+  change: 'mpModal.ok.change',
+  unlock: 'mpModal.ok.unlock',
 };
 
 const MIN_PASSWORD_LENGTH = 4;
@@ -53,6 +54,7 @@ const MasterPasswordModal: React.FC<Props> = ({
   onClose,
   onSuccess,
 }) => {
+  const { t } = useTranslation();
   const { enableEncryption, changePassword, unlock } = useVault();
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
@@ -78,13 +80,13 @@ const MasterPasswordModal: React.FC<Props> = ({
     try {
       if (mode === 'set') {
         if (!values.newPassword || values.newPassword !== values.confirmPassword) {
-          setErrorText('两次输入的密码不一致');
+          setErrorText(t('mpModal.error.mismatch'));
           return;
         }
         await enableEncryption(values.newPassword);
       } else if (mode === 'change') {
         if (!values.newPassword || values.newPassword !== values.confirmPassword) {
-          setErrorText('两次输入的新密码不一致');
+          setErrorText(t('mpModal.error.mismatchNew'));
           return;
         }
         const ok = await changePassword(
@@ -92,34 +94,36 @@ const MasterPasswordModal: React.FC<Props> = ({
           values.newPassword,
         );
         if (!ok) {
-          setErrorText('原密码不正确，或新密码不符合要求');
+          setErrorText(t('mpModal.error.changeFailed'));
           return;
         }
       } else {
         const ok = await unlock(values.unlockPassword ?? '');
         if (!ok) {
-          setErrorText('密码错误，请重试');
+          setErrorText(t('mpModal.error.wrongPwd'));
           return;
         }
       }
       onSuccess?.();
       onClose();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '操作失败，请重试';
+      const msg = err instanceof Error ? err.message : t('mpModal.error.generic');
       setErrorText(msg);
     } finally {
       setSubmitting(false);
     }
   };
 
+  const minLenMsg = t('mpModal.field.minLen', { min: MIN_PASSWORD_LENGTH });
+
   return (
     <Modal
       open={open}
-      title={TITLES[mode]}
+      title={t(TITLE_KEYS[mode])}
       onCancel={onClose}
       onOk={handleOk}
-      okText={OK_TEXTS[mode]}
-      cancelText="取消"
+      okText={t(OK_KEYS[mode])}
+      cancelText={t('common.cancel')}
       confirmLoading={submitting}
       destroyOnClose
       maskClosable={false}
@@ -130,8 +134,8 @@ const MasterPasswordModal: React.FC<Props> = ({
           type="info"
           showIcon
           className="master-password-modal__notice"
-          message="请记住这个主密码"
-          description="主密码仅保存在你的浏览器内存中，CSAP 团队无法找回。忘记后只能重置全部数据。"
+          message={t('mpModal.notice.set.title')}
+          description={t('mpModal.notice.set.desc')}
         />
       )}
       {mode === 'change' && (
@@ -139,64 +143,58 @@ const MasterPasswordModal: React.FC<Props> = ({
           type="warning"
           showIcon
           className="master-password-modal__notice"
-          message="修改后所有现有凭证将以新密码重新加密"
+          message={t('mpModal.notice.change')}
         />
       )}
       <Form layout="vertical" form={form} requiredMark={false}>
         {mode === 'change' && (
           <Form.Item
-            label="原主密码"
+            label={t('mpModal.field.oldPwd')}
             name="oldPassword"
-            rules={[{ required: true, message: '请输入当前主密码' }]}
+            rules={[{ required: true, message: t('mpModal.field.oldPwd.required') }]}
           >
-            <Input.Password autoFocus placeholder="当前主密码" />
+            <Input.Password autoFocus placeholder={t('mpModal.field.oldPwd.placeholder')} />
           </Form.Item>
         )}
         {(mode === 'set' || mode === 'change') && (
           <>
             <Form.Item
-              label={mode === 'change' ? '新主密码' : '主密码'}
+              label={mode === 'change' ? t('mpModal.field.newPwd') : t('mpModal.field.pwd')}
               name="newPassword"
               rules={[
-                { required: true, message: '请输入主密码' },
-                {
-                  min: MIN_PASSWORD_LENGTH,
-                  message: `至少 ${MIN_PASSWORD_LENGTH} 个字符`,
-                },
+                { required: true, message: t('mpModal.field.newPwd.required') },
+                { min: MIN_PASSWORD_LENGTH, message: minLenMsg },
               ]}
             >
-              <Input.Password
-                autoFocus={mode === 'set'}
-                placeholder={`至少 ${MIN_PASSWORD_LENGTH} 个字符`}
-              />
+              <Input.Password autoFocus={mode === 'set'} placeholder={minLenMsg} />
             </Form.Item>
             <Form.Item
-              label="确认密码"
+              label={t('mpModal.field.confirm')}
               name="confirmPassword"
               dependencies={['newPassword']}
               rules={[
-                { required: true, message: '请再次输入密码' },
+                { required: true, message: t('mpModal.field.confirm.required') },
                 ({ getFieldValue }) => ({
                   validator(_, value) {
                     if (!value || getFieldValue('newPassword') === value) {
                       return Promise.resolve();
                     }
-                    return Promise.reject(new Error('两次输入的密码不一致'));
+                    return Promise.reject(new Error(t('mpModal.error.mismatch')));
                   },
                 }),
               ]}
             >
-              <Input.Password placeholder="再输入一次" />
+              <Input.Password placeholder={t('mpModal.field.confirm.placeholder')} />
             </Form.Item>
           </>
         )}
         {mode === 'unlock' && (
           <Form.Item
-            label="主密码"
+            label={t('mpModal.field.pwd')}
             name="unlockPassword"
-            rules={[{ required: true, message: '请输入主密码' }]}
+            rules={[{ required: true, message: t('mpModal.field.newPwd.required') }]}
           >
-            <Input.Password autoFocus placeholder="输入主密码以解锁" />
+            <Input.Password autoFocus placeholder={t('mpModal.field.unlockPwd.placeholder')} />
           </Form.Item>
         )}
       </Form>

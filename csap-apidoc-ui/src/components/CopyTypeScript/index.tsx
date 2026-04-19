@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button, message, Modal, Typography, Space, Tooltip } from 'antd';
 import { CopyOutlined, CheckOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { generateTypeScriptTypes } from '../../utils/typeScriptConverter';
 import { logApiStructure } from '../../utils/debug';
 import './index.less';
@@ -13,27 +14,27 @@ interface CopyTypeScriptProps {
 }
 
 const CopyTypeScript: React.FC<CopyTypeScriptProps> = ({ apiDetail, apiName }) => {
+  const { t } = useTranslation();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [typeScriptCode, setTypeScriptCode] = useState('');
   const [copied, setCopied] = useState(false);
 
   const showModal = () => {
     try {
-      // 调试API结构
       logApiStructure(apiDetail);
-      
+
       if (!apiDetail) {
-        message.error('API详情数据为空');
+        message.error(t('ts.error.empty'));
         return;
       }
-      
+
       const code = generateTypeScriptTypes(apiDetail, apiName);
       setTypeScriptCode(code);
       setIsModalVisible(true);
       setCopied(false);
     } catch (error) {
       console.error('生成TypeScript类型失败:', error);
-      message.error('生成TypeScript类型失败，请检查API数据结构');
+      message.error(t('ts.error.generate'));
     }
   };
 
@@ -44,49 +45,49 @@ const CopyTypeScript: React.FC<CopyTypeScriptProps> = ({ apiDetail, apiName }) =
   const copyToClipboard = () => {
     navigator.clipboard.writeText(typeScriptCode)
       .then(() => {
-        message.success('TypeScript类型已复制到剪贴板');
+        message.success(t('ts.copy.success'));
         setCopied(true);
         setTimeout(() => setCopied(false), 3000);
       })
       .catch(() => {
-        message.error('复制失败，请手动复制');
+        message.error(t('ts.copy.failed'));
       });
   };
 
   return (
     <>
-      <Button 
+      <Button
         className="copy-typescript-btn"
-        type="primary" 
-        icon={<CopyOutlined />} 
+        type="primary"
+        icon={<CopyOutlined />}
         onClick={showModal}
       >
-        复制为 TypeScript
+        {t('ts.button')}
       </Button>
 
       <Modal
-        title="TypeScript 类型定义"
+        title={t('ts.modal.title')}
         open={isModalVisible}
         onCancel={handleCancel}
         width={800}
         className="typescript-modal"
         footer={[
-          <Button 
-            key="copy" 
-            type="primary" 
+          <Button
+            key="copy"
+            type="primary"
             onClick={copyToClipboard}
             icon={copied ? <CheckOutlined /> : <CopyOutlined />}
           >
-            {copied ? '已复制' : '复制到剪贴板'}
+            {copied ? t('ts.modal.copied') : t('ts.modal.copy')}
           </Button>,
           <Button key="close" onClick={handleCancel}>
-            关闭
+            {t('ts.modal.close')}
           </Button>
         ]}
       >
         <div style={{ marginBottom: 20 }}>
           <Text type="secondary" style={{ fontSize: 14, lineHeight: 1.6 }}>
-            以下是根据 API 参数自动生成的 TypeScript 类型定义，可以直接复制到你的前端项目中使用。
+            {t('ts.modal.desc')}
           </Text>
         </div>
         

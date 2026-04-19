@@ -2,11 +2,13 @@ import {Layout, Select, Dropdown, Button, message} from 'antd';
 import {useState, forwardRef, useImperativeHandle} from 'react';
 import {DownloadOutlined, FileTextOutlined, ApiOutlined, DownOutlined} from '@ant-design/icons';
 import type {MenuProps} from 'antd';
+import {useTranslation} from 'react-i18next';
 import CSAP from '@/assets/ICON.png';
 import EnvironmentSwitcher from '@/components/EnvironmentSwitcher';
 import HeadersButton from '@/components/HeadersButton';
 import AuthButton from '@/components/AuthButton';
 import SettingsButton from '@/components/SettingsButton';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 import './index.less';
 
 const {Header} = Layout;
@@ -28,6 +30,7 @@ interface IProps {
 }
 
 const LayoutHeader = (props: IProps, ref) => {
+    const {t} = useTranslation();
     const [value, setValue] = useState(null);
     const [exporting, setExporting] = useState(false);
 
@@ -44,7 +47,7 @@ const LayoutHeader = (props: IProps, ref) => {
 
     const handleExport = async (format: 'openapi' | 'postman' | 'markdown') => {
         if (!props.onExport) {
-            message.warning('导出功能暂未配置');
+            message.warning(t('header.export.notConfigured'));
             return;
         }
 
@@ -52,8 +55,8 @@ const LayoutHeader = (props: IProps, ref) => {
         try {
             await props.onExport(format);
         } catch (error) {
-            console.error('导出失败:', error);
-            message.error('导出失败，请稍后重试');
+            console.error('export failed:', error);
+            message.error(t('header.export.failedRetry'));
         } finally {
             setExporting(false);
         }
@@ -84,7 +87,7 @@ const LayoutHeader = (props: IProps, ref) => {
         <Header>
             <div className="header-lf">
                 <img src={CSAP} alt=""/>
-                <span>API Documentation</span>
+                <span>{t('header.title')}</span>
             </div>
             <div className="header-ri">
                 <div className="apiList">
@@ -92,9 +95,9 @@ const LayoutHeader = (props: IProps, ref) => {
                         <EnvironmentSwitcher />
                     </div>
                     <div className="api-item">
-                        <div>切换服务</div>
+                        <div>{t('header.service.label')}</div>
                         <Select
-                            placeholder="选择服务"
+                            placeholder={t('header.service.placeholder')}
                             ref={ref}
                             allowClear
                             value={value}
@@ -111,14 +114,14 @@ const LayoutHeader = (props: IProps, ref) => {
                         </Select>
                     </div>
                     <div className="api-item">
-                        <div>分组</div>
-                        <Select placeholder="选择分组" allowClear style={{width: 140}}>
+                        <div>{t('header.group.label')}</div>
+                        <Select placeholder={t('header.group.placeholder')} allowClear style={{width: 140}}>
                             <Option value="default0">default</Option>
                         </Select>
                     </div>
                     <div className="api-item">
-                        <div>版本</div>
-                        <Select placeholder="选择版本" allowClear style={{width: 120}}>
+                        <div>{t('header.version.label')}</div>
+                        <Select placeholder={t('header.version.placeholder')} allowClear style={{width: 120}}>
                             <Option value="default1">v1</Option>
                             <Option value="default2">v2</Option>
                         </Select>
@@ -133,13 +136,16 @@ const LayoutHeader = (props: IProps, ref) => {
                         <SettingsButton />
                     </div>
                     <div className="api-item">
+                        <LanguageSwitcher />
+                    </div>
+                    <div className="api-item">
                         <Dropdown menu={{items: exportMenuItems}} placement="bottomRight">
                             <Button 
                                 type="primary" 
                                 icon={<DownloadOutlined />}
                                 loading={exporting}
                             >
-                                导出文档 <DownOutlined />
+                                {t('header.export.button')} <DownOutlined />
                             </Button>
                         </Dropdown>
                     </div>

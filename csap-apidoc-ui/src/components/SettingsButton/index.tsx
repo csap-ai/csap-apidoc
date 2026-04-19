@@ -9,20 +9,22 @@
 import React, { useState } from 'react';
 import { Badge, Button, Tooltip } from 'antd';
 import { SettingOutlined, LockOutlined } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { useVault } from '@/contexts/VaultContext';
 import SettingsDrawer from '@/components/SettingsDrawer';
 import './index.less';
 
 const SettingsButton: React.FC = () => {
+  const { t } = useTranslation();
   const { state } = useVault();
   const [open, setOpen] = useState(false);
 
   const tooltip =
     state === 'encrypted-locked'
-      ? '设置（保险库已锁定）'
+      ? t('settings.button.tooltip.locked')
       : state === 'encrypted-unlocked'
-      ? '设置（加密已启用）'
-      : '设置';
+      ? t('settings.button.tooltip.unlocked')
+      : t('settings.button.tooltip.default');
 
   const showLockBadge = state === 'encrypted-locked';
 
@@ -40,7 +42,7 @@ const SettingsButton: React.FC = () => {
             onClick={() => setOpen(true)}
             className="settings-btn"
           >
-            设置
+            {t('settings.button.label')}
           </Button>
         </Badge>
       </Tooltip>

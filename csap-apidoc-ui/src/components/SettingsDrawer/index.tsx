@@ -42,6 +42,7 @@ import {
   DeleteOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { useVault } from '@/contexts/VaultContext';
 import { settingsStore } from '@/stores/settingsStore';
 import MasterPasswordModal, {
@@ -57,6 +58,7 @@ interface Props {
 }
 
 const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
+  const { t } = useTranslation();
   const {
     state,
     hasEncryptedData,
@@ -98,12 +100,12 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
     setDisableSubmitting(true);
     try {
       await disableEncryption(disablePwd);
-      message.success('已关闭加密，凭证已转回明文存储');
+      message.success(t('settings.vault.disabledToast'));
       setDisableConfirmOpen(false);
       setDisablePwd('');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '关闭加密失败';
-      setDisableErr(msg.includes('wrong') ? '密码错误，请重试' : msg);
+      const msg = err instanceof Error ? err.message : t('settings.vault.disable.failed');
+      setDisableErr(msg.includes('wrong') ? t('settings.vault.disable.wrongPwd') : msg);
     } finally {
       setDisableSubmitting(false);
     }
@@ -111,7 +113,7 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
 
   const handleLockNow = (): void => {
     lock();
-    message.success('保险库已锁定');
+    message.success(t('settings.vault.lockedToast'));
   };
 
   /* -------- settings field updates -------- */
@@ -148,10 +150,10 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      message.success('配置已导出');
+      message.success(t('settings.data.exportSuccess'));
     } catch (err) {
       console.error(err);
-      message.error('导出失败');
+      message.error(t('settings.data.exportFailed'));
     }
   };
 
@@ -164,18 +166,17 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
     e.target.value = ''; // allow re-selecting the same file
     if (!file) return;
     Modal.confirm({
-      title: '导入配置会覆盖当前所有设置',
+      title: t('settings.data.import.confirmTitle'),
       icon: <ExclamationCircleOutlined />,
-      content:
-        '现有的环境、请求头、认证方案、保险库与设置都会被替换；加密会被重置为明文模式。建议先导出当前配置作为备份。',
-      okText: '继续导入',
-      cancelText: '取消',
+      content: t('settings.data.import.confirmContent'),
+      okText: t('settings.data.import.ok'),
+      cancelText: t('common.cancel'),
       onOk: async () => {
         try {
           const text = await file.text();
           importConfig(text);
         } catch (err) {
-          const msg = err instanceof Error ? err.message : '导入失败';
+          const msg = err instanceof Error ? err.message : t('settings.data.import.failed');
           message.error(msg);
         }
       },
@@ -184,19 +185,18 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
 
   const handleResetAll = (): void => {
     Modal.confirm({
-      title: '重置全部',
+      title: t('settings.data.reset.confirmTitle'),
       icon: <ExclamationCircleOutlined />,
-      content:
-        '会清空浏览器中所有 CSAP Apidoc 数据：环境、请求头、认证方案、保险库与设置。此操作不可撤销。',
-      okText: '重置',
+      content: t('settings.data.reset.confirmContent'),
+      okText: t('settings.data.reset.ok'),
       okType: 'danger',
-      cancelText: '取消',
+      cancelText: t('common.cancel'),
       onOk: () => {
         try {
           resetAll();
         } catch (err) {
           console.error(err);
-          message.error('重置失败');
+          message.error(t('settings.data.reset.failed'));
         }
       },
     });
@@ -206,7 +206,7 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
 
   return (
     <Drawer
-      title="设置"
+      title={t('settings.drawer.title')}
       width={520}
       open={open}
       onClose={onClose}
@@ -216,57 +216,57 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
       {/* ---------------- Vault ---------------- */}
       <section className="settings-drawer__section">
         <header className="settings-drawer__section-header">
-          <span className="settings-drawer__section-title">Vault 加密</span>
+          <span className="settings-drawer__section-title">{t('settings.section.vault')}</span>
           {isEncrypted ? (
             isUnlocked ? (
               <Tag color="green" icon={<UnlockOutlined />}>
-                已解锁
+                {t('settings.vault.tag.unlocked')}
               </Tag>
             ) : (
               <Tag color="gold" icon={<LockOutlined />}>
-                已锁定
+                {t('settings.vault.tag.locked')}
               </Tag>
             )
           ) : (
-            <Tag>明文</Tag>
+            <Tag>{t('settings.vault.tag.plaintext')}</Tag>
           )}
         </header>
         <Form layout="vertical" requiredMark={false}>
-          <Form.Item label="启用加密（AES-GCM + PBKDF2）">
+          <Form.Item label={t('settings.vault.enable.label')}>
             <Switch
               checked={isEncrypted}
               onChange={onToggleEncryption}
-              checkedChildren="开"
-              unCheckedChildren="关"
+              checkedChildren={t('common.switch.on')}
+              unCheckedChildren={t('common.switch.off')}
             />
             <Text type="secondary" className="settings-drawer__hint">
               {isEncrypted
-                ? '所有凭证均以你的主密码派生密钥加密，不在浏览器外传输。'
-                : '凭证以明文形式保存在 localStorage（默认）。建议在共享设备上启用加密。'}
+                ? t('settings.vault.enable.help.on')
+                : t('settings.vault.enable.help.off')}
             </Text>
           </Form.Item>
 
           {isEncrypted && (
-            <Form.Item label="主密码">
+            <Form.Item label={t('settings.vault.masterPwd')}>
               <Space wrap>
                 <Button
                   icon={<KeyOutlined />}
                   onClick={() => setPwdModalMode('change')}
                   disabled={!isUnlocked}
                 >
-                  修改主密码
+                  {t('settings.vault.changePwd')}
                 </Button>
                 <Button
                   icon={<LockOutlined />}
                   onClick={handleLockNow}
                   disabled={!isUnlocked}
                 >
-                  立即锁定
+                  {t('settings.vault.lockNow')}
                 </Button>
               </Space>
               {!isUnlocked && (
                 <Text type="secondary" className="settings-drawer__hint">
-                  当前已锁定，请先在顶部解锁后再修改主密码。
+                  {t('settings.vault.lockedHint')}
                 </Text>
               )}
             </Form.Item>
@@ -275,11 +275,11 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
           <Form.Item
             label={
               <span>
-                空闲自动锁定：
+                {t('settings.vault.idleLock.label')}
                 <strong>
                   {settings.vaultLockTimeoutMin === 0
-                    ? '不自动锁定'
-                    : `${settings.vaultLockTimeoutMin} 分钟`}
+                    ? t('settings.vault.idleLock.off')
+                    : t('settings.vault.idleLock.minutes', { count: settings.vaultLockTimeoutMin })}
                 </strong>
               </span>
             }
@@ -290,7 +290,7 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
               step={5}
               value={settings.vaultLockTimeoutMin}
               onChange={setLockTimeout}
-              marks={{ 0: '关闭', 30: '30', 60: '60', 120: '120' }}
+              marks={{ 0: t('settings.vault.idleLock.mark.off'), 30: '30', 60: '60', 120: '120' }}
               disabled={!isEncrypted}
             />
           </Form.Item>
@@ -300,21 +300,21 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
       {/* ---------------- Try it out ---------------- */}
       <section className="settings-drawer__section">
         <header className="settings-drawer__section-header">
-          <span className="settings-drawer__section-title">试运行</span>
+          <span className="settings-drawer__section-title">{t('settings.section.tryout')}</span>
         </header>
         <Form layout="vertical" requiredMark={false}>
           <Form.Item
-            label="CORS 代理 URL（可选）"
-            help="会被前置到 Try-it-out 的目标地址，例如 https://proxy.example.com/?url="
+            label={t('settings.tryout.proxy.label')}
+            help={t('settings.tryout.proxy.help')}
           >
             <Input
               value={settings.tryItOutProxyUrl ?? ''}
               onChange={(e) => setProxyUrl(e.target.value)}
-              placeholder="留空表示不使用代理"
+              placeholder={t('settings.tryout.proxy.placeholder')}
               allowClear
             />
           </Form.Item>
-          <Form.Item label="请求超时（毫秒）">
+          <Form.Item label={t('settings.tryout.timeout.label')}>
             <InputNumber
               min={1000}
               max={300000}
@@ -324,16 +324,15 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
               style={{ width: 200 }}
             />
           </Form.Item>
-          <Form.Item label="跨域请求附带 Cookie (withCredentials)">
+          <Form.Item label={t('settings.tryout.withCredentials.label')}>
             <Switch
               checked={settings.tryItOutWithCredentials}
               onChange={setWithCredentials}
-              checkedChildren="开"
-              unCheckedChildren="关"
+              checkedChildren={t('common.switch.on')}
+              unCheckedChildren={t('common.switch.off')}
             />
             <Text type="secondary" className="settings-drawer__hint">
-              启用后,试运行的跨域请求会携带浏览器 Cookie。需要目标接口配置
-              Access-Control-Allow-Credentials: true 与具体的 origin 才能生效。
+              {t('settings.tryout.withCredentials.help')}
             </Text>
           </Form.Item>
         </Form>
@@ -342,9 +341,9 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
       {/* ---------------- Data ---------------- */}
       <section className="settings-drawer__section">
         <header className="settings-drawer__section-header">
-          <span className="settings-drawer__section-title">数据</span>
+          <span className="settings-drawer__section-title">{t('settings.section.data')}</span>
           {hasEncryptedData && state === 'encrypted-locked' && (
-            <Tag color="gold">导出将不包含已锁定的凭证</Tag>
+            <Tag color="gold">{t('settings.data.lockedExportNote')}</Tag>
           )}
         </header>
         <Space direction="vertical" style={{ width: '100%' }}>
@@ -353,14 +352,14 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
             icon={<DownloadOutlined />}
             onClick={handleExport}
           >
-            导出 JSON
+            {t('settings.data.export')}
           </Button>
           <Button
             block
             icon={<UploadOutlined />}
             onClick={handleImportClick}
           >
-            导入 JSON
+            {t('settings.data.import')}
           </Button>
           <input
             ref={fileInputRef}
@@ -375,7 +374,7 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
             icon={<DeleteOutlined />}
             onClick={handleResetAll}
           >
-            重置全部
+            {t('settings.data.reset')}
           </Button>
         </Space>
       </section>
@@ -386,16 +385,16 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
         mode={pwdModalMode ?? 'set'}
         onClose={() => setPwdModalMode(null)}
         onSuccess={() => {
-          if (pwdModalMode === 'set') message.success('已启用加密');
-          if (pwdModalMode === 'change') message.success('主密码已修改');
+          if (pwdModalMode === 'set') message.success(t('settings.vault.enabledToast'));
+          if (pwdModalMode === 'change') message.success(t('settings.vault.pwdChangedToast'));
         }}
       />
 
       <Modal
         open={disableConfirmOpen}
-        title="确认关闭加密"
-        okText="确认关闭"
-        cancelText="取消"
+        title={t('settings.vault.disable.confirmTitle')}
+        okText={t('settings.vault.disable.confirmOk')}
+        cancelText={t('common.cancel')}
         okButtonProps={{ danger: true, loading: disableSubmitting }}
         onCancel={() => {
           setDisableConfirmOpen(false);
@@ -407,13 +406,14 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
         maskClosable={false}
       >
         <p>
-          关闭加密会把所有凭证以<strong>明文</strong>形式写回 localStorage。
-          请输入当前主密码以确认。
+          {t('settings.vault.disable.confirmContent.before')}
+          <strong>{t('settings.vault.disable.confirmContent.strong')}</strong>
+          {t('settings.vault.disable.confirmContent.after')}
         </p>
         <Input.Password
           value={disablePwd}
           onChange={(e) => setDisablePwd(e.target.value)}
-          placeholder="当前主密码"
+          placeholder={t('settings.vault.disable.pwdPlaceholder')}
           autoFocus
           onPressEnter={handleDisableConfirm}
         />

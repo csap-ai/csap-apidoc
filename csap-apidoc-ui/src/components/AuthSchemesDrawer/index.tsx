@@ -36,6 +36,7 @@ import {
   ReloadOutlined,
   QuestionCircleOutlined,
 } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   AuthScheme,
@@ -56,11 +57,11 @@ interface Props {
   knownServices?: Array<{ url: string; name: string }>;
 }
 
-const TYPE_LABELS: Record<AuthSchemeType, string> = {
-  bearer: 'Bearer Token',
-  basic: 'Basic Auth',
-  apikey: 'API Key',
-  oauth2_client: 'OAuth2 (Client Credentials)',
+const TYPE_I18N_KEYS: Record<AuthSchemeType, string> = {
+  bearer: 'auth.type.bearer',
+  basic: 'auth.type.basic',
+  apikey: 'auth.type.apikey',
+  oauth2_client: 'auth.type.oauth2_client',
 };
 
 const TYPE_COLORS: Record<AuthSchemeType, string> = {
@@ -81,6 +82,7 @@ const AuthSchemesDrawer: React.FC<Props> = ({
   onClose,
   knownServices,
 }) => {
+  const { t } = useTranslation();
   const {
     state,
     add,
@@ -141,7 +143,7 @@ const AuthSchemesDrawer: React.FC<Props> = ({
         description: values.description,
         config: draftConfig ?? defaultConfigFor(values.type),
       });
-      message.success('已保存');
+      message.success(t('common.saved'));
     } catch {
       // antd validation already surfaced
     }
@@ -151,7 +153,7 @@ const AuthSchemesDrawer: React.FC<Props> = ({
     if (!selected) return;
     remove(selected.id);
     setSelectedId(null);
-    message.success('已删除');
+    message.success(t('common.deleted'));
   };
 
   const handleTypeChange = (type: AuthSchemeType) => {
@@ -197,10 +199,12 @@ const AuthSchemesDrawer: React.FC<Props> = ({
     <Drawer
       title={
         <span>
-          认证方案{' '}
+          {t('auth.drawer.title')}{' '}
           <Tag className="auth-drawer__title-tag">
-            {state.items.length} 方案 / {Object.keys(state.activeBindings).length}{' '}
-            服务绑定
+            {t('auth.drawer.summary', {
+              schemes: state.items.length,
+              bound: Object.keys(state.activeBindings).length,
+            })}
           </Tag>
         </span>
       }
@@ -219,11 +223,11 @@ const AuthSchemesDrawer: React.FC<Props> = ({
             onClick={handleCreate}
             className="auth-drawer__add-btn"
           >
-            新建认证方案
+            {t('auth.drawer.create')}
           </Button>
           {state.items.length === 0 ? (
             <Empty
-              description="尚未配置认证方案"
+              description={t('auth.drawer.empty')}
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               style={{ marginTop: 32 }}
             />
@@ -246,7 +250,7 @@ const AuthSchemesDrawer: React.FC<Props> = ({
                     <span className="auth-drawer__item-body">
                       <span className="auth-drawer__item-name">{s.name}</span>
                       <span className="auth-drawer__item-type">
-                        {TYPE_LABELS[s.type]}
+                        {t(TYPE_I18N_KEYS[s.type])}
                       </span>
                     </span>
                   </List.Item>
@@ -258,50 +262,50 @@ const AuthSchemesDrawer: React.FC<Props> = ({
 
         <div className="auth-drawer__form">
           {!selected ? (
-            <Empty description="请选择或新建一个认证方案" />
+            <Empty description={t('auth.drawer.selectOrCreate')} />
           ) : (
             <>
               <Form layout="vertical" form={form} requiredMark={false}>
                 <Form.Item
-                  label="名称"
+                  label={t('common.name')}
                   name="name"
                   rules={[
-                    { required: true, message: '请输入方案名称' },
-                    { max: 48, message: '最多 48 个字符' },
+                    { required: true, message: t('auth.form.name.required') },
+                    { max: 48, message: t('auth.form.name.maxLen') },
                   ]}
                 >
-                  <Input placeholder="例如：Dev Bearer / Staging API-Key" />
+                  <Input placeholder={t('auth.form.name.placeholder')} />
                 </Form.Item>
 
-                <Form.Item label="类型" name="type">
+                <Form.Item label={t('auth.form.type.label')} name="type">
                   <Select onChange={handleTypeChange}>
-                    {(Object.keys(TYPE_LABELS) as AuthSchemeType[]).map((t) => (
-                      <Select.Option key={t} value={t}>
+                    {(Object.keys(TYPE_I18N_KEYS) as AuthSchemeType[]).map((typeKey) => (
+                      <Select.Option key={typeKey} value={typeKey}>
                         <span
                           className="auth-drawer__type-dot"
-                          style={{ backgroundColor: TYPE_COLORS[t] }}
+                          style={{ backgroundColor: TYPE_COLORS[typeKey] }}
                         />
-                        {TYPE_LABELS[t]}
+                        {t(TYPE_I18N_KEYS[typeKey])}
                       </Select.Option>
                     ))}
                   </Select>
                 </Form.Item>
 
-                <Form.Item label="说明（可选）" name="description">
-                  <Input placeholder="给团队成员看的备注" />
+                <Form.Item label={t('auth.form.desc.label')} name="description">
+                  <Input placeholder={t('auth.form.desc.placeholder')} />
                 </Form.Item>
               </Form>
 
               <div className="auth-drawer__section">
-                <div className="auth-drawer__section-title">凭证</div>
+                <div className="auth-drawer__section-title">{t('auth.section.credential')}</div>
                 {renderTypeForm()}
               </div>
 
               <div className="auth-drawer__section">
                 <div className="auth-drawer__section-title">
                   <span>
-                    服务绑定{' '}
-                    <Tooltip title="选择哪些服务在 Try-it-out 时自动应用此方案">
+                    {t('auth.section.bindings')}{' '}
+                    <Tooltip title={t('auth.section.bindings.tooltip')}>
                       <QuestionCircleOutlined className="auth-drawer__muted" />
                     </Tooltip>
                   </span>
@@ -317,17 +321,17 @@ const AuthSchemesDrawer: React.FC<Props> = ({
               <div className="auth-drawer__actions">
                 <Space>
                   <Popconfirm
-                    title="确认删除该方案？相关凭证将被一并清理。"
+                    title={t('auth.drawer.deleteConfirm')}
                     onConfirm={handleDelete}
-                    okText="删除"
-                    cancelText="取消"
+                    okText={t('common.delete')}
+                    cancelText={t('common.cancel')}
                   >
                     <Button danger icon={<DeleteOutlined />}>
-                      删除
+                      {t('common.delete')}
                     </Button>
                   </Popconfirm>
                   <Button type="primary" onClick={handleSave}>
-                    保存
+                    {t('common.save')}
                   </Button>
                 </Space>
               </div>
@@ -354,6 +358,7 @@ const SecretInput: React.FC<SecretInputProps> = ({
   onChange,
   placeholder,
 }) => {
+  const { t } = useTranslation();
   // Local plaintext mirror so the user can type freely; we sync to the vault
   // on blur to avoid spamming localStorage on every keystroke.
   const [draft, setDraft] = useState<string>(() =>
@@ -383,7 +388,7 @@ const SecretInput: React.FC<SecretInputProps> = ({
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onPressEnter={commit}
-        placeholder={placeholder ?? '在此粘贴 / 输入凭证'}
+        placeholder={placeholder ?? t('auth.secret.placeholder')}
         visibilityToggle={{
           visible: show,
           onVisibleChange: setShow,
@@ -394,7 +399,7 @@ const SecretInput: React.FC<SecretInputProps> = ({
       />
       {value && vault.isVaultRef(value) && (
         <span className="auth-drawer__muted auth-drawer__hint-line">
-          已保存到本地保险库（{value.slice(0, 14)}…）。变更后会自动覆盖原条目。
+          {t('auth.secret.savedHint', { ref: value.slice(0, 14) })}
         </span>
       )}
     </div>
@@ -406,121 +411,135 @@ const SecretInput: React.FC<SecretInputProps> = ({
 const BearerForm: React.FC<{
   value: BearerConfig;
   onChange: (next: BearerConfig) => void;
-}> = ({ value, onChange }) => (
-  <Form layout="vertical" requiredMark={false}>
-    <Form.Item label="Token">
-      <SecretInput
-        value={value.tokenRef}
-        onChange={(ref) => onChange({ ...value, tokenRef: ref })}
-        placeholder="eyJhbGciOi..."
-      />
-    </Form.Item>
-  </Form>
-);
+}> = ({ value, onChange }) => {
+  const { t } = useTranslation();
+  return (
+    <Form layout="vertical" requiredMark={false}>
+      <Form.Item label={t('auth.bearer.token.label')}>
+        <SecretInput
+          value={value.tokenRef}
+          onChange={(ref) => onChange({ ...value, tokenRef: ref })}
+          placeholder="eyJhbGciOi..."
+        />
+      </Form.Item>
+    </Form>
+  );
+};
 
 const BasicForm: React.FC<{
   value: BasicConfig;
   onChange: (next: BasicConfig) => void;
-}> = ({ value, onChange }) => (
-  <Form layout="vertical" requiredMark={false}>
-    <Form.Item label="Username">
-      <Input
-        value={value.username}
-        onChange={(e) => onChange({ ...value, username: e.target.value })}
-        placeholder="支持 {{var}} 变量"
-      />
-    </Form.Item>
-    <Form.Item label="Password">
-      <SecretInput
-        value={value.passwordRef}
-        onChange={(ref) => onChange({ ...value, passwordRef: ref })}
-      />
-    </Form.Item>
-  </Form>
-);
+}> = ({ value, onChange }) => {
+  const { t } = useTranslation();
+  return (
+    <Form layout="vertical" requiredMark={false}>
+      <Form.Item label={t('auth.basic.username.label')}>
+        <Input
+          value={value.username}
+          onChange={(e) => onChange({ ...value, username: e.target.value })}
+          placeholder={t('auth.basic.username.placeholder')}
+        />
+      </Form.Item>
+      <Form.Item label={t('auth.basic.password.label')}>
+        <SecretInput
+          value={value.passwordRef}
+          onChange={(ref) => onChange({ ...value, passwordRef: ref })}
+        />
+      </Form.Item>
+    </Form>
+  );
+};
 
 const ApiKeyForm: React.FC<{
   value: ApiKeyConfig;
   onChange: (next: ApiKeyConfig) => void;
-}> = ({ value, onChange }) => (
-  <Form layout="vertical" requiredMark={false}>
-    <Form.Item label="位置">
-      <Select
-        value={value.in}
-        onChange={(v) => onChange({ ...value, in: v })}
-        options={[
-          { value: 'header', label: 'Header（请求头）' },
-          { value: 'query', label: 'Query（查询参数）' },
-          { value: 'cookie', label: 'Cookie' },
-        ]}
-      />
-    </Form.Item>
-    <Form.Item label="参数名">
-      <Input
-        value={value.name}
-        onChange={(e) => onChange({ ...value, name: e.target.value })}
-        placeholder={
-          value.in === 'header' ? '如 X-API-Key' : value.in === 'query' ? '如 api_key' : '如 session'
-        }
-      />
-    </Form.Item>
-    <Form.Item label="参数值">
-      <SecretInput
-        value={value.valueRef}
-        onChange={(ref) => onChange({ ...value, valueRef: ref })}
-      />
-    </Form.Item>
-  </Form>
-);
+}> = ({ value, onChange }) => {
+  const { t } = useTranslation();
+  return (
+    <Form layout="vertical" requiredMark={false}>
+      <Form.Item label={t('auth.apikey.in.label')}>
+        <Select
+          value={value.in}
+          onChange={(v) => onChange({ ...value, in: v })}
+          options={[
+            { value: 'header', label: t('auth.apikey.in.header') },
+            { value: 'query', label: t('auth.apikey.in.query') },
+            { value: 'cookie', label: t('auth.apikey.in.cookie') },
+          ]}
+        />
+      </Form.Item>
+      <Form.Item label={t('auth.apikey.name.label')}>
+        <Input
+          value={value.name}
+          onChange={(e) => onChange({ ...value, name: e.target.value })}
+          placeholder={
+            value.in === 'header'
+              ? t('auth.apikey.name.headerPlaceholder')
+              : value.in === 'query'
+              ? t('auth.apikey.name.queryPlaceholder')
+              : t('auth.apikey.name.cookiePlaceholder')
+          }
+        />
+      </Form.Item>
+      <Form.Item label={t('auth.apikey.value.label')}>
+        <SecretInput
+          value={value.valueRef}
+          onChange={(ref) => onChange({ ...value, valueRef: ref })}
+        />
+      </Form.Item>
+    </Form>
+  );
+};
 
 const OAuth2ClientForm: React.FC<{
   value: OAuth2ClientConfig;
   onChange: (next: OAuth2ClientConfig) => void;
 }> = ({ value, onChange }) => {
+  const { t } = useTranslation();
   const cachedTok = value.cachedTokenRef ? vault.get(value.cachedTokenRef) : null;
   const cachedExp = value.cachedExpiresAt;
   const now = Date.now();
   const cacheState = !cachedTok
-    ? '尚未获取'
+    ? t('auth.oauth.cache.none')
     : cachedExp && cachedExp - 30_000 > now
-    ? `有效（${new Date(cachedExp).toLocaleString()} 过期）`
-    : '已过期 / 即将过期';
+    ? t('auth.oauth.cache.valid', { expires: new Date(cachedExp).toLocaleString() })
+    : t('auth.oauth.cache.expired');
 
   const clearCache = () => {
     if (value.cachedTokenRef) vault.remove(value.cachedTokenRef);
     onChange({ ...value, cachedTokenRef: undefined, cachedExpiresAt: undefined });
-    message.success('已清空 OAuth2 access token 缓存');
+    message.success(t('auth.oauth.cache.cleared'));
   };
 
   return (
     <Form layout="vertical" requiredMark={false}>
-      <Form.Item label="Token URL">
+      <Form.Item label={t('auth.oauth.tokenUrl.label')}>
         <Input
           value={value.tokenUrl}
           onChange={(e) => onChange({ ...value, tokenUrl: e.target.value })}
-          placeholder="https://issuer.example.com/oauth2/token"
+          placeholder={t('auth.oauth.tokenUrl.placeholder')}
         />
       </Form.Item>
-      <Form.Item label="Client ID">
+      <Form.Item label={t('auth.oauth.clientId.label')}>
         <Input
           value={value.clientId}
           onChange={(e) => onChange({ ...value, clientId: e.target.value })}
         />
       </Form.Item>
-      <Form.Item label="Client Secret">
+      <Form.Item label={t('auth.oauth.clientSecret.label')}>
         <SecretInput
           value={value.clientSecretRef}
           onChange={(ref) => onChange({ ...value, clientSecretRef: ref })}
         />
       </Form.Item>
-      <Form.Item label="Scope（可选）">
+      <Form.Item label={t('auth.oauth.scope.label')}>
         <Input
           value={value.scope ?? ''}
           onChange={(e) => onChange({ ...value, scope: e.target.value })}
-          placeholder="例如 read:orders write:orders"
+          placeholder={t('auth.oauth.scope.placeholder')}
         />
       </Form.Item>
-      <Form.Item label="Access Token 缓存">
+      <Form.Item label={t('auth.oauth.cache.label')}>
         <div className="auth-drawer__cache">
           <Tag color={cachedTok && cachedExp && cachedExp > now ? 'green' : 'default'}>
             {cacheState}
@@ -531,10 +550,10 @@ const OAuth2ClientForm: React.FC<{
             onClick={clearCache}
             disabled={!cachedTok}
           >
-            清空缓存
+            {t('auth.oauth.cache.clear')}
           </Button>
           <span className="auth-drawer__muted auth-drawer__hint-line">
-            首次发送 Try-it-out 时会自动调用 token 端点获取并缓存。
+            {t('auth.oauth.cache.hint')}
           </span>
         </div>
       </Form.Item>
@@ -550,6 +569,7 @@ const BindingsEditor: React.FC<{
   knownServices?: Array<{ url: string; name: string }>;
   onBind: (serviceRefId: string, schemeId: string | null) => void;
 }> = ({ schemeId, bindings, knownServices, onBind }) => {
+  const { t } = useTranslation();
   const [draftService, setDraftService] = useState<string | undefined>(
     undefined,
   );
@@ -576,7 +596,7 @@ const BindingsEditor: React.FC<{
 
   const handleAdd = () => {
     if (!draftService) {
-      message.warning('请选择或输入服务标识');
+      message.warning(t('auth.bind.required'));
       return;
     }
     onBind(draftService, schemeId);
@@ -606,7 +626,7 @@ const BindingsEditor: React.FC<{
           <Select
             value={draftService}
             onChange={setDraftService}
-            placeholder="选择要绑定的服务"
+            placeholder={t('auth.bind.placeholder')}
             allowClear
             showSearch
             style={{ width: 260 }}
@@ -619,18 +639,18 @@ const BindingsEditor: React.FC<{
           <Input
             value={draftService ?? ''}
             onChange={(e) => setDraftService(e.target.value)}
-            placeholder="输入服务 URL 或标识"
+            placeholder={t('auth.bind.input')}
             style={{ width: 320 }}
           />
         )}
         <Button icon={<PlusOutlined />} onClick={handleAdd}>
-          绑定
+          {t('auth.bind.button')}
         </Button>
       </div>
       {rows.length === 0 ? (
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description="尚未绑定任何服务"
+          description={t('auth.bind.empty')}
           style={{ padding: '12px 0' }}
         />
       ) : (
@@ -641,7 +661,7 @@ const BindingsEditor: React.FC<{
           dataSource={rows}
           columns={[
             {
-              title: '服务',
+              title: t('auth.bind.col.service'),
               dataIndex: 'service',
               render: (_, row) =>
                 row.name ? (
@@ -658,9 +678,9 @@ const BindingsEditor: React.FC<{
               width: 60,
               render: (_, row) => (
                 <Popconfirm
-                  title="解除该绑定？"
-                  okText="解除"
-                  cancelText="取消"
+                  title={t('auth.bind.removeConfirm')}
+                  okText={t('auth.bind.remove')}
+                  cancelText={t('common.cancel')}
                   onConfirm={() => onBind(row.service, null)}
                 >
                   <Button size="small" type="text" danger icon={<DeleteOutlined />} />

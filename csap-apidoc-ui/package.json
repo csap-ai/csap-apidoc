@@ -20,10 +20,13 @@
     "antd": "^4.22.2",
     "clipboard": "^2.0.11",
     "csap-axios": "^1.0.1",
+    "i18next": "^23.16.8",
+    "i18next-browser-languagedetector": "^7.2.2",
     "js-yaml": "^4.1.0",
     "nprogress": "^0.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-i18next": "^13.5.0",
     "react-router-dom": "^6.3.0",
     "react-transition-group": "^4.4.2"
   },

@@ -25,6 +25,7 @@ import {
   DeleteOutlined,
   CheckCircleFilled,
 } from '@ant-design/icons';
+import { useTranslation } from 'react-i18next';
 import { useEnvironments } from '@/contexts/EnvironmentContext';
 import {
   Environment,
@@ -68,6 +69,7 @@ function rowsToMap(rows: VariableRow[]): Record<string, string> {
 }
 
 const EnvironmentManagerDrawer: React.FC<Props> = ({ open, onClose }) => {
+  const { t } = useTranslation();
   const { state, active, add, update, remove, setActive, suggestColor } =
     useEnvironments();
 
@@ -123,7 +125,7 @@ const EnvironmentManagerDrawer: React.FC<Props> = ({ open, onClose }) => {
         color: values.color || selected.color,
         variables,
       });
-      message.success('已保存');
+      message.success(t('common.saved'));
     } catch {
       // antd form validation error already surfaced
     }
@@ -133,13 +135,13 @@ const EnvironmentManagerDrawer: React.FC<Props> = ({ open, onClose }) => {
     if (!selected) return;
     remove(selected.id);
     setSelectedId(null);
-    message.success('已删除');
+    message.success(t('common.deleted'));
   };
 
   const handleSetActive = () => {
     if (!selected) return;
     setActive(selected.id);
-    message.success(`已切换到「${selected.name}」`);
+    message.success(t('env.drawer.activated', { name: selected.name }));
   };
 
   const handleAddRow = () =>
@@ -159,7 +161,7 @@ const EnvironmentManagerDrawer: React.FC<Props> = ({ open, onClose }) => {
 
   return (
     <Drawer
-      title="环境管理"
+      title={t('env.drawer.title')}
       width={760}
       open={open}
       onClose={onClose}
@@ -175,11 +177,11 @@ const EnvironmentManagerDrawer: React.FC<Props> = ({ open, onClose }) => {
             onClick={handleCreate}
             className="env-drawer__add-btn"
           >
-            新建环境
+            {t('env.drawer.create')}
           </Button>
           {state.items.length === 0 ? (
             <Empty
-              description="尚未配置环境"
+              description={t('env.drawer.empty')}
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               style={{ marginTop: 32 }}
             />
@@ -213,46 +215,46 @@ const EnvironmentManagerDrawer: React.FC<Props> = ({ open, onClose }) => {
 
         <div className="env-drawer__form">
           {!selected ? (
-            <Empty description="请选择或新建一个环境" />
+            <Empty description={t('env.drawer.selectOrCreate')} />
           ) : (
             <>
               <Form layout="vertical" form={form} requiredMark={false}>
                 <Form.Item
-                  label="名称"
+                  label={t('common.name')}
                   name="name"
                   rules={[
-                    { required: true, message: '请输入环境名称' },
-                    { max: 32, message: '最多 32 个字符' },
+                    { required: true, message: t('env.form.name.required') },
+                    { max: 32, message: t('env.form.name.maxLen') },
                   ]}
                 >
-                  <Input placeholder="例如：Dev / Staging / Prod" />
+                  <Input placeholder={t('env.form.name.placeholder')} />
                 </Form.Item>
                 <Form.Item
-                  label="Base URL"
+                  label={t('env.form.baseUrl.label')}
                   name="baseUrl"
-                  extra="留空表示沿用当前页面来源（适合开发代理场景）"
+                  extra={t('env.form.baseUrl.help')}
                 >
-                  <Input placeholder="https://api-staging.example.com" />
+                  <Input placeholder={t('env.form.baseUrl.placeholder')} />
                 </Form.Item>
-                <Form.Item label="颜色标记" name="color">
+                <Form.Item label={t('env.form.color')} name="color">
                   <ColorPicker />
                 </Form.Item>
               </Form>
 
               <div className="env-drawer__variables">
                 <div className="env-drawer__section-title">
-                  <span>变量</span>
+                  <span>{t('env.variables.title')}</span>
                   <Button
                     size="small"
                     icon={<PlusOutlined />}
                     onClick={handleAddRow}
                   >
-                    新增
+                    {t('common.add')}
                   </Button>
                 </div>
                 {rows.length === 0 ? (
                   <Empty
-                    description="暂无变量"
+                    description={t('env.variables.empty')}
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                     style={{ padding: '16px 0' }}
                   />
@@ -264,14 +266,14 @@ const EnvironmentManagerDrawer: React.FC<Props> = ({ open, onClose }) => {
                     dataSource={rows}
                     columns={[
                       {
-                        title: '名称',
+                        title: t('env.variables.colName'),
                         dataIndex: 'name',
                         width: '40%',
                         render: (_, row) => (
                           <Input
                             size="small"
                             value={row.name}
-                            placeholder="如 tenantId"
+                            placeholder={t('env.variables.name.placeholder')}
                             onChange={(e) =>
                               handleRowChange(row.key, 'name', e.target.value)
                             }
@@ -279,13 +281,13 @@ const EnvironmentManagerDrawer: React.FC<Props> = ({ open, onClose }) => {
                         ),
                       },
                       {
-                        title: '值',
+                        title: t('env.variables.colValue'),
                         dataIndex: 'value',
                         render: (_, row) => (
                           <Input
                             size="small"
                             value={row.value}
-                            placeholder="如 42"
+                            placeholder={t('env.variables.value.placeholder')}
                             onChange={(e) =>
                               handleRowChange(row.key, 'value', e.target.value)
                             }
@@ -309,32 +311,32 @@ const EnvironmentManagerDrawer: React.FC<Props> = ({ open, onClose }) => {
                   />
                 )}
                 <div className="env-drawer__hint">
-                  在 Base URL、请求头等位置使用 <Tag>{`{{name}}`}</Tag>{' '}
-                  引用变量；保留字 <Tag>{`{{baseUrl}}`}</Tag>{' '}
-                  始终解析为当前 Base URL。
+                  {t('env.variables.hint.before')}<Tag>{`{{name}}`}</Tag>
+                  {t('env.variables.hint.middle')}<Tag>{`{{baseUrl}}`}</Tag>
+                  {t('env.variables.hint.after')}
                 </div>
               </div>
 
               <div className="env-drawer__actions">
                 <Space>
                   <Popconfirm
-                    title="确认删除该环境？"
+                    title={t('env.drawer.deleteConfirm')}
                     onConfirm={handleDelete}
-                    okText="删除"
-                    cancelText="取消"
+                    okText={t('common.delete')}
+                    cancelText={t('common.cancel')}
                   >
                     <Button danger icon={<DeleteOutlined />}>
-                      删除
+                      {t('common.delete')}
                     </Button>
                   </Popconfirm>
                   <Button
                     onClick={handleSetActive}
                     disabled={selected.id === active?.id}
                   >
-                    设为当前
+                    {t('env.drawer.setActive')}
                   </Button>
                   <Button type="primary" onClick={handleSave}>
-                    保存
+                    {t('common.save')}
                   </Button>
                 </Space>
               </div>
