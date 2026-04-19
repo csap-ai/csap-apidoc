@@ -45,7 +45,7 @@
   理了(比如要求 token 才放行),preflight 直接 401 / 403。
 
 - **Cookie 不带过去**:服务端日志显示 session 拿不到,即使你已经在
-  浏览器里登录过该业务域名。原因见下面 §3.4。
+  浏览器里登录过该业务域名。原因见下面 §3.5。
 
 ---
 
@@ -79,15 +79,14 @@ public class CorsConfig implements WebMvcConfigurer {
 
 - **推荐方式 A(一劳永逸)**:让业务服务把 csap-apidoc-ui 部署域名
   加进 CORS allowlist。Dev 环境可以放宽到 `*`,**生产必须明确指定
-  origin**(尤其是开了 `Allow-Credentials: true` 的场景,见 §3.4)。
+  origin**(尤其是开了 `Allow-Credentials: true` 的场景,见 §3.5)。
 
-- **方式 B(临时绕开)**:走 `csap-apidoc-devtools` 即将提供的可
-  选反向代理。
-  - **当前状态:未实装,跟 M8.x 一起跟进。**
-  - 实装前的临时手段:在 Settings 里填
-    `tryItOut.proxyUrl`,值是一个用户自建的开源 cors-proxy。
-    **强烈不建议指向公共 cors-proxy 服务**:这等于把所有请求体(包
-    括 bearer token)交给第三方。
+- **方式 B(临时绕开)**:在 Settings 里填 `tryItOut.proxyUrl`,值是
+  一个用户自建的开源 cors-proxy。**强烈不建议指向公共 cors-proxy 服
+  务**:这等于把所有请求体(包括 bearer token)交给第三方。
+
+- **方式 C(推荐生产部署形态)**:走 `csap-apidoc-devtools` 内置的反
+  向代理端点 `POST /csap/apidoc/devtools/proxy`。详见下面的「选项 C」。
 
 ### 3.3 HTTPS 页面调用 HTTP 服务 — Mixed Content 拦截
 
@@ -109,7 +108,47 @@ blocked.
    会丢掉所有 HTTPS 提供的安全收益)。
 3. 在前面架一层 HTTPS 反向代理转发到 HTTP 后端(等价于方案 1)。
 
-### 3.4 需要 Cookie 跨域 — `Allow-Credentials` + `withCredentials`
+### 3.4 选项 C:csap-apidoc-devtools 反代端点(推荐生产部署形态)
+
+如果业务服务的 CORS 短期内不可控、又不想往 `tryItOut.proxyUrl` 里塞
+一个公共代理,推荐启用宿主应用里 `csap-apidoc-devtools` 模块自带的
+**同源反向代理端点**:
+
+```
+POST /csap/apidoc/devtools/proxy
+```
+
+UI 会把 try-it-out 请求 POST 到该端点,由宿主应用代为发起到目标服
+务,然后把响应原样回传。因为前端访问的是宿主应用本身的域名,浏览
+器侧没有跨域,CORS 直接绕开。
+
+要点:
+
+- **默认关闭**。需要在 `application.yml` 显式打开:
+  ```yaml
+  csap:
+    apidoc:
+      devtools:
+        proxy:
+          enabled: true
+          allowed-hosts:
+            - api.staging.example.com
+            - "*.staging.example.com"
+  ```
+- **强制 host 白名单**。没填 `allowed-hosts` = 所有请求拒绝(fail-
+  closed),日志里会有 WARN。
+- **自动剥离敏感头**:`Cookie`、`X-Forwarded-For`、`X-Real-IP` 默
+  认不转发;响应里的 `Set-Cookie` 也会被剥掉(浏览器在跨源代理场
+  景下本来就不会接受)。
+- **可拦截请求体大小**:`max-body-bytes` 默认 5 MiB。
+- **不做调用方鉴权**:这是 SSRF 原语,**绝不要**在公网未鉴权的
+  实例上启用;请配合 Spring Security 把 `/csap/apidoc/devtools/proxy`
+  锁到内部 devtools 用户。
+
+完整契约、示例与安全模型见
+[`csap-apidoc-devtools/PROXY.md`](../csap-apidoc-devtools/PROXY.md)。
+
+### 3.5 需要 Cookie 跨域 — `Allow-Credentials` + `withCredentials`
 
 跨域携带 Cookie / Authorization Cookie,需要双方都打开:
 
@@ -147,7 +186,7 @@ blocked.
 6. **如果用 OAuth2 Client Credentials**:除了业务接口,**token 端点
    本身**也要能跨域 —— 否则换 token 那一步就先挂了。token 端点的
    响应头同样需要 `Access-Control-Allow-Origin`。
-7. **如果依赖 Cookie**:确认双方都满足 §3.4 的条件;`Allow-Origin`
+7. **如果依赖 Cookie**:确认双方都满足 §3.5 的条件;`Allow-Origin`
    必须是精确域名,不能是 `*`。
 
 ---

@@ -1,0 +1,5 @@
+# Auto Configure
+# csap-apidoc-devtools — opt-in proxy endpoint (POST /csap/apidoc/devtools/proxy).
+# Disabled by default; activated via csap.apidoc.devtools.proxy.enabled=true.
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  ai.csap.apidoc.devtools.proxy.DevtoolsProxyAutoConfiguration
