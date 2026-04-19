@@ -402,7 +402,11 @@ hard-coded public fallback (which would be dangerous: a public proxy
 would see all request bodies, including bearer tokens). User opts in
 explicitly per browser. **Locked.**
 
-### ✅ D-7. M8 trimmed: ship vitest + docs in v0.x.0; defer i18n + Playwright
+### ✅ D-7. M8 trimmed → fully resolved: vitest + docs + Playwright + i18n all landed
+
+> **Update (Round 3):** all three deferred items (M8.1 i18n bootstrap, M8.2 Playwright E2E, React component tests via the i18n smoke suite) are now in v0.x.0. The original deferral reasoning is preserved below for archaeology, but the conclusion no longer applies.
+
+**Original (now superseded):**
 
 M8 was originally scoped as `Vitest unit tests + Playwright E2E + README + zh-CN/en-US strings + CORS doc page` at a 1–2d estimate. Reality at landing time:
 
@@ -446,10 +450,11 @@ annotations (`@DocGlobalHeader`, `@DocAuth`) live in
 - [x] M5 — wire env+headers+auth into requests
 - [x] M6 — Web Crypto vault encryption
 - [x] M7 — devtools annotation hints (delivered alongside v0.x.0 — D-6 superseded)
-- [x] M8 — tests + docs (i18n deferred — see §9 D-7)
-- [x] M8.2 — Playwright E2E (try-it-out happy path) — D-7 partially landed
+- [x] M8 — tests + docs
+- [x] M8.1 — i18n bootstrap (react-i18next + zh-CN default + en-US + LanguageSwitcher) — D-7 fully resolved
+- [x] M8.2 — Playwright E2E (try-it-out happy path)
 - [x] C-bundle — UI polish: serviceRefId canonicalization (C1), VaultLockBanner reposition (C3), withCredentials switch (C4), composer warnings Alert (C2)
-- [ ] M8.1 — i18n bootstrap (still deferred to v0.(x+1).0 per D-7)
+- [x] C5 — devtools opt-in HTTP reverse-proxy endpoint (CORS bypass via same-origin)
 
 ---
 
