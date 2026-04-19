@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import CodeMirror from '@uiw/react-codemirror';
 import { githubLight } from '@uiw/codemirror-theme-github';
 import CopyTypeScript from '@/components/CopyTypeScript';
-import axios from 'axios';
+import axios from 'csap-axios';
 import { extractApiListFromBrokenJson } from '@/utils/jsonFixer';
 import { exportToOpenApi, downloadOpenApiDoc } from '@/utils/exportOpenApi';
 import { exportToPostman, downloadPostmanCollection } from '@/utils/exportPostman';
