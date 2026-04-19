@@ -1,21 +1,32 @@
 import LayoutHeader from './Header';
+import VaultLockBanner from '@/components/VaultLockBanner';
 import { Tree, Input, Table, message, Tooltip, Result, Button, Spin, Tag } from 'antd';
 import { FileTextOutlined, ApiOutlined, FileSearchOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import type { DirectoryTreeProps } from 'antd/es/tree';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Clipboard from 'clipboard';
 import { getMenuList, getApiDetail } from '@/api/apidoc';
-import { columns, columnsBody, columnsBodyResponse } from './columns';
+import { buildColumns, buildColumnsBody, buildColumnsBodyResponse } from './columns';
+import { useTranslation } from 'react-i18next';
 import CodeMirror from '@uiw/react-codemirror';
 import { githubLight } from '@uiw/codemirror-theme-github';
 import CopyTypeScript from '@/components/CopyTypeScript';
-import axios from 'axios';
+import axios from 'csap-axios';
 import { extractApiListFromBrokenJson } from '@/utils/jsonFixer';
 import { exportToOpenApi, downloadOpenApiDoc } from '@/utils/exportOpenApi';
 import { exportToPostman, downloadPostmanCollection } from '@/utils/exportPostman';
 import { exportToMarkdown, downloadMarkdown } from '@/utils/exportMarkdown';
 import { groupParametersByType, getNonEmptyParamTypes, getParamTypeLabel, buildRequestData, replacePathParams } from '@/utils/paramTypeUtils';
-import { ExclamationCircleFilled } from '@ant-design/icons';
+import { ExclamationCircleFilled, ThunderboltOutlined } from '@ant-design/icons';
+import TryItOutPanel, { RequestSpec } from '@/components/TryItOutPanel';
+import type { HttpMethod } from '@/services/tryItOutClient';
+import {
+  composeTryItOutSpec,
+  explainContextBadges,
+} from '@/services/requestComposer';
+import { useActiveEnvironment } from '@/contexts/EnvironmentContext';
+import { useHeaders } from '@/contexts/HeadersContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 import './index.less';
 
@@ -23,7 +34,20 @@ const { Search } = Input;
 const { DirectoryTree } = Tree;
 
 const LayoutIndex = () => {
-  const [toolipTitle, setToolipTitle] = useState('点击复制');
+  // M5 — wire env + headers + auth into try-it-out. These hooks must be
+  // called at the top of the component so React's hook ordering stays
+  // stable across renders.
+  const env = useActiveEnvironment();
+  const { resolve: resolveHeaders, explain: explainHeaders } = useHeaders();
+  const { apply: applyAuth, getActiveSchemeFor } = useAuth();
+  const { t } = useTranslation();
+
+  // M8.1 — column factories react to language switches automatically.
+  const columns = React.useMemo(() => buildColumns(t), [t]);
+  const columnsBody = React.useMemo(() => buildColumnsBody(t), [t]);
+  const columnsBodyResponse = React.useMemo(() => buildColumnsBodyResponse(t), [t]);
+
+  const [toolipTitle, setToolipTitle] = useState(t('layout.tooltip.copy'));
   const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
   const [defaultExpandeKeys, SetDefaultExpandeKeys] = useState<React.Key[]>([]);
   const [apiOptions, setApiOptions] = useState<any[]>([]);
@@ -39,6 +63,7 @@ const LayoutIndex = () => {
   });
   const [finalData, setFinalData] = useState([]);
   const [DocText, setDocText] = useState(false);
+  const [tryV2, setTryV2] = useState(false);
   const [ObjQuery, setObjQuery] = useState<any>({});
   const [loading, setLoading] = useState(false);
   const [totalApis, setTotalApis] = useState(0);
@@ -205,7 +230,7 @@ const LayoutIndex = () => {
       const validatedList = apiList.map(item => ({
         ...item,
         key: item.key || item.id || Math.random().toString(36).substr(2, 9),
-        title: item.title || item.name || '未命名',
+        title: item.title || item.name || t('layout.untitled'),
         children: item.children || []
       }));
 
@@ -230,7 +255,7 @@ const LayoutIndex = () => {
       }
     } catch (error) {
       console.error('获取菜单列表失败:', error);
-      message.error(`加载API列表失败: ${error.message}`);
+      message.error(t('layout.error.apiListLoad', { message: error.message }));
       setTreeData([]);
       setFinalData([]);
       // 只在初始加载时清空 apiOptions
@@ -292,20 +317,20 @@ const LayoutIndex = () => {
   useEffect(() => {
     const copy = new Clipboard('.api-ri');
     copy.on('success', (e) => {
-      message.success('复制成功');
-      setToolipTitle('已复制');
+      message.success(t('layout.copy.success'));
+      setToolipTitle(t('layout.tooltip.copied'));
       setTimeout(() => {
-        setToolipTitle('点击复制');
+        setToolipTitle(t('layout.tooltip.copy'));
       }, 3000);
     });
     copy.on('error', function (e) {
-      message.error('复制失败');
-      setToolipTitle('点击复制');
+      message.error(t('layout.copy.failed'));
+      setToolipTitle(t('layout.tooltip.copy'));
     });
     return () => {
       copy?.destroy();
     };
-  }, []);
+  }, [t]);
 
   const onChangeValue = (value: string) => {
     if (value) {
@@ -320,18 +345,18 @@ const LayoutIndex = () => {
     getTreeList(`${import.meta.env.VITE_API_URL}/csap/apidoc/parent`, true)
       .catch(error => {
         console.error('初始化加载菜单失败:', error);
-        message.error('加载API文档失败，请检查网络或API服务');
+        message.error(t('layout.error.docLoad'));
       });
   }, []);
 
   // 导出功能处理
   const handleExport = async (format: 'openapi' | 'postman' | 'markdown') => {
     if (!finalData || finalData.length === 0) {
-      message.warning('当前没有可导出的 API 数据');
+      message.warning(t('layout.export.noData'));
       return;
     }
 
-    const loadingMsg = message.loading('正在生成文档...', 0);
+    const loadingMsg = message.loading(t('layout.export.generating'), 0);
 
     try {
       // 获取 API 详情的辅助函数
@@ -370,7 +395,7 @@ const LayoutIndex = () => {
           content = await exportToOpenApi(finalData, getApiDetailForExport, baseUrl);
           filename = 'openapi.json';
           downloadOpenApiDoc(content, filename);
-          message.success('OpenAPI 文档导出成功！');
+          message.success(t('layout.export.success.openapi'));
           break;
 
         case 'postman':
@@ -382,7 +407,7 @@ const LayoutIndex = () => {
           );
           filename = 'postman_collection.json';
           downloadPostmanCollection(content, filename);
-          message.success('Postman Collection 导出成功！');
+          message.success(t('layout.export.success.postman'));
           break;
 
         case 'markdown':
@@ -393,15 +418,15 @@ const LayoutIndex = () => {
           );
           filename = 'api-documentation.md';
           downloadMarkdown(content, filename);
-          message.success('Markdown 文档导出成功！');
+          message.success(t('layout.export.success.markdown'));
           break;
 
         default:
-          message.error('不支持的导出格式');
+          message.error(t('layout.export.unsupported'));
       }
     } catch (error) {
       console.error('导出失败:', error);
-      message.error('导出失败，请稍后重试');
+      message.error(t('layout.export.failedRetry'));
     } finally {
       loadingMsg();
     }
@@ -414,7 +439,7 @@ const LayoutIndex = () => {
 
     return (
       <>
-        <div className="api-headers">请求参数</div>
+        <div className="api-headers">{t('layout.params.title')}</div>
 
         {/* 参数说明图例 */}
         {(dataSource && dataSource.length > 0) || nonEmptyTypes.length > 0 ? (
@@ -431,11 +456,11 @@ const LayoutIndex = () => {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <ExclamationCircleFilled style={{ color: '#ff4d4f', fontSize: '12px' }} />
-              <span>必填参数</span>
+              <span>{t('layout.params.required')}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <CheckCircleOutlined style={{ color: '#d9d9d9', fontSize: '12px' }} />
-              <span>可选参数</span>
+              <span>{t('layout.params.optional')}</span>
             </div>
           </div>
         ) : null}
@@ -467,7 +492,7 @@ const LayoutIndex = () => {
                 } style={{ marginRight: 8 }}>
                   {paramType === 'DEFAULT' ? 'QUERY' : paramType}
                 </Tag>
-                {getParamTypeLabel(paramType)}
+                {t(`layout.params.type.${paramType.toLowerCase()}`, { defaultValue: getParamTypeLabel(paramType) })}
               </div>
               <Table
                 columns={columnsBody as any}
@@ -481,7 +506,7 @@ const LayoutIndex = () => {
           ))
         ) : (
           <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
-            暂无请求参数
+            {t('layout.params.empty')}
           </div>
         )}
       </>
@@ -589,7 +614,7 @@ const LayoutIndex = () => {
       try {
         jsonData = JSON.parse(ObjQuery);
       } catch (e) {
-        message.error('JSON 格式错误，请检查参数格式');
+        message.error(t('layout.error.jsonFormat'));
         return;
       }
 
@@ -702,12 +727,12 @@ const LayoutIndex = () => {
           console.log('请求成功，HTTP状态码:', response.status, '响应数据:', response.data);
           setRespCode(response.data);
           setRequestStatus('success');
-          message.success(`请求成功 (HTTP ${response.status})`);
+          message.success(t('layout.req.success', { status: response.status }));
         } else {
           console.warn('请求返回非2xx状态码:', response?.status);
           setRespCode(response?.data || {});
           setRequestStatus('error');
-          message.warning(`请求完成，但HTTP状态码为 ${response?.status}`);
+          message.warning(t('layout.req.warn', { status: response?.status }));
         }
       } catch (error: any) {
         console.error('请求失败:', error);
@@ -722,19 +747,62 @@ const LayoutIndex = () => {
 
         // 根据 HTTP 状态码显示具体错误
         if (status) {
-          message.error(`请求失败 (HTTP ${status})`);
+          message.error(t('layout.req.failHttp', { status }));
         } else if (error.code === 'ECONNABORTED') {
-          message.error('请求超时，请稍后重试');
+          message.error(t('layout.req.timeout'));
         } else if (error.message === 'Network Error') {
-          message.error('网络错误，请检查网络连接');
+          message.error(t('layout.req.network'));
         } else {
-          message.error('请求失败，请检查网络或API服务');
+          message.error(t('layout.req.failed'));
         }
       }
     } else {
-      message.warning('请填写参数');
+      message.warning(t('layout.req.fillParams'));
     }
   };
+
+  // M5 — assemble the inputs the Try-it-out panel needs from the env /
+  // headers / auth contexts. Reading `selectRefValue.current?.value` here
+  // is safe because it changes via `onChangeValue → getTreeList`, which
+  // updates state and triggers a re-render before the panel is shown.
+  const serviceRefId = selectRefValue.current?.value ?? null;
+  const tryItOutBaseUrl = selectRefValue.current?.value
+    ? selectRefValue.current.value.replace('/csap/apidoc/parent', '')
+    : (import.meta.env.VITE_API_URL ?? '');
+  const tryItOutPath = dataObj.patch || '';
+  const tryItOutUrl = tryItOutBaseUrl
+    ? `${tryItOutBaseUrl}${tryItOutPath.startsWith('/') ? '' : '/'}${tryItOutPath}`
+    : tryItOutPath;
+  const tryItOutInitial: RequestSpec = {
+    method: ((dataObj.method || 'GET').toUpperCase() as HttpMethod),
+    url: tryItOutUrl,
+  };
+
+  const tryItOutBadges = React.useMemo(
+    () =>
+      explainContextBadges({
+        env,
+        activeHeaderRules: explainHeaders({ serviceRefId }),
+        activeAuth: getActiveSchemeFor(serviceRefId),
+      }),
+    [env, explainHeaders, getActiveSchemeFor, serviceRefId],
+  );
+
+  const tryItOutEnrich = React.useCallback(
+    async (spec: RequestSpec) => {
+      const authPatch = await applyAuth(serviceRefId);
+      // C2 — composer now returns { spec, warnings }; thread both through
+      // so TryItOutPanel can surface non-fatal drops (e.g. cookies) as Alert.
+      return composeTryItOutSpec({
+        spec,
+        env,
+        serviceRefId,
+        resolvedHeaders: resolveHeaders({ serviceRefId }),
+        authPatch,
+      });
+    },
+    [applyAuth, env, resolveHeaders, serviceRefId],
+  );
 
   return (
     <>
@@ -744,6 +812,10 @@ const LayoutIndex = () => {
         ref={selectRefValue}
         onExport={handleExport}
       />
+      {/* C3 — banner sits in the layout chrome (just under the top bar)
+          rather than as the outermost overlay above <App>. Renders null
+          unless the vault is in 'encrypted-locked' state. */}
+      <VaultLockBanner />
       {/* 调试按钮 - 开发时可启用 */}
       {/* <Button
         style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 999 }}
@@ -759,16 +831,16 @@ const LayoutIndex = () => {
         <div className="container-lf">
           <div className="search-container">
             <Search
-              placeholder="搜索 API 接口..."
+              placeholder={t('layout.search.placeholder')}
               onChange={onChange}
               allowClear
               size="large"
             />
             {treeData.length > 0 && (
               <div className="api-stats">
-                <span>{treeData.length} 个分组</span>
+                <span>{t('layout.stats.groups', { count: treeData.length })}</span>
                 <span className="divider">•</span>
-                <span>{totalApis} 个接口</span>
+                <span>{t('layout.stats.apis', { count: totalApis })}</span>
               </div>
             )}
           </div>
@@ -815,7 +887,7 @@ const LayoutIndex = () => {
         </div>
         {loading ? (
           <div className="container-ri loading-container">
-            <Spin size="large" tip="加载中..." />
+            <Spin size="large" tip={t('layout.loading')} />
           </div>
         ) : dataSource && dataSource.length > 0 ? (
           <div className="container-ri">
@@ -863,48 +935,68 @@ const LayoutIndex = () => {
                   <div className="api-actions">
                     <div className="postContent">
                       <div
-                        className={`postGet ${!DocText ? 'active' : ''}`}
+                        className={`postGet ${!DocText && !tryV2 ? 'active' : ''}`}
                         onClick={() => {
+                          setDocText(false);
+                          setTryV2(false);
+                          setRespCode({});
+                          setRequestStatus(null);
+                        }}
+                      >
+                        {t('layout.tab.docs')}
+                      </div>
+                      <div
+                        className={`postGet ${DocText && !tryV2 ? 'active' : ''}`}
+                        onClick={() => {
+                          setDocText(true);
+                          setTryV2(false);
+                          setRespCode({});
+                          setRequestStatus(null);
+                        }}
+                      >
+                        {t('layout.tab.test')}
+                      </div>
+                      <div
+                        className={`postGet ${tryV2 ? 'active' : ''}`}
+                        onClick={() => {
+                          setTryV2(true);
                           setDocText(false);
                           setRespCode({});
                           setRequestStatus(null);
                         }}
                       >
-                        参数文档
-                      </div>
-                      <div
-                        className={`postGet ${DocText ? 'active' : ''}`}
-                        onClick={() => {
-                          setDocText(true);
-                          setRespCode({});
-                          setRequestStatus(null);
-                        }}
-                      >
-                        在线测试
+                        <ThunderboltOutlined style={{ marginRight: 4 }} />
+                        {t('layout.tab.tryV2')}
                       </div>
                     </div>
-                    {DocText && (
+                    {DocText && !tryV2 && (
                       <Button
                         type="primary"
                         onClick={handleRequest}
                         style={{ marginLeft: 12 }}
                       >
-                        发送请求
+                        {t('layout.send')}
                       </Button>
                     )}
                   </div>
                 </div>
               </div>
 
-              {DocText ? (
+              {tryV2 ? (
+                <TryItOutPanel
+                  initial={tryItOutInitial}
+                  contextBadges={tryItOutBadges}
+                  enrichRequest={tryItOutEnrich}
+                />
+              ) : DocText ? (
                 <div className="jsonDiv">
                   <div>
                     <div className="jsonDiv-title">
                       <FileTextOutlined />
                       <span>
-                        {dataObj.paramsTitle == 'DEFAULT'
-                          ? 'QUERY'
-                          : dataObj.paramsTitle} 请求参数
+                        {t('layout.req.params.title', {
+                          type: dataObj.paramsTitle == 'DEFAULT' ? 'QUERY' : dataObj.paramsTitle,
+                        })}
                       </span>
                     </div>
                     <CodeMirror
@@ -918,15 +1010,15 @@ const LayoutIndex = () => {
                   <div>
                     <div className="jsonDiv-title">
                       <ApiOutlined />
-                      <span>返回数据</span>
+                      <span>{t('layout.response.data')}</span>
                       {requestStatus === 'success' && (
                         <Tag icon={<CheckCircleOutlined />} color="success" style={{ marginLeft: 8 }}>
-                          请求成功
+                          {t('layout.req.successTag')}
                         </Tag>
                       )}
                       {requestStatus === 'error' && (
                         <Tag icon={<CloseCircleOutlined />} color="error" style={{ marginLeft: 8 }}>
-                          请求失败
+                          {t('layout.req.failedTag')}
                         </Tag>
                       )}
                     </div>
@@ -941,7 +1033,7 @@ const LayoutIndex = () => {
                 <Doc />
               )}
 
-              <div className="api-headers">返回数据</div>
+              <div className="api-headers">{t('layout.response.data')}</div>
               <Table
                 columns={columnsBodyResponse}
                 bordered
@@ -956,8 +1048,8 @@ const LayoutIndex = () => {
           <div style={{ width: '100%', height: '80%' }}>
             <Result
               icon={<FileSearchOutlined style={{ fontSize: 80, color: '#6fd4c8' }} />}
-              title="选择一个 API 开始探索"
-              subTitle="从左侧列表中选择您想要查看的 API 接口，查看详细的参数说明和返回数据"
+              title={t('layout.empty.title')}
+              subTitle={t('layout.empty.subtitle')}
               style={{ margin: '200px auto 0px' }}
             />
           </div>

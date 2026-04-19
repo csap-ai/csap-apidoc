@@ -19,9 +19,63 @@ csap:
     devtool:
       enabled: true
       cache: true
+    # ─────────────────────────────────────────────────────────────────────
+    # OPTIONAL: csap-apidoc-devtools reverse-proxy endpoint (CORS bypass).
+    #
+    # Default OFF. Uncomment to enable POST /csap/apidoc/devtools/proxy so
+    # the standalone csap-apidoc-ui can issue Try-it-out calls without
+    # tripping over browser CORS. STRICT allowlist required. Read
+    # csap-apidoc-devtools/PROXY.md before enabling on any non-local host
+    # (this endpoint is an SSRF primitive — pair with Spring Security in
+    # production).
+    # ─────────────────────────────────────────────────────────────────────
+    # devtools:
+    #   proxy:
+    #     enabled: true
+    #     allowed-hosts:
+    #       - localhost
+    #       - 127.0.0.1
+    #       # - api.staging.example.com
+    #       # - "*.staging.example.com"
+    #     max-body-bytes: 5242880
+    #     timeout-ms: 30000
+    #     strip-headers:
+    #       - Cookie
+    #       - X-Forwarded-For
+    #       - X-Real-IP
+    #     log-bodies: false
   # 验证框架配置
   validation:
     enabled: true
+
+  # ─────────────────────────────────────────────────────────────────────
+  # Demo Security (JWT, in-memory users)
+  #
+  # Default OFF — when off, every endpoint is public, exactly as before.
+  # Switch on to demo the "configure a Bearer token in csap-apidoc-ui →
+  # Try it out → 200" flow. See docs/SECURITY.md.
+  #
+  # Public endpoints when enabled (no token required):
+  #   /csap-apidoc/**, /csap-api.html, /csap-api-devtools.html,
+  #   /devtools-ui/**, /api/devtools/**, /auth/**, /actuator/health,
+  #   /error, /static/**, /favicon.ico
+  # Everything else (notably /api/users, /api/products) requires a JWT.
+  # ─────────────────────────────────────────────────────────────────────
+  example:
+    security:
+      enabled: false
+      jwt-secret: "csap-apidoc-demo-jwt-secret-please-override-in-production-32b+"
+      jwt-expiration-minutes: 60
+      issuer: "csap-apidoc-example"
+      # Optional explicit user list. Omit / leave empty to fall back to the
+      # built-in admin/admin123 + user/user123 demo pair.
+      # users:
+      #   - username: alice
+      #     password: alice-pw
+      #     roles: [ADMIN]
+      #   - username: bob
+      #     password: bob-pw
+      #     roles: [USER]
 
 # Management Endpoints (Spring Boot 3.x 改进的 Actuator)
 management:

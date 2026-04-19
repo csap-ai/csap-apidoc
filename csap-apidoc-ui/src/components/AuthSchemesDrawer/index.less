@@ -1,0 +1,142 @@
+.auth-drawer {
+  &__layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 16px;
+    height: 100%;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-right: 1px solid #f0f0f0;
+    padding-right: 12px;
+  }
+
+  &__add-btn {
+    margin-bottom: 8px;
+  }
+
+  &__item {
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px !important;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 120ms ease;
+
+    &:hover {
+      background-color: #fafafa;
+    }
+
+    &--selected {
+      background-color: #e6f4ff;
+    }
+
+    &-dot {
+      flex-shrink: 0;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    &-body {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    &-name {
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.85);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &-type {
+      font-size: 11px;
+      color: rgba(0, 0, 0, 0.45);
+    }
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+  }
+
+  &__section {
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+    padding: 16px;
+    background-color: #fcfcfd;
+  }
+
+  &__section-title {
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.85);
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  &__type-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+
+  &__secret {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__cache {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__bindings {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__bindings-add {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  &__muted {
+    color: rgba(0, 0, 0, 0.45);
+  }
+
+  &__hint-line {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  &__title-tag {
+    margin-left: 8px;
+    font-weight: 400;
+    font-size: 12px;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 8px;
+  }
+}

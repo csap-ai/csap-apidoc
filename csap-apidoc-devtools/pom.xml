@@ -23,6 +23,34 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
         </dependency>
+        <!--
+          Needed by ai.csap.apidoc.devtools.proxy.DevtoolsProxyAutoConfiguration
+          for @ConditionalOnProperty / @ConditionalOnMissingBean / Spring Boot
+          property binding (@ConfigurationProperties + @Validated). Mirrors how
+          csap-apidoc-boot's parent pom wires the same dep into both
+          boot-starter modules.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <!--
+          Test-only: MockMvc needs javax.servlet-api + spring-webmvc on the
+          classpath (MockMvcBuilders.standaloneSetup spins up a DispatcherServlet
+          under the hood). We do NOT pull spring-boot-starter-web (which would
+          drag tomcat into a plain library jar) — only the API + webmvc itself.
+        -->
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+            <version>4.0.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>

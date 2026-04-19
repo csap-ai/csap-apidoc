@@ -1,0 +1,30 @@
+.vault-lock-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background-color: #fffbe6;
+  border-bottom: 1px solid #ffe58f;
+  color: #ad6800;
+  font-size: 13px;
+  transition: background-color 0.4s ease;
+
+  &--flash {
+    background-color: #fff1b8;
+  }
+
+  &__icon {
+    display: inline-flex;
+    align-items: center;
+    font-size: 16px;
+  }
+
+  &__text {
+    flex: 1 1 auto;
+    line-height: 1.4;
+  }
+
+  &__btn {
+    flex-shrink: 0;
+  }
+}

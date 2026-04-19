@@ -1,0 +1,59 @@
+# M7 hints in YAML mode (docType=yaml)
+#
+# Demonstrates that `globalHeaderHints` / `authHint` — the M7 fields originally
+# emitted by `@DocGlobalHeader` / `@DocAuth` annotations — are equally
+# expressible in YAML, with zero changes to the loader. Jackson's
+# `YAMLMapper` (FAIL_ON_UNKNOWN_PROPERTIES=false) binds the additional fields
+# directly onto `CsapDocMethod`, so a YAML-driven doc source has feature
+# parity with the annotation path.
+#
+# Round-trip is verified by `YamlHintsTest#hintsBindFromYaml`.
+#
+# Schema follows `CsapDocGlobalHeaderHint` / `CsapDocAuthHint`:
+#   globalHeaderHints: [{ name, description, example, required }]
+#   authHint: { scheme, description, in?, name? }   # in/name only for scheme=apikey
+
+ai.csap.apidoc.web.YamlController:
+  getYaml:
+    value: 获取信息（带 hints）
+    key: getYaml
+    name: getYaml
+    methods:
+      - GET
+    paths:
+      - getYaml
+    description: 演示 YAML 模式下声明 try-it-out 全局头与认证提示
+    tags:
+      - hints
+
+    # M7 — global header hints (free-form list, merged with same-name override)
+    globalHeaderHints:
+      - name: X-Tenant-Id
+        description: 多租户隔离标识，由网关注入；调试时手动填
+        example: tenant-demo
+        required: true
+      - name: X-Trace-Id
+        description: 链路追踪 ID，可选；空时由 SkyWalking agent 自动生成
+        example: 0000-0000-0000-0001
+        required: false
+
+    # M7 — auth hint (single object; null/missing means no auth recommendation)
+    authHint:
+      scheme: bearer
+      description: 复用业务 JWT；可在 ui Auth Drawer 切到 OAuth2-CC 自动换 token
+
+  putYaml:
+    value: 修改信息（apikey 示例）
+    key: putYaml
+    name: putYaml
+    methods:
+      - PUT
+    paths:
+      - putYaml
+    description: 演示 apikey scheme 时 in / name 字段的用法
+
+    authHint:
+      scheme: apikey
+      description: 后端用 API Key 鉴权，从 query 取
+      in: query
+      name: api_key

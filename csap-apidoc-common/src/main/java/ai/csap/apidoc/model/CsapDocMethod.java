@@ -176,6 +176,21 @@ public class CsapDocMethod {
     private Boolean hidden;
 
     /**
+     * try-it-out 全局请求头建议（M7）。
+     * 由 scanner 从 {@link ai.csap.apidoc.annotation.DocGlobalHeader}
+     * 在 method &gt; class &gt; package 三级合并而来，按 name 去重，高优先级覆盖。
+     * 仅供 {@code csap-apidoc-ui} 自动预填，不参与后端实际请求处理。
+     */
+    private List<CsapDocGlobalHeaderHint> globalHeaderHints;
+
+    /**
+     * try-it-out 认证建议（M7）。
+     * 由 scanner 从 {@link ai.csap.apidoc.annotation.DocAuth}
+     * 在 method &gt; class &gt; package 三级中取最高优先级单值。
+     */
+    private CsapDocAuthHint authHint;
+
+    /**
      * 添加请求参数模型到现有列表
      * 支持动态扩展请求参数
      *
