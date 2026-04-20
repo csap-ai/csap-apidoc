@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **M9.2 — Request snapshots** (`csap-apidoc-ui`): new named, never-evicted,
+  user-curated pre-request templates — complements M9.1 history which is an
+  ephemeral ring buffer. New `Snapshots` button (`BookOutlined`) in the
+  Try-it-out URL bar opens a drawer with:
+  * **Save current request** (name required, description optional) → stored
+    in `csap-apidoc:tryItOutSnapshots` (schema v1, capped at 500 rows).
+  * **Load** re-seeds the panel form (same no-stale-credential guarantee as
+    M9.1 Replay: outbound headers are NOT restored; the panel's
+    `enrichRequest` re-runs fresh on the next Send).
+  * **Rename / edit description**, per-row + bulk delete.
+  * **Export** downloads the full collection as JSON (filename stamped
+    `csap-apidoc-snapshots-YYYY-MM-DD.json`).
+  * **Import** accepts the same JSON (merge vs replace toggle) —
+    id-collisions in merge mode auto-regenerate ids so nothing silently
+    clobbers local data. Partially corrupt payloads import the valid rows
+    and report `skipped` count.
+  * 35 new `tryoutSnapshots.*` i18n keys per locale; 19 new unit tests
+    (CRUD, rename-while-blank-name, schema-version guard, corrupt-row
+    recovery, export↔import round-trip, id-collision safety, MAX_SNAPSHOTS
+    cap, subscriber fan-out).
 - **M9.1 — Try-it-out request history** (`csap-apidoc-ui`): the endpoint
   workbench now auto-records the last 50 outbound requests to a
   localStorage-backed ring buffer (`csap-apidoc:tryItOutHistory`), surfaced
