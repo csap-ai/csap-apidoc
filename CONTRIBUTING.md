@@ -68,7 +68,7 @@ If applicable, add screenshots to help explain your problem.
 - OS: [e.g. macOS 14.0]
 - Java Version: [e.g. Java 17]
 - Spring Boot Version: [e.g. 3.2.0]
-- CSAP Apidoc Version: [e.g. 1.0.3]
+- CSAP Apidoc Version: [e.g. 1.0.0]
 
 **Additional context:**
 Add any other context about the problem here.

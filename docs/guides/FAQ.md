@@ -38,7 +38,7 @@ Simply add the Maven dependency:
 <dependency>
     <groupId>com.csap.framework.boot</groupId>
     <artifactId>csap-framework-apidoc-boot-starter</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 

@@ -29,7 +29,7 @@ If applicable, add screenshots to help explain your problem.
 - **OS**: [e.g. macOS 14.0, Windows 11, Ubuntu 22.04]
 - **Java Version**: [e.g. Java 17]
 - **Spring Boot Version**: [e.g. 3.2.0]
-- **CSAP Apidoc Version**: [e.g. 1.0.3]
+- **CSAP Apidoc Version**: [e.g. 1.0.0]
 - **Browser** (if UI related): [e.g. Chrome 120, Safari 17]
 
 ## Configuration

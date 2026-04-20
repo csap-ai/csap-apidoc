@@ -37,7 +37,7 @@ csap:
 ## Environment
 - **Java Version**: [e.g. Java 17]
 - **Spring Boot Version**: [e.g. 3.2.0]
-- **CSAP Apidoc Version**: [e.g. 1.0.3]
+- **CSAP Apidoc Version**: [e.g. 1.0.0]
 
 ## Additional Information
 Any other information that might be helpful.
