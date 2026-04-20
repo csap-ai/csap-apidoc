@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **M9.1 — Try-it-out request history** (`csap-apidoc-ui`): the endpoint
+  workbench now auto-records the last 50 outbound requests to a
+  localStorage-backed ring buffer (`csap-apidoc:tryItOutHistory`), surfaced
+  through a new `History` button in the URL bar that opens a drawer with
+  per-row `Replay` (re-seeds method/url/headers/query/body into the form —
+  enrichment is re-run fresh so env/auth/global-header rotation can't leak
+  stale credentials) and per-row `Remove` / bulk `Clear all`. Storage is
+  schema-versioned (v1), corruption-tolerant (bad rows are dropped on
+  read, the rest survive), and never persists response *bodies* — only a
+  summary (status/latency/byteLength or failure reason/message) — to
+  avoid sensitive-data footguns and the 5 MB quota cliff. 18 new
+  `tryoutHistory.*` i18n keys in both zh-CN and en-US; 12 new unit tests
+  for the store (eviction, corruption recovery, subscriber fan-out,
+  schema-version guard). `TryItOutHistoryDrawer` is passive — it never
+  mutates panel state directly, it just hands the entry back via
+  `onReplay(entry)` so the panel retains single-source-of-truth over
+  method/url/headers/query/body.
+
 ### Changed
 
 - **i18n prune (M8.3)** (`csap-apidoc-ui`): dropped 19 orphaned locale keys

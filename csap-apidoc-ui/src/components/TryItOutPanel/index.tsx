@@ -41,6 +41,7 @@ import {
   DeleteOutlined,
   ReloadOutlined,
   CopyOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -55,6 +56,11 @@ import {
 } from '@/services/tryItOutClient';
 import { settingsStore } from '@/stores/settingsStore';
 import type { ComposerWarning } from '@/services/requestComposer';
+import {
+  TryItOutHistoryEntry,
+  tryItOutHistoryStore,
+} from '@/stores/tryItOutHistory';
+import TryItOutHistoryDrawer from '@/components/TryItOutHistoryDrawer';
 import './index.less';
 
 interface KvRow {
@@ -193,6 +199,8 @@ const TryItOutPanel: React.FC<Props> = ({
   const [responseTab, setResponseTab] = useState<'body' | 'headers' | 'raw'>(
     'body',
   );
+  // M9.1 — drawer visibility for the request-history browser.
+  const [historyOpen, setHistoryOpen] = useState(false);
   // C2 — non-fatal warnings emitted by enrichRequest (e.g. cookies the auth
   // scheme tried to set that the browser would refuse). Cleared at the start
   // of each send so users can dismiss without affecting the next attempt.
@@ -305,10 +313,63 @@ const TryItOutPanel: React.FC<Props> = ({
       );
       setResult(r);
       setResponseTab('body');
+      // M9.1 — record the send in the local history ring buffer. We
+      // intentionally stash the *user-edited* spec (headers/query/body) rather
+      // than the enriched outbound form so Replay re-applies env/auth/global-
+      // header enrichment freshly — otherwise a replay done after the vault
+      // was rotated or the env switched would leak a stale credential.
+      try {
+        tryItOutHistoryStore.push({
+          method,
+          url: url.trim(),
+          headers: rowsToRecord(headerRows),
+          query: rowsToRecord(queryRows),
+          body: supportsBody && bodyKind !== 'none' && body.trim() ? body : null,
+          bodyKind,
+          response: isTryItOutFailure(r)
+            ? {
+                ok: false,
+                latencyMs: r.latencyMs,
+                failureReason: r.reason,
+                failureMessage: r.message,
+              }
+            : {
+                ok: r.ok,
+                status: r.status,
+                statusText: r.statusText,
+                latencyMs: r.latencyMs,
+                byteLength: r.byteLength,
+              },
+        });
+      } catch (err) {
+        // History is a nice-to-have; never let a persistence error surface
+        // to the user — they already have their response rendered above.
+        console.warn('[csap-apidoc] failed to record try-it-out history', err);
+      }
     } finally {
       setSending(false);
       cancelRef.current = null;
     }
+  };
+
+  /**
+   * M9.1 — Replay seeds the form from a history entry and closes the drawer.
+   * We bypass the `useEffect([initial.method, initial.url])` reseed hook on
+   * purpose: that one is for *caller-driven* endpoint swaps, while replay is
+   * a user action that should preserve whatever env/auth context the panel
+   * is currently inside.
+   */
+  const handleReplay = (entry: TryItOutHistoryEntry) => {
+    setMethod(entry.method);
+    setUrl(entry.url);
+    setHeaderRows(recordToRows(entry.headers));
+    setQueryRows(recordToRows(entry.query));
+    setBody(entry.body ?? '');
+    setBodyKind(entry.bodyKind);
+    setResult(null);
+    setResponseTab('body');
+    setComposerWarnings([]);
+    setHistoryOpen(false);
   };
 
   const handleAbort = () => {
@@ -566,6 +627,13 @@ const TryItOutPanel: React.FC<Props> = ({
             disabled={!result || sending}
           />
         </Tooltip>
+        <Tooltip title={t('tryoutHistory.open.tooltip')}>
+          <Button
+            icon={<HistoryOutlined />}
+            onClick={() => setHistoryOpen(true)}
+            aria-label={t('tryoutHistory.open.tooltip')}
+          />
+        </Tooltip>
       </div>
 
       <Tabs
@@ -651,6 +719,12 @@ const TryItOutPanel: React.FC<Props> = ({
 
       <div className="tryout__divider">{t('tryout.divider.response')}</div>
       {renderResponse()}
+
+      <TryItOutHistoryDrawer
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        onReplay={handleReplay}
+      />
     </div>
   );
 };
