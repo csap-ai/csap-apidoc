@@ -1,0 +1,8 @@
+# Pinned to keep the GitHub Pages build deterministic. Bump together with
+# the docs workflow's cache key.
+mkdocs==1.6.1
+mkdocs-material==9.5.49
+# pymdown-extensions <10.14 hits a Pygments 2.20 regression
+# (`html.escape(None)` in HtmlFormatter.__init__) on Python 3.10 — pin the
+# fixed line so the GitHub Pages build stays deterministic.
+pymdown-extensions==10.21.2
