@@ -42,6 +42,7 @@ import {
   ReloadOutlined,
   CopyOutlined,
   HistoryOutlined,
+  BookOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -60,7 +61,11 @@ import {
   TryItOutHistoryEntry,
   tryItOutHistoryStore,
 } from '@/stores/tryItOutHistory';
+import { TryItOutSnapshot } from '@/stores/tryItOutSnapshots';
 import TryItOutHistoryDrawer from '@/components/TryItOutHistoryDrawer';
+import TryItOutSnapshotsDrawer, {
+  type SnapshotRequestDraft,
+} from '@/components/TryItOutSnapshotsDrawer';
 import './index.less';
 
 interface KvRow {
@@ -201,6 +206,8 @@ const TryItOutPanel: React.FC<Props> = ({
   );
   // M9.1 — drawer visibility for the request-history browser.
   const [historyOpen, setHistoryOpen] = useState(false);
+  // M9.2 — drawer visibility for the named-snapshots browser.
+  const [snapshotsOpen, setSnapshotsOpen] = useState(false);
   // C2 — non-fatal warnings emitted by enrichRequest (e.g. cookies the auth
   // scheme tried to set that the browser would refuse). Cleared at the start
   // of each send so users can dismiss without affecting the next attempt.
@@ -371,6 +378,40 @@ const TryItOutPanel: React.FC<Props> = ({
     setComposerWarnings([]);
     setHistoryOpen(false);
   };
+
+  /**
+   * M9.2 — same reseed semantics as Replay but sourced from a named snapshot.
+   * Kept as a separate handler so future divergence (e.g. mock-server mode
+   * would skip the send entirely) stays trivial to add without entangling
+   * the two flows.
+   */
+  const handleLoadSnapshot = (snap: TryItOutSnapshot) => {
+    setMethod(snap.method);
+    setUrl(snap.url);
+    setHeaderRows(recordToRows(snap.headers));
+    setQueryRows(recordToRows(snap.query));
+    setBody(snap.body ?? '');
+    setBodyKind(snap.bodyKind);
+    setResult(null);
+    setResponseTab('body');
+    setComposerWarnings([]);
+    setSnapshotsOpen(false);
+  };
+
+  /**
+   * M9.2 — hand the drawer a fresh capture of the current panel state when
+   * the user clicks `Save current request`. We compute it lazily (rather
+   * than propping it through on every keystroke) so the drawer doesn't
+   * force unnecessary re-renders while closed.
+   */
+  const captureCurrentDraft = (): SnapshotRequestDraft => ({
+    method,
+    url: url.trim(),
+    headers: rowsToRecord(headerRows),
+    query: rowsToRecord(queryRows),
+    body: supportsBody && bodyKind !== 'none' && body.trim() ? body : null,
+    bodyKind,
+  });
 
   const handleAbort = () => {
     cancelRef.current?.cancel(t('tryout.cancel.userMessage'));
@@ -634,6 +675,13 @@ const TryItOutPanel: React.FC<Props> = ({
             aria-label={t('tryoutHistory.open.tooltip')}
           />
         </Tooltip>
+        <Tooltip title={t('tryoutSnapshots.open.tooltip')}>
+          <Button
+            icon={<BookOutlined />}
+            onClick={() => setSnapshotsOpen(true)}
+            aria-label={t('tryoutSnapshots.open.tooltip')}
+          />
+        </Tooltip>
       </div>
 
       <Tabs
@@ -724,6 +772,13 @@ const TryItOutPanel: React.FC<Props> = ({
         open={historyOpen}
         onClose={() => setHistoryOpen(false)}
         onReplay={handleReplay}
+      />
+
+      <TryItOutSnapshotsDrawer
+        open={snapshotsOpen}
+        onClose={() => setSnapshotsOpen(false)}
+        onLoad={handleLoadSnapshot}
+        captureCurrent={captureCurrentDraft}
       />
     </div>
   );
