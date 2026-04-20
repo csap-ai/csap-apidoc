@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `layout.params.type.`, `mpModal.title.`, `mpModal.ok.`) are explicitly
   allow-listed and verified to have at least one matching key per locale,
   so a typo in the prefix itself still fails CI.
+- **Docs**: GitHub Pages site (`mkdocs-material`) wired up. New `mkdocs.yml`,
+  `docs/index.md` landing page, pinned `requirements-docs.txt`, and a
+  `Docs (GitHub Pages)` workflow that auto-deploys on `main` whenever
+  `docs/**`, `mkdocs.yml`, or its requirements change.
 
 ### Fixed
 

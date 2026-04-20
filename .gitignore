@@ -180,3 +180,8 @@ application-local.properties
 .checkstyle
 checkstyle-result.xml
 checkstyle-cachefile
+
+# MkDocs / GitHub Pages local build artifacts
+.venv-docs/
+_site/
+site/

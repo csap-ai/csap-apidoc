@@ -1,0 +1,116 @@
+site_name: CSAP Framework API Doc
+site_description: >-
+  Spring Boot API documentation framework — automatic generation, in-browser
+  testing, multi-format export, and a documentation-first developer workflow.
+site_author: CSAP Team
+site_url: https://csap-ai.github.io/csap-apidoc/
+repo_name: csap-ai/csap-apidoc
+repo_url: https://github.com/csap-ai/csap-apidoc
+edit_uri: edit/main/docs/
+copyright: Copyright &copy; CSAP Team — Apache 2.0
+
+docs_dir: docs
+
+# Most existing prose is Chinese; the site renders zh-CN by default and links
+# back to README.en.md / English guides where they exist. A future m7.x
+# milestone can layer mkdocs-static-i18n once English parity is reached.
+theme:
+  name: material
+  language: zh
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.action.edit
+    - content.action.view
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: 切换到深色模式 / Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: 切换到浅色模式 / Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/csap-ai/csap-apidoc
+    - icon: fontawesome/solid/envelope
+      link: mailto:support@csap.ai
+  generator: false
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      check_paths: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+plugins:
+  - search:
+      lang:
+        - zh
+        - en
+
+# Navigation only references files that actually live under docs/.
+# Module-level READMEs (csap-apidoc-core/README.md etc.) intentionally stay
+# out of the published site to avoid mkdocs warnings about absent docs.
+nav:
+  - 首页 / Home: index.md
+  - 快速开始:
+      - guides/QUICK_START.md
+      - guides/ANNOTATION_REFERENCE.md
+      - guides/GATEWAY-AGGREGATION.md
+      - guides/FAQ.md
+  - 架构:
+      - architecture/ARCHITECTURE.md
+  - 特性:
+      - features/environment-auth-headers.md
+      - cors.md
+  - 开发:
+      - development/code-style/CODE_STYLE_README.md
+      - development/code-style/CODE_STYLE_QUICKSTART.md
+      - development/code-style/CODE_STYLE.md
+      - development/code-style/QUICK_FIX_GUIDE.md
+      - development/code-style/CHECKSTYLE_REPORT_SUMMARY.md
+
+# Treat dangling cross-module links (README.md, ../csap-apidoc-core/...)
+# as warnings, not build failures, so the site keeps shipping while we
+# gradually migrate module READMEs into docs/.
+strict: false
