@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **i18n prune (M8.3)** (`csap-apidoc-ui`): dropped 19 orphaned locale keys
+  that had no call site — `header.export.failed` / `layout.export.failed`
+  (superseded by their `.failedRetry` replacements), `lang.zh` / `lang.en`
+  (`LanguageSwitcher` uses hardcoded autonyms `中文` / `English` by i18n
+  convention), `layout.params.typeSuffix`, plus a 14-key `common.*`
+  utility bag that was declared but never wired. Zero behaviour change;
+  both locale files shrink from 360 → 341 keys. `i18n.coverage.test.ts`
+  gains a new "every locale key is either directly referenced or under a
+  known dynamic prefix" assertion so regressions can't silently
+  re-introduce dead keys.
+
 ### Added
 
 - **M7.1 — SQLite hint parity** (`csap-apidoc-sqlite`):

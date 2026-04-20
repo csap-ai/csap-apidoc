@@ -112,4 +112,33 @@ describe('i18n coverage (M8.2)', () => {
       // diff, so we deliberately don't re-check it here.
     },
   );
+
+  // M8.3 — forbid dead keys.
+  //
+  // After M8.3 pruned 19 truly-orphaned keys (superseded .failed/.failedRetry
+  // pairs, autonym lang.* keys that LanguageSwitcher hard-codes, and a
+  // never-wired common.* utility bag), the locale files only ship keys that
+  // either (a) appear as a literal `t('foo.bar')` call in src/, or (b) sit
+  // under one of DYNAMIC_PREFIXES. This test locks that invariant in.
+  //
+  // If a new key legitimately can't be detected by this scanner (e.g., it's
+  // referenced from outside csap-apidoc-ui), add its prefix to
+  // DYNAMIC_PREFIXES above rather than grandfathering a bare key here.
+  it('every locale key is either directly referenced or under a known dynamic prefix', () => {
+    const refs = collectLiteralKeys();
+    const referenced = new Set(refs.map((r) => r.key));
+
+    const orphans: string[] = [];
+    for (const key of zhKeys) {
+      if (referenced.has(key)) continue;
+      if (DYNAMIC_PREFIXES.some((p) => key.startsWith(p))) continue;
+      orphans.push(key);
+    }
+
+    expect(
+      orphans,
+      'orphaned locale keys (no t() call found in src/, not under a dynamic prefix):\n  ' +
+        orphans.join('\n  '),
+    ).toEqual([]);
+  });
 });
