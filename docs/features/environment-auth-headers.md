@@ -447,7 +447,7 @@ annotation-only; that was incomplete. The hint *fields* live on
 |--------|------------------|------|--------|
 | Annotation (`docType=annotation`) | Full — `DocHintsCollector` walks method → class → package | shipped in M7 | ✅ v0.x.0 |
 | YAML (`docType=yaml`) | Free — `YAMLMapper` already binds `globalHeaderHints` / `authHint` onto `CsapDocMethod` (FAIL_ON_UNKNOWN_PROPERTIES=false) | docs + sample + 1 unit test | ✅ v0.x.0 (M7 follow-up patch) |
-| SQLite (`docType=sql_lite`) | Needs schema columns + loader extension in `SqliteApidocStrategy.load()` | ~0.5d | 📋 M7.1 follow-up PR |
+| SQLite (`docType=sql_lite`) | Two new optional tables (`api_method_global_header_hint`, `api_method_auth_hint`) loaded by `SqliteApidocStrategy.load()` via `sqlite_master` feature-detect; legacy DBs without them still load cleanly | shipped | ✅ v0.x.x (M7.1) |
 
 The YAML sample lives at
 `csap-apidoc-strategy/csap-apidoc-yaml/src/test/resources/application-hints-method.yaml`,
@@ -467,7 +467,8 @@ verified by `YamlHintsTest#hintsBindFromYaml`.
 - [x] M4 — try-it-out request/response panel
 - [x] M5 — wire env+headers+auth into requests
 - [x] M6 — Web Crypto vault encryption
-- [x] M7 — devtools doc hints — annotation (`DocHintsCollector`) + YAML parity (`application-hints-method.yaml` + `YamlHintsTest`); SQLite parity scoped to M7.1 follow-up PR. See §9 D-6 multi-source addendum.
+- [x] M7 — devtools doc hints — annotation (`DocHintsCollector`) + YAML parity (`application-hints-method.yaml` + `YamlHintsTest`). See §9 D-6 multi-source addendum.
+- [x] M7.1 — SQLite hint parity — `SqliteApidocStrategy.load()` reads `api_method_global_header_hint` (multi-row, ordered) and `api_method_auth_hint` (1:1) when present; verified by `SqliteHintsTest` mirroring `YamlHintsTest`. Backward-compatible: legacy DBs without the two tables keep loading.
 - [x] M8 — tests + docs
 - [x] M8.1 — i18n bootstrap (react-i18next + zh-CN default + en-US + LanguageSwitcher) — D-7 fully resolved
 - [x] M8.2 — Playwright E2E (try-it-out happy path)
