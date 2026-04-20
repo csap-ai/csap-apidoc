@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **M9.3 — Mock server design doc** (`docs/features/m93-mock-server.md`):
+  approved spec for the built-in mock server — a new `csap-apidoc-mock`
+  Spring Boot starter that serves apidoc-schema-derived responses via a
+  4-step synthesis pipeline (snapshot → schema example → static YAML rule
+  → default 200). Opt-in via `csap.apidoc.mock.enabled=true`; mounted at
+  `/mock/**` on the same JVM. Doc covers module positioning, synthesis
+  algorithm, matching, risks, and a 4-PR sub-task breakdown (M9.3a
+  scaffold + schema synthesis → M9.3b rule overrides → M9.3c frontend
+  badge → M9.3d example app). Landed in MkDocs nav under 特性.
 - **M9.2 — Request snapshots** (`csap-apidoc-ui`): new named, never-evicted,
   user-curated pre-request templates — complements M9.1 history which is an
   ephemeral ring buffer. New `Snapshots` button (`BookOutlined`) in the

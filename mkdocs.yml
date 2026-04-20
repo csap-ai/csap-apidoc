@@ -102,6 +102,7 @@ nav:
       - architecture/ARCHITECTURE.md
   - 特性:
       - features/environment-auth-headers.md
+      - features/m93-mock-server.md
       - cors.md
   - 开发:
       - development/code-style/CODE_STYLE_README.md
