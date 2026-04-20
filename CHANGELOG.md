@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   databases without the new schema continue to load unchanged. New
   `SqliteHintsTest` mirrors `YamlHintsTest` for parity. Closes the M7
   three-source matrix (annotation / YAML / SQLite).
+- **i18n integrity (M8.2)**: New `csap-apidoc-ui/src/i18n/i18n.coverage.test.ts`
+  scans every `src/**/*.{ts,tsx}` for literal `t('...')` keys and asserts
+  each is present in BOTH `zh-CN.json` and `en-US.json`. Six known dynamic
+  prefixes (`auth.type.`, `headers.add.`, `headers.empty.`,
+  `layout.params.type.`, `mpModal.title.`, `mpModal.ok.`) are explicitly
+  allow-listed and verified to have at least one matching key per locale,
+  so a typo in the prefix itself still fails CI.
 
 ### Fixed
 
