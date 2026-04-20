@@ -192,32 +192,39 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-source-plugin</artifactId>
-                    <version>3.2.1</version>
+                    <version>3.3.0</version>
                     <configuration>
                         <attach>true</attach>
                     </configuration>
                     <executions>
                         <execution>
+                            <id>attach-sources</id>
                             <goals>
-                                <goal>jar</goal>
+                                <goal>jar-no-fork</goal>
                             </goals>
-                            <phase>install</phase>
+                            <phase>package</phase>
                         </execution>
                     </executions>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-javadoc-plugin</artifactId>
-                    <version>2.10.4</version>
+                    <version>3.6.3</version>
                     <configuration>
                         <encoding>UTF-8</encoding>
-                        <aggregate>true</aggregate>
                         <charset>UTF-8</charset>
                         <docencoding>UTF-8</docencoding>
+                        <!-- Central requires a javadoc jar, but we don't want a transient
+                             doclint/javadoc error to block the whole release. -->
                         <failOnError>false</failOnError>
-                        <!-- 遇到错误不终止构建 -->
+                        <doclint>none</doclint>
                         <quiet>true</quiet>
-                        <!-- 减少警告输出 -->
+                        <!-- javadoc 3.x speaks module-path; force old-style classpath for
+                             pre-JPMS projects so `javadoc` won't scan module descriptors. -->
+                        <source>${maven.compiler.source}</source>
+                        <additionalJOptions>
+                            <additionalJOption>-Xdoclint:none</additionalJOption>
+                        </additionalJOptions>
                     </configuration>
                     <executions>
                         <execution>
@@ -264,17 +271,11 @@
                     <extensions>true</extensions>
                     <configuration>
                         <publishingServerId>central</publishingServerId>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <groupId>org.sonatype.plugins</groupId>
-                    <artifactId>nexus-staging-maven-plugin</artifactId>
-                    <version>1.6.13</version>
-                    <extensions>true</extensions>
-                    <configuration>
-                        <serverId>ossrh</serverId>
-                        <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                        <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                        <!-- Upload, validate, *and* auto-release. Without this the
+                             bundle sits in "VALIDATED" on the Portal and requires a
+                             manual "Publish" click. -->
+                        <autoPublish>true</autoPublish>
+                        <waitUntil>published</waitUntil>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -425,38 +426,44 @@
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
             </plugin>
-
-            <!--            <plugin>-->
-            <!--                <groupId>org.sonatype.central</groupId>-->
-            <!--                <artifactId>central-publishing-maven-plugin</artifactId>-->
-            <!--            </plugin>-->
         </plugins>
     </build>
     <profiles>
-        <!-- Release profile for deploying to Maven Central -->
+        <!--
+            Release profile — deploy to Maven Central via the Central Portal
+            (Sonatype's replacement for the deprecated OSSRH / nexus-staging
+            pipeline, which was sunset in April 2025). Activate with
+            `mvn -P release clean deploy` once `CENTRAL_USERNAME` /
+            `CENTRAL_PASSWORD` / `GPG_PASSPHRASE` are wired into the
+            environment — see `docs/guides/PUBLISHING.md`.
+
+            What this profile adds on top of the default build:
+              * `maven-source-plugin` — source jar (required by Central)
+              * `maven-javadoc-plugin` — javadoc jar (required by Central)
+              * `maven-gpg-plugin` — detached .asc signatures (required)
+              * `central-publishing-maven-plugin` — the actual uploader;
+                bundles the reactor, POSTs to the Portal, waits for the
+                server-side validation → publication to finish.
+        -->
         <profile>
             <id>release</id>
             <build>
                 <plugins>
-                    <!-- Generate source jar -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-source-plugin</artifactId>
                     </plugin>
-                    <!-- Generate javadoc jar -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
                     </plugin>
-                    <!-- Sign artifacts with GPG -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
                     </plugin>
-                    <!-- Deploy to Nexus/Maven Central -->
                     <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
                     </plugin>
                 </plugins>
             </build>
@@ -511,14 +518,11 @@
             </properties>
         </profile>
     </profiles>
-    <distributionManagement>
-        <repository>
-            <id>cy-releases</id>
-            <url>http://nexus.csap.net.cn/repository/maven-releases/</url>
-        </repository>
-        <snapshotRepository>
-            <id>cy-snapshots</id>
-            <url>http://nexus.csap.net.cn/repository/maven-snapshots/</url>
-        </snapshotRepository>
-    </distributionManagement>
+    <!--
+        No <distributionManagement>. This project publishes exclusively to
+        Maven Central via the `release` profile (central-publishing-maven-plugin
+        handles its own transport). A plain `mvn deploy` without `-P release`
+        is intentionally a no-op, so accidental `deploy` calls can't leak
+        artifacts anywhere.
+    -->
 </project>
