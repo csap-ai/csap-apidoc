@@ -79,6 +79,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
+        <!-- Default-skip surefire (the historical contract); runnable suites
+             can be re-enabled by passing -DskipTests=false on the CLI. -->
+        <skipTests>true</skipTests>
+
         <!-- Code Quality Plugin Versions -->
         <spotless.version>2.41.1</spotless.version>
         <jacoco.version>0.8.11</jacoco.version>
@@ -230,7 +234,11 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>2.18.1</version>
                     <configuration>
-                        <skipTests>true</skipTests>
+                        <!-- Default-skip preserves historical behaviour, but the
+                             CLI override (`mvn ... -DskipTests=false`) now
+                             actually re-enables tests for modules whose suites
+                             are CI-runnable. -->
+                        <skipTests>${skipTests}</skipTests>
                     </configuration>
                 </plugin>
                 <plugin>

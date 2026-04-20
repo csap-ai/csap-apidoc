@@ -20,6 +20,8 @@ import ai.csap.apidoc.annotation.ApiAuthorization;
 import ai.csap.apidoc.annotation.ParamType;
 import ai.csap.apidoc.autoconfigure.StrategyModel;
 import ai.csap.apidoc.core.ApidocStrategyName;
+import ai.csap.apidoc.model.CsapDocAuthHint;
+import ai.csap.apidoc.model.CsapDocGlobalHeaderHint;
 import ai.csap.apidoc.model.CsapDocMethod;
 import ai.csap.apidoc.model.CsapDocMethodHeaders;
 import ai.csap.apidoc.model.CsapDocModel;
@@ -79,6 +81,11 @@ public class SqliteApidocStrategy implements ApidocStrategy {
         CsapApiInfo apiInfo = new CsapApiInfo();
 
         try (Connection conn = DriverManager.getConnection(url)) {
+            // M7.1 — feature-detect optional hint tables once per load so DBs that
+            // pre-date the hint schema keep working without migrations.
+            boolean hasGlobalHeaderHints = tableExists(conn, "api_method_global_header_hint");
+            boolean hasAuthHint = tableExists(conn, "api_method_auth_hint");
+
             // api_info
             String infoSql = "SELECT title,description,version,license,license_url,service_url," +
                     "authorization_type,contact_name,contact_email,contact_url FROM api_info LIMIT 1";
@@ -256,6 +263,50 @@ public class SqliteApidocStrategy implements ApidocStrategy {
                                 }
                                 m.setMethodHeaders(headers);
 
+                                // M7.1 — global header hints (multi-row, ordered)
+                                if (hasGlobalHeaderHints) {
+                                    List<CsapDocGlobalHeaderHint> hints = new ArrayList<>();
+                                    String hintSql = "SELECT name,description,example,required " +
+                                            "FROM api_method_global_header_hint " +
+                                            "WHERE method_id=? ORDER BY position";
+                                    try (PreparedStatement ps3 = conn.prepareStatement(hintSql)) {
+                                        ps3.setLong(1, methodId);
+                                        try (ResultSet rs3 = ps3.executeQuery()) {
+                                            while (rs3.next()) {
+                                                hints.add(CsapDocGlobalHeaderHint.builder()
+                                                        .name(rs3.getString(1))
+                                                        .description(rs3.getString(2))
+                                                        .example(rs3.getString(3))
+                                                        .required(rs3.getInt(4) == 1)
+                                                        .build());
+                                            }
+                                        }
+                                    }
+                                    if (!hints.isEmpty()) {
+                                        m.setGlobalHeaderHints(hints);
+                                    }
+                                }
+
+                                // M7.1 — auth hint (1:1 with api_method); in_location/param_name
+                                // are only meaningful for scheme=apikey, mirroring CsapDocAuthHint.
+                                if (hasAuthHint) {
+                                    String authHintSql = "SELECT scheme,description,in_location,param_name " +
+                                            "FROM api_method_auth_hint WHERE method_id=?";
+                                    try (PreparedStatement ps3 = conn.prepareStatement(authHintSql)) {
+                                        ps3.setLong(1, methodId);
+                                        try (ResultSet rs3 = ps3.executeQuery()) {
+                                            if (rs3.next()) {
+                                                m.setAuthHint(CsapDocAuthHint.builder()
+                                                        .scheme(rs3.getString(1))
+                                                        .description(rs3.getString(2))
+                                                        .in(rs3.getString(3))
+                                                        .name(rs3.getString(4))
+                                                        .build());
+                                            }
+                                        }
+                                    }
+                                }
+
                                 // request/response models
                                 m.setRequest(loadModels(conn, methodId, "REQ", paramMap));
                                 m.setResponse(loadModels(conn, methodId, "RESP", paramMap));
@@ -373,6 +424,21 @@ public class SqliteApidocStrategy implements ApidocStrategy {
             }
         }
         return list;
+    }
+
+    /**
+     * Probe sqlite_master so optional M7.1 hint tables can be omitted from
+     * legacy databases without breaking the loader.
+     */
+    @SneakyThrows
+    private boolean tableExists(Connection conn, String tableName) {
+        String sql = "SELECT name FROM sqlite_master WHERE type='table' AND name=? LIMIT 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, tableName);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
     }
 
     private ModelType mapModelType(String mt) {

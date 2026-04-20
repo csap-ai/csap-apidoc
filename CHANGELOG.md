@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **M7.1 — SQLite hint parity** (`csap-apidoc-sqlite`):
+  `SqliteApidocStrategy.load()` now reads two new optional tables —
+  `api_method_global_header_hint` (multi-row, ordered) and
+  `api_method_auth_hint` (1:1) — and binds them onto
+  `CsapDocMethod.globalHeaderHints` / `CsapDocMethod.authHint`.
+  The loader feature-detects both tables via `sqlite_master`, so legacy
+  databases without the new schema continue to load unchanged. New
+  `SqliteHintsTest` mirrors `YamlHintsTest` for parity. Closes the M7
+  three-source matrix (annotation / YAML / SQLite).
+
+### Fixed
+
+- Parent `pom.xml`: `maven-surefire-plugin` `<skipTests>` is now
+  parameterised (`${skipTests}` with default `true`), so
+  `mvn ... -DskipTests=false` actually re-enables the suite locally —
+  the historical hard-coded `true` silently swallowed CLI overrides
+  even when CI requested them.
+
 ## [1.0.3] - 2025-10-20
 
 ### Added
