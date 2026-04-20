@@ -110,6 +110,8 @@ nav:
       - development/code-style/CODE_STYLE.md
       - development/code-style/QUICK_FIX_GUIDE.md
       - development/code-style/CHECKSTYLE_REPORT_SUMMARY.md
+  - 发布 / Release:
+      - guides/PUBLISHING.md
 
 # Treat dangling cross-module links (README.md, ../csap-apidoc-core/...)
 # as warnings, not build failures, so the site keeps shipping while we

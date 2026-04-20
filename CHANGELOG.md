@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Maven Central publishing infrastructure** — this project now
+  publishes **exclusively** to Maven Central via the Sonatype Central
+  Portal. The parent `pom.xml` exposes a single `release` profile that
+  wires `maven-source-plugin`, `maven-javadoc-plugin` (bumped 2.10.4
+  → 3.6.3), `maven-gpg-plugin`, and `central-publishing-maven-plugin
+  0.8.0` with `autoPublish=true` / `waitUntil=published`, so
+  `mvn -P release deploy` uploads the full reactor to the Portal and
+  blocks until the bundle is actually live. Retired in the same pass:
+  the legacy `nexus-staging-maven-plugin` (which targeted the
+  April-2025-sunset OSSRH pipeline) and the corporate-Nexus
+  `<distributionManagement>` (private publishing is no longer a
+  supported target for this OSS artifact). A plain `mvn deploy` without
+  `-P release` is intentionally a no-op. New
+  `.github/workflows/release.yml` exposes a `workflow_dispatch` entry
+  point (with a `dry_run` toggle) that reads `CENTRAL_USERNAME` /
+  `CENTRAL_PASSWORD` / `GPG_PRIVATE_KEY` / `GPG_PASSPHRASE` secrets,
+  validates the pom version matches the requested release, runs
+  `mvn -P release clean deploy`, and pushes a `vX.Y.Z` tag on
+  success. Operational playbook landed in
+  `docs/guides/PUBLISHING.md` (MkDocs nav → 发布 / Release).
 - **M9.3 — Mock server design doc** (`docs/features/m93-mock-server.md`):
   approved spec for the built-in mock server — a new `csap-apidoc-mock`
   Spring Boot starter that serves apidoc-schema-derived responses via a

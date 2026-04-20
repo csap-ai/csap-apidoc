@@ -1,203 +1,99 @@
 name: Release to Maven Central
 
+# Publish the reactor (all modules) to Maven Central via the Sonatype Central
+# Portal. Triggered manually after a release-cut PR is merged.
+#
+# Prerequisites (see docs/guides/PUBLISHING.md for the full walkthrough):
+#   * `pom.xml` version = the release to cut (e.g. `1.0.0`; no `-SNAPSHOT`)
+#   * GitHub Actions secrets configured:
+#       - CENTRAL_USERNAME, CENTRAL_PASSWORD — User Token from the Central Portal
+#       - GPG_PRIVATE_KEY                    — armored private key (`gpg --armor --export-secret-keys <keyid>`)
+#       - GPG_PASSPHRASE                     — passphrase for that key
+#   * Namespace `ai.csap` verified on Central (it is, as of 2026-04)
+
 on:
-  # Manual trigger: supply version and optional dry-run flag
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version (e.g. 1.2.0)"
+        description: "Release version — must match <version> in pom.xml (e.g. 1.0.0)"
         required: true
-        type: string
+        default: "1.0.0"
       dry_run:
-        description: "Dry run — build & sign without publishing"
+        description: "If true, build + sign locally but skip the upload to Central"
         required: false
-        default: false
-        type: boolean
+        default: "false"
+        type: choice
+        options: ["false", "true"]
 
-  # Automatic trigger on semver tags (e.g. v1.2.0)
-  push:
-    tags:
-      - "v*.*.*"
-
-# Only one release at a time
-concurrency:
-  group: release
-  cancel-in-progress: false
-
-env:
-  JAVA_VERSION: "17"
-  JAVA_DISTRIBUTION: "temurin"
-  MAVEN_OPTS: "-Xmx2g -XX:+TieredCompilation -XX:TieredStopAtLevel=1"
+permissions:
+  contents: read
 
 jobs:
-  # ──────────────────────────────────────────────────────────────────────────
-  # 1. Validate — run the full build + tests on Java 17 before touching OSSRH
-  # ──────────────────────────────────────────────────────────────────────────
-  validate:
-    name: Validate (build + test)
+  publish:
+    name: Deploy to Central Portal
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
+    timeout-minutes: 45
     steps:
-      - name: Checkout source
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Set up JDK ${{ env.JAVA_VERSION }}
+      - name: Set up JDK 17 + Central credentials + GPG
         uses: actions/setup-java@v4
         with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          distribution: temurin
+          java-version: "17"
           cache: maven
-
-      - name: Build and verify (tests enabled)
-        run: mvn -B clean verify --file pom.xml -DskipTests=false
-
-      - name: Write job summary
-        if: always()
-        run: |
-          echo "## Validate result" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Branch/tag: \`${{ github.ref_name }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Java: ${{ env.JAVA_VERSION }}" >> "$GITHUB_STEP_SUMMARY"
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # 2. Release — sign and publish to Maven Central (OSSRH / Sonatype)
-  # ──────────────────────────────────────────────────────────────────────────
-  release:
-    name: Publish to Maven Central
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    needs: validate
-
-    # Required secrets:
-    #   GPG_PRIVATE_KEY  — ASCII-armored GPG private key for artifact signing
-    #   GPG_PASSPHRASE   — Passphrase for the GPG key
-    #   OSSRH_USERNAME   — Sonatype OSSRH username (or Central Portal token user)
-    #   OSSRH_PASSWORD   — Sonatype OSSRH password / token
-    #   GITHUB_TOKEN     — Automatically provided by GitHub Actions
-
-    permissions:
-      contents: write   # needed to create a GitHub Release
-
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up JDK ${{ env.JAVA_VERSION }} with GPG
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: ${{ env.JAVA_DISTRIBUTION }}
-          cache: maven
+          # setup-java writes a <server id="central"> block into ~/.m2/settings.xml
+          # bound to these env-var names, which the central-publishing plugin picks
+          # up automatically. Same for the GPG key — setup-java imports it into
+          # the runner's keyring before the build.
+          server-id: central
+          server-username: CENTRAL_USERNAME
+          server-password: CENTRAL_PASSWORD
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: GPG_PASSPHRASE
 
-      # Resolve the version to publish:
-      #   • workflow_dispatch  → use the manually supplied input
-      #   • tag push (v1.2.0)  → strip the leading "v"
-      - name: Resolve release version
-        id: version
+      - name: Verify pom version matches input
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            # Tag name is "v1.2.0"; strip the leading "v"
-            VERSION="${GITHUB_REF_NAME#v}"
+          set -euo pipefail
+          POM_VERSION=$(mvn -q -N -Dexec.executable=echo \
+            -Dexec.args='${project.version}' \
+            --non-recursive exec:exec 2>/dev/null | tail -1)
+          echo "pom.xml version     = $POM_VERSION"
+          echo "workflow input      = ${{ inputs.version }}"
+          if [ "$POM_VERSION" != "${{ inputs.version }}" ]; then
+            echo "::error::version mismatch — aborting"
+            exit 1
           fi
-          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Resolved version: ${VERSION}"
+          if [[ "$POM_VERSION" == *-SNAPSHOT ]]; then
+            echo "::error::cannot release a -SNAPSHOT version to Central"
+            exit 1
+          fi
 
-      - name: Stamp version in all POMs
-        run: |
-          mvn -B versions:set \
-            -DnewVersion="${VERSION}" \
-            -DgenerateBackupPoms=false \
-            --file pom.xml
-
-      # ── Real publish ──────────────────────────────────────────────────────
-      - name: Deploy to OSSRH (Maven Central)
-        if: ${{ github.event.inputs.dry_run != 'true' }}
+      - name: Build + sign (dry-run)
+        if: inputs.dry_run == 'true'
         env:
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          mvn -B deploy \
-            -P release \
-            --file pom.xml \
-            --settings .github/maven-settings.xml \
-            -Dgpg.passphrase="${GPG_PASSPHRASE}" \
-            -DskipTests=true
+          mvn -B -P release -DskipTests clean verify \
+              -Dgpg.passphrase="$GPG_PASSPHRASE"
 
-      # ── Dry-run: build + sign locally, no remote upload ──────────────────
-      - name: Package only (dry run)
-        if: ${{ github.event.inputs.dry_run == 'true' }}
+      - name: Deploy to Central
+        if: inputs.dry_run != 'true'
         env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          echo "⚠️  DRY RUN — artifacts will be built and signed but NOT uploaded."
-          mvn -B package \
-            -P release \
-            --file pom.xml \
-            -Dgpg.passphrase="${GPG_PASSPHRASE}" \
-            -DskipTests=true
+          mvn -B -P release -DskipTests clean deploy \
+              -Dgpg.passphrase="$GPG_PASSPHRASE"
 
-      # ── GitHub Release (only on tag push, not dry-run) ───────────────────
-      - name: Create GitHub Release
-        if: >-
-          ${{ github.event_name == 'push' &&
-              startsWith(github.ref, 'refs/tags/') &&
-              github.event.inputs.dry_run != 'true' }}
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: "CSAP Framework API Doc ${{ steps.version.outputs.version }}"
-          generate_release_notes: true
-          body: |
-            ## CSAP Framework API Doc v${{ steps.version.outputs.version }}
-
-            ### Maven coordinates
-
-            ```xml
-            <!-- Boot starter (Spring Boot 3) -->
-            <dependency>
-              <groupId>ai.csap.apidoc.boot</groupId>
-              <artifactId>csap-apidoc-boot-starter</artifactId>
-              <version>${{ steps.version.outputs.version }}</version>
-            </dependency>
-
-            <!-- Core library -->
-            <dependency>
-              <groupId>ai.csap.apidoc</groupId>
-              <artifactId>csap-apidoc-core</artifactId>
-              <version>${{ steps.version.outputs.version }}</version>
-            </dependency>
-            ```
-
-            Artifacts are published to [Maven Central](https://central.sonatype.com/search?q=ai.csap.apidoc).
-          files: |
-            **/target/*.jar
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Write release summary
-        if: always()
+      - name: Create git tag
+        if: inputs.dry_run != 'true' && success()
         run: |
-          echo "## Release summary" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|-------|-------|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Version | \`${VERSION}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Trigger | \`${{ github.event_name }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Dry run | \`${{ github.event.inputs.dry_run }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "### Required secrets" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Secret | Purpose |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|--------|---------|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| \`GPG_PRIVATE_KEY\` | ASCII-armored GPG private key for signing artifacts |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| \`GPG_PASSPHRASE\` | GPG key passphrase |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| \`OSSRH_USERNAME\` | Sonatype OSSRH username (or Central Portal token user) |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| \`OSSRH_PASSWORD\` | Sonatype OSSRH password / token |" >> "$GITHUB_STEP_SUMMARY"
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git tag -a "v${{ inputs.version }}" -m "Release v${{ inputs.version }}"
+          git push origin "v${{ inputs.version }}"
