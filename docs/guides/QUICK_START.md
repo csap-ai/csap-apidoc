@@ -19,7 +19,7 @@ Add the following dependency to your `pom.xml`:
 <dependency>
     <groupId>com.csap.framework.boot</groupId>
     <artifactId>csap-framework-apidoc-boot-starter</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -28,7 +28,7 @@ Add the following dependency to your `pom.xml`:
 Add the following to your `build.gradle`:
 
 ```groovy
-implementation 'com.csap.framework.boot:csap-framework-apidoc-boot-starter:1.0.3'
+implementation 'com.csap.framework.boot:csap-framework-apidoc-boot-starter:1.0.0'
 ```
 
 ## ⚙️ Step 2: Enable API Documentation (Annotation-Based - Recommended)

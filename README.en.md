@@ -46,7 +46,7 @@ CSAP Apidoc scans your Spring MVC annotations at startup, generates a live API r
 <dependency>
     <groupId>com.csap.framework.boot</groupId>
     <artifactId>csap-framework-apidoc-boot-starter</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -181,7 +181,7 @@ Add the optional DevTools dependency for a visual editor:
 <dependency>
     <groupId>com.csap.framework</groupId>
     <artifactId>csap-framework-apidoc-devtools</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.0</version>
     <scope>provided</scope>
 </dependency>
 ```

@@ -4,7 +4,7 @@
 
 [中文](README.md) | [English](README.en.md)
 
-[![Maven Central](https://img.shields.io/badge/maven--central-v1.0.3-blue)](https://search.maven.org/)
+[![Maven Central](https://img.shields.io/badge/maven--central-v1.0.0-blue)](https://search.maven.org/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Java](https://img.shields.io/badge/java-8%2B-orange.svg)](https://www.oracle.com/java/technologies/javase-downloads.html)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-2.x%2F3.x-brightgreen.svg)](https://spring.io/projects/spring-boot)
@@ -42,7 +42,7 @@
 <dependency>
     <groupId>com.csap.framework.boot</groupId>
     <artifactId>csap-framework-apidoc-boot-starter</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -54,7 +54,7 @@
 <dependency>
     <groupId>com.csap.framework.boot</groupId>
     <artifactId>csap-framework-validation-boot-starter</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -74,7 +74,7 @@
 <dependency>
     <groupId>com.csap.framework</groupId>
     <artifactId>csap-framework-apidoc-devtools</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.0</version>
     <scope>provided</scope>  <!-- 生产环境可排除 -->
 </dependency>
 
@@ -82,7 +82,7 @@
 <dependency>
     <groupId>com.csap.framework</groupId>
     <artifactId>csap-framework-apidoc-web</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.0</version>
     <scope>provided</scope>  <!-- 生产环境可排除 -->
 </dependency>
 ```
@@ -443,7 +443,7 @@ public void exportToPostman() {
 <dependency>
     <groupId>com.csap.framework</groupId>
     <artifactId>csap-framework-apidoc-devtools</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -459,7 +459,7 @@ public void exportToPostman() {
 <dependency>
     <groupId>com.csap.framework</groupId>
     <artifactId>csap-framework-apidoc-web</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
@@ -525,7 +525,7 @@ csap:
       <dependency>
         <groupId>com.csap.framework</groupId>
         <artifactId>csap-framework-apidoc-devtools</artifactId>
-        <version>1.0.3</version>
+        <version>1.0.0</version>
       </dependency>
     </dependencies>
   </profile>

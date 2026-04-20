@@ -1,6 +1,6 @@
 # CSAP Framework API Doc
 
-[![Maven Central](https://img.shields.io/badge/maven--central-v1.0.3-blue)](https://search.maven.org/)
+[![Maven Central](https://img.shields.io/badge/maven--central-v1.0.0-blue)](https://search.maven.org/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Java](https://img.shields.io/badge/java-11%2B-orange.svg)](https://www.oracle.com/java/technologies/javase-downloads.html)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-2.x%2F3.x-brightgreen.svg)](https://spring.io/projects/spring-boot)
