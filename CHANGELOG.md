@@ -120,63 +120,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the historical hard-coded `true` silently swallowed CLI overrides
   even when CI requested them.
 
-## [1.0.3] - 2025-10-20
+## [1.0.0] - 2025-10-20
+
+First public release. Baseline feature set:
 
 ### Added
-- Complete documentation generation framework
-- React 18 + TypeScript + Vite frontend
-- Ant Design 5 UI components
-- DevTools for API management
+- Complete API documentation generation framework for Spring Boot 2.x / 3.x
+- React 18 + TypeScript + Vite frontend (csap-apidoc-ui)
+- Ant Design 5 UI components with dark / light theme
+- DevTools for API management (csap-apidoc-devtools)
 - Postman collection converter service
 - Multiple storage strategies (SQLite, YAML, Standard)
 - JSR-303 validation integration
 - Data masking for sensitive fields
-- Online API testing capability
+- Online API testing capability (Try-it-out)
 - Multi-format export (OpenAPI, Swagger, Markdown)
-- Comprehensive annotation system
-
-### Enhanced
-- Improved TypeScript migration for frontend
-- Better error handling and logging
-- Optimized documentation scanning performance
-- Enhanced UI/UX with modern design patterns
-
-### Fixed
-- Fixed static resource access issues
-- Resolved duplicate event handling in DevTools
-- Fixed 404 problems with resource routing
-- Improved controller method detection
+- Comprehensive annotation system (`@DocApi`, `@DocField`, `@DocGlobalHeader`, `@DocAuth`, …)
+- Gateway aggregation support for micro-service deployments
 
 ### Documentation
-- Added comprehensive README in Chinese and English
-- Created Postman converter documentation
-- Added product roadmap and feature planning
-- Included migration guides for TypeScript
-
-## [1.0.2] - 2024-12-15
-
-### Added
-- Basic API documentation generation
-- Annotation support for Spring MVC
-- SQLite storage implementation
-- Initial DevTools interface
-
-### Fixed
-- Various bug fixes and improvements
-
-## [1.0.1] - 2024-11-10
-
-### Added
-- Initial release with core features
-- Basic annotation system
-- Document scanning capability
-
-## [1.0.0] - 2024-10-01
-
-### Added
-- Project initialization
-- Core framework setup
-- Basic structure and modules
+- Comprehensive README in Chinese and English
+- Postman converter documentation
+- Product roadmap and feature planning
+- Migration guides for TypeScript
 
 ---
 
@@ -284,15 +250,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Migration Guides
 
-### Migrating from 1.0.x to 1.0.3
+### Installing 1.0.0
 
-No breaking changes. Simply update your Maven dependency:
+No migration required — this is the first public release. Add the Maven
+dependency to your Spring Boot project:
 
 ```xml
 <dependency>
     <groupId>com.csap.framework.boot</groupId>
     <artifactId>csap-framework-apidoc-boot-starter</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
