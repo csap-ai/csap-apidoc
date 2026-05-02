@@ -4,7 +4,6 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
 import ai.csap.apidoc.autoconfigure.EnableApidocConfig;
@@ -25,8 +24,6 @@ import ai.csap.apidoc.properties.CsapDocConfig;
 @Configuration
 @ConditionalOnProperty(prefix = CsapDocConfig.PREFIX + ".devtool", name = "enabled",
         havingValue = "true")
-@ComponentScan(basePackageClasses = {ApidocStrategyController.class, DevtoolsController.class,
-        DevtoolsViewController.class})
 public class ApidocDevtoolsAutoConfiguration {
 
     @Bean
@@ -35,6 +32,22 @@ public class ApidocDevtoolsAutoConfiguration {
                                          ObjectProvider<CsapDocConfig> csapDocConfig) {
         return new ApidocDevtools(enableApidocConfig.getIfAvailable(), applicationContext,
                 csapDocConfig.getIfAvailable());
+    }
+
+    @Bean
+    public ApidocStrategyController apidocStrategyController(EnableApidocConfig enableApidocConfig,
+                                                             ApidocDevtools apidocDevtools) {
+        return new ApidocStrategyController(enableApidocConfig, apidocDevtools);
+    }
+
+    @Bean
+    public DevtoolsController devtoolsController(ApidocDevtools apidocDevtools) {
+        return new DevtoolsController(apidocDevtools);
+    }
+
+    @Bean
+    public DevtoolsViewController devtoolsViewController() {
+        return new DevtoolsViewController();
     }
 
     /**
