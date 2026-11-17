@@ -19,8 +19,9 @@
 | 项 | 值 |
 |---|---|
 | 目录 | `/Users/ycf/Documents/产品/csap/framework/apidoc/csap-apidoc-go` |
-| git | `framework/apidoc` 是 `framework/old/csap-framework-apidoc` 这个仓库的第二个工作目录（`git worktree`），分支 `feat/apidoc-go` |
-| 分支基线 | `origin/chore/apidoc-next-iteration` b4b9819（2026-04-11），即线上运行的代码，见第 3 节 |
+| git | `framework/apidoc` 是 `framework/old/csap-framework-apidoc` 这个仓库的第二个工作目录（`git worktree`），分支 `feat/apidoc-go`。远程：`origin` = GitHub `csap-ai/csap-apidoc`（主线），`gitee` = gitee 镜像 |
+| 分支基线 | **GitHub `main`**（bee9d83，2026-05-02）。2026-11-17 统一了版本和分支，见 [版本与分支统一方案.md](版本与分支统一方案.md)；原来的 gitee 基线 b4b9819 存档为 tag `archive/chore-apidoc-next-iteration` |
+| Java 版本 | 统一后第一个版本为 **1.1.0**（分支 `chore/unify-version-1.1.0`）；1.0.0 指 kyty 线上那份 |
 | Go 模块路径 | `github.com/csap-ai/csap-apidoc/csap-apidoc-go`，最低 Go 1.22（以后发布到 GitHub `csap-ai` 组织） |
 | 提交 | **没有提交，也没有推送**。`git status` 显示 `?? csap-apidoc-go/` |
 | 代码 | **M1、M2、M3 已完成**（2026-11-17）。M3 新增 `strategy/yaml`（读写、热加载）、`strategy/sql`（版本号、修改记录、回滚、轮询、Notifier）、独立的集成测试模块 `integration/`（数据库驱动只在这里）。M2 新增 `filter`（掩码编译、字节流裁剪）、`validate`（请求校验、内置正则）、gin 中间件；以下为 M1 的内容：`model`（含 Java 格式编码器）、`strategy`（接口、合并、Memory）、`strategy/tag`、根包（生成、快照、`/csap/apidoc*`、`/csap/openapi.json`）、`openapi`、`ui`（内嵌前端）、`adapter/gin`、`examples/gin-basic`。`go vet`、`go test -race ./...` 通过，根包覆盖率 84%。其余包（`filter` `validate` `strategy/{yaml,sql}` `devtools` `postman` `adapter/nethttp`）仍只有 `doc.go` |
@@ -72,13 +73,9 @@ unzip -q <jar> 'BOOT-INF/lib/csap-apidoc*' 'BOOT-INF/lib/csap-validation*' -d /t
 
 ## 4. 不要碰的东西
 
-- **`framework/old/csap-framework-apidoc` 的工作区**：这是旧的本地副本，停在 2025-11-05，有 110 个文件改动没提交，是用户自己的工作。其中有些内容线上没有，例如：
-  - devtools 前端的列宽调整功能（`csap-apidoc-devtools/devtools/src/components/table/ResizableTitle.tsx` 等）
-  - `check_violations.sh`
-
-  是否合并由用户决定，不要清理，也不要重置。另外两个工作目录共用 stash，不要直接用 `git stash` / `git stash pop`。
+- **`framework/old/csap-framework-apidoc`**：2026-11-17 已处理。它原有的未提交草稿已提交到分支 `archive/old-local-drafts-2025-11` 并推到 gitee 存档（tag 同名），工作区现在是干净的。它是这个仓库 `.git` 所在的主工作目录，要等新位置重新克隆好、用户确认后才能删除。两个工作目录共用 stash，不要直接用 `git stash` / `git stash pop`。
 - `framework/` 下其他仓库（`csap-framework`、`csap-mybatis-plus` 等）也有用户未提交的改动，与本项目无关。
-- 推送到 gitee 和打 tag 前，先问用户。
+- 推送（GitHub、gitee）、打 tag、删远程分支前，先问用户。
 
 ## 5. 用户偏好与约束（来自之前的对话）
 

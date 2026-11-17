@@ -17,11 +17,15 @@
 
 ## 1.1 Java 基线
 
-Go 版对齐的 Java 版本是 **gitee `csap-framework-apidoc` 的 `chore/apidoc-next-iteration` 分支（b4b9819，2026-04-11）**，即线上实际运行的代码。Go 模块在该分支基础上开 `feat/apidoc-go` 分支开发，本地检出在 `framework/apidoc/`。
+**2026-11-17 起（版本与分支统一后）**：唯一主线是 GitHub `csap-ai/csap-apidoc` 的 `main`，Go 版对齐它，在 `feat/apidoc-go` 分支（基于 `main`）开发。统一经过见 [版本与分支统一方案.md](版本与分支统一方案.md)。
+
+`main` 包含线上生产代码（仓库首个提交 0fcb901 = 下文的 gitee `chore/apidoc-next-iteration`，只差两个 IDE 文件），以及之后 14 次提交的新功能。对文档协议的影响只有 `CsapDocMethod` 新增 `globalHeaderHints`、`authHint` 两个字段，Go 版待补（见统一方案 2.4）。
+
+以下为统一前的记录：Go 版最初对齐的 Java 版本是 **gitee `csap-framework-apidoc` 的 `chore/apidoc-next-iteration` 分支（b4b9819，2026-04-11）**，即线上实际运行的代码（现存档为 gitee tag `archive/chore-apidoc-next-iteration`）。
 
 2026-11-17 核对过：线上 jar（kyty-data-center-boot，依赖 `csap-apidoc-*-1.0.0`、`csap-validation-*-1.0.0`）里内嵌的 175 个 Java 源码文件，与该分支以及 `1.0.3` 分支逐字节一致，没有一处不同。`csap-apidoc-ui` 的构建产物（`csap-api.html`、js、css）也一致。`1.0.3` 与 `chore/apidoc-next-iteration` 的代码相同，后者只多了 CI 发布流程和英文 README。
 
-`framework/old/csap-framework-apidoc` 是更早的本地副本（停在 2025-11-05），里面有 110 个文件改动没提交，与线上代码有 6 到 21 个文件不同，**不作为基线**。
+`framework/old/csap-framework-apidoc` 是更早的本地副本（停在 2025-11-05），未提交的草稿已存档为 gitee tag `archive/old-local-drafts-2025-11`，**不作为基线**。
 
 ## 2. 与 Java 版的对应关系
 
