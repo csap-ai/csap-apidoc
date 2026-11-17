@@ -132,11 +132,55 @@ type Watcher interface {      // 能感知外部变更:文件变更 / 轮询版�
 
 **文档里的显示规则**（与 Java 一致）：某个接口配置了任意返回规则后，返回字段只显示 `include: true` 的和 `doc_force` 的，上级没放行时下级也不显示；配置了任意请求规则后，请求体字段只显示规则里有的和 `doc_force` 的。没有任何规则的接口显示全部字段，这一点比 Java 宽松（Java 没有规则时只显示 `forceRep` 字段），对 Go 项目更友好。
 
+### 3.4 YAML 策略（M3 已实现，`strategy/yaml`）
+
+- `yaml.Dir(dir)` 读写目录；`yaml.FS(fsys, dir)` 从 `go:embed` 等只读加载（对应 Java 从 classpath 读）。
+- 格式与 Java `method-field.yaml` 完全相同，Java 项目的文件可以直接拿来用。kyty 的 77 份文件全部能解析（163 个接口，请求规则 457 条、返回规则 2658 条、校验规则 35 条），每个接口原样写回再加载，结果不变（`TestRealProjectFiles`，默认跳过）。
+- 加载目录下所有 `.yaml/.yml`，文件名不要求与分组对应（kyty 就有 `CoachController-method-field.yaml` 里放 `OutputCoachController` 的情况）；同一分组出现在多个文件时按文件名排序取第一个，与 Java 合并规则一致。某个文件解析失败只跳过它，其他文件照常生效。
+- 兼容 Java 写出的细节：`code: 1001`（数字）和 `code: "1001"` 都认；`INDENT_ARRAYS` 风格的 `-` 单独一行也认。Go 版新增的 `hidden`、`example` 字段，Java 读取时会忽略（`FAIL_ON_UNKNOWN_PROPERTIES=false`）。
+- 写入（`Save`）：改包含该分组的那个文件，只替换该接口那一段，其他接口和注释保留；分组不存在时新建 `<简单名>-method-field.yaml`；空规则表示删除该接口。先写临时文件再改名，不会写出半个文件。字段按路径长度、再按字母排序，上级在前。
+- 监听：每 `Poll`（默认 2 秒）比较文件名、大小、修改时间；本策略自己的写入立即通知。基准是**上次加载时的签名**，所以加载之后、开始监听之前发生的修改也不会漏（M3 修过这个 bug，有回归测试）。
+
+### 3.5 SQL 策略（M3 已实现，`strategy/sql`）
+
+- `database/sql`，方言 `SQLite` / `Postgres` / `MySQL`（只影响占位符和建表语句）。主模块**不引入任何驱动**，由使用方自己 import。
+- 三张表（前缀默认 `csap_apidoc_`）：`rule`（规则 JSON、版本、修改人、时间）、`history`（每次保存的修改前后内容）、`meta`（全局版本号）。`EnsureSchema` 建表，`Schema()` 返回语句供自己执行。与 Java SQLite 策略的表结构不同（Java 存的是整份文档），不共用。
+- `Save` 在一个事务里：全局版本号加 1（PostgreSQL / MySQL 锁住 meta 行，并发保存串行化）、写规则、写修改记录。`History(key, limit)` 查记录，`Rollback(id, by)` 恢复成该次修改前的样子，回滚本身也留记录。M4 的后台管理直接用这两个接口。
+- 多实例：每 `Poll`（默认 5 秒）查一次全局版本号，变了就重新加载；可选 `Notifier`（如 Redis Pub/Sub）保存后立即通知其他实例。基准同样是上次加载时的版本号。
+- SQLite 注意：多个连接并发写时，连接串要加 `_txlock=immediate`（事务开始就拿写锁）和 `busy_timeout`，否则会偶发 `database is locked`。
+- 实测：SQLite（纯 Go 驱动）和 PostgreSQL 16（临时容器）各跑 15 遍、开竞态检测，全部通过，包括两个实例共用一个库时的轮询同步、只靠通知的同步。**MySQL 只写了方言，没有实测**（本机没有镜像）。
+- 集成测试在独立模块 `integration/`（`cd integration && go test ./...`；设置 `CSAP_TEST_PG_DSN` / `CSAP_TEST_MYSQL_DSN` 加测），驱动依赖只在那里。
+
+Redis 通知的实现示例（go-redis v9，放在使用方代码里）：
+
+```go
+type redisNotifier struct{ rdb *redis.Client }
+
+func (n redisNotifier) Publish(ctx context.Context, v int64) error {
+    return n.rdb.Publish(ctx, "csap:apidoc:rules", v).Err()
+}
+
+func (n redisNotifier) Subscribe(ctx context.Context, fn func(int64)) error {
+    sub := n.rdb.Subscribe(ctx, "csap:apidoc:rules")
+    defer sub.Close()
+    for {
+        select {
+        case <-ctx.Done():
+            return ctx.Err()
+        case msg := <-sub.Channel():
+            v, _ := strconv.ParseInt(msg.Payload, 10, 64)
+            fn(v)
+        }
+    }
+}
+```
+
 ## 4. 运行时流程
 
 1. **启动**：适配器收集路由，与第 3.1 节的声明合并，再按 3.2 合并规则，生成文档模型和过滤计划，原子替换 `atomic.Pointer[snapshot]`。
 2. **规则变更**：Watch 回调触发，重新生成快照，再原子替换。正在处理的请求继续用旧快照，不加锁。
 3. **多实例**：SQL 策略在保存时把版本号加 1，并发 Redis 通知（可选）；其他实例收到通知后重新加载。没有 Redis 时按配置的间隔轮询版本号（默认 5 秒）。
+4. **启动监听**：`go doc.Watch(ctx)`，会监听所有实现了 `strategy.Watcher` 的策略（YAML、SQL、Memory）。
 
 ## 5. 返回字段过滤（M2 已实现）
 
@@ -255,7 +299,7 @@ csap-apidoc-go/
 |---|---|---|
 | M1 核心（**已完成** 2026-11-17） | model、tag 策略、gin 适配、`/csap/apidoc*`、文档页面、OpenAPI 导出 | 示例项目能打开 `/csap-api.html`，`/csap/apidoc` 能被 Java 版前端正常解析 |
 | M2 过滤与校验（**已完成** 2026-11-17） | 返回字段过滤（路径白名单、csap 兼容模式、外层包装）、请求参数校验（中间件、内置与自定义规则、观察模式）、基准测试 | 用 Java 的真实返回做黄金样本：79 个 kaiyun 接口的返回字段集合与 Java 完全一致；`/csap/apidoc` 编码器对 2.5MB 的 Java 实时返回逐字节还原。性能目标 30% 未达到，实测约 50%（见 5.2） |
-| M3 配置 | YAML 策略（读写、热加载）、SQL 策略（版本号、轮询、Redis 通知） | 改 YAML 或数据库后几秒内生效，不重启 |
+| M3 配置（**已完成** 2026-11-17） | YAML 策略（读写、热加载）、SQL 策略（版本号、轮询、Redis 通知） | 改 YAML 或数据库后几秒内生效，不重启：示例项目实测改 YAML 3 秒内返回字段变化；SQL 两实例共用一个库，A 保存后 B 在轮询间隔内生效（SQLite、PostgreSQL 实测，MySQL 未实测） |
 | M4 管理 | devtools 接口与前端（含必填和校验规则配置）、修改记录、回滚、鉴权 | 用 devtools 页面勾选字段后，返回结果实时变化，并能回滚 |
 | M5 发布 | net/http 适配、Postman 导出、中英文 README、CI、v0.1.0 tag | `go get` 可用，测试覆盖率不低于 80% |
 

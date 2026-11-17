@@ -9,7 +9,7 @@ CSAP Apidoc 的 Go 实现，协议为 Apache-2.0。
 - **与 Java 版协议兼容**：可直接复用 `csap-apidoc-ui` 文档页面和 `devtools` 管理页面。
 - **导出**：支持 OpenAPI 3.1 和 Postman。
 
-> 状态：开发中。M1（文档生成、文档页面、OpenAPI 导出、gin 适配）和 M2（返回字段过滤、请求参数校验）已完成，YAML/SQL 规则来源、后台管理在后续里程碑。设计见 [docs/DESIGN.md](docs/DESIGN.md)，接手请先读 [docs/HANDOFF.md](docs/HANDOFF.md)。
+> 状态：开发中。M1（文档生成、文档页面、OpenAPI 导出、gin 适配）、M2（返回字段过滤、请求参数校验）、M3（YAML / SQL 规则来源、热加载、多实例同步）已完成，后台管理在后续里程碑。设计见 [docs/DESIGN.md](docs/DESIGN.md)，接手请先读 [docs/HANDOFF.md](docs/HANDOFF.md)。
 
 ## 用法（gin）
 
@@ -30,7 +30,10 @@ type User struct {
 
 doc := apidoc.New(apidoc.Options{
     Wrapper: &apidoc.Wrapper{Type: Result{}}, // 统一外层包装 {code,message,data},可选
+    // 字段规则:与 Java method-field.yaml 同格式;多实例部署可换成 strategy/sql
+    Strategies: []strategy.Strategy{yaml.Dir("csap-api-doc/method-field")},
 })
+go doc.Watch(ctx) // 规则文件 / 数据库改了自动重新加载,不用重启
 doc.Group(apidoc.GroupInfo{Name: "example.UserController", Title: "用户管理", Path: "/api/v1/users"})
 
 r := gin.New()

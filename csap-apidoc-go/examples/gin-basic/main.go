@@ -5,6 +5,8 @@
 package main
 
 import (
+	"context"
+	"flag"
 	"log"
 	"net/http"
 	"strconv"
@@ -16,6 +18,7 @@ import (
 	ginadapter "github.com/csap-ai/csap-apidoc/csap-apidoc-go/adapter/gin"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy/yaml"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/validate"
 )
 
@@ -90,28 +93,12 @@ func (UserController) Create(c *gin.Context) {
 }
 
 func main() {
-	// 规则可以来自 YAML / SQL(M3),这里用内存策略演示:
+	// 规则来自 YAML 文件(与 Java method-field.yaml 同格式),运行中修改文件会自动生效:
 	//   - get:返回只输出 id、name(文档和实际返回都一样,phone 等字段会被去掉)
 	//   - create:name 必填且长度 2-20,phone 用内置手机号正则
-	rules := strategy.NewMemory(strategy.Rules{
-		strategy.Key("example.UserController", "get"): {
-			Response: map[string]strategy.FieldRule{
-				"data.id":   {Include: model.Bool(true)},
-				"data.name": {Include: model.Bool(true), Description: "规则里改过的说明"},
-			},
-		},
-		strategy.Key("example.UserController", "create"): {
-			Request: map[string]strategy.FieldRule{
-				"request.name": {Required: model.Bool(true), Validate: []strategy.ValidateRule{
-					{Type: "NotEmpty", Code: "1001", Message: "姓名不能为空", Level: 1},
-					{Type: "Length", Pattern: "2,20", Code: "1002", Message: "姓名长度 2-20", Level: 2},
-				}},
-				"request.phone": {Validate: []strategy.ValidateRule{
-					{Type: "Pattern", Pattern: "PATTERN_35", Code: "1003", Message: "手机号格式不正确"},
-				}},
-			},
-		},
-	})
+	rulesDir := flag.String("rules", "examples/gin-basic/rules", "规则文件目录")
+	flag.Parse()
+	rules := yaml.Dir(*rulesDir)
 
 	doc := apidoc.New(apidoc.Options{
 		Info:       &model.ApiInfo{Title: "示例接口", Description: "csap-apidoc-go gin 示例", Version: "1.0", License: "Apache 2.0", LicenseURL: "http://www.apache.org/licenses/LICENSE-2.0", Contact: &model.Contact{}},
@@ -119,6 +106,8 @@ func main() {
 		Wrapper:    &apidoc.Wrapper{Type: Result{}, Title: "公用参数", Description: "公用参数说明"},
 	})
 	doc.Group(apidoc.GroupInfo{Name: "example.UserController", Title: "用户管理", Description: "用户的增删改查", Path: "/api/v1/users"})
+
+	go func() { _ = doc.Watch(context.Background()) }() // 监听规则文件变化
 
 	r := gin.New()
 	r.Use(gin.Recovery(),

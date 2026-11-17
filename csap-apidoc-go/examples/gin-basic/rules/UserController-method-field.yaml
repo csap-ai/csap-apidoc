@@ -1,0 +1,30 @@
+# 示例规则,格式与 Java 的 method-field.yaml 相同。
+# 程序运行时修改本文件,2 秒内生效(文档、返回过滤、请求校验都会更新),不用重启。
+example.UserController:
+  get:
+    response:
+      data.id:
+        include: true
+      data.name:
+        include: true
+        description: 规则里改过的说明
+  create:
+    request:
+      request.name:
+        required: true
+        validate:
+          - type: NotEmpty
+            code: "1001"
+            message: 姓名不能为空
+            level: 1
+          - type: Length
+            pattern: "2,20"
+            code: "1002"
+            message: 姓名长度 2-20
+            level: 2
+      request.phone:
+        validate:
+          - type: Pattern
+            pattern: PATTERN_35
+            code: "1003"
+            message: 手机号格式不正确
