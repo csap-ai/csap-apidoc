@@ -4,3 +4,5 @@
 .idea/
 .DS_Store
 node_modules/
+# 规则修改记录(strategy/yaml 默认写在规则目录下),示例运行时产生,不提交
+.csap-apidoc-history.jsonl

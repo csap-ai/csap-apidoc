@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -206,6 +207,9 @@ type Snapshot struct {
 	controllers map[string]*model.Controller
 	methods     map[string]map[string]*model.Method // controller -> key -> method
 	endpoints   map[string]*Endpoint                // "METHOD path" -> endpoint
+	defs        map[string]*opDef                   // 规则的键 -> 接口声明(同名取第一个),devtools 生成完整字段用
+	types       map[string]reflect.Type             // 类型全名 -> 类型,devtools 按类名取字段用
+	doc         *Doc
 
 	dataOnce sync.Once
 	dataJSON []byte
@@ -262,7 +266,8 @@ func (s *Snapshot) data() []byte {
 }
 
 func (d *Doc) buildLocked() *Snapshot {
-	b := &builder{doc: d, rules: d.rules}
+	types := map[string]reflect.Type{}
+	b := &builder{doc: d, rules: d.rules, types: types}
 	resp := &model.Response{
 		ApiInfo:       d.opts.Info,
 		ApiList:       []*model.Controller{},
@@ -277,6 +282,9 @@ func (d *Doc) buildLocked() *Snapshot {
 		controllers: map[string]*model.Controller{},
 		methods:     map[string]map[string]*model.Method{},
 		endpoints:   map[string]*Endpoint{},
+		defs:        map[string]*opDef{},
+		types:       types,
+		doc:         d,
 	}
 
 	all := append([]registered(nil), d.ops...)
@@ -343,6 +351,9 @@ func (d *Doc) buildLocked() *Snapshot {
 		m, mask, checks := b.method(cs.info, op, r.method, r.path, name, key, mr)
 		cs.c.MethodList = append(cs.c.MethodList, m)
 		snap.methods[group][key] = m
+		if snap.defs[ruleKey] == nil {
+			snap.defs[ruleKey] = &opDef{info: cs.info, op: op, method: r.method, path: r.path, name: name, key: key}
+		}
 		snap.endpoints[r.method+" "+r.path] = &Endpoint{Key: ruleKey, Method: r.method, Path: r.path, Rules: mr, Doc: m, ResponseMask: mask, Checks: checks}
 	}
 	for name, cs := range ctrls {
@@ -357,6 +368,50 @@ func (d *Doc) buildLocked() *Snapshot {
 		return a.Name < b.Name
 	})
 	return snap
+}
+
+// opDef 是一条接口的声明,用来在不套规则的情况下重新生成文档。
+type opDef struct {
+	info   GroupInfo
+	op     *Operation
+	method string
+	path   string
+	name   string
+	key    string
+}
+
+// FullMethod 返回接口(规则的键 group.name)不套任何字段规则时的文档:请求参数和返回字段都是完整的。
+// devtools 用它列出"可选字段"。找不到接口时返回 nil。
+func (s *Snapshot) FullMethod(ruleKey string) *model.Method {
+	def := s.defs[ruleKey]
+	if def == nil {
+		return nil
+	}
+	b := &builder{doc: s.doc}
+	m, _, _ := b.method(def.info, def.op, def.method, def.path, def.name, def.key, strategy.MethodRules{})
+	return m
+}
+
+// TypeFields 返回文档里出现过的结构体类型(按全名,如 github.com/x/app.User)的完整字段树,不套规则。
+// 找不到时返回 nil。
+func (s *Snapshot) TypeFields(name string) []*model.Parameter {
+	t := s.types[name]
+	if t == nil {
+		return nil
+	}
+	b := &builder{doc: s.doc}
+	mc := &methodCtx{keyCount: map[string]int{}, mapPaths: map[string]bool{}, docHidden: map[*model.Parameter]bool{}}
+	return b.structParams(t, "", false, mc, []reflect.Type{t})
+}
+
+// RuleKeys 返回快照里所有接口规则的键(group.name),按字母序。
+func (s *Snapshot) RuleKeys() []string {
+	out := make([]string, 0, len(s.defs))
+	for k := range s.defs {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func newController(info GroupInfo) *model.Controller {
@@ -394,7 +449,8 @@ func newController(info GroupInfo) *model.Controller {
 
 func isDocPath(p, uiPrefix string) bool {
 	return p == "/csap" || strings.HasPrefix(p, "/csap/") || p == "/csap-api.html" ||
-		p == "/favicon.ico" || p == uiPrefix || strings.HasPrefix(p, uiPrefix+"/")
+		p == "/favicon.ico" || p == uiPrefix || strings.HasPrefix(p, uiPrefix+"/") ||
+		p == "/devtools-ui" || strings.HasPrefix(p, "/devtools-ui/") || strings.HasPrefix(p, "/devtools/")
 }
 
 // simpleName 取全名最后一段:com.example.UserController -> UserController,

@@ -18,6 +18,7 @@ import (
 type builder struct {
 	doc   *Doc
 	rules strategy.Rules
+	types map[string]reflect.Type // 不为 nil 时记录遇到的结构体类型
 }
 
 // methodCtx 是生成一个接口时的上下文。
@@ -355,8 +356,9 @@ func applyRequestRule(p *model.Parameter, rule strategy.FieldRule, ok bool) {
 	if rule.Required != nil {
 		p.Required = *rule.Required
 	}
-	if rule.ParamType != "" {
-		p.ParamType = strings.ToUpper(rule.ParamType)
+	// DEFAULT 表示"未指定"(devtools 新加字段时前端会填接口的 paramType,默认就是 DEFAULT),不覆盖推断出的位置
+	if pt := strings.ToUpper(rule.ParamType); pt != "" && pt != model.ParamDefault {
+		p.ParamType = pt
 	}
 	if rule.Example != "" {
 		p.Example = rule.Example
@@ -414,6 +416,9 @@ func (b *builder) response(m *model.Method, op *Operation, mc *methodCtx) {
 // ---------- 字段遍历 ----------
 
 func (b *builder) structParams(t reflect.Type, prefix string, request bool, mc *methodCtx, stack []reflect.Type) []*model.Parameter {
+	if b.types != nil && t.Name() != "" {
+		b.types[fullName(t)] = t
+	}
 	out := []*model.Parameter{}
 	for _, f := range flatFields(t) {
 		meta := tag.Parse(f)

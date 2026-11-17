@@ -303,3 +303,16 @@ func TestBuiltinPatterns(t *testing.T) {
 		t.Error("PatternNames")
 	}
 }
+
+func TestJavaUnicodePattern(t *testing.T) {
+	if got := GoPattern(`^[\u4e00-\u9fa5]+$`); got != `^[\x{4e00}-\x{9fa5}]+$` {
+		t.Fatalf("GoPattern: %s", got)
+	}
+	if got := JavaPattern(`^[\x{4E00}-\x{9FA5}A-Za-z]+$`); got != `^[\u4E00-\u9FA5A-Za-z]+$` {
+		t.Fatalf("JavaPattern: %s", got)
+	}
+	re, err := compile(`[\u4e00-\u9fa5]{2,4}`)
+	if err != nil || !re.MatchString("张三") || re.MatchString("ab") {
+		t.Fatalf("compile java unicode: %v", err)
+	}
+}

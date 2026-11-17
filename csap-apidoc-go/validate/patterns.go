@@ -79,6 +79,22 @@ func init() {
 	}
 }
 
+var (
+	javaUnicode = regexp.MustCompile(`\\u([0-9a-fA-F]{4})`)
+	goUnicode   = regexp.MustCompile(`\\x\{([0-9a-fA-F]{4})\}`)
+)
+
+// GoPattern 把 Java / JavaScript 写法的 \uXXXX 转成 RE2 的 \x{XXXX},其余不变。
+// Java 项目 YAML 里的正则(如 ^[\u4e00-\u9fa5]+$)因此可以直接使用。
+func GoPattern(p string) string {
+	return javaUnicode.ReplaceAllString(p, `\x{$1}`)
+}
+
+// JavaPattern 把 RE2 的 \x{XXXX} 转成 Java / JavaScript 通用的 \uXXXX(devtools 页面用 JS 测试正则)。
+func JavaPattern(p string) string {
+	return goUnicode.ReplaceAllString(p, `\u$1`)
+}
+
 // compile 编译正则并缓存。pattern 可以是内置规则名(如 PATTERN_35)。
 // 与 Java Matcher.matches() 一致,要求整串匹配:没有 ^...$ 时自动加上。
 func compile(pattern string) (*regexp.Regexp, error) {
@@ -88,7 +104,7 @@ func compile(pattern string) (*regexp.Regexp, error) {
 	if re, ok := reCache.Load(pattern); ok {
 		return re.(*regexp.Regexp), nil
 	}
-	re, err := regexp.Compile(`^(?:` + pattern + `)$`)
+	re, err := regexp.Compile(`^(?:` + GoPattern(pattern) + `)$`)
 	if err != nil {
 		return nil, err
 	}

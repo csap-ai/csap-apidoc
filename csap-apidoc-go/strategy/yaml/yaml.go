@@ -97,6 +97,9 @@ func New(opts Options) *Strategy {
 
 func (s *Strategy) Name() string { return "yaml:" + s.opts.Dir }
 
+// ReadOnly 为 true 表示从只读文件系统(FS)加载,不能保存。
+func (s *Strategy) ReadOnly() bool { return s.opts.FS != nil }
+
 func (s *Strategy) fsys() fs.FS {
 	if s.opts.FS != nil {
 		sub, err := fs.Sub(s.opts.FS, path.Clean(s.opts.Dir))

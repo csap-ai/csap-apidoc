@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	apidoc "github.com/csap-ai/csap-apidoc/csap-apidoc-go"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/devtools"
 )
 
 // Router 包装 gin 的路由组:注册路由的同时把文档声明登记到 Doc。
@@ -43,6 +44,18 @@ func Mount(engine *gin.Engine, doc *apidoc.Doc) *Router {
 		return out
 	})
 	return &Router{rg: &engine.RouterGroup, doc: doc, engine: engine}
+}
+
+// MountDevtools 在 engine 上挂后台管理(/csap/yaml/*、/devtools/*、/devtools-ui 及其静态资源)。
+// dt 由 devtools.New 创建,必须配置鉴权;建议只在开发、测试环境或内网挂载。
+//
+//	dt, err := devtools.New(doc, devtools.Options{Auth: devtools.BasicAuth("admin", pwd), Realm: "devtools"})
+//	ginadapter.MountDevtools(r, dt)
+func MountDevtools(engine *gin.Engine, dt *devtools.Devtools) {
+	h := gin.WrapH(dt)
+	for _, rt := range dt.Routes() {
+		engine.Handle(rt.Method, rt.Path, h)
+	}
 }
 
 // Wrap 包装一个已有的路由组(例如带鉴权中间件的 /api 组)。

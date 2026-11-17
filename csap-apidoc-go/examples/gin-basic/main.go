@@ -1,7 +1,7 @@
 // 示例:gin 项目接入 csap-apidoc-go。
 //
 //	go run ./examples/gin-basic
-//	打开 http://localhost:8080/csap-api.html
+//	打开 http://localhost:8080/csap-api.html(文档)、http://localhost:8080/devtools-ui(后台管理)
 package main
 
 import (
@@ -9,6 +9,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 
 	apidoc "github.com/csap-ai/csap-apidoc/csap-apidoc-go"
 	ginadapter "github.com/csap-ai/csap-apidoc/csap-apidoc-go/adapter/gin"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/devtools"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy/yaml"
@@ -97,6 +99,8 @@ func main() {
 	//   - get:返回只输出 id、name(文档和实际返回都一样,phone 等字段会被去掉)
 	//   - create:name 必填且长度 2-20,phone 用内置手机号正则
 	rulesDir := flag.String("rules", "examples/gin-basic/rules", "规则文件目录")
+	addr := flag.String("addr", ":8080", "监听地址")
+	withDevtools := flag.Bool("devtools", true, "开启后台管理 /devtools-ui(生产环境请关闭或加鉴权)")
 	flag.Parse()
 	rules := yaml.Dir(*rulesDir)
 
@@ -125,6 +129,17 @@ func main() {
 	// 没有声明的路由也会出现在文档里(分组和名字由函数名推断)
 	r.GET("/healthz", func(c *gin.Context) { c.String(http.StatusOK, "ok") })
 
-	log.Println("文档: http://localhost:8080/csap-api.html")
-	log.Fatal(r.Run(":8080"))
+	// 后台管理:在页面上勾选返回字段、配置必填和校验规则,保存后写回 YAML,下一个请求就生效。
+	// 必须配置鉴权:设置了 CSAP_DEVTOOLS_PASSWORD 时用 Basic 认证(用户名 admin),否则只允许本机访问。
+	if *withDevtools {
+		auth, realm := devtools.Auth(devtools.AllowLocal), ""
+		if pwd := os.Getenv("CSAP_DEVTOOLS_PASSWORD"); pwd != "" {
+			auth, realm = devtools.BasicAuth("admin", pwd), "csap-apidoc devtools"
+		}
+		ginadapter.MountDevtools(r, devtools.MustNew(doc, devtools.Options{Auth: auth, Realm: realm}))
+		log.Printf("后台管理: http://localhost%s/devtools-ui", *addr)
+	}
+
+	log.Printf("文档: http://localhost%s/csap-api.html", *addr)
+	log.Fatal(r.Run(*addr))
 }

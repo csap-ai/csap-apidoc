@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
 )
 
 func TestHeaderAndAuthHints(t *testing.T) {
@@ -44,5 +45,26 @@ func TestHeaderAndAuthHints(t *testing.T) {
 	}
 	if !strings.Contains(string(out), `"globalHeaderHints":[]`) || strings.Contains(string(out), "authHint") {
 		t.Fatalf("encoding: %s", out)
+	}
+}
+
+func TestFullMethodIgnoresRules(t *testing.T) {
+	tr := true
+	d := newDoc(map[string]strategy.MethodRules{"com.x.ItemController.get": {Response: map[string]strategy.FieldRule{"data.id": {Include: &tr}}}})
+	snap := d.Snapshot()
+	filtered := snap.Method("com.x.ItemController", "com.x.ItemController.get")
+	full := snap.FullMethod("com.x.ItemController.get")
+	data := func(m *model.Method) *model.Parameter { return findParam(m.Response[0].Parameters, "data") }
+	if len(data(filtered).Parameters) != 1 || len(data(full).Parameters) < 4 {
+		t.Fatalf("filtered %d full %d", len(data(filtered).Parameters), len(data(full).Parameters))
+	}
+	if snap.FullMethod("nope") != nil || snap.TypeFields("nope") != nil {
+		t.Fatal("unknown")
+	}
+	if fs := snap.TypeFields("github.com/csap-ai/csap-apidoc/csap-apidoc-go.item"); len(fs) < 4 {
+		t.Fatalf("type fields: %d", len(fs))
+	}
+	if keys := snap.RuleKeys(); len(keys) != 3 || keys[0] != "com.x.ItemController.create" {
+		t.Fatalf("keys: %v", keys)
 	}
 }
