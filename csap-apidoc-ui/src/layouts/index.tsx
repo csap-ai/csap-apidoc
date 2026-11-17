@@ -19,6 +19,21 @@ import { exportToMarkdown, downloadMarkdown } from '@/utils/exportMarkdown';
 import { groupParametersByType, getNonEmptyParamTypes, getParamTypeLabel, buildRequestData, replacePathParams } from '@/utils/paramTypeUtils';
 import { ExclamationCircleFilled, ThunderboltOutlined } from '@ant-design/icons';
 import TryItOutPanel, { RequestSpec } from '@/components/TryItOutPanel';
+import { apidocMethodUrl, apidocParentUrl, apidocServiceBase } from '@/utils/apidocUrl';
+import { hasApiDetail, EMPTY_API_DETAIL } from '@/utils/apiDetail';
+import {
+  filterTreeByGroupVersion,
+  groupVersionOptions,
+  GroupVersionOptions,
+} from '@/utils/groupVersion';
+import {
+  buildHintPrefill,
+  DocHints,
+  EMPTY_HINTS,
+  hasHintFields,
+  hintsFromDocResponse,
+  hintsFromMethod,
+} from '@/services/docHints';
 import type { HttpMethod } from '@/services/tryItOutClient';
 import {
   composeTryItOutSpec,
@@ -67,6 +82,12 @@ const LayoutIndex = () => {
   const [ObjQuery, setObjQuery] = useState<any>({});
   const [loading, setLoading] = useState(false);
   const [totalApis, setTotalApis] = useState(0);
+  const [gvOptions, setGvOptions] = useState<GroupVersionOptions>({ groups: [], versions: [] });
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
+  // @DocGlobalHeader / @DocAuth hints of the endpoint currently shown,
+  // keyed by method key so a stale set is never applied to another endpoint.
+  const [docHints, setDocHints] = useState<{ key: string; hints: DocHints } | null>(null);
 
   // 计算总API数量
   const countApis = (data: any[]): number => {
@@ -152,10 +173,9 @@ const LayoutIndex = () => {
       DeleteChildren(response);
       if (request) DeleteChildren(request);
       setDataSource(headers || []);
-      const patchAPI = selectRefValue?.current?.value?.replace(
-        '/csap/apidoc/parent',
-        ''
-      );
+      const patchAPI = selectRefValue?.current?.value
+        ? apidocServiceBase(selectRefValue.current.value)
+        : '';
       setDataObj({
         apiTitle: title || '',
         paramsTitle: paramType || '',
@@ -164,11 +184,15 @@ const LayoutIndex = () => {
       });
       setDataBody(() => request || []);
       setDataRes(() => response || []);
+      if (hasHintFields(apiData)) {
+        setDocHints({ key, hints: hintsFromMethod(apiData) });
+      }
     } catch (error) {
       console.error('获取菜单详情失败:', error);
       setDataSource([]);
       setDataBody([]);
       setDataRes([]);
+      setDataObj({ ...EMPTY_API_DETAIL });
     }
   };
 
@@ -178,7 +202,7 @@ const LayoutIndex = () => {
     if (expandedKeys.length > 0 && treeData.length > 0) {
       if (selectRefValue.current?.value) {
         getTreeDetail(
-          `${selectRefValue.current.value.split('/')[1]}/csap/apidoc/method`,
+          apidocMethodUrl(selectRefValue.current.value),
           {
             name: getParentKey(expandedKeys[0], treeData),
             key: expandedKeys.join(''),
@@ -207,12 +231,14 @@ const LayoutIndex = () => {
 
       let apiList = [];
       let resources = [];
+      let parentData = null;
       try {
         const parsedData = JSON.parse(text);
 
         // 直接从data中提取apiList
         apiList = parsedData?.data?.apiList || [];
         resources = parsedData?.data?.resources || [];
+        parentData = parsedData?.data ?? null;
         // 确保apiList是数组
         if (!Array.isArray(apiList)) {
           apiList = [];
@@ -233,6 +259,11 @@ const LayoutIndex = () => {
         title: item.title || item.name || t('layout.untitled'),
         children: item.children || []
       }));
+
+      // 分组 / 版本:每次加载(含切换服务)按当前服务的数据刷新,并清空已选项
+      setGvOptions(groupVersionOptions(parentData, validatedList));
+      setSelectedGroup(null);
+      setSelectedVersion(null);
 
       if (apiList.length > 0) {
         console.log('有效的apiList数据:', apiList);
@@ -280,7 +311,7 @@ const LayoutIndex = () => {
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
-    let ds = finalData
+    let ds = filterTreeByGroupVersion(finalData, selectedGroup, selectedVersion)
       .map((i) => {
         return Object.assign({}, i);
       })
@@ -306,6 +337,12 @@ const LayoutIndex = () => {
         behavior: 'smooth',
       });
     }
+  };
+
+  const applyGroupVersion = (group: string | null, version: string | null) => {
+    setSelectedGroup(group);
+    setSelectedVersion(version);
+    setTreeData(filterTreeByGroupVersion(finalData, group, version));
   };
 
   const childrenList = (c: any[], v) => {
@@ -334,7 +371,7 @@ const LayoutIndex = () => {
 
   const onChangeValue = (value: string) => {
     if (value) {
-      getTreeList(value);
+      getTreeList(apidocParentUrl(value));
     }
   };
 
@@ -362,7 +399,7 @@ const LayoutIndex = () => {
       // 获取 API 详情的辅助函数
       const getApiDetailForExport = async (apiNode: any) => {
         const qxapi = selectRefValue.current?.value
-          ? `${selectRefValue.current.value.split('/')[1]}/csap/apidoc/method`
+          ? apidocMethodUrl(selectRefValue.current.value)
           : `${import.meta.env.VITE_API_URL}/csap/apidoc/method`;
 
         const result = await getApiDetail(qxapi, {
@@ -384,7 +421,7 @@ const LayoutIndex = () => {
 
       // 获取基础 URL
       const baseUrl = selectRefValue.current?.value
-        ? selectRefValue.current.value.replace('/csap/apidoc/parent', '')
+        ? apidocServiceBase(selectRefValue.current.value)
         : import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
       let content: string;
@@ -622,7 +659,7 @@ const LayoutIndex = () => {
       let baseUrl = '';
       if (selectRefValue.current?.value) {
         // 使用用户选择的API地址
-        baseUrl = selectRefValue.current.value.replace('/csap/apidoc/parent', '');
+        baseUrl = apidocServiceBase(selectRefValue.current.value);
       } else {
         // 使用默认的VITE_API_URL
         baseUrl = import.meta.env.VITE_API_URL;
@@ -766,27 +803,83 @@ const LayoutIndex = () => {
   // is safe because it changes via `onChangeValue → getTreeList`, which
   // updates state and triggers a re-render before the panel is shown.
   const serviceRefId = selectRefValue.current?.value ?? null;
+  // dataObj.patch already carries the selected service's base (see
+  // getTreeDetail), so only the default (no resource selected) case needs
+  // VITE_API_URL prepended.
   const tryItOutBaseUrl = selectRefValue.current?.value
-    ? selectRefValue.current.value.replace('/csap/apidoc/parent', '')
+    ? ''
     : (import.meta.env.VITE_API_URL ?? '');
   const tryItOutPath = dataObj.patch || '';
   const tryItOutUrl = tryItOutBaseUrl
     ? `${tryItOutBaseUrl}${tryItOutPath.startsWith('/') ? '' : '/'}${tryItOutPath}`
     : tryItOutPath;
+  // Hints are not part of GET /csap/apidoc/method; when the try-it-out
+  // panel is opened, read them from GET /csap/apidoc/{className}?key=
+  // (full CsapDocMethod). Failures are silent — hints are optional.
+  const currentMethodKey = expandedKeys.join('');
+  useEffect(() => {
+    if (!tryV2 || !currentMethodKey || treeData.length === 0) return undefined;
+    if (docHints && docHints.key === currentMethodKey) return undefined;
+    const className = getParentKey(expandedKeys[0], treeData);
+    if (!className) return undefined;
+    const base = selectRefValue.current?.value
+      ? apidocServiceBase(selectRefValue.current.value)
+      : (import.meta.env.VITE_API_URL ?? '');
+    let cancelled = false;
+    axios
+      .get(`${base}/csap/apidoc/${encodeURIComponent(className)}`, {
+        params: { key: currentMethodKey },
+        withCredentials: true,
+      })
+      .then((res) => {
+        if (cancelled) return;
+        const doc = res?.data?.data;
+        setDocHints({ key: currentMethodKey, hints: hintsFromDocResponse(doc, currentMethodKey) });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.warn('[csap-apidoc] failed to load doc hints', err);
+        setDocHints({ key: currentMethodKey, hints: EMPTY_HINTS });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tryV2, currentMethodKey, treeData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const activeAuthScheme = getActiveSchemeFor(serviceRefId);
+  const hintPrefill = React.useMemo(
+    () =>
+      buildHintPrefill({
+        hints:
+          docHints && docHints.key === currentMethodKey ? docHints.hints : EMPTY_HINTS,
+        resolvedHeaders: resolveHeaders({ serviceRefId }),
+        hasActiveAuth: !!activeAuthScheme,
+      }),
+    [docHints, currentMethodKey, resolveHeaders, serviceRefId, activeAuthScheme],
+  );
+
   const tryItOutInitial: RequestSpec = {
     method: ((dataObj.method || 'GET').toUpperCase() as HttpMethod),
     url: tryItOutUrl,
+    headers: hintPrefill.headers,
+    query: hintPrefill.query,
   };
 
-  const tryItOutBadges = React.useMemo(
-    () =>
-      explainContextBadges({
-        env,
-        activeHeaderRules: explainHeaders({ serviceRefId }),
-        activeAuth: getActiveSchemeFor(serviceRefId),
-      }),
-    [env, explainHeaders, getActiveSchemeFor, serviceRefId],
-  );
+  const tryItOutBadges = React.useMemo(() => {
+    const badges = explainContextBadges({
+      env,
+      activeHeaderRules: explainHeaders({ serviceRefId }),
+      activeAuth: getActiveSchemeFor(serviceRefId),
+    });
+    if (hintPrefill.suggestedAuth) {
+      badges.push({
+        label: t('tryout.hint.suggestedAuth'),
+        value: hintPrefill.suggestedAuth.scheme,
+        color: 'gold',
+      });
+    }
+    return badges;
+  }, [env, explainHeaders, getActiveSchemeFor, serviceRefId, hintPrefill, t]);
 
   const tryItOutEnrich = React.useCallback(
     async (spec: RequestSpec) => {
@@ -811,6 +904,12 @@ const LayoutIndex = () => {
         apiOptions={apiOptions}
         ref={selectRefValue}
         onExport={handleExport}
+        groupOptions={gvOptions.groups}
+        versionOptions={gvOptions.versions}
+        group={selectedGroup}
+        version={selectedVersion}
+        onGroupChange={(g) => applyGroupVersion(g, selectedVersion)}
+        onVersionChange={(v) => applyGroupVersion(selectedGroup, v)}
       />
       {/* C3 — banner sits in the layout chrome (just under the top bar)
           rather than as the outermost overlay above <App>. Renders null
@@ -889,7 +988,7 @@ const LayoutIndex = () => {
           <div className="container-ri loading-container">
             <Spin size="large" tip={t('layout.loading')} />
           </div>
-        ) : dataSource && dataSource.length > 0 ? (
+        ) : hasApiDetail(dataObj) ? (
           <div className="container-ri">
             <div className="container-ri-content" ref={pageView}>
               {/* 固定头部区域 - 单行布局 */}

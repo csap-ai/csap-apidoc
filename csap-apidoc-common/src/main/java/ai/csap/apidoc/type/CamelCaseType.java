@@ -22,7 +22,7 @@ public enum CamelCaseType {
 
     static {
         for (CamelCaseType paramType : values()) {
-            MAPPINGS.put(paramType.name().toUpperCase(), null);
+            MAPPINGS.put(paramType.name().toUpperCase(), paramType);
         }
     }
 

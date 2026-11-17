@@ -197,8 +197,13 @@ describe('tryItOutSnapshotsStore', () => {
     };
     const res = tryItOutSnapshotsStore.importJson(JSON.stringify(incoming));
     expect(res.added).toBe(1);
+    // A collision is not a skip.
+    expect(res.skipped).toBe(0);
     const list = tryItOutSnapshotsStore.list();
     expect(list).toHaveLength(2);
+    // The local row keeps its id; the incoming copy got a new one.
+    expect(list.find((s) => s.name === 'Local')!.id).toBe(a.id);
+    expect(list.find((s) => s.name === 'Incoming')!.id).not.toBe(a.id);
     expect(list.filter((s) => s.name === 'Local')).toHaveLength(1);
     expect(list.filter((s) => s.name === 'Incoming')).toHaveLength(1);
     // Every id is unique after the rewrite.

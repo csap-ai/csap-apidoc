@@ -24,8 +24,8 @@
     {
       "name": "csap.validation.enabled",
       "type": "java.lang.Boolean",
-      "description": " 是否可用.",
-      "defaultValue": "true",
+      "description": " 是否启用请求参数校验拦截(ValidateIntercept). 默认不启用, 必须显式配置为 true 才生效.",
+      "defaultValue": "false",
       "sourceType": "ai.csap.validation.properties.ValidationProperties"
     },
     {

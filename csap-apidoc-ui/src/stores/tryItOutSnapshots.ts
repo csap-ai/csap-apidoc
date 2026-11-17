@@ -74,7 +74,10 @@ const EMPTY_STATE: SnapshotsState = {
 export interface ImportResult {
   /** Number of snapshots successfully added to the store. */
   added: number;
-  /** Number of entries in the imported payload that failed validation. */
+  /**
+   * Number of entries in the imported payload that failed validation.
+   * Id collisions are NOT skipped — they are re-imported under a new id.
+   */
   skipped: number;
   /** Human-readable error when the top-level JSON itself was invalid. */
   error?: string;
@@ -334,9 +337,12 @@ export const tryItOutSnapshotsStore = {
   },
 
   /**
-   * Ingest a JSON blob. `merge` mode appends (skipping id-collisions);
-   * `replace` mode wipes existing snapshots first. Returns a summary of
-   * what happened so the caller can surface it in a toast.
+   * Ingest a JSON blob. `merge` mode appends; an incoming snapshot whose
+   * id collides with an existing one is kept under a freshly generated id
+   * (neither copy is dropped or overwritten). `replace` mode wipes existing
+   * snapshots first. `skipped` only counts rows that failed validation.
+   * Returns a summary of what happened so the caller can surface it in a
+   * toast.
    *
    * Uses the same `sanitizeSnapshot` path as `safeRead()` so a partially
    * corrupted payload still imports the valid rows.

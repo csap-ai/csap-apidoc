@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>ai.csap.apidoc</groupId>
     <artifactId>csap-apidoc</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
     <packaging>pom</packaging>
 
     <name>CSAP Framework API Doc</name>
@@ -75,6 +75,7 @@
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
+        <maven.compiler.release>11</maven.compiler.release>
         <java.version>11</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -179,11 +180,11 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.1</version>
+                    <version>3.11.0</version>
                     <configuration>
                         <encoding>UTF-8</encoding>
-                        <source>${maven.compiler.source}</source>
-                        <target>${maven.compiler.target}</target>
+                        <!-- 无论用哪个 JDK 构建,产物都是 Java 11 字节码(1.1.0 曾因 JDK 17 构建而产出 Java 17 字节码) -->
+                        <release>${maven.compiler.release}</release>
                         <compilerArgs>
                             <arg>-parameters</arg>
                         </compilerArgs>
@@ -239,7 +240,21 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
-                    <version>2.18.1</version>
+                    <version>2.22.2</version>
+                    <!-- 同时运行 TestNG 与 JUnit Platform(JUnit 5 / vintage)两套测试;
+                         2.18.1 只会选 TestNG provider,JUnit 5 测试被静默跳过。 -->
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.apache.maven.surefire</groupId>
+                            <artifactId>surefire-junit-platform</artifactId>
+                            <version>2.22.2</version>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.apache.maven.surefire</groupId>
+                            <artifactId>surefire-testng</artifactId>
+                            <version>2.22.2</version>
+                        </dependency>
+                    </dependencies>
                     <configuration>
                         <!-- Default-skip preserves historical behaviour, but the
                              CLI override (`mvn ... -DskipTests=false`) now
@@ -469,54 +484,6 @@
             </build>
         </profile>
 
-        <profile>
-            <id>jdk-1.8</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-                <jdk>1.8</jdk>
-            </activation>
-            <properties>
-                <maven.compiler.source>1.8</maven.compiler.source>
-                <maven.compiler.target>1.8</maven.compiler.target>
-                <maven.compiler.compilerVersion>1.8</maven.compiler.compilerVersion>
-            </properties>
-        </profile>
-        <profile>
-            <id>jdk-11</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-                <jdk>11</jdk>
-            </activation>
-            <properties>
-                <maven.compiler.source>11</maven.compiler.source>
-                <maven.compiler.target>11</maven.compiler.target>
-                <maven.compiler.compilerVersion>11</maven.compiler.compilerVersion>
-            </properties>
-        </profile>
-        <profile>
-            <id>jdk-17</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-                <jdk>17</jdk>
-            </activation>
-            <properties>
-                <maven.compiler.source>17</maven.compiler.source>
-                <maven.compiler.target>17</maven.compiler.target>
-                <maven.compiler.compilerVersion>17</maven.compiler.compilerVersion>
-            </properties>
-        </profile>
-        <profile>
-            <id>jdk-21</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-                <jdk>21</jdk>
-            </activation>
-            <properties>
-                <maven.compiler.source>21</maven.compiler.source>
-                <maven.compiler.target>21</maven.compiler.target>
-                <maven.compiler.compilerVersion>21</maven.compiler.compilerVersion>
-            </properties>
-        </profile>
     </profiles>
     <!--
         No <distributionManagement>. This project publishes exclusively to

@@ -35,6 +35,7 @@ import com.google.common.collect.Sets;
 
 import ai.csap.apidoc.ApiStrategyType;
 import ai.csap.apidoc.SQLiteHandle;
+import ai.csap.apidoc.SQLiteSchema;
 import ai.csap.apidoc.annotation.ParamType;
 import ai.csap.apidoc.autoconfigure.StrategyModel;
 import ai.csap.apidoc.core.ApidocOptional;
@@ -47,7 +48,6 @@ import ai.csap.validation.factory.Validate;
 
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.date.DateUtil;
-import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.ArrayUtil;
 import lombok.SneakyThrows;
@@ -94,15 +94,16 @@ public class SQLiteParamGroupStrategy implements ParamGroupStrategy, SQLiteHandl
         if (isDevtools && ArrayUtil.isEmpty(resources)) {
             String path = URLDecoder.decode(pathNameFilter(RESOURCE_PATTERN.getResources("/")[0].getURL()
                                                                                                 .getPath()), StandardCharsets.UTF_8);
-            String path2 = "classpath*:sqlite-apidoc-example/apidoc-example.db";
-            Resource[] resources2 = RESOURCE_PATTERN.getResources(path2);
             File file = new File(path + "/" + strategyModel.getPath() + "/" + strategyModel.getFileName() + getSuffix());
             if (file.exists()) {
                 return ApidocOptional.of(file);
             }
-            File copy = FileUtil.copyFile(resources2[0].getInputStream(), file);
-            log.info("filterFile copy file copy:{} to :{}", resources2[0].getURI(), copy.getPath());
-            return ApidocOptional.of(copy);
+            // 首次使用:直接用 DDL 建库(不再依赖已删除的二进制模板 sqlite-apidoc-example/apidoc-example.db)
+            try (Connection connection = getConnection(file.getPath())) {
+                SQLiteSchema.ensureSchema(connection);
+            }
+            log.info("filterFile create sqlite db with schema: {}", file.getPath());
+            return ApidocOptional.of(file);
         }
         if (ArrayUtil.isNotEmpty(resources)) {
             Resource resource = resources[0];
@@ -243,6 +244,7 @@ public class SQLiteParamGroupStrategy implements ParamGroupStrategy, SQLiteHandl
                     .isNullCondition(i -> log.isDebugEnabled(), () -> log.debug("handle get file is null {} {}", strategyModel.getPath(), strategyModel.getFileName()))
                     .isNotNull(i -> {
                         try (Connection connection = getConnection(i.getPath())) {
+                            SQLiteSchema.ensureSchema(connection);
                             List<Map<String, Object>> mapList = queryList(connection, API_METHOD, Sets.newHashSet("class_name", "simple_name", "name", "request", "response"),
                                     MapUtil.<String, Object>builder().build())
                                     .orElse(null);
@@ -269,6 +271,7 @@ public class SQLiteParamGroupStrategy implements ParamGroupStrategy, SQLiteHandl
                 .isNullCondition(i -> log.isDebugEnabled(), () -> log.debug("writeAndMerge get file is null {} {}", strategyModel.getPath(), strategyModel.getFileName()))
                 .isNotNull(i -> {
                     try (Connection connection = getConnection(i.getPath())) {
+                        SQLiteSchema.ensureSchema(connection);
                         ParamGroupMethodProperty property = dataMap.get(className).get(methodName);
                         Integer c = count(connection, API_METHOD, MapUtil
                                 .<String, Object>builder("class_name", className).put("name", methodName).build())

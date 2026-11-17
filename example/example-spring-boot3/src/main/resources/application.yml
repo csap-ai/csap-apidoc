@@ -104,6 +104,5 @@ logging:
   level:
     root: INFO
     ai.csap.apidoc: DEBUG
-    com.csap.framework: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

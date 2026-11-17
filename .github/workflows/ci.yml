@@ -28,11 +28,13 @@ jobs:
         distribution: 'temurin'
         cache: 'maven'
         
-    - name: Build with Maven
-      run: mvn -B clean install --file pom.xml
-      
-    - name: Run tests
-      run: mvn -B test --file pom.xml
+    # 根 pom 默认 skipTests=true(方便本地快速打包),CI 必须显式打开测试
+    - name: Build and test
+      run: mvn -B clean install -DskipTests=false --file pom.xml
+
+    - name: Build examples
+      if: matrix.java != '11'
+      run: mvn -B package -DskipTests --file example/pom.xml
       
     - name: Generate test coverage report
       if: matrix.java == '17'

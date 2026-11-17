@@ -27,6 +27,13 @@ interface IProps {
     apiList?: any[];
     onExportOpenApi?: (apiKey: string, parentKey: string) => Promise<Record<string, any>>;
     onExport?: (format: 'openapi' | 'postman' | 'markdown') => Promise<void>;
+    /** Groups / versions from /csap/apidoc/parent; empty or absent hides the select. */
+    groupOptions?: string[];
+    versionOptions?: string[];
+    group?: string | null;
+    version?: string | null;
+    onGroupChange?: (group: string | null) => void;
+    onVersionChange?: (version: string | null) => void;
 }
 
 const LayoutHeader = (props: IProps, ref) => {
@@ -113,19 +120,39 @@ const LayoutHeader = (props: IProps, ref) => {
                             })}
                         </Select>
                     </div>
-                    <div className="api-item">
-                        <div>{t('header.group.label')}</div>
-                        <Select placeholder={t('header.group.placeholder')} allowClear style={{width: 140}}>
-                            <Option value="default0">default</Option>
-                        </Select>
-                    </div>
-                    <div className="api-item">
-                        <div>{t('header.version.label')}</div>
-                        <Select placeholder={t('header.version.placeholder')} allowClear style={{width: 120}}>
-                            <Option value="default1">v1</Option>
-                            <Option value="default2">v2</Option>
-                        </Select>
-                    </div>
+                    {/* 分组 / 版本:只在后端返回了可用于过滤菜单的数据时显示 */}
+                    {props.groupOptions && props.groupOptions.length > 0 && (
+                        <div className="api-item">
+                            <div>{t('header.group.label')}</div>
+                            <Select
+                                placeholder={t('header.group.placeholder')}
+                                allowClear
+                                value={props.group ?? undefined}
+                                onChange={(v) => props.onGroupChange?.(v ?? null)}
+                                style={{width: 140}}
+                            >
+                                {props.groupOptions.map((g) => (
+                                    <Option key={g} value={g}>{g}</Option>
+                                ))}
+                            </Select>
+                        </div>
+                    )}
+                    {props.versionOptions && props.versionOptions.length > 0 && (
+                        <div className="api-item">
+                            <div>{t('header.version.label')}</div>
+                            <Select
+                                placeholder={t('header.version.placeholder')}
+                                allowClear
+                                value={props.version ?? undefined}
+                                onChange={(v) => props.onVersionChange?.(v ?? null)}
+                                style={{width: 120}}
+                            >
+                                {props.versionOptions.map((v) => (
+                                    <Option key={v} value={v}>{v}</Option>
+                                ))}
+                            </Select>
+                        </div>
+                    )}
                     <div className="api-item">
                         <HeadersButton knownServices={props.apiOptions?.map(o => ({ url: o.url, name: o.name }))} />
                     </div>

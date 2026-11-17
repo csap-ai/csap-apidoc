@@ -14,29 +14,16 @@ spring:
       fail-on-unknown-properties: false
 
 # CSAP API Doc 配置
+# 扫描包和存储策略由启动类上的 @EnableApidoc 指定,不在这里配置
 csap:
   apidoc:
-    enabled: true
-    title: CSAP API Doc - Spring Boot 2.x Example
-    version: 1.0.0
-    description: 基于 Spring Boot 2.7.x (javax.servlet) 的 API 文档示例
-    base-package: ai.csap.apidoc.example
-    # 文档存储策略：standard (内存), yaml (YAML文件), sqlite (SQLite数据库)
-    strategy: standard
-    
-  # 验证框架配置
-  validation:
-    enabled: true
-    
-  # Web 配置
-  web:
-    enabled: true
-    # 分页参数配置
-    page-param:
-      column-keys: [sort, orderBy]
-      asc-keys: [order, asc]
-      size-keys: [size, pageSize, limit]
-      current-keys: [current, page, pageNum]
+    api-info:
+      title: CSAP API Doc - Spring Boot 2.x Example
+      version: 1.0.0
+      description: 基于 Spring Boot 2.7.x (javax.servlet) 的 API 文档示例
+    devtool:
+      enabled: true   # 仅开发环境开启
+      cache: true
 
 # Management Endpoints
 management:
@@ -57,6 +44,5 @@ logging:
   level:
     root: INFO
     ai.csap.apidoc: DEBUG
-    com.csap.framework: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

@@ -41,6 +41,9 @@ import ai.csap.apidoc.strategy.handle.MethodHandle;
 import ai.csap.apidoc.strategy.handle.ParamHandle;
 import ai.csap.apidoc.web.CsapDocController;
 import ai.csap.validation.factory.IValidateFactory;
+import ai.csap.validation.factory.DefaultValidateFactoryImpl;
+import ai.csap.validation.properties.ValidationProperties;
+import org.hibernate.validator.internal.metadata.core.ConstraintHelper;
 
 /**
  * Apidoc config.
@@ -54,6 +57,29 @@ import ai.csap.validation.factory.IValidateFactory;
 @ImportAutoConfiguration(ApidocDevtoolsAutoConfiguration.class)
 @ConditionalOnBean(EnableApidocConfig.class)
 public class ApidocAutoConfiguration {
+    /**
+     * 没有引入 csap-validation-boot-starter 时使用的默认实现(三处共用同一个实例)。
+     * 文档生成要用它记录字段规则,为 null 会在生成文档时空指针;
+     * 请求拦截(ValidateIntercept)仍只在 csap.validation.enabled=true 时由校验 starter 注册。
+     */
+    private volatile IValidateFactory fallbackValidateFactory;
+
+    private IValidateFactory validateFactory(ObjectProvider<IValidateFactory> validateFactories) {
+        IValidateFactory factory = validateFactories.getIfAvailable();
+        if (factory != null) {
+            return factory;
+        }
+        if (fallbackValidateFactory == null) {
+            synchronized (this) {
+                if (fallbackValidateFactory == null) {
+                    fallbackValidateFactory = new DefaultValidateFactoryImpl(
+                            ConstraintHelper.forAllBuiltinConstraints(), new ValidationProperties());
+                }
+            }
+        }
+        return fallbackValidateFactory;
+    }
+
     @Bean
     public ApiDocService apiDocService(BeanFactory beanFactory,
                                        ObjectProvider<IValidateFactory> validateFactories,
@@ -64,7 +90,7 @@ public class ApidocAutoConfiguration {
                                        GlobalCsapRequestParamProvider globalCsapRequestParamProvider,
                                        CsapDocConfig csapDocConfig) {
         return new ApiDocService(devtoolsClass, packageConfig, resourcesProvider,
-                csapHeadersProvider, validateFactories.getIfAvailable(),
+                csapHeadersProvider, validateFactory(validateFactories),
                 globalCsapRequestParamProvider, beanFactory, csapDocConfig);
     }
 
@@ -78,14 +104,14 @@ public class ApidocAutoConfiguration {
     public DefaultMethodRequest defaultMethodRequest(
             ObjectProvider<IValidateFactory> validateFactories,
             ScannerPackageConfig packageConfig) {
-        return new DefaultMethodRequest(validateFactories.getIfAvailable(), packageConfig);
+        return new DefaultMethodRequest(validateFactory(validateFactories), packageConfig);
     }
 
     @Bean
     public DefaultMethodResponse defaultMethodResponse(
             ObjectProvider<IValidateFactory> validateFactories,
             ScannerPackageConfig packageConfig) {
-        return new DefaultMethodResponse(validateFactories.getIfAvailable(), packageConfig);
+        return new DefaultMethodResponse(validateFactory(validateFactories), packageConfig);
     }
 
     @Bean
@@ -127,7 +153,7 @@ public class ApidocAutoConfiguration {
     @ConditionalOnMissingBean
     public AnnotationParamGroupStrategy annotationParamGroupStrategy(
             ObjectProvider<IValidateFactory> validateFactory) {
-        return new AnnotationParamGroupStrategy(validateFactory.getIfAvailable());
+        return new AnnotationParamGroupStrategy(validateFactory(validateFactory));
     }
 
     @Bean
@@ -140,14 +166,14 @@ public class ApidocAutoConfiguration {
         return new YamlParamGroupStrategy(methodFieldHandle,
                 enableApidocConfig,
                 csapDocConfig,
-                validateFactory.getIfAvailable(),
+                validateFactory(validateFactory),
                 applicationContext);
     }
 
     @Bean
     public SQLiteParamGroupStrategy sqLiteParamGroupStrategy(
             ObjectProvider<IValidateFactory> validateFactory) {
-        return new SQLiteParamGroupStrategy(validateFactory.getIfAvailable());
+        return new SQLiteParamGroupStrategy(validateFactory(validateFactory));
     }
 
     @Bean

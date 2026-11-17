@@ -54,8 +54,10 @@ import {
   isTryItOutFailure,
   newCancelTokenSource,
   sendTryItOutRequest,
+  resolveTryItOutOptions,
 } from '@/services/tryItOutClient';
-import { settingsStore } from '@/stores/settingsStore';
+import { settingsStore, SettingsState } from '@/stores/settingsStore';
+import { missingEntries } from '@/services/docHints';
 import type { ComposerWarning } from '@/services/requestComposer';
 import {
   TryItOutHistoryEntry,
@@ -93,9 +95,9 @@ interface Props {
   initial: RequestSpec;
   /** Caller-supplied pills (env / auth / header count) — populated in M5. */
   contextBadges?: ContextBadge[];
-  /** Optional CORS proxy URL (settings.tryItOut.proxyUrl in M6); applied by client. */
+  /** CORS proxy URL override; defaults to settings.tryItOutProxyUrl. */
   proxyUrl?: string | null;
-  /** Per-call timeout (ms); default 30s. */
+  /** Per-call timeout (ms); defaults to settings.tryItOutTimeoutMs. */
   timeoutMs?: number;
   /**
    * Hook for M5 to inject env/headers/auth into the outbound request right
@@ -153,6 +155,15 @@ function recordToRows(r: Record<string, string> | undefined): KvRow[] {
   }));
 }
 
+/**
+ * Rows seeded from `initial` (doc-hint prefill). A hint without a value is
+ * added disabled so an empty header/param is not sent — and does not mask
+ * a global header — until the user fills it in and ticks it.
+ */
+function prefillToRows(r: Record<string, string> | undefined): KvRow[] {
+  return recordToRows(r).map((row) => ({ ...row, enabled: row.value !== '' }));
+}
+
 function rowsToRecord(rows: KvRow[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const r of rows) {
@@ -189,10 +200,10 @@ const TryItOutPanel: React.FC<Props> = ({
   const [method, setMethod] = useState<HttpMethod>(initial.method);
   const [url, setUrl] = useState<string>(initial.url);
   const [headerRows, setHeaderRows] = useState<KvRow[]>(() =>
-    recordToRows(initial.headers),
+    prefillToRows(initial.headers),
   );
   const [queryRows, setQueryRows] = useState<KvRow[]>(() =>
-    recordToRows(initial.query),
+    prefillToRows(initial.query),
   );
   const [body, setBody] = useState<string>(initial.body ?? '');
   const [bodyKind, setBodyKind] = useState<'json' | 'text' | 'none'>(() =>
@@ -216,30 +227,49 @@ const TryItOutPanel: React.FC<Props> = ({
   );
   const cancelRef = useRef<ReturnType<typeof newCancelTokenSource> | null>(null);
 
-  // C4 — read tryItOutWithCredentials live from settingsStore so flipping
-  // the SettingsDrawer switch takes effect on the very next send without
-  // remounting the panel. Subscribe with a tracked snapshot rather than
-  // calling getState() inline so React stays in sync with the store.
-  const [withCredentials, setWithCredentials] = useState<boolean>(
-    () => settingsStore.getState().tryItOutWithCredentials,
+  // C4 — read the Try-it-out settings (withCredentials / proxy URL /
+  // timeout) live from settingsStore so changes in the SettingsDrawer take
+  // effect on the very next send without remounting the panel. Explicit
+  // props, when given, win over the stored settings.
+  const [settingsSnapshot, setSettingsSnapshot] = useState<SettingsState>(() =>
+    settingsStore.getState(),
   );
-  useEffect(() => {
-    return settingsStore.subscribe((s) =>
-      setWithCredentials(s.tryItOutWithCredentials),
-    );
-  }, []);
+  useEffect(() => settingsStore.subscribe(setSettingsSnapshot), []);
+  const {
+    proxyUrl: effectiveProxyUrl,
+    timeoutMs: effectiveTimeoutMs,
+    withCredentials,
+  } = resolveTryItOutOptions({ proxyUrl, timeoutMs }, settingsSnapshot);
 
   // Re-seed when caller swaps to a new endpoint.
   useEffect(() => {
     setMethod(initial.method);
     setUrl(initial.url);
-    setHeaderRows(recordToRows(initial.headers));
-    setQueryRows(recordToRows(initial.query));
+    setHeaderRows(prefillToRows(initial.headers));
+    setQueryRows(prefillToRows(initial.query));
     setBody(initial.body ?? '');
     setBodyKind(initial.body ? 'json' : 'none');
     setResult(null);
     setResponseTab('body');
   }, [initial.method, initial.url]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Prefill (e.g. @DocGlobalHeader / @DocAuth hints) may arrive after the
+  // panel was seeded. Only add keys the user doesn't have yet — never
+  // overwrite or resurrect rows the user edited.
+  const initialHeadersSig = JSON.stringify(initial.headers ?? {});
+  const initialQuerySig = JSON.stringify(initial.query ?? {});
+  useEffect(() => {
+    setHeaderRows((rows) => {
+      const add = missingEntries(rows.map((r) => r.key), initial.headers);
+      return Object.keys(add).length ? [...rows, ...prefillToRows(add)] : rows;
+    });
+  }, [initialHeadersSig]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    setQueryRows((rows) => {
+      const add = missingEntries(rows.map((r) => r.key), initial.query);
+      return Object.keys(add).length ? [...rows, ...prefillToRows(add)] : rows;
+    });
+  }, [initialQuerySig]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const supportsBody = useMemo(
     () => !['GET', 'HEAD'].includes(method),
@@ -312,8 +342,8 @@ const TryItOutPanel: React.FC<Props> = ({
               : bodyKind === 'json'
               ? safeParse(spec.body)
               : spec.body,
-          timeoutMs,
-          proxyUrl,
+          timeoutMs: effectiveTimeoutMs,
+          proxyUrl: effectiveProxyUrl,
           withCredentials,
         },
         { cancelToken: cancelRef.current.token },

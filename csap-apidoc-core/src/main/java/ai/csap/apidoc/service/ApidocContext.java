@@ -74,9 +74,13 @@ public class ApidocContext implements ApplicationContextAware, SmartInitializing
      */
     private static CsapResourcesProvider csapResourcesProvider;
     /**
-     * 文档结果
+     * 文档结果(已完整扫描完成、对外发布的文档;扫描过程中的半成品不会放到这里)
      */
-    private static CsapDocResponse csapDocResponse = null;
+    private static volatile CsapDocResponse csapDocResponse = null;
+    /**
+     * 扫描锁:全量扫描与按类刷新互斥,扫描期间的请求在此等待扫描完成
+     */
+    private static final Object SCAN_LOCK = new Object();
 
     /**
      * 默认构造函数
@@ -140,26 +144,53 @@ public class ApidocContext implements ApplicationContextAware, SmartInitializing
 
     /**
      * 执行文档入口(默认运行执行)
+     *
+     * <p>线程安全:已有完整文档且不要求刷新时直接返回缓存;否则在 {@link #SCAN_LOCK} 上串行扫描,
+     * 扫描写入一个全新的 {@link CsapDocResponse},完成后才替换缓存。因此:
+     * <ul>
+     *   <li>{@code flush=true} 一定会重新扫描;</li>
+     *   <li>启动时异步扫描尚未完成时到来的请求,会在锁上等待扫描完成,拿到的是完整文档而不是半成品。</li>
+     * </ul>
+     *
+     * @param flush    是否强制重新扫描
+     * @param isParent 是否只需要接口和方法
+     * @return 完整文档
      */
     public static CsapDocResponse cmd(Boolean flush, Boolean isParent) {
-        if (Objects.nonNull(csapDocResponse)) {
-            return csapDocResponse;
+        boolean forceFlush = Boolean.TRUE.equals(flush);
+        CsapDocResponse current = csapDocResponse;
+        if (current != null && !forceFlush) {
+            return current;
         }
-        csapDocResponse = new CsapDocResponse();
+        synchronized (SCAN_LOCK) {
+            current = csapDocResponse;
+            // 等锁期间别的线程已经扫描完成,非强制刷新直接复用
+            if (current != null && !forceFlush) {
+                return current;
+            }
+            CsapDocResponse fresh = scanAll(isParent);
+            csapDocResponse = fresh;
+            return fresh;
+        }
+    }
+
+    /**
+     * 全量扫描到一个全新的文档对象(调用方须持有 {@link #SCAN_LOCK})
+     */
+    private static CsapDocResponse scanAll(Boolean isParent) {
+        CsapDocResponse response = new CsapDocResponse();
         List<StrategyModel> classeList = config.getApiClasseList();
-        csapDocResponse.getGroups().addAll(Lists.newArrayList(DEFAULT));
-        csapDocResponse.getVersions().addAll(Lists.newArrayList(DEFAULT));
-        if (flush) {
-            csapDocResponse.getApiList().clear();
-        }
+        response.getGroups().addAll(Lists.newArrayList(DEFAULT));
+        response.getVersions().addAll(Lists.newArrayList(DEFAULT));
         log.info("start load apidoc....");
         // 使用 waitAllIgnoreException 确保即使部分文档加载失败，也能继续加载其他文档
         // 这样可以保证系统的可用性，同时会记录失败信息便于排查问题
         int failedCount = AsyncTaskUtil.waitAllIgnoreException(
                 classeList.stream()
                         .map(i -> AsyncTaskUtil.submit(() -> {
-                            i.setFlush(flush);
-                            apidocStrategy(i.getDocType()).apidoc(null, isParent, i, csapDocResponse);
+                            // 写入的是全新的文档对象,各策略的结果一律追加(flushApiList 的 flush 语义)
+                            i.setFlush(true);
+                            apidocStrategy(i.getDocType()).apidoc(null, isParent, i, response);
                         }))
                         .collect(Collectors.toList())
         );
@@ -168,12 +199,12 @@ public class ApidocContext implements ApplicationContextAware, SmartInitializing
         } else {
             log.info("apidoc 加载完成，所有文档加载成功");
         }
-        csapDocResponse.setApiInfo(config
+        response.setApiInfo(config
                 .getConfig()
                 .getApiInfo());
-        csapDocResponse.sortApi();
-        csapDocResponse.setResources(Objects.nonNull(csapResourcesProvider) ? csapResourcesProvider.get() : null);
-        return csapDocResponse;
+        response.sortApi();
+        response.setResources(Objects.nonNull(csapResourcesProvider) ? csapResourcesProvider.get() : null);
+        return response;
     }
 
     /**
@@ -184,29 +215,35 @@ public class ApidocContext implements ApplicationContextAware, SmartInitializing
      * @param flush     强制刷新
      */
     public static CsapDocResponse cmd(String className, String methodKey, Boolean flush) {
+        // 保证有完整文档(启动扫描未完成时在此等待)
+        CsapDocResponse response = cmd(false, false);
         if (!isDevEnabled()) {
-            return csapDocResponse;
+            return response;
         }
-        config.getApiClasseList().stream()
-                .filter(i -> i.getClazz().stream().anyMatch(i2 -> i2.getName().equals(className)))
-                .map(i -> StrategyModel.builder()
-                        .key(methodKey)
-                        .flush(flush)
-                        .id(i.getId())
-                        .fileName(i.getFileName())
-                        .clazz(Collections.synchronizedSet(Sets.newHashSet(i.getClazz().stream().filter(i2 -> i2.getName().equals(className)).findFirst().orElseThrow())))
-                        .paramType(i.getParamType())
-                        .requestType(i.getRequestType())
-                        .responseType(i.getResponseType())
-                        .docType(i.getDocType())
-                        .path(i.getPath())
-                        .build())
-                .forEach(i -> apidocStrategy(i.getDocType()).apidoc(className, false, i, csapDocResponse));
-        csapDocResponse.setApiInfo(config
-                .getConfig()
-                .getApiInfo());
-        csapDocResponse.setResources(Objects.nonNull(csapResourcesProvider) ? csapResourcesProvider.get() : null);
-        return csapDocResponse;
+        synchronized (SCAN_LOCK) {
+            response = csapDocResponse;
+            CsapDocResponse target = response;
+            config.getApiClasseList().stream()
+                    .filter(i -> i.getClazz().stream().anyMatch(i2 -> i2.getName().equals(className)))
+                    .map(i -> StrategyModel.builder()
+                            .key(methodKey)
+                            .flush(flush)
+                            .id(i.getId())
+                            .fileName(i.getFileName())
+                            .clazz(Collections.synchronizedSet(Sets.newHashSet(i.getClazz().stream().filter(i2 -> i2.getName().equals(className)).findFirst().orElseThrow())))
+                            .paramType(i.getParamType())
+                            .requestType(i.getRequestType())
+                            .responseType(i.getResponseType())
+                            .docType(i.getDocType())
+                            .path(i.getPath())
+                            .build())
+                    .forEach(i -> apidocStrategy(i.getDocType()).apidoc(className, false, i, target));
+            response.setApiInfo(config
+                    .getConfig()
+                    .getApiInfo());
+            response.setResources(Objects.nonNull(csapResourcesProvider) ? csapResourcesProvider.get() : null);
+            return response;
+        }
     }
 
     @Override
