@@ -23,11 +23,11 @@
 | 分支基线 | `origin/chore/apidoc-next-iteration` b4b9819（2026-04-11），即线上运行的代码，见第 3 节 |
 | Go 模块路径 | `github.com/csap-ai/csap-apidoc/csap-apidoc-go`，最低 Go 1.22（以后发布到 GitHub `csap-ai` 组织） |
 | 提交 | **没有提交，也没有推送**。`git status` 显示 `?? csap-apidoc-go/` |
-| 代码 | **M1、M2 已完成**（2026-11-17），M2 新增 `filter`（掩码编译、字节流裁剪）、`validate`（请求校验、内置正则）、gin 中间件；以下为 M1 的内容：`model`（含 Java 格式编码器）、`strategy`（接口、合并、Memory）、`strategy/tag`、根包（生成、快照、`/csap/apidoc*`、`/csap/openapi.json`）、`openapi`、`ui`（内嵌前端）、`adapter/gin`、`examples/gin-basic`。`go vet`、`go test -race ./...` 通过，根包覆盖率 84%。其余包（`filter` `validate` `strategy/{yaml,sql}` `devtools` `postman` `adapter/nethttp`）仍只有 `doc.go` |
+| 代码 | **M1、M2、M3 已完成**（2026-11-17）。M3 新增 `strategy/yaml`（读写、热加载）、`strategy/sql`（版本号、修改记录、回滚、轮询、Notifier）、独立的集成测试模块 `integration/`（数据库驱动只在这里）。M2 新增 `filter`（掩码编译、字节流裁剪）、`validate`（请求校验、内置正则）、gin 中间件；以下为 M1 的内容：`model`（含 Java 格式编码器）、`strategy`（接口、合并、Memory）、`strategy/tag`、根包（生成、快照、`/csap/apidoc*`、`/csap/openapi.json`）、`openapi`、`ui`（内嵌前端）、`adapter/gin`、`examples/gin-basic`。`go vet`、`go test -race ./...` 通过，根包覆盖率 84%。其余包（`filter` `validate` `strategy/{yaml,sql}` `devtools` `postman` `adapter/nethttp`）仍只有 `doc.go` |
 | 文档 | `README.md`、`docs/DESIGN.md`（设计）、本文件 |
 | 许可证 | 沿用仓库根目录的 `LICENSE`（Apache-2.0），模块里不另放 |
 
-下一步：DESIGN.md 第 10 节的事项都已确认（见第 7 节）。M1、M2 已完成，接着做 **M3**（YAML 策略读写和热加载、SQL 策略），一直做到 M5。
+下一步：DESIGN.md 第 10 节的事项都已确认（见第 7 节）。M1、M2、M3 已完成，接着做 **M4**（devtools 后台管理接口与前端、修改记录、回滚、鉴权），一直做到 M5。M4 开始前要先和用户定：内嵌哪一版前端（gitee 线上版，还是 GitHub `main` 上更新的版本，见第 7 节）。
 
 ### 2.1 M1 的验证情况
 
@@ -43,6 +43,12 @@
 - 示例 `examples/gin-basic` 已接上两个中间件，实测过滤和拦截都生效。
 - 性能：裁剪额外开销约为编码耗时的 50%，**没达到** 30% 的目标（DESIGN 5.2）。
 - `go test -race ./...` 通过，覆盖率：根包 86%、filter 83%、validate 79%、strategy 94%。
+
+### 2.3 M3 的验证情况（2026-11-17）
+
+- YAML：kyty 77 份文件全部解析、逐接口写回再加载不变；示例项目运行中改 YAML，3 秒内返回字段变化（DESIGN 3.4）。
+- SQL：SQLite 和 PostgreSQL 16 各 15 遍通过（含两实例同步、只靠通知同步、加载与监听之间的修改不漏），MySQL 未实测（DESIGN 3.5）。PostgreSQL 用的是临时容器 `postgres:16-alpine`，测完已删，没碰 football-data-hub 的比对库。
+- 修了一个 bug：监听的基准原来是"开始监听时"的版本/文件签名，加载与监听之间的修改会被永远漏掉；现在基准是"上次加载时"的。
 
 ## 3. Java 基线是怎么确认的
 
