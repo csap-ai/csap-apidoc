@@ -41,7 +41,7 @@ public final class ValidationViolation {
     }
 
     /**
-     * @return 失败的规则:NotNull / NotEmpty / Pattern / 注解简单类名
+     * @return 失败的规则:NotNull / NotEmpty / Pattern / Required / 注解简单类名
      */
     public String getRule() {
         return rule;

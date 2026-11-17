@@ -54,6 +54,20 @@
       "description": "校验失败提示的格式.",
       "defaultValue": "TIP_1",
       "sourceType": "ai.csap.validation.properties.ValidationProperties"
+    },
+    {
+      "name": "csap.validation.required-code",
+      "type": "java.lang.String",
+      "description": "字段只配了必填、没配任何校验规则时, 值为空(null、空字符串、空集合)返回的错误码.",
+      "defaultValue": "400",
+      "sourceType": "ai.csap.validation.properties.ValidationProperties"
+    },
+    {
+      "name": "csap.validation.required-message",
+      "type": "java.lang.String",
+      "description": "字段只配了必填、没配任何校验规则时, 值为空返回的提示, 按 tip-type 拼上字段名.",
+      "defaultValue": "不能为空",
+      "sourceType": "ai.csap.validation.properties.ValidationProperties"
     }
   ],
   "hints": [

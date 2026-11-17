@@ -55,6 +55,8 @@ csap:
 | `csap.validation.endpoints` | 空 | 按接口覆盖模式，键见上文 |
 | `csap.validation.http-status` | `200` | 校验失败时的 HTTP 状态码，响应体格式不变 |
 | `csap.validation.tip-type` | `TIP_1` | 提示信息格式，见 [返回格式](#返回格式) |
+| `csap.validation.required-code` | `"400"` | 字段只配了必填、没配任何规则时，值为空返回的 `code`，见 [只配了必填的字段](#只配了必填的字段) |
+| `csap.validation.required-message` | `不能为空` | 同上，返回的提示（按 `tip-type` 拼上字段名） |
 | `csap.validation.enabled` | 未配置 | 1.1.x 的旧开关，见下文 |
 | `csap.validation.code` / `message` | `code` / `message` | 目前未被读取 |
 
@@ -155,7 +157,21 @@ com.example.controller.OrderController:
 - 实体字段：注解策略下取匹配 `@Group` 的 `@Request.required`（没有匹配的 `@Group` 而靠 `forceReq` 出现时取 `@ApiModelProperty.required`）；YAML / SQLite 策略下取规则中的 `required`；
 - 基础类型的方法参数：注解策略下取 `@ApiProperty.required`；YAML / SQLite 策略下取规则中的 `required`。
 
-非必填字段上的规则**仍会显示在文档里**，但运行时不会执行。另外，只写了 `required: true`、没有任何规则的字段也不会被检查是否为空，需要非空请加 `NotNull` / `NotEmpty` 规则或约束注解。
+非必填字段上的规则**仍会显示在文档里**，但运行时不会执行。
+:::
+
+### 只配了必填的字段
+
+1.2.0 起，字段**必填但没有任何校验规则**（没写 `validate`，也没有约束注解）时，运行时校验开启后会检查它是否为空：值为 `null`、空字符串、空集合、空 Map 或空数组即失败（只含空格的字符串不算空）。失败返回：
+
+- `code`：`csap.validation.required-code`，默认 `"400"`；
+- `message`：`csap.validation.required-message`，默认 `不能为空`，按 `tip-type` 拼上字段名，例如 `字段nickname,不能为空`；
+- 日志和指标中的规则名为 `Required`。
+
+与 Go 版的 `RequiredCode` / `RequiredMessage` 默认值一致。字段只要有一条规则（包括合并进来的约束注解），就只按规则校验，不再额外检查非空。这项检查同样只在 `observe` / `enforce` 模式下执行，`off` 时不生效。
+
+:::warning 从 1.1.x 升级
+1.1.x 中只写了 `required: true`（或 `@Request(required = true)`）而没有规则的字段不会被检查。升级到 1.2.0 并开启校验后，这些字段为空的请求会被判定失败。建议先用 `observe` 模式观察一段时间。
 :::
 
 ### 执行顺序
@@ -200,7 +216,7 @@ HTTP 状态码默认 **200**，可用 `csap.validation.http-status` 修改（例
   csap validation violation (observe, request passed): endpoint=com.example.controller.UserController.createUser field=username rule=Size code=400 message=字段username,长度3-20
   ```
 
-- **指标**：classpath 中有 Micrometer 且存在 `MeterRegistry` 时，计数器 `csap.validation.violations`，标签 `endpoint`、`rule`（`NotNull` / `NotEmpty` / `Pattern` / 约束注解简单类名）、`mode`（`observe` / `enforce`）。接入 Actuator 后可在 `/actuator/metrics/csap.validation.violations` 查看。
+- **指标**：classpath 中有 Micrometer 且存在 `MeterRegistry` 时，计数器 `csap.validation.violations`，标签 `endpoint`、`rule`（`NotNull` / `NotEmpty` / `Pattern` / `Required` / 约束注解简单类名）、`mode`（`observe` / `enforce`）。接入 Actuator 后可在 `/actuator/metrics/csap.validation.violations` 查看。
 
 需要上报到别处时，声明一个 `ai.csap.validation.runtime.ViolationRecorder` Bean 即可，与内置记录器并存。
 
@@ -286,7 +302,7 @@ HTTP 状态码默认 **200**，可用 `csap.validation.http-status` 修改（例
 
 - 只支持 Spring MVC（Servlet），不支持 WebFlux；只校验带 `@ApiOperation` 的方法。
 - 规则在文档扫描完成后才生效；DevTools 重新生成规则的瞬间可能有请求未被校验。
-- 只有必填字段的规则会执行；只写 `required: true` 不会检查非空。
+- 只有必填字段的规则会执行；必填但没有规则的字段只检查非空。
 - 实体字段按字段名（`@ApiModelProperty.name`，未填时为 Java 字段名）找 getter 取值；`name` 与 Java 字段名不一致时取不到值（按 `null` 校验）。上线前请先用 `observe` 模式确认。
 - 约束注解的 `groups` 不参与判断；`ConstraintValidatorContext` 是简化实现，依赖完整上下文的自定义校验器可能被跳过（会记 warn 日志）。
 - 校验组件自身出错（非校验失败）时请求放行，并对每个接口记一次 warn 日志。

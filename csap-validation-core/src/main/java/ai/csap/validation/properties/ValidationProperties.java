@@ -18,6 +18,14 @@ import lombok.Data;
 public class ValidationProperties {
     public static final String PREFIX = "csap.validation";
     /**
+     * 只配了必填、没配校验规则时的默认错误码(与 Go 版一致)
+     */
+    public static final String DEFAULT_REQUIRED_CODE = "400";
+    /**
+     * 只配了必填、没配校验规则时的默认提示(与 Go 版一致)
+     */
+    public static final String DEFAULT_REQUIRED_MESSAGE = "不能为空";
+    /**
      * 错误码的名称
      */
     private String code = "code";
@@ -51,6 +59,16 @@ public class ValidationProperties {
      * 验证提示的类型
      */
     private ValidationTipType tipType = ValidationTipType.TIP_1;
+
+    /**
+     * 字段只配了必填、没配任何校验规则时,值为空(null、空字符串、空集合)返回的错误码
+     */
+    private String requiredCode = DEFAULT_REQUIRED_CODE;
+
+    /**
+     * 字段只配了必填、没配任何校验规则时,值为空返回的提示(按 tip-type 拼上字段名)
+     */
+    private String requiredMessage = DEFAULT_REQUIRED_MESSAGE;
 
     /**
      * 全局生效的模式(已合并旧开关 enabled)

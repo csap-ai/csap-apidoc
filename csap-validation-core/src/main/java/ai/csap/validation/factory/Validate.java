@@ -14,11 +14,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import ai.csap.apidoc.type.ModelType;
 import ai.csap.validation.ValidationViolationException;
 import ai.csap.validation.constraint.ConstraintValidatorAdapter;
+import ai.csap.validation.properties.ValidationProperties;
 import ai.csap.validation.strategy.context.ValidationStrategyContext;
 import ai.csap.validation.type.ValidationStrategyType;
 import ai.csap.validation.type.ValidationTipType;
 
 import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -39,6 +41,10 @@ import lombok.experimental.Accessors;
 @AllArgsConstructor
 public class Validate {
     private static final String FIEID_TIP = "字段%s,%s";
+    /**
+     * 只配了必填、没配校验规则时的规则名(日志和指标)
+     */
+    public static final String REQUIRED_RULE = "Required";
     /**
      * 返回值 过滤参数
      */
@@ -173,6 +179,10 @@ public class Validate {
          * 对象类型
          */
         private ModelType modelType;
+        /**
+         * 是否必填:没有任何校验规则时,必填字段的值为空也算校验失败
+         */
+        private boolean required;
 
         public ValidateField modelType(ModelType modelType) {
             this.modelType = modelType;
@@ -186,6 +196,11 @@ public class Validate {
 
         public String getRemark() {
             return StrUtil.isEmpty(remark) ? fieldName : remark;
+        }
+
+        public ValidateField required(boolean required) {
+            this.required = required;
+            return this;
         }
 
         public ValidateField fieldName(String fieldName) {
@@ -255,7 +270,46 @@ public class Validate {
          * @return 字段验证
          */
         public ValidateField validators(Object value, ValidationTipType tipType) {
-            return validators(value, tipType, getConstraintValidators());
+            return validators(value, tipType, ValidationProperties.DEFAULT_REQUIRED_CODE,
+                    ValidationProperties.DEFAULT_REQUIRED_MESSAGE);
+        }
+
+        /**
+         * 按配置验证当前字段(提示类型、必填的错误码和提示取自配置)
+         *
+         * @param value      需要验证的数据
+         * @param properties 校验配置
+         * @return 字段验证
+         */
+        public ValidateField validators(Object value, ValidationProperties properties) {
+            return validators(value, properties.getTipType(), properties.getRequiredCode(),
+                    properties.getRequiredMessage());
+        }
+
+        /**
+         * 验证当前字段:有规则时按规则验证;没有规则但必填时,值为空(null、空字符串、空集合、空数组)即失败
+         *
+         * @param value           需要验证的数据
+         * @param tipType         提示类型
+         * @param requiredCode    必填失败的错误码
+         * @param requiredMessage 必填失败的提示
+         * @return 字段验证
+         */
+        public ValidateField validators(Object value, ValidationTipType tipType,
+                                        String requiredCode, String requiredMessage) {
+            List<ConstraintValidatorField> rules = getConstraintValidators();
+            if (CollectionUtil.isNotEmpty(rules)) {
+                return validators(value, tipType, rules);
+            }
+            if (required && ObjectUtil.isEmpty(value)) {
+                ValidationTipType tip = Objects.nonNull(tipType) ? tipType : ValidationTipType.TIP_1;
+                throw new ValidationViolationException(
+                        StrUtil.isEmpty(requiredCode) ? ValidationProperties.DEFAULT_REQUIRED_CODE : requiredCode,
+                        tip.validateMessage(this, StrUtil.isEmpty(requiredMessage)
+                                ? ValidationProperties.DEFAULT_REQUIRED_MESSAGE : requiredMessage),
+                        getFieldName(), REQUIRED_RULE);
+            }
+            return this;
         }
 
         /**

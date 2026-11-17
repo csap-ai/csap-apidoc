@@ -36,6 +36,7 @@ import ai.csap.validation.type.ValidationTipType;
 class ValidationExecutorTest {
     private static final String LIST = DemoController.class.getName() + ".list";
     private static final String CREATE = DemoController.class.getName() + ".create";
+    private static final String SEARCH = DemoController.class.getName() + ".search";
 
     private ValidationProperties properties;
     private DefaultValidateFactoryImpl factory;
@@ -45,10 +46,20 @@ class ValidationExecutorTest {
     public static class DemoUser {
         private String username;
         private String phone;
+        private String nickname;
 
         public DemoUser(String username, String phone) {
             this.username = username;
             this.phone = phone;
+        }
+
+        public DemoUser(String username, String phone, String nickname) {
+            this(username, phone);
+            this.nickname = nickname;
+        }
+
+        public String getNickname() {
+            return nickname;
         }
 
         public String getUsername() {
@@ -67,6 +78,10 @@ class ValidationExecutorTest {
 
         @ApiOperation("create")
         public void create(DemoUser user) {
+        }
+
+        @ApiOperation("search")
+        public void search(String keyword, List<String> tags) {
         }
 
         public void plain(String id) {
@@ -291,5 +306,68 @@ class ValidationExecutorTest {
         assertThat(seen).hasSize(1);
         assertThat(seen.get(0).getCode()).isEqualTo("3001");
         assertThat(seen.get(0).getRule()).isEqualTo("ValidateException");
+    }
+
+    /**
+     * 只配了必填、没配校验规则:值为空即失败,默认 code 400、提示「不能为空」(与 Go 版一致)
+     */
+    @Test
+    void requiredWithoutRules() {
+        BaseModel basic = BaseModel.build().modelType(ModelType.BASE_DATA).field(String.class);
+        factory.addRequestValidate(SEARCH, "String", "keyword", "关键字", basic, List.of());
+        factory.addRequestValidate(SEARCH, "String", "tags", "标签", basic, null);
+        factory.addRequestValidate(CREATE, "DemoUser", "nickname", "昵称",
+                BaseModel.build().modelType(ModelType.OBJECT).field(String.class), new ArrayList<>());
+
+        Object[][] cases = {
+                {"search", 0, null, "字段keyword,不能为空"},
+                {"search", 0, "", "字段keyword,不能为空"},
+                {"search", 0, " ", null},
+                {"search", 0, "k", null},
+                {"search", 1, List.of(), "字段tags,不能为空"},
+                {"search", 1, List.of("a"), null},
+                {"create", 0, new DemoUser("abc", "19912345678", null), "字段nickname,不能为空"},
+                {"create", 0, new DemoUser("abc", "19912345678", ""), "字段nickname,不能为空"},
+                {"create", 0, new DemoUser("abc", "19912345678", "nick"), null},
+        };
+        for (Object[] c : cases) {
+            ValidationViolationException e = check((String) c[0], (Integer) c[1], c[2]);
+            if (c[3] == null) {
+                assertThat(e).as("%s %s", c[0], c[2]).isNull();
+            } else {
+                assertThat(e).as("%s %s", c[0], c[2]).isNotNull();
+                assertThat(e.getCode()).isEqualTo("400");
+                assertThat(e.getMessage()).isEqualTo(c[3]);
+                assertThat(e.getRule()).isEqualTo("Required");
+            }
+        }
+        // 有规则时仍按规则,不额外检查必填
+        assertThat(check("create", 0, new DemoUser(null, "13800000000", "nick")).getCode()).isEqualTo("1011");
+    }
+
+    @Test
+    void requiredCodeAndMessageConfigurable() {
+        factory.addRequestValidate(SEARCH, "String", "keyword", "关键字",
+                BaseModel.build().modelType(ModelType.BASE_DATA).field(String.class), List.of());
+        properties.setRequiredCode("4000");
+        properties.setRequiredMessage("必填");
+        properties.setTipType(ValidationTipType.TIP_3);
+        ValidationViolationException e = check("search", 0, null);
+        assertThat(e.getCode()).isEqualTo("4000");
+        assertThat(e.getMessage()).isEqualTo("关键字,必填");
+    }
+
+    @Test
+    void requiredWithoutRulesOnlyWhenModeOn() {
+        factory.addRequestValidate(SEARCH, "String", "keyword", "关键字",
+                BaseModel.build().modelType(ModelType.BASE_DATA).field(String.class), List.of());
+        executor().validate(param("search", 0), null);
+        assertThat(seen).isEmpty();
+
+        properties.setMode(ValidationMode.OBSERVE);
+        executor().validate(param("search", 0), null);
+        assertThat(seen).hasSize(1);
+        assertThat(seen.get(0).getRule()).isEqualTo("Required");
+        assertThat(seen.get(0).getCode()).isEqualTo("400");
     }
 }

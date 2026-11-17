@@ -19,7 +19,7 @@ public class ValidationViolationException extends ValidateException {
      */
     private final String field;
     /**
-     * 失败的规则:NotNull / NotEmpty / Pattern / 注解简单类名
+     * 失败的规则:NotNull / NotEmpty / Pattern / Required / 注解简单类名
      */
     private final String rule;
 

@@ -4,11 +4,10 @@ import static ai.csap.apidoc.util.IValidate.DOT;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
-import cn.hutool.core.collection.CollectionUtil;
 
 /**
  * 数据验证工厂类型.
@@ -158,7 +157,11 @@ public interface IValidateBaseFactory extends ValidateFilter {
     }
 
     /**
-     * 添加请求参数验证
+     * 添加必填字段的请求参数验证
+     * <p>
+     * 只为必填字段调用。验证列表为空时同样登记该字段(标记为必填):
+     * 运行时校验开启后,值为空(null、空字符串、空集合)即失败,错误码和提示取
+     * {@code csap.validation.required-code} / {@code required-message}。
      *
      * @param key         键
      * @param fileKeyName 字段键名称
@@ -171,16 +174,13 @@ public interface IValidateBaseFactory extends ValidateFilter {
     default Validate.ValidateField addRequestValidate(String key, String fileKeyName, String fieldName,
                                                        String fieldRemark, BaseModel baseModel,
                                                        List<Validate.ConstraintValidatorField> list) {
-        //TODO 获取当前字段验证规则集合
-        if (CollectionUtil.isEmpty(list)) {
-            return null;
-        }
-        return baseModel.getValidateField() != null ?
-                addValidateField(fieldName, fieldRemark, baseModel.getValidateField(), list) :
+        List<Validate.ConstraintValidatorField> rules = list == null ? new ArrayList<>() : list;
+        Validate.ValidateField validateField = baseModel.getValidateField() != null ?
+                addValidateField(fieldName, fieldRemark, baseModel.getValidateField(), rules) :
                 method(key)
                         .addValidateField(fileKeyName, baseModel)
-                        .putValidateField(fieldName, fieldRemark, list, baseModel);
-
+                        .putValidateField(fieldName, fieldRemark, rules, baseModel);
+        return validateField.required(true);
     }
 
     /**

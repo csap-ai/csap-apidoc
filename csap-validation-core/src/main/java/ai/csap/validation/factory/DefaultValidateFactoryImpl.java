@@ -55,10 +55,10 @@ public class DefaultValidateFactoryImpl implements IValidateFactory {
             return;
         }
         //TODO 验证当前数据
-        validateField.validators(args, validationProperties.getTipType());
+        validateField.validators(args, validationProperties);
         if (validateField.getModelType().equals(ModelType.BASE_DATA)) {
             if (validateField.getChildren().containsKey(parameterName)) {
-                validateField.getChildren().get(parameterName).validators(args, validationProperties.getTipType());
+                validateField.getChildren().get(parameterName).validators(args, validationProperties);
             }
         } else {
             //TODO 级联验证
@@ -112,10 +112,10 @@ public class DefaultValidateFactoryImpl implements IValidateFactory {
             return null;
         } else {
             if (ModelType.BASE_DATA.equals(validateFieldEntry.getValue().getModelType())) {
-                validateFieldEntry.getValue().validators(values, validationProperties.getTipType());
+                validateFieldEntry.getValue().validators(values, validationProperties);
             } else {
                 values = function.apply(validateFieldEntry.getKey(), null, values);
-                validateFieldEntry.getValue().validators(values, validationProperties.getTipType());
+                validateFieldEntry.getValue().validators(values, validationProperties);
             }
         }
         return StoreData.builder()
