@@ -23,9 +23,10 @@ public interface ResponseFilterEngine {
     /**
      * 包装响应体
      *
-     * @param body    即将写出的响应体(可能是外层包装后的对象)
-     * @param session 本次响应的过滤状态
+     * @param body          即将写出的响应体(可能是外层包装后的对象)
+     * @param session       本次响应的过滤状态
+     * @param converterType Spring MVC 选中的消息转换器类型
      * @return 交给消息转换器写出的对象
      */
-    Object apply(Object body, FilterSession session);
+    Object apply(Object body, FilterSession session, Class<?> converterType);
 }

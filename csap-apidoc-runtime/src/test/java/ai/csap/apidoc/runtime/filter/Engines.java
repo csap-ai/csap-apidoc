@@ -2,6 +2,8 @@ package ai.csap.apidoc.runtime.filter;
 
 import java.util.function.BiFunction;
 
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,10 +15,10 @@ final class Engines {
 
     static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private static final ObjectMapper FILTERING = new ObjectMapper();
+    private static final JacksonResponseFilterEngine JACKSON_ENGINE = new JacksonResponseFilterEngine();
 
     static {
-        JacksonFilterSupport.install(FILTERING);
+        JACKSON_ENGINE.register(MappingJackson2HttpMessageConverter.class, new ObjectMapper());
     }
 
     private Engines() {
@@ -39,28 +41,29 @@ final class Engines {
         }
     }
 
+    /**
+     * 模拟消息转换器:用未安装过滤的 ObjectMapper 写出引擎返回的对象
+     */
     static String jackson(Object value, FilterSession session) {
         try {
-            Object body = new JacksonResponseFilterEngine().apply(value, session);
-            org.springframework.http.converter.json.MappingJacksonValue mjv =
-                    (org.springframework.http.converter.json.MappingJacksonValue) body;
-            return FILTERING.writer(mjv.getFilters()).writeValueAsString(mjv.getValue());
+            return MAPPER.writeValueAsString(JACKSON_ENGINE.apply(value, session,
+                    MappingJackson2HttpMessageConverter.class));
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
     }
 
     static String fastjson(Object value, FilterSession session) {
-        return com.alibaba.fastjson.JSON.toJSONString(new FastjsonResponseFilterEngine().apply(value, session));
+        return com.alibaba.fastjson.JSON.toJSONString(new FastjsonResponseFilterEngine().apply(value, session, null));
     }
 
     static String fastjsonNoRef(Object value, FilterSession session) {
-        return com.alibaba.fastjson.JSON.toJSONString(new FastjsonResponseFilterEngine().apply(value, session),
+        return com.alibaba.fastjson.JSON.toJSONString(new FastjsonResponseFilterEngine().apply(value, session, null),
                 SerializerFeature.DisableCircularReferenceDetect, SerializerFeature.WriteMapNullValue);
     }
 
     static String fastjson2(Object value, FilterSession session) {
-        return com.alibaba.fastjson2.JSON.toJSONString(new Fastjson2ResponseFilterEngine().apply(value, session));
+        return com.alibaba.fastjson2.JSON.toJSONString(new Fastjson2ResponseFilterEngine().apply(value, session, null));
     }
 
     static JsonNode tree(String json) {

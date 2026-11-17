@@ -64,7 +64,7 @@ public class FastjsonResponseFilterEngine implements ResponseFilterEngine {
     }
 
     @Override
-    public Object apply(Object body, FilterSession session) {
+    public Object apply(Object body, FilterSession session, Class<?> converterType) {
         if (body instanceof MappingFastJsonValue) {
             MappingFastJsonValue value = (MappingFastJsonValue) body;
             value.setValue(new Root(value.getValue(), session));

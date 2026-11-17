@@ -1,17 +1,16 @@
 package ai.csap.apidoc.runtime.filter;
 
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.AnnotationIntrospector;
+import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.introspect.Annotated;
 import com.fasterxml.jackson.databind.introspect.AnnotatedClass;
 import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
@@ -30,11 +29,12 @@ import com.fasterxml.jackson.databind.ser.std.MapProperty;
  *
  * <ul>
  *   <li>{@link Introspector}:没有自定义 {@code @JsonFilter} 的类(含 Map)统一使用过滤器 {@link #FILTER_ID};</li>
- *   <li>{@link Provider}:默认对 {@link #FILTER_ID} 返回"全部输出",有规则的请求换成本次请求的过滤器,
- *       其他过滤器 id 交给原有的 FilterProvider;</li>
- *   <li>{@link SessionFilter}:每个请求新建,按 {@link FilterSession} 决定字段是否输出。</li>
+ *   <li>{@link Provider}:{@link #FILTER_ID} 返回本次请求的过滤器,其他过滤器 id 交给原有的 FilterProvider;</li>
+ *   <li>{@link SessionFilter}:每个请求新建,按 {@link FilterSession} 决定字段是否输出;</li>
+ *   <li>{@link FilteredValue}:消息转换器写出它时,改用已安装过滤支持的 ObjectWriter 写入同一个输出流。</li>
  * </ul>
- * 共享的 ObjectMapper 只在启动时配置一次,之后不再修改,线程安全。
+ * 只安装在消息转换器 ObjectMapper 的副本上,该副本只用于有返回规则的接口;
+ * 应用里共享的 ObjectMapper 和没有规则的接口都不受影响。副本在启动时配置一次,之后只读,线程安全。
  *
  * @author ycf
  * @since 1.2.0
@@ -46,14 +46,7 @@ public final class JacksonFilterSupport {
      */
     public static final String FILTER_ID = "csapApidocResponseFilter";
 
-    private static final Logger log = LoggerFactory.getLogger(JacksonFilterSupport.class);
-
     private static final PropertyFilter SERIALIZE_ALL = SimpleBeanPropertyFilter.serializeAll();
-
-    /**
-     * 安装时 ObjectMapper 上原有的 FilterProvider(处理用户自己的 @JsonFilter)
-     */
-    private static final List<FilterProvider> ORIGINAL_PROVIDERS = new CopyOnWriteArrayList<>();
 
     private JacksonFilterSupport() {
     }
@@ -67,6 +60,7 @@ public final class JacksonFilterSupport {
 
     /**
      * 为 ObjectMapper 安装过滤支持并清空已缓存的序列化器。重复调用无副作用。
+     * 安装后该 ObjectMapper 序列化任何对象都会经过过滤器,只应安装在专用的副本上。
      *
      * @param mapper ObjectMapper
      */
@@ -78,50 +72,23 @@ public final class JacksonFilterSupport {
         AnnotationIntrospector deserializer = mapper.getDeserializationConfig().getAnnotationIntrospector();
         mapper.setAnnotationIntrospectors(new Introspector(serializer), deserializer);
         FilterProvider original = mapper.getSerializationConfig().getFilterProvider();
-        if (original != null && !(original instanceof Provider)) {
-            ORIGINAL_PROVIDERS.add(original);
-        }
-        mapper.setFilterProvider(new Provider(null, original == null ? Collections.emptyList()
-                : Collections.singletonList(original)));
+        mapper.setFilterProvider(new Provider(null, original, null));
         if (mapper.getSerializerProvider() instanceof DefaultSerializerProvider) {
             ((DefaultSerializerProvider) mapper.getSerializerProvider()).flushCachedSerializers();
         }
     }
 
     /**
-     * 给某个 ObjectMapper 安装过滤支持,优先在副本上安装,不影响应用里其他地方使用的同一个 ObjectMapper。
-     *
-     * @param mapper 原 ObjectMapper
-     * @return 已安装过滤支持的 ObjectMapper(副本;无法复制时为原对象)
-     */
-    public static ObjectMapper installOnCopy(ObjectMapper mapper) {
-        if (isInstalled(mapper)) {
-            return mapper;
-        }
-        ObjectMapper target;
-        try {
-            target = mapper.copy();
-        } catch (RuntimeException e) {
-            log.info("ObjectMapper {} 不支持 copy(),在原对象上安装返回字段过滤", mapper.getClass().getName());
-            target = mapper;
-        }
-        install(target);
-        return target;
-    }
-
-    /**
      * 本次请求使用的 FilterProvider
      *
+     * @param mapper   已安装过滤支持的 ObjectMapper
      * @param session  过滤状态
      * @param existing 响应体上已有的 FilterProvider(如用户返回的 MappingJacksonValue),可为 null
      */
-    public static FilterProvider requestProvider(FilterSession session, FilterProvider existing) {
-        List<FilterProvider> delegates = new ArrayList<>(ORIGINAL_PROVIDERS.size() + 1);
-        if (existing != null && !(existing instanceof Provider)) {
-            delegates.add(existing);
-        }
-        delegates.addAll(ORIGINAL_PROVIDERS);
-        return new Provider(new SessionFilter(session), delegates);
+    public static FilterProvider requestProvider(ObjectMapper mapper, FilterSession session, FilterProvider existing) {
+        FilterProvider installed = mapper.getSerializationConfig().getFilterProvider();
+        FilterProvider original = installed instanceof Provider ? ((Provider) installed).original : installed;
+        return new Provider(new SessionFilter(session), existing instanceof Provider ? null : existing, original);
     }
 
     /**
@@ -146,15 +113,22 @@ public final class JacksonFilterSupport {
     }
 
     /**
-     * {@link #FILTER_ID} 返回本次请求的过滤器(没有时全部输出),其他 id 交给原有的 FilterProvider
+     * {@link #FILTER_ID} 返回本次请求的过滤器(没有时全部输出),其他 id 依次交给响应体上的、ObjectMapper 原有的 FilterProvider
      */
     public static final class Provider extends FilterProvider {
         private final PropertyFilter filter;
-        private final List<FilterProvider> delegates;
+        private final FilterProvider original;
+        private final List<FilterProvider> delegates = new ArrayList<>(2);
 
-        Provider(PropertyFilter filter, List<FilterProvider> delegates) {
+        Provider(PropertyFilter filter, FilterProvider first, FilterProvider second) {
             this.filter = filter;
-            this.delegates = delegates;
+            this.original = second == null ? first : second;
+            if (first != null) {
+                delegates.add(first);
+            }
+            if (second != null && second != first) {
+                delegates.add(second);
+            }
         }
 
         @Override
@@ -187,17 +161,18 @@ public final class JacksonFilterSupport {
      */
     static final class SessionFilter extends SimpleBeanPropertyFilter {
         private final FilterSession session;
+        private final boolean pathMode;
 
         SessionFilter(FilterSession session) {
             this.session = session;
+            this.pathMode = session.isPathMode();
         }
 
         @Override
         public void serializeAsField(Object pojo, JsonGenerator gen, SerializerProvider provider,
                                      PropertyWriter writer) throws Exception {
-            String name = writer.getName();
-            if (!session.isPathMode()) {
-                if (session.typeAllows(pojo, name)) {
+            if (!pathMode) {
+                if (session.typeAllows(pojo, writer.getName())) {
                     writer.serializeAsField(pojo, gen, provider);
                 } else if (!gen.canOmitFields()) {
                     writer.serializeAsOmittedField(pojo, gen, provider);
@@ -205,21 +180,25 @@ public final class JacksonFilterSupport {
                 return;
             }
             FieldMask current = session.current();
+            if (current == FieldMask.PASS) {
+                writer.serializeAsField(pojo, gen, provider);
+                return;
+            }
             FieldMask next;
             if (current == FieldMask.OUTSIDE) {
-                next = session.enter(name, valueOf(pojo, writer));
+                next = session.enter(writer.getName(), valueOf(pojo, writer));
+                if (next == null) {
+                    writer.serializeAsField(pojo, gen, provider);
+                    return;
+                }
             } else {
-                next = session.enter(name, null);
+                next = current.lookup(writer.getName());
                 if (next == FieldMask.DROP) {
                     if (!gen.canOmitFields()) {
                         writer.serializeAsOmittedField(pojo, gen, provider);
                     }
                     return;
                 }
-            }
-            if (next == null) {
-                writer.serializeAsField(pojo, gen, provider);
-                return;
             }
             session.push(next);
             try {
@@ -241,6 +220,42 @@ public final class JacksonFilterSupport {
                 // 取不到值时按外层字段处理
             }
             return null;
+        }
+    }
+
+    /**
+     * 待过滤输出的值:消息转换器写出它时,改用已安装过滤支持的 ObjectWriter 写入同一个 JsonGenerator
+     */
+    @JsonSerialize(using = FilteredValueSerializer.class)
+    public static final class FilteredValue {
+        private final Object value;
+        private final FilterSession session;
+        private final ObjectWriter writer;
+
+        FilteredValue(Object value, FilterSession session, ObjectWriter writer) {
+            this.value = value;
+            this.session = session;
+            this.writer = writer;
+        }
+
+        public Object getValue() {
+            return value;
+        }
+    }
+
+    /**
+     * {@link FilteredValue} 的序列化
+     */
+    public static final class FilteredValueSerializer extends JsonSerializer<FilteredValue> {
+        @Override
+        public void serialize(FilteredValue filtered, JsonGenerator gen, SerializerProvider serializers)
+                throws IOException {
+            filtered.session.begin(filtered.value);
+            try {
+                filtered.writer.writeValue(gen, filtered.value);
+            } finally {
+                filtered.session.pop();
+            }
         }
     }
 }

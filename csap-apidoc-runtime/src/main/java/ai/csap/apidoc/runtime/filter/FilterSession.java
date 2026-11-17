@@ -131,20 +131,26 @@ public final class FilterSession {
      * 字符串、数字、日期、枚举等直接输出的值返回 false。
      */
     public static boolean isContainer(Object value) {
-        if (value == null) {
-            return false;
-        }
-        if (value instanceof Collection || value instanceof Map) {
-            return true;
-        }
-        Class<?> type = value.getClass();
-        if (type.isArray()) {
-            return !type.getComponentType().isPrimitive();
-        }
-        if (type.isEnum() || type.isPrimitive()) {
-            return false;
-        }
-        String name = type.getName();
-        return !(name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("jakarta."));
+        return value != null && CONTAINER_TYPES.get(value.getClass());
     }
+
+    /**
+     * 按类型缓存 {@link #isContainer(Object)} 的结果
+     */
+    private static final ClassValue<Boolean> CONTAINER_TYPES = new ClassValue<Boolean>() {
+        @Override
+        protected Boolean computeValue(Class<?> type) {
+            if (Collection.class.isAssignableFrom(type) || Map.class.isAssignableFrom(type)) {
+                return Boolean.TRUE;
+            }
+            if (type.isArray()) {
+                return !type.getComponentType().isPrimitive();
+            }
+            if (type.isEnum() || type.isPrimitive()) {
+                return Boolean.FALSE;
+            }
+            String name = type.getName();
+            return !(name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("jakarta."));
+        }
+    };
 }

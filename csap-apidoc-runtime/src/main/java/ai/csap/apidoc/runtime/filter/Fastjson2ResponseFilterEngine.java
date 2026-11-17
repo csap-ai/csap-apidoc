@@ -36,7 +36,7 @@ public class Fastjson2ResponseFilterEngine implements ResponseFilterEngine {
     }
 
     @Override
-    public Object apply(Object body, FilterSession session) {
+    public Object apply(Object body, FilterSession session, Class<?> converterType) {
         return new Root(body, session);
     }
 

@@ -43,7 +43,7 @@ public class ResponseFilterAdvice implements ResponseBodyAdvice<Object>, Ordered
         }
 
         @Override
-        public Object apply(Object body, FilterSession session) {
+        public Object apply(Object body, FilterSession session, Class<?> converterType) {
             return body;
         }
     };
@@ -100,7 +100,7 @@ public class ResponseFilterAdvice implements ResponseBodyAdvice<Object>, Ordered
             }
             return body;
         }
-        return engine.apply(body, ((PendingFilter) pending).newSession());
+        return engine.apply(body, ((PendingFilter) pending).newSession(), selectedConverterType);
     }
 
     private ResponseFilterEngine select(Class<?> converterType) {

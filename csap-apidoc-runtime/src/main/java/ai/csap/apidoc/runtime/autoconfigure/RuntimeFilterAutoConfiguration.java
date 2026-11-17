@@ -65,13 +65,14 @@ public class RuntimeFilterAutoConfiguration {
     static class JacksonEngineConfiguration {
 
         @Bean
-        public ResponseFilterEngine csapJacksonResponseFilterEngine() {
+        public JacksonResponseFilterEngine csapJacksonResponseFilterEngine() {
             return new JacksonResponseFilterEngine();
         }
 
         @Bean
-        public static JacksonConverterInstaller csapJacksonConverterInstaller(ApplicationContext applicationContext) {
-            return new JacksonConverterInstaller(applicationContext);
+        public JacksonConverterInstaller csapJacksonConverterInstaller(ApplicationContext applicationContext,
+                                                                       JacksonResponseFilterEngine engine) {
+            return new JacksonConverterInstaller(applicationContext, engine);
         }
     }
 
