@@ -23,9 +23,14 @@ import com.alibaba.fastjson2.JSONWriter;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
+import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 
 import ai.csap.apidoc.runtime.filter.model.ApiResult;
+import ai.csap.apidoc.runtime.filter.model.Exotic;
 import ai.csap.apidoc.runtime.filter.model.Match;
 import ai.csap.apidoc.runtime.filter.model.MatchPage;
 import ai.csap.apidoc.runtime.filter.model.Rich;
@@ -38,7 +43,7 @@ import ai.csap.validation.factory.FilterClassParam;
 /**
  * 黄金样本:引擎(含常见特性组合)× 模式 × 场景的输出逐字节比对。
  */
-class GoldenOutputTest {
+public class GoldenOutputTest {
 
     private static final ObjectMapper PLAIN = new ObjectMapper();
 
@@ -46,13 +51,27 @@ class GoldenOutputTest {
             .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE)
             .setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
+    private static final ObjectMapper SORTED = new ObjectMapper()
+            .configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true)
+            .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
+            .setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
+
     private static final JacksonResponseFilterEngine PLAIN_ENGINE = new JacksonResponseFilterEngine();
 
     private static final JacksonResponseFilterEngine SNAKE_ENGINE = new JacksonResponseFilterEngine();
 
+    private static final JacksonResponseFilterEngine SORTED_ENGINE = new JacksonResponseFilterEngine();
+
     static {
+        // Exotic.Custom 上的自定义过滤器 id
+        SimpleFilterProvider custom = new SimpleFilterProvider()
+                .addFilter("customFilter", SimpleBeanPropertyFilter.serializeAllExcept("a"));
+        PLAIN.setFilterProvider(custom);
+        SNAKE.setFilterProvider(custom);
+        SORTED.setFilterProvider(custom);
         PLAIN_ENGINE.register(MappingJackson2HttpMessageConverter.class, PLAIN.copy());
         SNAKE_ENGINE.register(MappingJackson2HttpMessageConverter.class, SNAKE.copy());
+        SORTED_ENGINE.register(MappingJackson2HttpMessageConverter.class, SORTED.copy());
     }
 
     /**
@@ -93,18 +112,33 @@ class GoldenOutputTest {
         Map<String, BiFunction<Object, FilterSession, String>> v = new LinkedHashMap<>();
         v.put("jackson", (b, s) -> jackson(PLAIN, PLAIN_ENGINE, b, s));
         v.put("jacksonSnakeNonNull", (b, s) -> jackson(SNAKE, SNAKE_ENGINE, b, s));
+        v.put("jacksonSorted", (b, s) -> jackson(SORTED, SORTED_ENGINE, b, s));
         v.put("fastjson", (b, s) -> fastjson(b, s));
         v.put("fastjsonNoRefNulls", (b, s) -> fastjson(b, s, SerializerFeature.DisableCircularReferenceDetect,
                 SerializerFeature.WriteMapNullValue));
         v.put("fastjsonMisc", (b, s) -> fastjson(b, s, SerializerFeature.WriteNullListAsEmpty,
                 SerializerFeature.WriteNullStringAsEmpty, SerializerFeature.WriteEnumUsingToString,
                 SerializerFeature.BrowserCompatible, SerializerFeature.WriteDateUseDateFormat));
+        v.put("fastjsonCommon", (b, s) -> fastjson(b, s, SerializerFeature.DisableCircularReferenceDetect,
+                SerializerFeature.WriteMapNullValue, SerializerFeature.WriteNullListAsEmpty,
+                SerializerFeature.WriteNullStringAsEmpty, SerializerFeature.WriteNullNumberAsZero,
+                SerializerFeature.WriteNullBooleanAsFalse));
+        v.put("fastjsonSorted", (b, s) -> fastjson(b, s, SerializerFeature.MapSortField,
+                SerializerFeature.WriteNonStringKeyAsString, SerializerFeature.NotWriteDefaultValue));
         v.put("fastjson2", (b, s) -> fastjson2(b, s));
         v.put("fastjson2NullsRef", (b, s) -> fastjson2(b, s, JSONWriter.Feature.WriteNulls,
                 JSONWriter.Feature.ReferenceDetection));
         v.put("fastjson2Misc", (b, s) -> fastjson2(b, s, JSONWriter.Feature.WriteNullListAsEmpty,
                 JSONWriter.Feature.WriteNullStringAsEmpty, JSONWriter.Feature.BrowserCompatible,
                 JSONWriter.Feature.WriteLongAsString));
+        v.put("fastjson2Converter", (b, s) -> fastjson2(b, s, JSONWriter.Feature.WriteByteArrayAsBase64,
+                JSONWriter.Feature.BrowserSecure));
+        v.put("fastjson2Values", (b, s) -> fastjson2(b, s, JSONWriter.Feature.WriteNulls,
+                JSONWriter.Feature.BrowserCompatible, JSONWriter.Feature.WriteNonStringValueAsString,
+                JSONWriter.Feature.WriteBigDecimalAsPlain));
+        v.put("fastjson2Sorted", (b, s) -> fastjson2(b, s, JSONWriter.Feature.MapSortField,
+                JSONWriter.Feature.SortMapEntriesByKeys, JSONWriter.Feature.NotWriteDefaultValue,
+                JSONWriter.Feature.WriteNonStringKeyAsString));
         return v;
     }
 
@@ -197,6 +231,12 @@ class GoldenOutputTest {
             return m;
         }, path(mask(Arrays.asList("a.id", "c")))));
         list.add(new Case("path/viewed", Viewed::new, path(mask(Arrays.asList("a", "c", "team.name")))));
+        list.add(new Case("path/exoticTop", Exotic::new, path(mask(Arrays.asList("unwrapped", "shape", "ident",
+                "identAgain", "typed", "any", "custom", "pub", "fmtDates", "mixed")))));
+        list.add(new Case("path/exoticDeep", Exotic::new, path(mask(Arrays.asList("unwrapped.name", "u_id",
+                "shape.x", "shape.team.name", "ident.id", "identAgain.secret", "typed.extra", "typed.id",
+                "any.name", "any.team.id", "custom.a", "custom.team.name", "pub.id", "pub.team.name", "fmtDates.x",
+                "mixed.name", "@class", "@id")))));
         for (Object[] parsed : parsedCases()) {
             list.add(new Case("path/parsed/" + parsed[0], () -> Engines.parse((String) parsed[1]),
                     path((FieldMask) parsed[2])));
@@ -232,6 +272,13 @@ class GoldenOutputTest {
                 ((ApiResult<?>) outer).getData())));
         list.add(new Case("csap/tree", () -> TreeNode.of(2, 2),
                 csap(TypeRules.EMPTY.and(TreeNode.class, Collections.emptySet(), set("level")))));
+        list.add(new Case("csap/exotic", Exotic::new, csap(TypeRules.EMPTY
+                .and(Team.class, set("id"), Collections.emptySet())
+                .and(Exotic.Ident.class, Collections.emptySet(), set("secret"))
+                .and(Exotic.Shape.class, Collections.emptySet(), set("secret"))
+                .and(Exotic.Pub.class, Collections.emptySet(), set("secret"))
+                .and(Exotic.WithAny.class, Collections.emptySet(), set("secret"))
+                .and(Exotic.Custom.class, Collections.emptySet(), set("secret")))));
         list.add(new Case("csap/viewed", Viewed::new,
                 csap(TypeRules.EMPTY.and(Team.class, set("name"), Collections.emptySet()))));
         return list;
@@ -284,6 +331,21 @@ class GoldenOutputTest {
 
     @Test
     void outputsMatchGolden() {
+        Golden.verify("filter-outputs", compute());
+    }
+
+    /**
+     * 用当前 classpath 上的实现生成黄金样本:{@code java ... GoldenOutputTest <输出文件>}。
+     * 换用优化前的实现编译出的类即可得到"优化前"的样本。
+     */
+    public static void main(String[] args) throws Exception {
+        fixTimeZone();
+        List<String> lines = new ArrayList<>();
+        compute().forEach((k, v) -> lines.add(k + '\t' + v));
+        java.nio.file.Files.write(java.nio.file.Paths.get(args[0]), lines, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    static Map<String, String> compute() {
         Map<String, String> actual = new LinkedHashMap<>();
         for (Map.Entry<String, BiFunction<Object, FilterSession, String>> v : variants().entrySet()) {
             for (Case c : cases()) {
@@ -307,6 +369,6 @@ class GoldenOutputTest {
                     : Engines.csap(TypeRules.EMPTY.and(Team.class, set("name"), Collections.emptySet()), viewed);
             actual.put("jackson/" + id, jackson(PLAIN, PLAIN_ENGINE, container, session));
         }
-        Golden.verify("filter-outputs", actual);
+        return actual;
     }
 }
