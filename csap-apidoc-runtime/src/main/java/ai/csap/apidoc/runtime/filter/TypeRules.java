@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
 
 import ai.csap.validation.factory.FilterClassParam;
 
@@ -40,6 +41,11 @@ public final class TypeRules {
      * 每个运行时类型适用的规则(按需计算)
      */
     private final ConcurrentMap<Class<?>, Rule[]> applicable = new ConcurrentHashMap<>();
+
+    /**
+     * 各引擎预编译的序列化计划,见 {@link FieldMask#plan(Object, Function)}
+     */
+    private final ConcurrentMap<Object, Object> plans = new ConcurrentHashMap<>(4);
 
     private TypeRules(List<Rule> rules) {
         this.rules = rules.toArray(NONE);
@@ -108,6 +114,13 @@ public final class TypeRules {
         return true;
     }
 
+    /**
+     * 是否有规则作用于该类型
+     */
+    boolean appliesTo(Class<?> type) {
+        return rules.length != 0 && type != null && applicable(type).length != 0;
+    }
+
     private Rule[] applicable(Class<?> type) {
         Rule[] found = applicable.get(type);
         if (found != null) {
@@ -122,6 +135,18 @@ public final class TypeRules {
         found = list.isEmpty() ? NONE : list.toArray(NONE);
         Rule[] raced = applicable.putIfAbsent(type, found);
         return raced != null ? raced : found;
+    }
+
+    /**
+     * 取缓存的计划,没有时创建
+     */
+    @SuppressWarnings("unchecked")
+    <K, T> T plan(K key, Function<? super K, T> factory) {
+        Object found = plans.get(key);
+        if (found == null) {
+            found = plans.computeIfAbsent(key, k -> factory.apply((K) k));
+        }
+        return (T) found;
     }
 
     @Override
