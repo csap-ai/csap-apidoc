@@ -270,9 +270,17 @@ func (n redisNotifier) Subscribe(ctx context.Context, fn func(int64)) error {
 | `GET /csap-api.html` | 文档页面 | 复用 csap-apidoc-ui。静态资源从 Java 的 `/assets/*` 改到 `/csap-ui/assets/*`（`Options.UIPrefix`），输出时改写 html/js 里的地址，避免和业务的 `/assets/` 冲突 |
 | `/csap/yaml/*`、`/devtools/*`、`/devtools-ui` | 后台管理 | 复用 devtools 前端；新增 `GET /csap/yaml/history`、`POST /csap/yaml/rollback` |
 
+## 6.1 后台管理(M4 实现,`devtools` 包)
+
+- `devtools.New(doc, Options{Auth, Realm, Store, User})`:`Auth` 必填;`Store` 默认是 Strategies 里最后一个可写的(只读的 `yaml.FS` 跳过)。挂载:`ginadapter.MountDevtools`、`nethttpadapter.MountDevtools`,或按 `Routes()` / `Patterns()` 自己挂。
+- 修改的语义按 Java `ApidocDevtools.addMethodParam`:请求参数按提交的参数名整体替换该参数下的规则,校验规则只有前端点开过校验弹窗(`clickValidate`)才覆盖;返回字段整体替换为提交的字段(全部 `include: true`)。改进:旧规则按 `<参数名>.` 删除(Java 用 startsWith 会误删同前缀参数),保留字段原有的说明、示例、hidden。
+- 读写基于 Store 自己的规则(不含其他来源合并进来的),保存后立即 `Doc.Refresh`。
+- 修改记录统一为 `strategy.Change` / `strategy.Historian`:SQL 存 `history` 表;YAML 默认追加写 `<Dir>/.csap-apidoc-history.jsonl`(`Options.History` 可改,`"-"` 只记内存);Memory 记在内存。
+- 正则:页面用 JS 测试正则,所以 `validatePatternTypes` 输出 `\uXXXX` 写法;保存时转成 RE2 的 `\x{XXXX}`;`validate` 编译前也会把 Java 写法转换,两种写法都能用。
+
 ## 7. 安全
 
-- devtools **默认关闭**，需要显式 `EnableDevtools(...)` 才开启，并且必须传入鉴权回调；不传则拒绝启动。
+- devtools **默认关闭**，需要显式 `devtools.New(...)` 并挂载才开启，并且必须传入鉴权回调；不传返回 `ErrNoAuth`。POST 接口只接受 `application/json`,防止跨站表单提交。
 - 文档接口默认对外开放（与 Java 一致），可以通过 `DocAuth` 回调加鉴权。
 - 每次修改规则都记录修改人、时间、变更前后内容和版本号。回滚本身也算一次修改，同样留记录。
 - 文档内容只来自已登记的路由和规则，不会暴露未声明的内部结构体。
@@ -304,8 +312,8 @@ csap-apidoc-go/
 | M1 核心（**已完成** 2026-11-17） | model、tag 策略、gin 适配、`/csap/apidoc*`、文档页面、OpenAPI 导出 | 示例项目能打开 `/csap-api.html`，`/csap/apidoc` 能被 Java 版前端正常解析 |
 | M2 过滤与校验（**已完成** 2026-11-17） | 返回字段过滤（路径白名单、csap 兼容模式、外层包装）、请求参数校验（中间件、内置与自定义规则、观察模式）、基准测试 | 用 Java 的真实返回做黄金样本：79 个 kaiyun 接口的返回字段集合与 Java 完全一致；`/csap/apidoc` 编码器对 2.5MB 的 Java 实时返回逐字节还原。性能目标 30% 未达到，实测约 50%（见 5.2） |
 | M3 配置（**已完成** 2026-11-17） | YAML 策略（读写、热加载）、SQL 策略（版本号、轮询、Redis 通知） | 改 YAML 或数据库后几秒内生效，不重启：示例项目实测改 YAML 3 秒内返回字段变化；SQL 两实例共用一个库，A 保存后 B 在轮询间隔内生效（SQLite、PostgreSQL 实测，MySQL 未实测） |
-| M4 管理 | devtools 接口与前端（含必填和校验规则配置）、修改记录、回滚、鉴权 | 用 devtools 页面勾选字段后，返回结果实时变化，并能回滚 |
-| M5 发布 | net/http 适配、Postman 导出、中英文 README、CI、v0.1.0 tag | `go get` 可用，测试覆盖率不低于 80% |
+| M4 管理(**已完成** 2026-11-17) | devtools 接口与前端（含必填和校验规则配置）、修改记录、回滚、鉴权;`globalHeaderHints`、`authHint` | 用 devtools 页面勾选字段后，返回结果实时变化，并能回滚(浏览器实测,见 HANDOFF 2.4) |
+| M5 发布(**已完成** 2026-11-17,待打 tag) | net/http 适配、Postman 导出、README、CHANGELOG、CI、官网接入文档 | 总覆盖率 80%;tag `csap-apidoc-go/v0.1.0` 由用户发布时打 |
 
 ## 10. 已确认事项
 

@@ -18,17 +18,21 @@
 
 | 项 | 值 |
 |---|---|
-| 目录 | `/Users/ycf/Documents/产品/csap/framework/apidoc/csap-apidoc-go` |
-| git | `framework/apidoc` 是 `framework/old/csap-framework-apidoc` 这个仓库的第二个工作目录（`git worktree`），分支 `feat/apidoc-go`。远程：`origin` = GitHub `csap-ai/csap-apidoc`（主线），`gitee` = gitee 镜像 |
+| 目录 | 仓库内 `csap-apidoc-go/`。M4、M5 在 git worktree `/Users/ycf/Documents/产品/csap/framework/csap-apidoc-go`(分支 `feat/go-m4-m5`)完成 |
+| git | 分支 `feat/go-m4-m5`,基于 `feat/apidoc-go` 并已 rebase 到 `origin/main`(08be1d2)。远程:`origin` = GitHub `csap-ai/csap-apidoc`(主线),`gitee` = gitee 镜像 |
 | 分支基线 | **GitHub `main`**（bee9d83，2026-05-02）。2026-11-17 统一了版本和分支，见 [版本与分支统一方案.md](版本与分支统一方案.md)；原来的 gitee 基线 b4b9819 存档为 tag `archive/chore-apidoc-next-iteration` |
 | Java 版本 | 统一后第一个版本为 **1.1.0**（分支 `chore/unify-version-1.1.0`）；1.0.0 指 kyty 线上那份 |
 | Go 模块路径 | `github.com/csap-ai/csap-apidoc/csap-apidoc-go`，最低 Go 1.22（以后发布到 GitHub `csap-ai` 组织） |
-| 提交 | **没有提交，也没有推送**。`git status` 显示 `?? csap-apidoc-go/` |
-| 代码 | **M1、M2、M3 已完成**（2026-11-17）。M3 新增 `strategy/yaml`（读写、热加载）、`strategy/sql`（版本号、修改记录、回滚、轮询、Notifier）、独立的集成测试模块 `integration/`（数据库驱动只在这里）。M2 新增 `filter`（掩码编译、字节流裁剪）、`validate`（请求校验、内置正则）、gin 中间件；以下为 M1 的内容：`model`（含 Java 格式编码器）、`strategy`（接口、合并、Memory）、`strategy/tag`、根包（生成、快照、`/csap/apidoc*`、`/csap/openapi.json`）、`openapi`、`ui`（内嵌前端）、`adapter/gin`、`examples/gin-basic`。`go vet`、`go test -race ./...` 通过，根包覆盖率 84%。其余包（`filter` `validate` `strategy/{yaml,sql}` `devtools` `postman` `adapter/nethttp`）仍只有 `doc.go` |
-| 文档 | `README.md`、`docs/DESIGN.md`（设计）、本文件 |
+| 提交 | M1–M5 都已提交到 `feat/go-m4-m5`,**未推送,未打 tag**。发版 tag 由用户打:`csap-apidoc-go/v0.1.0` |
+| 代码 | **M1–M5 全部完成**(2026-11-17),版本 v0.1.0 待发布(目标 2026-12-04)。M5:`adapter/nethttp`、`postman`、CI(`.github/workflows/go.yml`)。M4:`devtools`(Java 兼容接口、内嵌页面、鉴权、修改记录与回滚)、`strategy.Historian`/`Journal`(YAML、Memory 补上修改记录)、`globalHeaderHints`/`authHint`、前端更新到 main(1.1.1)。M3:`strategy/yaml`、`strategy/sql`、`integration/`。M2:`filter`、`validate`、gin 中间件。M1:`model`、`strategy`、`strategy/tag`、根包、`openapi`、`ui`、`adapter/gin`。`go vet`、`go test -race ./...` 通过,总覆盖率 80%(不计示例和只在 integration 测的 sql 包时更高) |
+| 文档 | `README.md`、`CHANGELOG.md`、`docs/DESIGN.md`(设计)、本文件;官网接入文档 `website/docs/go/index.md` |
 | 许可证 | 沿用仓库根目录的 `LICENSE`（Apache-2.0），模块里不另放 |
 
-下一步：DESIGN.md 第 10 节的事项都已确认（见第 7 节）。M1、M2、M3 已完成，接着做 **M4**（devtools 后台管理接口与前端、修改记录、回滚、鉴权），一直做到 M5。M4 开始前要先和用户定：内嵌哪一版前端（gitee 线上版，还是 GitHub `main` 上更新的版本，见第 7 节）。
+下一步:
+
+1. 用户 review 后推送 `feat/go-m4-m5`、合并到 `main`,打 tag `csap-apidoc-go/v0.1.0`(目标 2026-12-04)。官网导航里 Go 页的标题在 `website/rspress.config.ts`,已是"Go 版",无需改。
+2. 发布后按第 7 节第 3 条通知 football-data-hub 接入(本次没有发,等发版)。
+3. 后续候选:echo / chi / fiber 适配;在线调试跨域代理(Java `/csap/apidoc/devtools/proxy`);MySQL 实测;返回过滤改为序列化前按结构体过滤以降开销(DESIGN 5.2)。
 
 ### 2.1 M1 的验证情况
 
@@ -44,6 +48,19 @@
 - 示例 `examples/gin-basic` 已接上两个中间件，实测过滤和拦截都生效。
 - 性能：裁剪额外开销约为编码耗时的 50%，**没达到** 30% 的目标（DESIGN 5.2）。
 - `go test -race ./...` 通过，覆盖率：根包 86%、filter 83%、validate 79%、strategy 94%。
+
+### 2.4 M4 的验证情况(2026-11-17)
+
+- 前端:文档页换成 main 上的构建产物(index-a8cfe7dd.js,1.1.1);管理页面用 `csap-apidoc-devtools/src/main/resources/static`(React 版,与源码同一提交)。两套都由 `scripts/sync-ui.sh --ref origin/main` 从 git 同步。管理页面的资源 `/assets2/` 和 vite 按需加载的 `assets2/` 都改写到 `<UIPrefix>/assets2/`;`ui` 的测试会沿着页面和按需加载的 js 逐个检查资源能取到。
+- 接口:逐个对照 Java `ApidocStrategyController`、`DevtoolsController`、`ApidocDevtools`,以及前端 `src/api/devtools.ts` 和各弹窗实际读写的字段实现。前端实际用到的是 scannerApi、`/csap/apidoc/{name}?key=`、getFields、addRequestParam、addResponseParam、getMethodValidateFields、validatePatternTypes;write、writeSelect、writeFieldMethod、getAllMethod、hiddenMethod 也实现了(hiddenMethod 与 Java 一样是空实现)。
+- 浏览器实测(gin 示例):登录页(前端自带的假登录) → 接口列表 → "返回参数"弹窗显示已选字段与可选字段 → 勾选 `data.age` 保存 → YAML 写回、修改记录写入、下一次请求返回多出 `age`;"请求参数"弹窗新增字段保存后,原有校验规则保留。发现并修了一个问题:前端给新字段填的 `paramType` 是接口的 `DEFAULT`,现在视为未指定。
+- `getFields` 的"可选字段"来自 `Snapshot.FullMethod`(不套规则重新生成一遍),外层包装的 `data` 换成业务类型;单值参数(路径、查询)返回一个与参数同名的字段,规则键为 `id.id`。
+- 鉴权:`devtools.New` 不传 `Auth` 返回错误;POST 只收 `application/json`(防 CSRF)。
+
+### 2.5 M5 的验证情况(2026-11-17)
+
+- net/http:`examples/nethttp-basic` 实测返回过滤、拦截校验、文档页、管理页、Postman、在线调试建议都正常。用 Go 1.22.10 工具链 `go vet ./...` 通过(本机老链接器在新 macOS 上跑不了测试二进制,测试用的是 1.27);CI 会在 1.22.x 和最新版上跑。
+- Postman:按 `PostmanConverterService` 源码逐项对齐(由子任务实现,覆盖率 98%),**没有和 Java 实时输出做逐字节比对**;差别写在 `postman/postman.go` 顶部注释。需要时可用 football-data-hub 的比对环境启动 Java 抓 `/csap/openapi/postman` 比对(Java 的 apidoc 是 kyty 线上版,要换成 1.1.x)。
 
 ### 2.3 M3 的验证情况（2026-11-17）
 
@@ -119,7 +136,8 @@ unzip -q <jar> 'BOOT-INF/lib/csap-apidoc*' 'BOOT-INF/lib/csap-validation*' -d /t
   - `/devtools/{getFields,hiddenMethod}`
   - 页面入口 `/devtools-ui`
 
-  Go 版要兼容这些接口，前端才能直接复用。前端源码在本仓库的 `csap-apidoc-ui/` 和 `csap-apidoc-devtools/devtools/`。
+  Go 版要兼容这些接口，前端才能直接复用。前端源码在本仓库的 `csap-apidoc-ui/` 和 `csap-apidoc-devtools/devtools/`。M4 已全部实现(见 2.4)。
+- 文档页面(1.1.1)还会调用 `/csap/apidoc/devtools/proxy`(在线调试的跨域代理,用户在页面上配置后才用),Go 版未实现。
 
 ### 6.4 可用的真实数据
 
