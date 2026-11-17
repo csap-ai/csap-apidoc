@@ -8,6 +8,7 @@ import (
 
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/openapi"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/postman"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/ui"
 )
 
@@ -20,6 +21,7 @@ func (d *Doc) Paths() []string {
 		// parent、method、{name} 都由 Handler 内部分发;用通配是因为 Go 的分组名常是带 / 的包路径
 		"/csap/apidoc/*name",
 		"/csap/openapi.json",
+		"/csap/openapi/postman",
 	}
 	if !d.opts.DisableUI {
 		ps = append(ps, "/csap-api.html", "/favicon.ico", d.opts.UIPrefix+"/assets/*filepath")
@@ -67,6 +69,8 @@ func (d *Doc) Handler() http.Handler {
 			d.serveByName(w, r, strings.TrimPrefix(p, "/csap/apidoc/"))
 		case p == "/csap/openapi.json":
 			d.serveOpenAPI(w, r)
+		case p == "/csap/openapi/postman":
+			d.servePostman(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -199,6 +203,17 @@ func (d *Doc) serveOpenAPI(w http.ResponseWriter, r *http.Request) {
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 	_ = enc.Encode(spec)
+}
+
+// GET /csap/openapi/postman:Postman Collection v2.1,与 Java 输出一致。
+func (d *Doc) servePostman(w http.ResponseWriter, _ *http.Request) {
+	b, err := postman.Build(d.Snapshot().Doc)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", jsonContentType)
+	_, _ = w.Write(b)
 }
 
 func springBadRequest(w http.ResponseWriter, r *http.Request) {

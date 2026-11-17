@@ -366,6 +366,19 @@ func TestHTTPEndpoints(t *testing.T) {
 		t.Fatalf("openapi: %v", m["openapi"])
 	}
 
+	// postman:与 Java 一致的 Content-Type,两次输出相同
+	rec = get(t, h, "/csap/openapi/postman")
+	if rec.Code != 200 || rec.Header().Get("Content-Type") != "application/json;charset=UTF-8" {
+		t.Fatalf("postman: %d %s", rec.Code, rec.Header().Get("Content-Type"))
+	}
+	var pm map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &pm); err != nil || pm["info"] == nil || pm["item"] == nil {
+		t.Fatalf("postman body: %v %s", err, rec.Body.String())
+	}
+	if again := get(t, h, "/csap/openapi/postman"); again.Body.String() != rec.Body.String() {
+		t.Fatal("postman output not deterministic")
+	}
+
 	// UI
 	rec = get(t, h, "/csap-api.html")
 	if !strings.Contains(rec.Body.String(), `src="/csap-ui/assets/js/`) {
