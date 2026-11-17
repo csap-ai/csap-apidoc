@@ -85,10 +85,13 @@ csap-apidoc:settings         { version, vaultMode, vaultLockTimeoutMin,
   freshly-derived key (with a new salt). The old salt is rotated even if
   the password change is "trivial" so the on-disk ciphertexts are fully
   refreshed.
-- `importConfig(json)`: dropped to plaintext mode by design — the export
-  file does not contain the password, so we cannot rebuild encrypted
-  blobs without prompting the user. They can re-enable encryption with a
-  fresh password after import.
+- `exportConfig()` / `importConfig(json)` (see `configTransfer.ts`): an
+  export never contains plaintext secrets. In encrypted mode the on-disk
+  ciphertext (`vaultEncrypted`) is exported as-is and import restores it
+  as a locked vault (unlock with the original master password). In
+  plaintext mode secrets are omitted and import keeps the local vault.
+  Legacy files with plaintext `vault.items` are still accepted and land
+  in plaintext mode.
 
 ## Idle auto-lock
 

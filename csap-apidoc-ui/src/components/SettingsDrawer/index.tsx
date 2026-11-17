@@ -61,7 +61,6 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
   const { t } = useTranslation();
   const {
     state,
-    hasEncryptedData,
     lock,
     disableEncryption,
     exportConfig,
@@ -342,11 +341,13 @@ const SettingsDrawer: React.FC<Props> = ({ open, onClose }) => {
       <section className="settings-drawer__section">
         <header className="settings-drawer__section-header">
           <span className="settings-drawer__section-title">{t('settings.section.data')}</span>
-          {hasEncryptedData && state === 'encrypted-locked' && (
-            <Tag color="gold">{t('settings.data.lockedExportNote')}</Tag>
-          )}
         </header>
         <Space direction="vertical" style={{ width: '100%' }}>
+          <Text type="secondary" className="settings-drawer__hint">
+            {state === 'plaintext'
+              ? t('settings.data.exportNoSecretsNote')
+              : t('settings.data.exportEncryptedNote')}
+          </Text>
           <Button
             block
             icon={<DownloadOutlined />}

@@ -52,29 +52,15 @@ import {
   settingsStore,
   SettingsState,
   DEFAULT_SETTINGS,
-  SETTINGS_STORAGE_KEY,
 } from '@/stores/settingsStore';
-import { environmentStore, ENV_STORAGE_KEY } from '@/stores/environmentStore';
-import { headersStore, HEADERS_STORAGE_KEY } from '@/stores/headersStore';
-import { authStore, AUTH_STORAGE_KEY } from '@/stores/authStore';
+import { environmentStore } from '@/stores/environmentStore';
+import { headersStore } from '@/stores/headersStore';
+import { authStore } from '@/stores/authStore';
+import { exportConfigJson, applyImportJson } from '@/stores/configTransfer';
 // banner is now mounted inside Layout — see layouts/index.tsx
 const ACTIVITY_EVENTS = ['mousemove', 'keydown', 'click'] as const;
 const ACTIVITY_DEBOUNCE_MS = 5_000;
 const IDLE_TICK_MS = 30_000;
-
-interface ExportPayload {
-  version: 1;
-  exportedAt: string;
-  vaultMode: 'plaintext' | 'encrypted';
-  /** Only present when the vault was unlocked (or in plaintext mode) at export time. */
-  vaultIncluded: boolean;
-  environments?: unknown;
-  headers?: unknown;
-  authSchemes?: unknown;
-  settings?: unknown;
-  /** Plaintext vault items, only when vaultIncluded === true. */
-  vault?: { items: Record<string, string> };
-}
 
 interface VaultContextValue {
   state: VaultDriverState;
@@ -291,70 +277,10 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({
 
   /* ---------------- export / import / reset ---------------- */
 
-  const exportConfig = useCallback((): string => {
-    const driverState = vault.getDriverState();
-    const includeVault =
-      driverState === 'plaintext' || driverState === 'encrypted-unlocked';
-    const snap = includeVault ? vault.__getDriver().serialize() : null;
-    const payload: ExportPayload = {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      vaultMode: settingsStore.getState().vaultMode,
-      vaultIncluded: !!snap,
-      environments: environmentStore.read(),
-      headers: headersStore.read(),
-      authSchemes: authStore.read(),
-      settings: settingsStore.getState(),
-      vault: snap ? { items: snap.items } : undefined,
-    };
-    return JSON.stringify(payload, null, 2);
-  }, []);
+  const exportConfig = useCallback((): string => exportConfigJson(), []);
 
   const importConfig = useCallback((json: string): void => {
-    let parsed: ExportPayload;
-    try {
-      parsed = JSON.parse(json) as ExportPayload;
-    } catch {
-      throw new Error('invalid JSON');
-    }
-    if (!parsed || typeof parsed !== 'object') {
-      throw new Error('invalid payload');
-    }
-    if (typeof window !== 'undefined') {
-      try {
-        if (parsed.environments)
-          window.localStorage.setItem(
-            ENV_STORAGE_KEY,
-            JSON.stringify(parsed.environments),
-          );
-        if (parsed.headers)
-          window.localStorage.setItem(
-            HEADERS_STORAGE_KEY,
-            JSON.stringify(parsed.headers),
-          );
-        if (parsed.authSchemes)
-          window.localStorage.setItem(
-            AUTH_STORAGE_KEY,
-            JSON.stringify(parsed.authSchemes),
-          );
-        if (parsed.settings)
-          window.localStorage.setItem(
-            SETTINGS_STORAGE_KEY,
-            JSON.stringify(parsed.settings),
-          );
-      } catch (err) {
-        console.warn('[csap-apidoc] importConfig storage write failed', err);
-      }
-    }
-    // Vault: drop any pre-existing encrypted state and switch to plaintext.
-    clearEncryptedStorage();
-    const items =
-      parsed.vault && parsed.vault.items ? parsed.vault.items : {};
-    vault.__installDriver(new PlaintextDriver(items));
-    // Reset settings to plaintext on import — the user must re-enable
-    // encryption with a fresh password (we don't ship a password in the
-    // export, so we can't reconstruct the encrypted blobs).
-    settingsStore.update({ vaultMode: 'plaintext' });
+    applyImportJson(json);
     if (typeof window !== 'undefined') window.location.reload();
   }, []);
 
