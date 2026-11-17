@@ -15,7 +15,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.ObjectUtils;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 
 import ai.csap.apidoc.ApiStrategyType;
@@ -40,6 +44,45 @@ import lombok.SneakyThrows;
 public interface Handle<H, R> extends IStandardHandle {
     Logger LOG = LoggerFactory.getLogger(Handle.class);
     YAMLMapper YAML_MAPPER = new YAMLMapper();
+    /**
+     * JSON 策略使用的 JSON 读写器,配置与 YAML_MAPPER 保持一致
+     */
+    ObjectMapper JSON_MAPPER = new ObjectMapper()
+            .findAndRegisterModules()
+            .setSerializationInclusion(JsonInclude.Include.NON_EMPTY)
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+    /**
+     * 是否为 JSON 文件策略
+     *
+     * @param strategyType 策略类型
+     * @return true 表示 .json 文件
+     */
+    static boolean isJson(ApidocStrategyName strategyType) {
+        return strategyType != null && ApiStrategyType.JSON.getSuffix().equals(strategyType.getSuffix());
+    }
+
+    /**
+     * 判断内容是否为 JSON:去掉 BOM 和空白后以 { 或 [ 开头。
+     * 1.1.1 及以前 JSON 策略写出的 .json 文件内容其实是 YAML,据此区分新旧格式。
+     *
+     * @param content 文件内容
+     * @return true 表示 JSON
+     */
+    static boolean looksLikeJson(byte[] content) {
+        int i = 0;
+        if (content.length >= 3 && (content[0] & 0xFF) == 0xEF && (content[1] & 0xFF) == 0xBB && (content[2] & 0xFF) == 0xBF) {
+            i = 3;
+        }
+        for (; i < content.length; i++) {
+            char c = (char) content[i];
+            if (!Character.isWhitespace(c)) {
+                return c == '{' || c == '[';
+            }
+        }
+        return false;
+    }
 
 
     /**
@@ -72,22 +115,32 @@ public interface Handle<H, R> extends IStandardHandle {
             LOG.debug("path is :{}", path);
         }
         return ApidocOptional.ofNullable(getStream(strategyType, path, prefixName)
-                .map(i -> readValue(type, i))
+                .map(i -> readValue(type, strategyType, i))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList()));
     }
 
     /**
-     * 读取数据
+     * 读取数据。JSON 策略的文件内容是 JSON 时按 JSON 解析,否则(旧版本写出的 YAML 内容)按 YAML 解析。
      *
-     * @param type        类型
-     * @param inputStream 文件流
-     * @param <R1>        结果泛型
+     * @param type         类型
+     * @param strategyType 策略类型
+     * @param inputStream  文件流
+     * @param <R1>         结果泛型
      * @return 结果
      */
     @SneakyThrows
-    private <R1> R1 readValue(TypeReference<R1> type, InputStream inputStream) {
-        return YAML_MAPPER.readValue(inputStream, type);
+    private <R1> R1 readValue(TypeReference<R1> type, ApidocStrategyName strategyType, InputStream inputStream) {
+        try (InputStream in = inputStream) {
+            byte[] content = in.readAllBytes();
+            if (content.length == 0) {
+                return null;
+            }
+            if (isJson(strategyType) && looksLikeJson(content)) {
+                return JSON_MAPPER.readValue(content, type);
+            }
+            return YAML_MAPPER.readValue(content, type);
+        }
     }
 
     /**
@@ -194,7 +247,11 @@ public interface Handle<H, R> extends IStandardHandle {
         pathName.append(File.separator).append(prefixName).append(fileName()).append(strategyType.getSuffix());
         String pathName2 = pathNameFilter(pathName.toString());
         File file = new File(pathName2);
-        YAML_MAPPER.writeValue(file, value);
+        if (isJson(strategyType)) {
+            JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValue(file, value);
+        } else {
+            YAML_MAPPER.writeValue(file, value);
+        }
         LOG.info("write doc is finished {}", pathName2);
     }
 

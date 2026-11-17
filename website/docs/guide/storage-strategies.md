@@ -31,7 +31,7 @@ YAML 和 SQLite 的实现都已经包含在 `csap-apidoc-boot-starter` 中（它
 :::warning type 与 paramType 的区别
 `@EnableApidoc` 还有一个 `type` 属性（文档主体来源），和 `paramType` 不是一回事。选择规则来源请改 `paramType`，`type` 一般保持默认 `ANNOTATION`。
 
-- 1.1.1 起 `type = YAML` / `JSON` 会注册对应的文档策略（1.1.0 中没有注册，文档静默为空）。注意 `JSON` 策略写出的 `.json` 文件内容其实是 YAML 格式。
+- 1.1.1 起 `type = YAML` / `JSON` 会注册对应的文档策略（1.1.0 中没有注册，文档静默为空）。`JSON` 策略在 1.1.1 及以前写出的 `.json` 文件内容其实是 YAML 格式；1.2.0 起写出真正的 JSON（带缩进），读取时仍能识别旧的 YAML 内容（文件以 `{` 或 `[` 开头按 JSON 解析，否则按 YAML 解析），旧文件下次被 DevTools 写入时会自动改写成 JSON。
 - `type = SQL_LITE` 没有可用的实现，1.1.1 起启动时直接报错，并提示改用 `paramType = SQL_LITE`。
 - `paramType = JSON` 目前没有实现。
 :::
