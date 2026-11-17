@@ -64,7 +64,10 @@ export default defineConfig({
         },
         {
           text: '其他',
-          items: [{ text: '常见问题', link: '/guide/faq' }],
+          items: [
+            { text: 'AI 编码助手技能', link: '/guide/ai-skill' },
+            { text: '常见问题', link: '/guide/faq' },
+          ],
         },
       ],
       '/api/': [

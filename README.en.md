@@ -115,6 +115,10 @@ Full documentation (currently in Chinese) lives at **<https://apidoc.csap.ai>**.
 
 Java modules live at the repository root, the Go implementation in `csap-apidoc-go/`, and the website in `website/`.
 
+## AI coding assistants
+
+The repository ships a [`csap-apidoc` skill](skills/csap-apidoc/SKILL.md). Install it in Claude Code or any assistant that supports Agent Skills and it will know how to integrate and maintain CSAP Apidoc; see the [install guide](https://apidoc.csap.ai/guide/ai-skill) (Chinese).
+
 ## Contributing
 
 Issues and pull requests are welcome; please read [CONTRIBUTING.md](CONTRIBUTING.md) first. Report security issues privately as described in [SECURITY.md](SECURITY.md), not in public issues.

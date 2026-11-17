@@ -54,7 +54,7 @@
 - **`csap-apidoc-mcp`**:独立的 MCP 服务(stdio 和 Streamable HTTP),指向任意一个(或多个)CSAP 服务的 `/csap/apidoc`,自动把每个接口转成 MCP 工具:工具名、说明、参数 JSON Schema 都来自文档;返回字段按规则过滤。因为读的是协议,Java、Go 以及以后的语言都能用。
 - **内嵌 MCP 端点**:服务自身提供 `/csap/mcp`,开箱即用,不用单独部署。
 - **控制**:哪些接口暴露给 AI(白名单/黑名单,复用规则文件)、鉴权透传、只读模式(默认只暴露 GET)、调用审计日志。
-- **Agent Skill**:发布 `csap-apidoc` 技能,让 AI 编码助手会:给项目接入 CSAP Apidoc、写注解和 YAML 规则、通过 MCP 查询和调试接口。技能随仓库维护、随版本更新。
+- **Agent Skill**:`csap-apidoc` 技能**首版已提供**(`skills/csap-apidoc/`,覆盖 Java 接入、注解、YAML 规则、排查字段不显示);1.3.0 加入通过 MCP 查询和调试接口的用法。技能随仓库维护、随版本更新。
 
 说明:kyty-data-center 的 MCP 服务就是基于 `/csap/apidoc` 输出生成工具的,已证明可行;1.3.0 把它产品化、通用化。
 

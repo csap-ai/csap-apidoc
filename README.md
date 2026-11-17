@@ -120,6 +120,10 @@ public class User {
 
 源码目录:Java 各模块在仓库根目录;Go 实现在 `csap-apidoc-go/`;官网在 `website/`。
 
+## AI 编码助手
+
+仓库提供 [`csap-apidoc` 技能](skills/csap-apidoc/SKILL.md),装进 Claude Code 等支持 Agent Skills 的助手后,它就知道如何接入和维护 CSAP Apidoc,见 [安装说明](https://apidoc.csap.ai/guide/ai-skill)。
+
 ## 参与贡献
 
 欢迎提 Issue 和 Pull Request,请先阅读 [贡献指南](CONTRIBUTING.md)。安全问题请按 [安全策略](SECURITY.md) 私下报告,不要公开提 Issue。
