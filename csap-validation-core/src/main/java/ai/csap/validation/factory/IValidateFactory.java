@@ -4,7 +4,6 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
-import jakarta.validation.ConstraintValidatorContext;
 
 /**
  * 标准的验证接口
@@ -23,7 +22,7 @@ public interface IValidateFactory extends IValidateBaseFactory {
      * @param paramClass      参数类型
      * @param parameterName   参数名
      */
-    void validation(Object args, Method method, Class<?> controllerClass, Class<?> paramClass, String parameterName, ConstraintValidatorContext validatorContext);
+    void validation(Object args, Method method, Class<?> controllerClass, Class<?> paramClass, String parameterName);
 
     /**
      * 验证当前级联业务
@@ -35,7 +34,6 @@ public interface IValidateFactory extends IValidateBaseFactory {
     Validate.ValidateField validatorsChildren(String parameterName,
                                                Map<String, Validate.ValidateField> validateField,
                                                Object value, Object childrenValue,
-                                               BiFunctionValidation<String, List<String>, Object, Object> function,
-                                               ConstraintValidatorContext validatorContext);
+                                               BiFunctionValidation<String, List<String>, Object, Object> function);
 
 }

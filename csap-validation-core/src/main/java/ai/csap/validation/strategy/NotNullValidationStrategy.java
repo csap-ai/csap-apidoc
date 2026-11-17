@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 import ai.csap.validation.factory.Validate;
 import ai.csap.validation.type.ValidationStrategyType;
 
-import jakarta.validation.ConstraintValidatorContext;
 
 /**
  * 不能为空 策略实现
@@ -24,7 +23,7 @@ public class NotNullValidationStrategy implements ValidationStrategy<Object> {
     }
 
     @Override
-    public boolean validation(Object value, Validate.ConstraintValidatorField validatorField, ConstraintValidatorContext validatorContext) {
+    public boolean validation(Object value, Validate.ConstraintValidatorField validatorField) {
         return Objects.isNull(value);
     }
 }
