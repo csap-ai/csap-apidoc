@@ -261,7 +261,7 @@ func (n redisNotifier) Subscribe(ctx context.Context, fn func(int64)) error {
 | `GET /csap/apidoc/{group}[?key=]` | 按分组或接口筛选 | 与 Java 相同；**不修改共享缓存**（Java 版有这个缺陷，见附录 A） |
 | `GET /csap/apidoc/parent` | 树形菜单 | 与 Java 相同 |
 | `GET /csap/apidoc/method?name=&key=` | 单个接口详情 | 与 Java 相同 |
-| `GET /csap/openapi/postman` | Postman 导出 | 与 Java 相同（M5） |
+| `GET /csap/openapi/postman` | Postman 导出 | 与 Java 相同（M5）；以示例工程的 Java 实时输出为黄金样本逐字节比对（`postman/golden_test.go`） |
 | `GET /csap/openapi.json` | OpenAPI 3.1 | 新增 |
 | `GET /csap-api.html` | 文档页面 | 复用 csap-apidoc-ui。静态资源从 Java 的 `/assets/*` 改到 `/csap-ui/assets/*`（`Options.UIPrefix`），输出时改写 html/js 里的地址，避免和业务的 `/assets/` 冲突 |
 | `/csap/yaml/*`、`/devtools/*`、`/devtools-ui` | 后台管理 | 复用 devtools 前端；新增 `GET /csap/yaml/history`、`POST /csap/yaml/rollback` |
