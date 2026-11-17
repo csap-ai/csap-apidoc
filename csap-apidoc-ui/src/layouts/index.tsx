@@ -21,6 +21,14 @@ import { ExclamationCircleFilled, ThunderboltOutlined } from '@ant-design/icons'
 import TryItOutPanel, { RequestSpec } from '@/components/TryItOutPanel';
 import { apidocMethodUrl, apidocParentUrl, apidocServiceBase } from '@/utils/apidocUrl';
 import { hasApiDetail, EMPTY_API_DETAIL } from '@/utils/apiDetail';
+import {
+  buildHintPrefill,
+  DocHints,
+  EMPTY_HINTS,
+  hasHintFields,
+  hintsFromDocResponse,
+  hintsFromMethod,
+} from '@/services/docHints';
 import type { HttpMethod } from '@/services/tryItOutClient';
 import {
   composeTryItOutSpec,
@@ -69,6 +77,9 @@ const LayoutIndex = () => {
   const [ObjQuery, setObjQuery] = useState<any>({});
   const [loading, setLoading] = useState(false);
   const [totalApis, setTotalApis] = useState(0);
+  // @DocGlobalHeader / @DocAuth hints of the endpoint currently shown,
+  // keyed by method key so a stale set is never applied to another endpoint.
+  const [docHints, setDocHints] = useState<{ key: string; hints: DocHints } | null>(null);
 
   // 计算总API数量
   const countApis = (data: any[]): number => {
@@ -165,6 +176,9 @@ const LayoutIndex = () => {
       });
       setDataBody(() => request || []);
       setDataRes(() => response || []);
+      if (hasHintFields(apiData)) {
+        setDocHints({ key, hints: hintsFromMethod(apiData) });
+      }
     } catch (error) {
       console.error('获取菜单详情失败:', error);
       setDataSource([]);
@@ -778,20 +792,73 @@ const LayoutIndex = () => {
   const tryItOutUrl = tryItOutBaseUrl
     ? `${tryItOutBaseUrl}${tryItOutPath.startsWith('/') ? '' : '/'}${tryItOutPath}`
     : tryItOutPath;
+  // Hints are not part of GET /csap/apidoc/method; when the try-it-out
+  // panel is opened, read them from GET /csap/apidoc/{className}?key=
+  // (full CsapDocMethod). Failures are silent — hints are optional.
+  const currentMethodKey = expandedKeys.join('');
+  useEffect(() => {
+    if (!tryV2 || !currentMethodKey || treeData.length === 0) return undefined;
+    if (docHints && docHints.key === currentMethodKey) return undefined;
+    const className = getParentKey(expandedKeys[0], treeData);
+    if (!className) return undefined;
+    const base = selectRefValue.current?.value
+      ? apidocServiceBase(selectRefValue.current.value)
+      : (import.meta.env.VITE_API_URL ?? '');
+    let cancelled = false;
+    axios
+      .get(`${base}/csap/apidoc/${encodeURIComponent(className)}`, {
+        params: { key: currentMethodKey },
+        withCredentials: true,
+      })
+      .then((res) => {
+        if (cancelled) return;
+        const doc = res?.data?.data;
+        setDocHints({ key: currentMethodKey, hints: hintsFromDocResponse(doc, currentMethodKey) });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.warn('[csap-apidoc] failed to load doc hints', err);
+        setDocHints({ key: currentMethodKey, hints: EMPTY_HINTS });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tryV2, currentMethodKey, treeData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const activeAuthScheme = getActiveSchemeFor(serviceRefId);
+  const hintPrefill = React.useMemo(
+    () =>
+      buildHintPrefill({
+        hints:
+          docHints && docHints.key === currentMethodKey ? docHints.hints : EMPTY_HINTS,
+        resolvedHeaders: resolveHeaders({ serviceRefId }),
+        hasActiveAuth: !!activeAuthScheme,
+      }),
+    [docHints, currentMethodKey, resolveHeaders, serviceRefId, activeAuthScheme],
+  );
+
   const tryItOutInitial: RequestSpec = {
     method: ((dataObj.method || 'GET').toUpperCase() as HttpMethod),
     url: tryItOutUrl,
+    headers: hintPrefill.headers,
+    query: hintPrefill.query,
   };
 
-  const tryItOutBadges = React.useMemo(
-    () =>
-      explainContextBadges({
-        env,
-        activeHeaderRules: explainHeaders({ serviceRefId }),
-        activeAuth: getActiveSchemeFor(serviceRefId),
-      }),
-    [env, explainHeaders, getActiveSchemeFor, serviceRefId],
-  );
+  const tryItOutBadges = React.useMemo(() => {
+    const badges = explainContextBadges({
+      env,
+      activeHeaderRules: explainHeaders({ serviceRefId }),
+      activeAuth: getActiveSchemeFor(serviceRefId),
+    });
+    if (hintPrefill.suggestedAuth) {
+      badges.push({
+        label: t('tryout.hint.suggestedAuth'),
+        value: hintPrefill.suggestedAuth.scheme,
+        color: 'gold',
+      });
+    }
+    return badges;
+  }, [env, explainHeaders, getActiveSchemeFor, serviceRefId, hintPrefill, t]);
 
   const tryItOutEnrich = React.useCallback(
     async (spec: RequestSpec) => {

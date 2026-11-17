@@ -57,6 +57,7 @@ import {
   resolveTryItOutOptions,
 } from '@/services/tryItOutClient';
 import { settingsStore, SettingsState } from '@/stores/settingsStore';
+import { missingEntries } from '@/services/docHints';
 import type { ComposerWarning } from '@/services/requestComposer';
 import {
   TryItOutHistoryEntry,
@@ -154,6 +155,15 @@ function recordToRows(r: Record<string, string> | undefined): KvRow[] {
   }));
 }
 
+/**
+ * Rows seeded from `initial` (doc-hint prefill). A hint without a value is
+ * added disabled so an empty header/param is not sent — and does not mask
+ * a global header — until the user fills it in and ticks it.
+ */
+function prefillToRows(r: Record<string, string> | undefined): KvRow[] {
+  return recordToRows(r).map((row) => ({ ...row, enabled: row.value !== '' }));
+}
+
 function rowsToRecord(rows: KvRow[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const r of rows) {
@@ -190,10 +200,10 @@ const TryItOutPanel: React.FC<Props> = ({
   const [method, setMethod] = useState<HttpMethod>(initial.method);
   const [url, setUrl] = useState<string>(initial.url);
   const [headerRows, setHeaderRows] = useState<KvRow[]>(() =>
-    recordToRows(initial.headers),
+    prefillToRows(initial.headers),
   );
   const [queryRows, setQueryRows] = useState<KvRow[]>(() =>
-    recordToRows(initial.query),
+    prefillToRows(initial.query),
   );
   const [body, setBody] = useState<string>(initial.body ?? '');
   const [bodyKind, setBodyKind] = useState<'json' | 'text' | 'none'>(() =>
@@ -235,13 +245,31 @@ const TryItOutPanel: React.FC<Props> = ({
   useEffect(() => {
     setMethod(initial.method);
     setUrl(initial.url);
-    setHeaderRows(recordToRows(initial.headers));
-    setQueryRows(recordToRows(initial.query));
+    setHeaderRows(prefillToRows(initial.headers));
+    setQueryRows(prefillToRows(initial.query));
     setBody(initial.body ?? '');
     setBodyKind(initial.body ? 'json' : 'none');
     setResult(null);
     setResponseTab('body');
   }, [initial.method, initial.url]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Prefill (e.g. @DocGlobalHeader / @DocAuth hints) may arrive after the
+  // panel was seeded. Only add keys the user doesn't have yet — never
+  // overwrite or resurrect rows the user edited.
+  const initialHeadersSig = JSON.stringify(initial.headers ?? {});
+  const initialQuerySig = JSON.stringify(initial.query ?? {});
+  useEffect(() => {
+    setHeaderRows((rows) => {
+      const add = missingEntries(rows.map((r) => r.key), initial.headers);
+      return Object.keys(add).length ? [...rows, ...prefillToRows(add)] : rows;
+    });
+  }, [initialHeadersSig]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    setQueryRows((rows) => {
+      const add = missingEntries(rows.map((r) => r.key), initial.query);
+      return Object.keys(add).length ? [...rows, ...prefillToRows(add)] : rows;
+    });
+  }, [initialQuerySig]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const supportsBody = useMemo(
     () => !['GET', 'HEAD'].includes(method),

@@ -219,6 +219,7 @@
   "mpModal.error.generic": "操作失败，请重试",
   "vault.banner.message": "保险库已锁定 — 已保存的凭证当前不可读取，请输入主密码以恢复 Try-it-out 能力。",
   "vault.banner.unlock": "解锁",
+  "tryout.hint.suggestedAuth": "建议认证",
   "tryout.error.urlRequired": "请填写请求 URL",
   "tryout.error.bodyJson": "Body JSON 格式错误",
   "tryout.error.enrich": "enrichRequest 失败：<<message>>",

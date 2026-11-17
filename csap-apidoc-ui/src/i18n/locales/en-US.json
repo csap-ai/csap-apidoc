@@ -219,6 +219,7 @@
   "mpModal.error.generic": "Operation failed, please try again",
   "vault.banner.message": "Vault is locked — saved credentials cannot be read. Enter the master password to restore Try-it-out.",
   "vault.banner.unlock": "Unlock",
+  "tryout.hint.suggestedAuth": "Suggested auth",
   "tryout.error.urlRequired": "Please enter a request URL",
   "tryout.error.bodyJson": "Body JSON is malformed",
   "tryout.error.enrich": "enrichRequest failed: <<message>>",
