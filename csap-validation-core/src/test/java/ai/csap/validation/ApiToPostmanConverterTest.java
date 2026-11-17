@@ -16,7 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public class ApiToPostmanConverterTest {
 
-    private static final String PATH = "/Users/ycf/Documents/产品/csap/framework/csap-framework-apidoc/csap-framework-validation-core/src/test/resources/";
+    private static final String PATH = "src/test/resources/";
 
     @Test
     public void testConvertApiToPostman() {
@@ -33,7 +33,7 @@ public class ApiToPostmanConverterTest {
 
             // 将Postman集合对象写入文件
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(
-                    new File(PATH + "postman_test.json"), postmanCollection);
+                    new File("target/postman_test.json"), postmanCollection);
 
             System.out.println("测试转换完成，已生成postman_test.json文件");
 

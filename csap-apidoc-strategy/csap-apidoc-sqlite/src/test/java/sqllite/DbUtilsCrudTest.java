@@ -22,7 +22,7 @@ import lombok.SneakyThrows;
  */
 public class DbUtilsCrudTest implements SQLiteHandle {
 
-    private static final String DB_PATH = "/Users/ycf/Documents/产品/csap/framework/csap-framework-apidoc/src/test/resources/apidoc.db";
+    private static final String DB_PATH = "target/dbutils-crud-test.db";
     private static final String URL = "jdbc:sqlite:" + DB_PATH;
 
     @Test

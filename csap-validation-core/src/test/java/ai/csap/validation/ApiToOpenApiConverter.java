@@ -13,7 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * 将自定义API格式转换为OpenAPI 3.0标准格式的转换器
  */
 public class ApiToOpenApiConverter {
-    public static final String PATH = "/Users/ycf/Documents/产品/csap/framework/csap-framework-apidoc/csap-framework-validation-core/src/test/resources/";
+    public static final String PATH = "src/test/resources/";
 
     public static void main(String[] args) {
         try {
@@ -29,7 +29,7 @@ public class ApiToOpenApiConverter {
 
             // 将OpenAPI对象写入文件
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(
-                    new File(PATH + "openapi_generated.json"), openAPI);
+                    new File("target/openapi_generated.json"), openAPI);
 
             System.out.println("转换完成，已生成openapi_generated.json文件");
 

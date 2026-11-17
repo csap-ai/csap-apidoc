@@ -16,7 +16,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class ApiToOpenApiConverterStream {
-    public static final String PATH = "/Users/ycf/Documents/产品/csap/framework/csap-framework-apidoc/csap-framework-validation-core/src/test/resources/";
+    public static final String PATH = "src/test/resources/";
 
     public static void main(String[] args) {
         try {
@@ -29,7 +29,7 @@ public class ApiToOpenApiConverterStream {
             OpenAPI openAPI = buildOpenAPI(apiListResponse);
 
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(
-                    new File(PATH + "openapi_stream.json"), openAPI);
+                    new File("target/openapi_stream.json"), openAPI);
 
             System.out.println("转换完成，已生成openapi_stream.json文件");
 

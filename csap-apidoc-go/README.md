@@ -9,7 +9,7 @@ CSAP Apidoc 的 Go 实现,协议为 Apache-2.0。与 Java 版(1.1.x)协议兼容
 - **后台管理**:内嵌 Java 版 DevTools 页面,在线修改字段规则,实时生效,保留修改记录,可以回滚,多实例自动同步。
 - **导出**:OpenAPI 3.1 和 Postman。
 
-> 状态:**可用,v0.1.0**。gin 与标准库 net/http 适配;YAML / SQL 规则来源;后台管理。更新见 [CHANGELOG.md](CHANGELOG.md),设计见 [docs/DESIGN.md](docs/DESIGN.md),维护者请先读 [docs/HANDOFF.md](docs/HANDOFF.md)。完整的接入文档在官网 Go 版页面(仓库 `website/docs/go/index.md`)。
+> 状态:**可用,v0.1.0**。gin 与标准库 net/http 适配;YAML / SQL 规则来源;后台管理。更新见 [CHANGELOG.md](CHANGELOG.md),设计见 [docs/DESIGN.md](docs/DESIGN.md)。完整的接入文档在官网 Go 版页面(仓库 `website/docs/go/index.md`)。
 
 ## 安装
 

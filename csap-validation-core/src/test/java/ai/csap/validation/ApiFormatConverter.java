@@ -14,7 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * API格式转换器，支持将API转换为多种格式
  */
 public class ApiFormatConverter {
-    public static final String PATH = "/Users/ycf/Documents/产品/csap/framework/csap-framework-apidoc/csap-framework-validation-core/src/test/resources/";
+    public static final String PATH = "src/test/resources/";
 
     public static void main(String[] args) {
         if (args.length < 1) {
@@ -58,7 +58,7 @@ public class ApiFormatConverter {
 
         // 将OpenAPI对象写入文件
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(
-                new File(PATH + "openapi_generated.json"), openAPI);
+                new File("target/openapi_generated.json"), openAPI);
 
         System.out.println("转换完成，已生成openapi_generated.json文件");
     }
@@ -72,7 +72,7 @@ public class ApiFormatConverter {
 
         // 将Postman集合对象写入文件
         objectMapper.writerWithDefaultPrettyPrinter().writeValue(
-                new File(PATH + "postman_collection.json"), postmanCollection);
+                new File("target/postman_collection.json"), postmanCollection);
 
         System.out.println("转换完成，已生成postman_collection.json文件");
     }

@@ -14,7 +14,7 @@ public class ApiToPostmanConverter {
         try {
             // 读取源API文档（api.json）
             ObjectMapper objectMapper = new ObjectMapper();
-            JsonNode apiJson = objectMapper.readTree(new File("/Users/ycf/Documents/产品/csap/framework/csap-framework-apidoc/csap-framework-validation-core/src/test/resources/api.json"));
+            JsonNode apiJson = objectMapper.readTree(new File("src/test/resources/api.json"));
 
             // 初始化Postman Collection
             PostmanCollection postmanCollection = new PostmanCollection();
@@ -164,7 +164,7 @@ public class ApiToPostmanConverter {
 
             // 生成Postman Collection文件
             objectMapper.writerWithDefaultPrettyPrinter()
-                    .writeValue(new File("/Users/ycf/Documents/产品/csap/framework/csap-framework-apidoc/csap-framework-validation-core/src/test/resources/converted_postman_collection.json"), postmanCollection);
+                    .writeValue(new File("target/converted_postman_collection.json"), postmanCollection);
             System.out.println("转换完成，生成文件：converted_postman_collection.json");
 
         } catch (IOException e) {

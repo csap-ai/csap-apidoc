@@ -13,19 +13,15 @@
 5. **协议与 Java 版兼容**。`/csap/apidoc*`、`/csap/yaml/*`、`/devtools/*` 的请求和返回格式与 Java 版一致，现有的 `csap-apidoc-ui`（文档页面）和 `devtools`（管理页面）两套前端可以直接复用。
 6. **导出**。支持 OpenAPI 3.1、Postman Collection v2.1，后续加 Markdown。
 
-第一个使用方是 football-data-hub（kyty-data-center 的 Go 重写），它要替换掉现在写死在代码里的返回字段白名单。
+第一个使用方是一个从 Java 迁移到 Go 的内部数据服务，它要替换掉现在写死在代码里的返回字段白名单。
 
 ## 1.1 Java 基线
 
-**2026-11-17 起（版本与分支统一后）**：唯一主线是 GitHub `csap-ai/csap-apidoc` 的 `main`，Go 版对齐它，在 `feat/apidoc-go` 分支（基于 `main`）开发。统一经过见 [版本与分支统一方案.md](版本与分支统一方案.md)。
+**2026-11-17 起（版本与分支统一后）**：唯一主线是 GitHub `csap-ai/csap-apidoc` 的 `main`，Go 版对齐它。
 
-`main` 包含线上生产代码（仓库首个提交 0fcb901 = 下文的 gitee `chore/apidoc-next-iteration`，只差两个 IDE 文件），以及之后 14 次提交的新功能。对文档协议的影响只有 `CsapDocMethod` 新增 `globalHeaderHints`、`authHint` 两个字段，Go 版待补（见统一方案 2.4）。
+`main` 包含此前生产环境使用的代码（仓库首个提交 0fcb901），以及之后新增的功能。对文档协议的影响只有 `CsapDocMethod` 新增 `globalHeaderHints`、`authHint` 两个字段，Go 版已在 M4 补上。
 
-以下为统一前的记录：Go 版最初对齐的 Java 版本是 **gitee `csap-framework-apidoc` 的 `chore/apidoc-next-iteration` 分支（b4b9819，2026-04-11）**，即线上实际运行的代码（现存档为 gitee tag `archive/chore-apidoc-next-iteration`）。
-
-2026-11-17 核对过：线上 jar（kyty-data-center-boot，依赖 `csap-apidoc-*-1.0.0`、`csap-validation-*-1.0.0`）里内嵌的 175 个 Java 源码文件，与该分支以及 `1.0.3` 分支逐字节一致，没有一处不同。`csap-apidoc-ui` 的构建产物（`csap-api.html`、js、css）也一致。`1.0.3` 与 `chore/apidoc-next-iteration` 的代码相同，后者只多了 CI 发布流程和英文 README。
-
-`framework/old/csap-framework-apidoc` 是更早的本地副本（停在 2025-11-05），未提交的草稿已存档为 gitee tag `archive/old-local-drafts-2025-11`，**不作为基线**。
+统一前，Go 版最初对齐的是生产环境运行的 1.0.x 代码。2026-11-17 核对过：生产环境 jar（依赖 `csap-apidoc-*-1.0.0`、`csap-validation-*-1.0.0`）里内嵌的 175 个 Java 源码文件与该基线逐字节一致，`csap-apidoc-ui` 的构建产物（`csap-api.html`、js、css）也一致。
 
 ## 2. 与 Java 版的对应关系
 
@@ -73,7 +69,7 @@ Go 的 handler 签名都一样（如 `gin.HandlerFunc`），看不出请求和�
 Java 的请求是"方法参数列表"，Go 是一个请求结构体，映射规则如下：
 
 - `Req(v)`：逐个字段决定位置，优先级 `in:"..."` > `uri`（PATH）> `header`（HEADER）> 与路径参数同名（PATH）> `form`（GET 为 QUERY，其他方法为 FORM）> 有 `json` 且方法为 POST/PUT/PATCH（BODY）；都没有时 GET/DELETE 为 QUERY，其余为 BODY。匿名嵌入的结构体会展开。
-- 非 BODY 字段各自生成一个 `BASE_DATA` 参数（对应 Java 的 `@RequestParam`），`methodParamName` 为参数名，规则路径为 `<名>.<名>`，如 `id.id`，与 kyty YAML 一致。
+- 非 BODY 字段各自生成一个 `BASE_DATA` 参数（对应 Java 的 `@RequestParam`），`methodParamName` 为参数名，规则路径为 `<名>.<名>`，如 `id.id`，与 Java 项目的 YAML 写法一致。
 - BODY 字段合并成一个 `OBJECT` 参数，参数名默认 `request`（`BodyName` 可改），规则路径为 `request.<字段>`。
 - `Body(v)`：整个结构体作为请求体（对应 `@RequestBody`），切片时 `modelType` 为 `ARRAY`。
 
@@ -139,8 +135,8 @@ type Watcher interface {      // 能感知外部变更:文件变更 / 轮询版�
 ### 3.4 YAML 策略（M3 已实现，`strategy/yaml`）
 
 - `yaml.Dir(dir)` 读写目录；`yaml.FS(fsys, dir)` 从 `go:embed` 等只读加载（对应 Java 从 classpath 读）。
-- 格式与 Java `method-field.yaml` 完全相同，Java 项目的文件可以直接拿来用。kyty 的 77 份文件全部能解析（163 个接口，请求规则 457 条、返回规则 2658 条、校验规则 35 条），每个接口原样写回再加载，结果不变（`TestRealProjectFiles`，默认跳过）。
-- 加载目录下所有 `.yaml/.yml`，文件名不要求与分组对应（kyty 就有 `CoachController-method-field.yaml` 里放 `OutputCoachController` 的情况）；同一分组出现在多个文件时按文件名排序取第一个，与 Java 合并规则一致。某个文件解析失败只跳过它，其他文件照常生效。
+- 格式与 Java `method-field.yaml` 完全相同，Java 项目的文件可以直接拿来用。一个真实项目的 77 份文件全部能解析（163 个接口，请求规则 457 条、返回规则 2658 条、校验规则 35 条），每个接口原样写回再加载，结果不变（`TestRealProjectFiles`，默认跳过）。
+- 加载目录下所有 `.yaml/.yml`，文件名不要求与分组对应（真实项目中就有 `CoachController-method-field.yaml` 里放 `OutputCoachController` 的情况）；同一分组出现在多个文件时按文件名排序取第一个，与 Java 合并规则一致。某个文件解析失败只跳过它，其他文件照常生效。
 - 兼容 Java 写出的细节：`code: 1001`（数字）和 `code: "1001"` 都认；`INDENT_ARRAYS` 风格的 `-` 单独一行也认。Go 版新增的 `hidden`、`example` 字段，Java 读取时会忽略（`FAIL_ON_UNKNOWN_PROPERTIES=false`）。
 - 写入（`Save`）：改包含该分组的那个文件，只替换该接口那一段，其他接口和注释保留；分组不存在时新建 `<简单名>-method-field.yaml`；空规则表示删除该接口。先写临时文件再改名，不会写出半个文件。字段按路径长度、再按字母排序，上级在前。
 - 监听：每 `Poll`（默认 2 秒）比较文件名、大小、修改时间；本策略自己的写入立即通知。基准是**上次加载时的签名**，所以加载之后、开始监听之前发生的修改也不会漏（M3 修过这个 bug，有回归测试）。
@@ -202,7 +198,7 @@ func (n redisNotifier) Subscribe(ctx context.Context, fn func(int64)) error {
 - 两种模式下，规则路径都同时认驼峰和下划线写法（Java 规则用 Java 字段名 `data.rows.leagueId`，返回 JSON 是 `league_id`），对应 Java 的 `response-type: toUnderlineCase` 别名。
 - 两种模式都只对**配置了返回规则的接口**生效。Java 对扫描到的接口一律挂过滤器（没规则时只剩 `forceRep` 字段），Go 版不这样做，避免误伤没配规则的接口。
 
-**黄金样本验证（2026-11-17）**：用 football-data-hub 的比对环境启动 Java 线上 jar，抓了 79 个 kaiyun 接口的真实返回。Java 序列化开了 `WriteMapNullValue`，白名单字段即使为 null 也会输出，所以每个对象的键集合就是它的白名单。`filter/golden_test.go` 逐个对象比较 Go 掩码放行的键和 Java 实际输出的键，**79 个接口全部一致**；另外验证了 Prune 不改动 Java 返回，并能去掉额外注入的字段。数据属于使用方，不进仓库，测试默认跳过，运行方法见测试文件注释。
+**黄金样本验证（2026-11-17）**：在使用方的比对环境启动 Java 生产版本，抓了 79 个接口的真实返回。Java 序列化开了 `WriteMapNullValue`，白名单字段即使为 null 也会输出，所以每个对象的键集合就是它的白名单。`filter/golden_test.go` 逐个对象比较 Go 掩码放行的键和 Java 实际输出的键，**79 个接口全部一致**；另外验证了 Prune 不改动 Java 返回，并能去掉额外注入的字段。数据属于使用方，不进仓库，测试默认跳过，运行方法见测试文件注释。
 
 ### 5.2 实现
 
@@ -228,7 +224,7 @@ func (n redisNotifier) Subscribe(ctx context.Context, fn func(int64)) error {
 - **开关**：只有显式配置 `csap.validation.enabled=true`，`ValidateIntercept` 才会注册（`@ConditionalOnProperty(havingValue="true")`，没有 `matchIfMissing`）。
 - **实时性**：规则加载后缓存在内存里。devtools 只在开发环境开启，写的是本地 YAML 文件，所以线上要改规则只能重新发版。
 
-**实测情况**：kyty-data-center 的 YAML 里写了 35 段 `validate` 规则（如 `OutputCoachCareerController.getCoachCareer` 的 `coachId` 必填），但项目没有配置 `csap.validation.enabled`，所以这些规则在线上**从来没有生效过**。
+**实测情况**：一个真实项目的 YAML 里写了 35 段 `validate` 规则（如某个查询接口的 ID 必填），但项目没有配置 `csap.validation.enabled`，所以这些规则在线上**从来没有生效过**。
 
 ### 5.5.2 Go 版方案（M2 已实现）
 
@@ -310,19 +306,19 @@ csap-apidoc-go/
 | 阶段 | 内容 | 验收 |
 |---|---|---|
 | M1 核心（**已完成** 2026-11-17） | model、tag 策略、gin 适配、`/csap/apidoc*`、文档页面、OpenAPI 导出 | 示例项目能打开 `/csap-api.html`，`/csap/apidoc` 能被 Java 版前端正常解析 |
-| M2 过滤与校验（**已完成** 2026-11-17） | 返回字段过滤（路径白名单、csap 兼容模式、外层包装）、请求参数校验（中间件、内置与自定义规则、观察模式）、基准测试 | 用 Java 的真实返回做黄金样本：79 个 kaiyun 接口的返回字段集合与 Java 完全一致；`/csap/apidoc` 编码器对 2.5MB 的 Java 实时返回逐字节还原。性能目标 30% 未达到，实测约 50%（见 5.2） |
+| M2 过滤与校验（**已完成** 2026-11-17） | 返回字段过滤（路径白名单、csap 兼容模式、外层包装）、请求参数校验（中间件、内置与自定义规则、观察模式）、基准测试 | 用 Java 的真实返回做黄金样本：79 个接口的返回字段集合与 Java 完全一致；`/csap/apidoc` 编码器对 2.5MB 的 Java 实时返回逐字节还原。性能目标 30% 未达到，实测约 50%（见 5.2） |
 | M3 配置（**已完成** 2026-11-17） | YAML 策略（读写、热加载）、SQL 策略（版本号、轮询、Redis 通知） | 改 YAML 或数据库后几秒内生效，不重启：示例项目实测改 YAML 3 秒内返回字段变化；SQL 两实例共用一个库，A 保存后 B 在轮询间隔内生效（SQLite、PostgreSQL 实测，MySQL 未实测） |
-| M4 管理(**已完成** 2026-11-17) | devtools 接口与前端（含必填和校验规则配置）、修改记录、回滚、鉴权;`globalHeaderHints`、`authHint` | 用 devtools 页面勾选字段后，返回结果实时变化，并能回滚(浏览器实测,见 HANDOFF 2.4) |
+| M4 管理(**已完成** 2026-11-17) | devtools 接口与前端（含必填和校验规则配置）、修改记录、回滚、鉴权;`globalHeaderHints`、`authHint` | 用 devtools 页面勾选字段后，返回结果实时变化，并能回滚(浏览器实测) |
 | M5 发布(**已完成** 2026-11-17,待打 tag) | net/http 适配、Postman 导出、README、CHANGELOG、CI、官网接入文档 | 总覆盖率 80%;tag `csap-apidoc-go/v0.1.0` 由用户发布时打 |
 
 ## 10. 已确认事项
 
-1. **仓库和模块路径**（已定，2026-11-17）：发布到 **GitHub**，组织 `csap-ai`（`csap-website` 已在这个组织下）。模块路径 `github.com/csap-ai/csap-apidoc/csap-apidoc-go`。GitHub 仓库是 `https://github.com/csap-ai/csap-apidoc`（用户 2026-11-17 给出），模块路径据此定为 `github.com/csap-ai/csap-apidoc/csap-apidoc-go`。**注意**：GitHub `main`（2026-05-02 bee9d83）和 gitee 不是同一条提交历史，GitHub 上没有 b4b9819；它比线上基线多了 2026-04 之后的开发，如文档页请求历史和请求快照（M9.1/M9.2）、i18n、`csap-apidoc-mock` 设计、只发 Maven Central 等。Go 代码怎么合到 GitHub 仓库、内嵌哪一版前端，推送前要和用户定。开发期间代码仍放在 gitee `csap-framework-apidoc` 仓库的 `feat/apidoc-go` 分支。发版 tag 格式为 `csap-apidoc-go/vX.Y.Z`。
+1. **仓库和模块路径**（已定，2026-11-17）：发布到 **GitHub** 仓库 `https://github.com/csap-ai/csap-apidoc`，模块路径 `github.com/csap-ai/csap-apidoc/csap-apidoc-go`。发版 tag 格式为 `csap-apidoc-go/vX.Y.Z`。
 2. **名称**：目录 `csap-apidoc-go`（与 `csap-apidoc-*` 其他模块保持一致），包名 `apidoc`。
 3. **最低 Go 版本**：1.22，需要泛型和新版 ServeMux。
 4. **前端**（已定）：内嵌。复用本仓库的 `csap-apidoc-ui` 和 `csap-apidoc-devtools/devtools` 源码，构建产物用 `go:embed` 打进 `ui` 包，不拆成独立仓库。
-5. **football-data-hub 何时接入**（已定）：本框架开发完成后，通知 football-data-hub 会话「Java到Go迁移可行性分析 (fork)」，由那边接入：把写死的 `json:"-"` 白名单换成 YAML 配置加过滤中间件，用现有比对样本回归。本框架这边不改 football-data-hub 的代码。
+5. **使用方何时接入**（已定）：本框架开发完成后，由使用方自行接入：把写死的 `json:"-"` 白名单换成 YAML 配置加过滤中间件，用现有比对样本回归。本框架这边不改使用方的代码。
 
 ## 附录 A：Java 版已知缺陷（Go 版不复刻）
 
-- `GET /csap/apidoc/{tableName}?key=` 会浅拷贝后直接修改缓存里的 `Controller.methodList`。之后全量文档、树形菜单、方法详情都会永久缺少方法，`flush=true` 也恢复不了，只能重启。实测在 kyty-data-center 上，调用几十次后方法数从 88 降到 46。
+- `GET /csap/apidoc/{tableName}?key=` 会浅拷贝后直接修改缓存里的 `Controller.methodList`。之后全量文档、树形菜单、方法详情都会永久缺少方法，`flush=true` 也恢复不了，只能重启。在一个真实项目上实测，调用几十次后方法数从 88 降到 46。
