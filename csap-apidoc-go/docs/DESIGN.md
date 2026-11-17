@@ -253,7 +253,7 @@ csap-apidoc-go/
 
 ## 10. 已确认事项
 
-1. **仓库和模块路径**（已定，2026-11-17）：发布到 **GitHub**，组织 `csap-ai`（`csap-website` 已在这个组织下）。模块路径 `github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go`，第一次推送前如果仓库名有变化，需要同步修改 `go.mod` 和文档。开发期间代码仍放在 gitee `csap-framework-apidoc` 仓库的 `feat/apidoc-go` 分支。发版 tag 格式为 `csap-apidoc-go/vX.Y.Z`。
+1. **仓库和模块路径**（已定，2026-11-17）：发布到 **GitHub**，组织 `csap-ai`（`csap-website` 已在这个组织下）。模块路径 `github.com/csap-ai/csap-apidoc/csap-apidoc-go`。GitHub 仓库是 `https://github.com/csap-ai/csap-apidoc`（用户 2026-11-17 给出），模块路径据此定为 `github.com/csap-ai/csap-apidoc/csap-apidoc-go`。**注意**：GitHub `main`（2026-05-02 bee9d83）和 gitee 不是同一条提交历史，GitHub 上没有 b4b9819；它比线上基线多了 2026-04 之后的开发，如文档页请求历史和请求快照（M9.1/M9.2）、i18n、`csap-apidoc-mock` 设计、只发 Maven Central 等。Go 代码怎么合到 GitHub 仓库、内嵌哪一版前端，推送前要和用户定。开发期间代码仍放在 gitee `csap-framework-apidoc` 仓库的 `feat/apidoc-go` 分支。发版 tag 格式为 `csap-apidoc-go/vX.Y.Z`。
 2. **名称**：目录 `csap-apidoc-go`（与 `csap-apidoc-*` 其他模块保持一致），包名 `apidoc`。
 3. **最低 Go 版本**：1.22，需要泛型和新版 ServeMux。
 4. **前端**（已定）：内嵌。复用本仓库的 `csap-apidoc-ui` 和 `csap-apidoc-devtools/devtools` 源码，构建产物用 `go:embed` 打进 `ui` 包，不拆成独立仓库。

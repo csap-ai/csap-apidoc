@@ -21,7 +21,7 @@
 | 目录 | `/Users/ycf/Documents/产品/csap/framework/apidoc/csap-apidoc-go` |
 | git | `framework/apidoc` 是 `framework/old/csap-framework-apidoc` 这个仓库的第二个工作目录（`git worktree`），分支 `feat/apidoc-go` |
 | 分支基线 | `origin/chore/apidoc-next-iteration` b4b9819（2026-04-11），即线上运行的代码，见第 3 节 |
-| Go 模块路径 | `github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go`，最低 Go 1.22（以后发布到 GitHub `csap-ai` 组织） |
+| Go 模块路径 | `github.com/csap-ai/csap-apidoc/csap-apidoc-go`，最低 Go 1.22（以后发布到 GitHub `csap-ai` 组织） |
 | 提交 | **没有提交，也没有推送**。`git status` 显示 `?? csap-apidoc-go/` |
 | 代码 | **M1 已完成**（2026-11-17）：`model`（含 Java 格式编码器）、`strategy`（接口、合并、Memory）、`strategy/tag`、根包（生成、快照、`/csap/apidoc*`、`/csap/openapi.json`）、`openapi`、`ui`（内嵌前端）、`adapter/gin`、`examples/gin-basic`。`go vet`、`go test -race ./...` 通过，根包覆盖率 84%。其余包（`filter` `validate` `strategy/{yaml,sql}` `devtools` `postman` `adapter/nethttp`）仍只有 `doc.go` |
 | 文档 | `README.md`、`docs/DESIGN.md`（设计）、本文件 |
@@ -118,7 +118,7 @@ unzip -q <jar> 'BOOT-INF/lib/csap-apidoc*' 'BOOT-INF/lib/csap-validation*' -d /t
 
 ## 7. 已确认事项（用户 2026-11-17）
 
-1. **发布位置**：以后放到 GitHub。模块路径已改成 `github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go`；第一次推送前如果仓库名有变化，要同步修改。推送和建仓库前先问用户。
+1. **发布位置**：GitHub `csap-ai/csap-apidoc`，模块路径 `github.com/csap-ai/csap-apidoc/csap-apidoc-go`。GitHub 仓库是 `https://github.com/csap-ai/csap-apidoc`（用户 2026-11-17 给出），模块路径据此定为 `github.com/csap-ai/csap-apidoc/csap-apidoc-go`。**注意**：GitHub `main`（2026-05-02 bee9d83）和 gitee 不是同一条提交历史，GitHub 上没有 b4b9819；它比线上基线多了 2026-04 之后的开发，如文档页请求历史和请求快照（M9.1/M9.2）、i18n、`csap-apidoc-mock` 设计、只发 Maven Central 等。Go 代码怎么合到 GitHub 仓库、内嵌哪一版前端，推送前要和用户定。推送和建分支前先问用户。
 2. **前端**：内嵌。用本仓库的前端源码构建后，通过 `go:embed` 打进模块，不拆成独立仓库。
 3. **football-data-hub 接入**：**等本框架开发完成后，通知 football-data-hub 那边，由那边接入**，本框架这边不改 football-data-hub 的代码。通知方式：给会话「Java到Go迁移可行性分析 (fork)」（id 尾号 cebe1e）发消息（`SendMessage`，`to` 填这个会话名），写明以下内容：
    - 完成到哪个里程碑、提交号、模块路径。

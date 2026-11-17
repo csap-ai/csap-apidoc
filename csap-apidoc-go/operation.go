@@ -3,7 +3,7 @@ package apidoc
 import (
 	"reflect"
 
-	"github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go/model"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
 )
 
 // Operation 描述一条路由的文档信息,对应 Java 的 @ApiOperation 加方法签名。

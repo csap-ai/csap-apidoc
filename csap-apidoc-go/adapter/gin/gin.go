@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	apidoc "github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go"
+	apidoc "github.com/csap-ai/csap-apidoc/csap-apidoc-go"
 )
 
 // Router 包装 gin 的路由组:注册路由的同时把文档声明登记到 Doc。

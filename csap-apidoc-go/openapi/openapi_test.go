@@ -3,7 +3,7 @@ package openapi
 import (
 	"testing"
 
-	"github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go/model"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
 )
 
 func TestBuild(t *testing.T) {

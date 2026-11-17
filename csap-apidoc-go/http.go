@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go/model"
-	"github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go/openapi"
-	"github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go/ui"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/openapi"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/ui"
 )
 
 const jsonContentType = "application/json;charset=UTF-8"
