@@ -1,0 +1,100 @@
+name: Go (csap-apidoc-go)
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'csap-apidoc-go/**'
+      - '.github/workflows/go.yml'
+  pull_request:
+    paths:
+      - 'csap-apidoc-go/**'
+      - '.github/workflows/go.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: csap-apidoc-go
+
+jobs:
+  test:
+    name: test (go ${{ matrix.go }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 1.22 是 go.mod 声明的最低版本,stable 是当前最新版
+        go: [ '1.22.x', 'stable' ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          cache-dependency-path: |
+            csap-apidoc-go/go.sum
+            csap-apidoc-go/integration/go.sum
+
+      - name: gofmt
+        if: matrix.go == 'stable'
+        run: |
+          out="$(gofmt -l .)"
+          if [ -n "$out" ]; then echo "未格式化的文件:"; echo "$out"; exit 1; fi
+
+      - name: go build
+        run: go build ./...
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test (根模块)
+        run: go test -race -coverprofile=coverage.out ./...
+
+      - name: coverage
+        run: go tool cover -func=coverage.out | tail -1
+
+      - name: go vet (integration)
+        working-directory: csap-apidoc-go/integration
+        run: go vet ./...
+
+      # SQL 策略的集成测试:默认用纯 Go 的 SQLite,不需要数据库服务
+      - name: go test (integration, SQLite)
+        working-directory: csap-apidoc-go/integration
+        run: go test -race ./...
+
+  integration-postgres:
+    name: integration (PostgreSQL 16)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: csap
+          POSTGRES_PASSWORD: csap
+          POSTGRES_DB: csap
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U csap"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache-dependency-path: csap-apidoc-go/integration/go.sum
+
+      - name: go test (integration, SQLite + PostgreSQL)
+        working-directory: csap-apidoc-go/integration
+        env:
+          CSAP_TEST_PG_DSN: postgres://csap:csap@localhost:5432/csap?sslmode=disable
+        run: go test -race ./...
