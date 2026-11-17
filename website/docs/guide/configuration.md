@@ -1,6 +1,6 @@
 # 配置参考
 
-本页列出 CSAP Apidoc 1.1.1 中全部真实存在的配置：`@EnableApidoc` 注解属性，以及 `application.yml` 中 `csap.apidoc`、`csap.apidoc.devtools.proxy`、`csap.validation` 三组配置项。配置项名称使用 Spring Boot 的 kebab-case 写法。
+本页列出 CSAP Apidoc 1.2.0 中全部真实存在的配置：`@EnableApidoc` 注解属性，以及 `application.yml` 中 `csap.apidoc`、`csap.apidoc.devtools.proxy`、`csap.apidoc.runtime.filter`、`csap.validation` 四组配置项。配置项名称使用 Spring Boot 的 kebab-case 写法。
 
 :::warning 不存在的配置项
 早期文档中出现过的 `csap.apidoc.enabled`、`csap.apidoc.title`、`csap.apidoc.version`、`csap.apidoc.description`、`csap.apidoc.base-package`、`csap.apidoc.strategy`、`csap.apidoc.storage-strategy`、`csap.apidoc.ui-path`、`csap.apidoc.security.*`、`csap.apidoc.devtools.port`、`csap.apidoc.path`、`csap.apidoc.filename` 在代码中都**不存在**，写了也不会生效。
@@ -142,28 +142,42 @@ public class DemoApplication {
 
 ## csap.apidoc.runtime.filter
 
-运行时返回字段过滤（1.2.0 起），默认关闭。说明见 [返回字段过滤](/guide/runtime-filter)。
-
-| 配置 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `csap.apidoc.runtime.filter.enabled` | `boolean` | `false` | 是否开启 |
-| `csap.apidoc.runtime.filter.mode` | `FilterMode` | `path` | `path`：按字段路径放行，与文档一致；`csap`：按类型白名单 / 黑名单，兼容 csap-framework |
-| `csap.apidoc.runtime.filter.engine` | `FilterEngine` | `auto` | `auto` 按接口实际使用的消息转换器选择；`jackson`、`fastjson`、`fastjson2` 只过滤用该库输出的响应 |
-| `csap.apidoc.runtime.filter.endpoints` | `Map<String, FilterMode>` | 空 | 按接口覆盖模式，键为"类名.方法名"（YAML 中写成 `"[com.example.UserController.get]"`），值为 `off`、`path`、`csap` |
-
-## csap.validation
-
-对应 `ai.csap.validation.properties.ValidationProperties`，需要引入（可选的）`csap-validation-boot-starter`。详见 [参数校验](/guide/validation)。
+对应 `ai.csap.apidoc.runtime.autoconfigure.RuntimeFilterProperties`（模块 `csap-apidoc-runtime`，`csap-apidoc-boot-starter` 已引入）。运行时返回字段过滤（1.2.0 起），默认关闭。说明见 [返回字段过滤](/guide/runtime-filter)。
 
 | 配置项 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `csap.validation.enabled` | `Boolean` | 未配置时视为关闭 | 为 `true` 时注册请求拦截器 `ValidateIntercept`。见下方提示 |
+| `csap.apidoc.runtime.filter.enabled` | `boolean` | `false` | 是否开启。只有写 `true` 时才注册过滤组件（仅 Servlet Web 应用）；关闭时没有运行时开销 |
+| `csap.apidoc.runtime.filter.mode` | `FilterMode` | `path` | 全局模式。`path`：按字段路径放行，与文档一致；`csap`：按类型白名单 / 黑名单，兼容 csap-framework；`off`：不过滤（可配合 `endpoints` 只对个别接口开启） |
+| `csap.apidoc.runtime.filter.engine` | `FilterEngine` | `auto` | `auto` 按接口实际使用的消息转换器选择；`jackson`、`fastjson`、`fastjson2` 只过滤用该库输出的响应 |
+| `csap.apidoc.runtime.filter.endpoints` | `Map<String, FilterMode>` | 空 | 按接口覆盖模式，键为 Controller 全限定类名 + `.` + 方法名（YAML 中写成 `"[com.example.UserController.get]"`），值为 `off`、`path`、`csap`。同名重载方法共用一个键 |
+
+## csap.validation
+
+对应 `ai.csap.validation.properties.ValidationProperties`，需要引入（可选的）`csap-validation-boot-starter`。1.2.0 起运行时校验真正执行，默认关闭。详见 [参数校验](/guide/validation)。
+
+| 配置项 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `csap.validation.mode` | `ValidationMode` | `off` | 全局校验模式：`off` 不校验；`observe` 校验并记录日志 / 指标，请求放行；`enforce` 校验失败直接返回错误 |
+| `csap.validation.endpoints` | `Map<String, ValidationMode>` | 空 | 按接口覆盖模式，键为 Controller 全限定类名 + `.` + 方法名（YAML 中写成 `"[com.example.UserController.create]"`），值为 `off`、`observe`、`enforce`。全局 `off` 时只要有一个接口不是 `off`，运行时校验也会注册 |
+| `csap.validation.http-status` | `int` | `200` | 校验失败时响应的 HTTP 状态码；响应体始终是 `ApidocResult`（`code`、`message`）。同样用于 Spring 标准校验异常的统一返回 |
 | `csap.validation.tip-type` | `ValidationTipType` | `TIP_1` | 校验失败提示信息的格式，见下表 |
+| `csap.validation.required-code` | `String` | `"400"` | 字段只配了必填、没配任何校验规则时，值为空（`null`、空字符串、空集合）返回的 `code`（1.2.0 起） |
+| `csap.validation.required-message` | `String` | `不能为空` | 同上，返回的提示，按 `tip-type` 拼上字段名，如 `字段nickname,不能为空`（1.2.0 起） |
+| `csap.validation.enabled` | `Boolean` | 未配置 | 1.1.x 的旧开关，兼容语义见下表。新项目请用 `mode` |
 | `csap.validation.code` | `String` | `code` | 目前这个值没有被任何代码读取 |
 | `csap.validation.message` | `String` | `message` | 目前这个值没有被任何代码读取 |
 
-:::warning 运行时校验需要显式开启
-`ValidationProperties.enabled` 的默认值虽然是 `true`，但注册请求拦截器的条件是 `@ConditionalOnProperty(prefix = "csap.validation", name = "enabled", havingValue = "true")`，没有写这个属性时条件不成立，所以必须在配置文件里**明确写上** `csap.validation.enabled: true` 才会注册拦截器（1.1.1 起 IDE 的配置提示也显示默认 `false`）。另外，1.1.x 中没有组件在请求处理时调用这个拦截器，开启后 CSAP 规则校验仍不会执行，见 [参数校验](/guide/validation)。
+旧开关 `enabled` 与 `mode` 的关系：
+
+| 配置 | 生效的全局模式 |
+| --- | --- |
+| 只写 `enabled: true` | `enforce` |
+| `enabled: true` 且写了 `mode` | 以 `mode` 为准 |
+| `enabled: false` | 全部关闭，包括 `endpoints` 中的覆盖 |
+| 都不写 | `off` |
+
+:::warning 从 1.1.x 升级
+1.1.x 中写了 `csap.validation.enabled: true` 的项目，升级到 1.2.0 后会**真正开始拦截**校验失败的请求（1.1.x 中没有组件执行规则）。如果不确定规则是否都正确，先改成 `mode: observe`。
 :::
 
 `tip-type` 的取值（以字段 `graphId`、描述「用户名」、提示「只能是0-9的数字」为例）：
@@ -242,10 +256,24 @@ csap:
         strip-headers: [Cookie, X-Forwarded-For, X-Real-IP]
         log-bodies: false
 
+    # 返回字段过滤（1.2.0 起，默认关闭）
+    runtime:
+      filter:
+        enabled: false
+        mode: path            # path / csap / off
+        engine: auto          # auto / jackson / fastjson / fastjson2
+        endpoints:
+          "[com.example.demo.controller.OrderController.detail]": off
+
   # 参数校验（需要引入可选的 csap-validation-boot-starter）
   validation:
-    enabled: true
+    mode: observe             # off（默认）/ observe / enforce
+    http-status: 200
     tip-type: TIP_1
+    required-code: "400"
+    required-message: 不能为空
+    endpoints:
+      "[com.example.demo.controller.OrderController.create]": enforce
 ```
 
 ## 相关页面
@@ -253,5 +281,6 @@ csap:
 - [安装](/guide/installation)
 - [存储策略](/guide/storage-strategies)
 - [参数校验](/guide/validation)
+- [返回字段过滤](/guide/runtime-filter)
 - [DevTools](/guide/devtools)
 - [网关聚合](/guide/gateway-aggregation)
