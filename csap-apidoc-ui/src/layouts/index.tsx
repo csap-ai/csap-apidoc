@@ -19,6 +19,7 @@ import { exportToMarkdown, downloadMarkdown } from '@/utils/exportMarkdown';
 import { groupParametersByType, getNonEmptyParamTypes, getParamTypeLabel, buildRequestData, replacePathParams } from '@/utils/paramTypeUtils';
 import { ExclamationCircleFilled, ThunderboltOutlined } from '@ant-design/icons';
 import TryItOutPanel, { RequestSpec } from '@/components/TryItOutPanel';
+import { apidocMethodUrl, apidocParentUrl, apidocServiceBase } from '@/utils/apidocUrl';
 import type { HttpMethod } from '@/services/tryItOutClient';
 import {
   composeTryItOutSpec,
@@ -152,10 +153,9 @@ const LayoutIndex = () => {
       DeleteChildren(response);
       if (request) DeleteChildren(request);
       setDataSource(headers || []);
-      const patchAPI = selectRefValue?.current?.value?.replace(
-        '/csap/apidoc/parent',
-        ''
-      );
+      const patchAPI = selectRefValue?.current?.value
+        ? apidocServiceBase(selectRefValue.current.value)
+        : '';
       setDataObj({
         apiTitle: title || '',
         paramsTitle: paramType || '',
@@ -178,7 +178,7 @@ const LayoutIndex = () => {
     if (expandedKeys.length > 0 && treeData.length > 0) {
       if (selectRefValue.current?.value) {
         getTreeDetail(
-          `${selectRefValue.current.value.split('/')[1]}/csap/apidoc/method`,
+          apidocMethodUrl(selectRefValue.current.value),
           {
             name: getParentKey(expandedKeys[0], treeData),
             key: expandedKeys.join(''),
@@ -334,7 +334,7 @@ const LayoutIndex = () => {
 
   const onChangeValue = (value: string) => {
     if (value) {
-      getTreeList(value);
+      getTreeList(apidocParentUrl(value));
     }
   };
 
@@ -362,7 +362,7 @@ const LayoutIndex = () => {
       // 获取 API 详情的辅助函数
       const getApiDetailForExport = async (apiNode: any) => {
         const qxapi = selectRefValue.current?.value
-          ? `${selectRefValue.current.value.split('/')[1]}/csap/apidoc/method`
+          ? apidocMethodUrl(selectRefValue.current.value)
           : `${import.meta.env.VITE_API_URL}/csap/apidoc/method`;
 
         const result = await getApiDetail(qxapi, {
@@ -384,7 +384,7 @@ const LayoutIndex = () => {
 
       // 获取基础 URL
       const baseUrl = selectRefValue.current?.value
-        ? selectRefValue.current.value.replace('/csap/apidoc/parent', '')
+        ? apidocServiceBase(selectRefValue.current.value)
         : import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
       let content: string;
@@ -622,7 +622,7 @@ const LayoutIndex = () => {
       let baseUrl = '';
       if (selectRefValue.current?.value) {
         // 使用用户选择的API地址
-        baseUrl = selectRefValue.current.value.replace('/csap/apidoc/parent', '');
+        baseUrl = apidocServiceBase(selectRefValue.current.value);
       } else {
         // 使用默认的VITE_API_URL
         baseUrl = import.meta.env.VITE_API_URL;
@@ -766,8 +766,11 @@ const LayoutIndex = () => {
   // is safe because it changes via `onChangeValue → getTreeList`, which
   // updates state and triggers a re-render before the panel is shown.
   const serviceRefId = selectRefValue.current?.value ?? null;
+  // dataObj.patch already carries the selected service's base (see
+  // getTreeDetail), so only the default (no resource selected) case needs
+  // VITE_API_URL prepended.
   const tryItOutBaseUrl = selectRefValue.current?.value
-    ? selectRefValue.current.value.replace('/csap/apidoc/parent', '')
+    ? ''
     : (import.meta.env.VITE_API_URL ?? '');
   const tryItOutPath = dataObj.patch || '';
   const tryItOutUrl = tryItOutBaseUrl
