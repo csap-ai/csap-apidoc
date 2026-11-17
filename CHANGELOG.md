@@ -7,6 +7,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - Unreleased
+
+Draft. Runtime response filtering and runtime request validation are new and
+both **off by default**; enabling either changes what clients receive, so try
+them on a few endpoints first.
+
+### Added
+
+- **`csap-apidoc-runtime`: response field filtering.** Endpoints with
+  response rules only return the fields the rules allow, matching what the
+  docs page shows. Engines for Jackson, fastjson and fastjson2 (`engine: auto`
+  picks the converter the endpoint actually uses); `path` mode (field-path
+  whitelist) and `csap` mode (per-type white/black lists, compatible with
+  csap-framework); per-endpoint overrides. Pulled in by
+  `csap-apidoc-boot-starter`, enabled with
+  `csap.apidoc.runtime.filter.enabled=true`. Endpoints without rules are not
+  touched; `@JsonView` keeps working.
+- **Runtime request validation with an observe mode.** Rules registered while
+  generating docs are now actually executed (in 1.1.x nothing ran them).
+  `csap.validation.mode`: `off` (default) / `observe` (log + Micrometer
+  counter `csap.validation.violations`, request passes) / `enforce`;
+  per-endpoint overrides via `csap.validation.endpoints`; failure status via
+  `csap.validation.http-status`. The 1.1.x switch `csap.validation.enabled`
+  still works (`true` alone means `enforce`). Custom checks can be plugged in
+  as `ApiMethodHandle` / `ViolationRecorder` beans.
+- Fields that are required but have no rule are checked for emptiness when
+  validation is on (code / message from `csap.validation.required-code` /
+  `required-message`, default `"400"` / `不能为空`, same as the Go version).
+- **`javax.validation` and `jakarta.validation` constraint annotations** are
+  both recognised, so the same jar works on Spring Boot 2 and 3. Built-in
+  constraints run on the application's Hibernate Validator, including the
+  time constraints (`@Past`, `@Future`, ...).
+- **Dark mode for the docs page** (light / dark / follow system, follows the
+  system by default). Covers the docs page only.
+- **`GET /csap/openapi.json`**: OpenAPI 3.0 export of the full document,
+  including plain (non-global) controllers; same path as the Go version.
+
+### Fixed
+
+- Spring Boot 2: adding `csap-validation-boot-starter` made startup fail with
+  `NoClassDefFoundError` (jakarta types in signatures).
+- Spring Boot 3: turning a validation failure into a response failed with
+  `NoSuchMethodError` (`ResponseEntity.status(HttpStatus)` no longer exists in
+  Spring 6).
+- OpenAPI export: `NullPointerException` when `required` was unset; plain
+  controllers were not exported; path variables and empty request bodies are
+  taken from the scanned data.
+- The JSON doc strategy wrote YAML into its `.json` files; it now writes JSON
+  and still reads old YAML content.
+- SQLite databases created from the 1.1.0 template are migrated automatically
+  when opened (existing rows kept).
+- `ApiDocService` cleared all field rules before registering them again, so
+  requests during a rescan could see no rules; rules are now built first and
+  swapped in at once.
+- DevTools: saving rules now regenerates that class immediately, and the
+  per-class refresh no longer appends a second copy of the class to the doc.
+- YAML / SQLite strategy: rebuilding the doc no longer appends the annotation
+  rules to the cached YAML rules again on every scan.
+
+### Known issues
+
+- Response filtering adds serialization cost on endpoints that have rules
+  (endpoints without rules are unaffected). Measured overhead per response
+  (100 rows, about 17 KB of JSON, median of 3 runs):
+
+  | Engine    | No filter | Typical rules     | Rules allow all fields |
+  | --------- | --------- | ----------------- | ---------------------- |
+  | Jackson   | 62 µs     | 70 µs (+7%)       | 88 µs (+45%)           |
+  | fastjson  | 39 µs     | 116 µs (+205%)    | 138 µs (+244%)         |
+  | fastjson2 | 20 µs     | 112 µs (+362%)    | 197 µs (+711%)         |
+
+  Endpoints without rules only pay for two `ResponseBodyAdvice` checks
+  (about 0.2 µs). Measured with `FilterOverheadBenchmarkTest`
+  (`-Dcsap.perf=true`, JDK 17) on a busy machine, so treat the numbers as
+  rough.
+
+  fastjson2 is the most expensive: enabling its property filter moves it to
+  a slower serialization path.
+- The DevTools page has no dark mode yet.
+- Overloaded methods with the same name share one set of rules and one
+  per-endpoint setting (the key is `ClassName.methodName`), for both
+  filtering and validation.
+- `Map` values are not filtered by rules: once a `Map` field is allowed, the
+  whole value is written.
+
 ## [1.1.1] - 2026-11-17
 
 Patch release fixing the defects found after 1.1.0 was published. Upgrading

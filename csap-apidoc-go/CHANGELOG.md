@@ -26,7 +26,7 @@ csap-apidoc-go 的版本号独立于 Java 版,tag 格式为 `csap-apidoc-go/vX.Y
 - 没有任何规则的接口,文档显示全部字段、返回不过滤(Java 只显示 `forceRep` 字段)。
 - `GET /csap/apidoc/{分组}?key=` 不会改坏文档缓存(Java 1.1.0 之前的缺陷)。
 - 后台保存请求参数时,按 `<参数名>.` 精确删除旧规则,字段原有的说明、示例保留。
-- 只写 `required: true`、不写校验规则的字段,按"不能为空"校验(Java 不校验)。
+- 只写 `required: true`、不写校验规则的字段,按"不能为空"校验(Java 1.1.x 不校验;Java 1.2.0 起同样校验,默认 code、提示与 Go 一致)。
 
 ### 已知限制
 
