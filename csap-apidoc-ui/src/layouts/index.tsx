@@ -20,6 +20,7 @@ import { groupParametersByType, getNonEmptyParamTypes, getParamTypeLabel, buildR
 import { ExclamationCircleFilled, ThunderboltOutlined } from '@ant-design/icons';
 import TryItOutPanel, { RequestSpec } from '@/components/TryItOutPanel';
 import { apidocMethodUrl, apidocParentUrl, apidocServiceBase } from '@/utils/apidocUrl';
+import { hasApiDetail, EMPTY_API_DETAIL } from '@/utils/apiDetail';
 import type { HttpMethod } from '@/services/tryItOutClient';
 import {
   composeTryItOutSpec,
@@ -169,6 +170,7 @@ const LayoutIndex = () => {
       setDataSource([]);
       setDataBody([]);
       setDataRes([]);
+      setDataObj({ ...EMPTY_API_DETAIL });
     }
   };
 
@@ -892,7 +894,7 @@ const LayoutIndex = () => {
           <div className="container-ri loading-container">
             <Spin size="large" tip={t('layout.loading')} />
           </div>
-        ) : dataSource && dataSource.length > 0 ? (
+        ) : hasApiDetail(dataObj) ? (
           <div className="container-ri">
             <div className="container-ri-content" ref={pageView}>
               {/* 固定头部区域 - 单行布局 */}
