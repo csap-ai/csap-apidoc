@@ -368,7 +368,7 @@ public final class JacksonFilterSupport {
                 }
                 TypeRules rules = session.getEndpoint().getTypeRules();
                 Class<?> type = value.getClass();
-                return rules.plan(this, k -> subset(SubsetBeanSerializer.CSAP, w -> rules.allows(type, w.getName()) ? w : null,
+                return rules.plan(PlanCache.JACKSON, this, k -> subset(SubsetBeanSerializer.CSAP, w -> rules.allows(type, w.getName()) ? w : null,
                         null));
             }
             FieldMask mask = session.current();
@@ -376,9 +376,9 @@ public final class JacksonFilterSupport {
                 return legacy();
             }
             if (mask == FieldMask.OUTSIDE) {
-                return mask.plan(this, k -> subset(SubsetBeanSerializer.OUTSIDE, w -> w, null));
+                return mask.plan(PlanCache.JACKSON, this, k -> subset(SubsetBeanSerializer.OUTSIDE, w -> w, null));
             }
-            return mask.plan(this, k -> subset(SubsetBeanSerializer.PATH,
+            return mask.plan(PlanCache.JACKSON, this, k -> subset(SubsetBeanSerializer.PATH,
                     w -> mask.lookup(w.getName()) == FieldMask.DROP ? null : w, w -> mask.lookup(w.getName())));
         }
 

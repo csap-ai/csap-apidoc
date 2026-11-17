@@ -45,7 +45,7 @@ public final class TypeRules {
     /**
      * 各引擎预编译的序列化计划,见 {@link FieldMask#plan(Object, Function)}
      */
-    private final ConcurrentMap<Object, Object> plans = new ConcurrentHashMap<>(4);
+    private final PlanCache plans = new PlanCache();
 
     private TypeRules(List<Rule> rules) {
         this.rules = rules.toArray(NONE);
@@ -140,13 +140,8 @@ public final class TypeRules {
     /**
      * 取缓存的计划,没有时创建
      */
-    @SuppressWarnings("unchecked")
-    <K, T> T plan(K key, Function<? super K, T> factory) {
-        Object found = plans.get(key);
-        if (found == null) {
-            found = plans.computeIfAbsent(key, k -> factory.apply((K) k));
-        }
-        return (T) found;
+    <K, T> T plan(int engine, K key, Function<? super K, T> factory) {
+        return plans.get(engine, key, factory);
     }
 
     @Override

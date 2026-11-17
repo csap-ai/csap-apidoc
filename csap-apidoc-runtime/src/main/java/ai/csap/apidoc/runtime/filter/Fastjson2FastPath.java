@@ -166,7 +166,7 @@ final class Fastjson2FastPath {
     }
 
     private static Plan plan(JSONWriter writer, Object value, FieldMask mask) {
-        return mask.plan(value.getClass(), t -> Plan.create(writer, t, mask, value));
+        return mask.plan(PlanCache.FASTJSON2, value.getClass(), t -> Plan.create(writer, t, mask, value));
     }
 
     /**

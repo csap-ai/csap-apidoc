@@ -379,7 +379,7 @@ final class FastjsonFastPath {
         Plan plan(Class<?> type, FieldMask mask) {
             SerializeConfig config = getMapping();
             Object key = config == SerializeConfig.globalInstance ? type : new ConfigKey(config, type);
-            return mask.plan(key, k -> Plan.create(super.getObjectWriter(type), type, mask));
+            return mask.plan(PlanCache.FASTJSON, key, k -> Plan.create(super.getObjectWriter(type), type, mask));
         }
 
         /**

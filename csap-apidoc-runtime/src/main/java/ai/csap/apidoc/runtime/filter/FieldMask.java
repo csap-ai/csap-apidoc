@@ -10,8 +10,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 
 import cn.hutool.core.util.StrUtil;
@@ -56,7 +54,7 @@ public final class FieldMask {
      * 各引擎按本节点预编译的序列化计划(键由引擎决定,如 序列化器实例 / 类型)。
      * 挂在掩码上,接口规则热更新后旧掩码连同计划一起被回收。
      */
-    private final ConcurrentMap<Object, Object> plans = new ConcurrentHashMap<>(4);
+    private final PlanCache plans = new PlanCache();
 
     private FieldMask(Map<String, FieldMask> fields, FieldMask mapValues, String label) {
         this.fields = fields;
@@ -109,13 +107,8 @@ public final class FieldMask {
      * @param factory 创建
      * @return 计划
      */
-    @SuppressWarnings("unchecked")
-    <K, T> T plan(K key, Function<? super K, T> factory) {
-        Object found = plans.get(key);
-        if (found == null) {
-            found = plans.computeIfAbsent(key, k -> factory.apply((K) k));
-        }
-        return (T) found;
+    <K, T> T plan(int engine, K key, Function<? super K, T> factory) {
+        return plans.get(engine, key, factory);
     }
 
     @Override
