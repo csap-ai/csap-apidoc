@@ -34,6 +34,7 @@ import ai.csap.apidoc.runtime.filter.model.Exotic;
 import ai.csap.apidoc.runtime.filter.model.Match;
 import ai.csap.apidoc.runtime.filter.model.MatchPage;
 import ai.csap.apidoc.runtime.filter.model.Rich;
+import ai.csap.apidoc.runtime.filter.model.Shared;
 import ai.csap.apidoc.runtime.filter.model.Team;
 import ai.csap.apidoc.runtime.filter.model.TeamWithExtra;
 import ai.csap.apidoc.runtime.filter.model.TreeNode;
@@ -237,6 +238,16 @@ public class GoldenOutputTest {
                 "shape.x", "shape.team.name", "ident.id", "identAgain.secret", "typed.extra", "typed.id",
                 "any.name", "any.team.id", "custom.a", "custom.team.name", "pub.id", "pub.team.name", "fmtDates.x",
                 "mixed.name", "@class", "@id")))));
+        list.add(new Case("path/sharedTop", Shared::new, path(mask(Arrays.asList("team", "teamAgain", "list",
+                "listAgain", "map", "mapAgain", "nested")))));
+        list.add(new Case("path/sharedDeep", Shared::new, path(mask(Arrays.asList("team.id", "teamAgain.name",
+                "list.id", "listAgain.name", "map.id", "mapAgain.name", "nested.id"), "map", "mapAgain"))));
+        list.add(new Case("path/sharedRootList", () -> {
+            Team t = new Team(33, "R");
+            List<Object> l = new ArrayList<>(Arrays.asList(t, t, new ArrayList<>(Arrays.asList(t))));
+            l.add(l.get(2));
+            return l;
+        }, path(mask(Collections.singletonList("name")))));
         for (Object[] parsed : parsedCases()) {
             list.add(new Case("path/parsed/" + parsed[0], () -> Engines.parse((String) parsed[1]),
                     path((FieldMask) parsed[2])));
@@ -279,6 +290,8 @@ public class GoldenOutputTest {
                 .and(Exotic.Pub.class, Collections.emptySet(), set("secret"))
                 .and(Exotic.WithAny.class, Collections.emptySet(), set("secret"))
                 .and(Exotic.Custom.class, Collections.emptySet(), set("secret")))));
+        list.add(new Case("csap/shared", Shared::new,
+                csap(TypeRules.EMPTY.and(Team.class, set("id"), Collections.emptySet()))));
         list.add(new Case("csap/viewed", Viewed::new,
                 csap(TypeRules.EMPTY.and(Team.class, set("name"), Collections.emptySet()))));
         return list;
