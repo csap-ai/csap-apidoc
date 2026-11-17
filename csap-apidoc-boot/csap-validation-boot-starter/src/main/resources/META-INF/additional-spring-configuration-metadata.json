@@ -10,30 +10,68 @@
     {
       "name": "csap.validation.code",
       "type": "java.lang.String",
-      "description": " 错误码的名称.",
+      "description": "错误码的名称(目前未被读取).",
       "defaultValue": "code",
       "sourceType": "ai.csap.validation.properties.ValidationProperties"
     },
     {
       "name": "csap.validation.message",
       "type": "java.lang.String",
-      "description": " 错误描述的名称.",
+      "description": "错误描述的名称(目前未被读取).",
       "defaultValue": "message",
+      "sourceType": "ai.csap.validation.properties.ValidationProperties"
+    },
+    {
+      "name": "csap.validation.mode",
+      "type": "ai.csap.validation.properties.ValidationMode",
+      "description": "运行时请求参数校验模式:off 不校验;observe 校验并记录日志/指标,请求放行;enforce 校验失败直接返回错误. 未配置时取 enabled(true 等同 enforce),都未配置时为 off.",
+      "defaultValue": "off",
       "sourceType": "ai.csap.validation.properties.ValidationProperties"
     },
     {
       "name": "csap.validation.enabled",
       "type": "java.lang.Boolean",
-      "description": " 是否启用请求参数校验拦截(ValidateIntercept). 默认不启用, 必须显式配置为 true 才生效.",
+      "description": "旧开关(1.1.x). 只写 enabled=true、没写 mode 时等同 mode=enforce; enabled=false 时关闭全部校验(包括按接口覆盖). 新项目请使用 csap.validation.mode.",
       "defaultValue": "false",
+      "sourceType": "ai.csap.validation.properties.ValidationProperties"
+    },
+    {
+      "name": "csap.validation.http-status",
+      "type": "java.lang.Integer",
+      "description": "校验失败时响应的 HTTP 状态码, 响应体始终是 ApidocResult {code, message}.",
+      "defaultValue": 200,
+      "sourceType": "ai.csap.validation.properties.ValidationProperties"
+    },
+    {
+      "name": "csap.validation.endpoints",
+      "type": "java.util.Map<java.lang.String,ai.csap.validation.properties.ValidationMode>",
+      "description": "按接口覆盖校验模式, 键为 Controller 全限定类名.方法名, 如 csap.validation.endpoints.\"[com.x.UserController.create]\"=observe.",
       "sourceType": "ai.csap.validation.properties.ValidationProperties"
     },
     {
       "name": "csap.validation.tip-type",
       "type": "ai.csap.validation.type.ValidationTipType",
-      "description": " 验证提示的类型.",
+      "description": "校验失败提示的格式.",
       "defaultValue": "TIP_1",
       "sourceType": "ai.csap.validation.properties.ValidationProperties"
+    }
+  ],
+  "hints": [
+    {
+      "name": "csap.validation.mode",
+      "values": [
+        {"value": "off", "description": "不校验(默认)."},
+        {"value": "observe", "description": "校验并记录, 请求放行."},
+        {"value": "enforce", "description": "校验失败直接返回错误."}
+      ]
+    },
+    {
+      "name": "csap.validation.endpoints.values",
+      "values": [
+        {"value": "off"},
+        {"value": "observe"},
+        {"value": "enforce"}
+      ]
     }
   ]
 }
