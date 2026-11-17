@@ -2,3 +2,4 @@ node_modules/
 doc_build/
 # 由 scripts/sync.mjs 生成
 docs/changelog.md
+docs/roadmap.md

@@ -19,6 +19,7 @@ export default defineConfig({
       { text: '指南', link: '/guide/overview', activeMatch: '^/guide/' },
       { text: '参考', link: '/api/annotations', activeMatch: '^/api/' },
       { text: 'Go 版', link: '/go/', activeMatch: '^/go/' },
+      { text: '路线图', link: '/roadmap' },
       { text: '发布说明', link: '/changelog' },
       { text: '下载', link: '/download/' },
       {
