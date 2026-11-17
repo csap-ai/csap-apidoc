@@ -54,8 +54,9 @@ import {
   isTryItOutFailure,
   newCancelTokenSource,
   sendTryItOutRequest,
+  resolveTryItOutOptions,
 } from '@/services/tryItOutClient';
-import { settingsStore } from '@/stores/settingsStore';
+import { settingsStore, SettingsState } from '@/stores/settingsStore';
 import type { ComposerWarning } from '@/services/requestComposer';
 import {
   TryItOutHistoryEntry,
@@ -93,9 +94,9 @@ interface Props {
   initial: RequestSpec;
   /** Caller-supplied pills (env / auth / header count) — populated in M5. */
   contextBadges?: ContextBadge[];
-  /** Optional CORS proxy URL (settings.tryItOut.proxyUrl in M6); applied by client. */
+  /** CORS proxy URL override; defaults to settings.tryItOutProxyUrl. */
   proxyUrl?: string | null;
-  /** Per-call timeout (ms); default 30s. */
+  /** Per-call timeout (ms); defaults to settings.tryItOutTimeoutMs. */
   timeoutMs?: number;
   /**
    * Hook for M5 to inject env/headers/auth into the outbound request right
@@ -216,18 +217,19 @@ const TryItOutPanel: React.FC<Props> = ({
   );
   const cancelRef = useRef<ReturnType<typeof newCancelTokenSource> | null>(null);
 
-  // C4 — read tryItOutWithCredentials live from settingsStore so flipping
-  // the SettingsDrawer switch takes effect on the very next send without
-  // remounting the panel. Subscribe with a tracked snapshot rather than
-  // calling getState() inline so React stays in sync with the store.
-  const [withCredentials, setWithCredentials] = useState<boolean>(
-    () => settingsStore.getState().tryItOutWithCredentials,
+  // C4 — read the Try-it-out settings (withCredentials / proxy URL /
+  // timeout) live from settingsStore so changes in the SettingsDrawer take
+  // effect on the very next send without remounting the panel. Explicit
+  // props, when given, win over the stored settings.
+  const [settingsSnapshot, setSettingsSnapshot] = useState<SettingsState>(() =>
+    settingsStore.getState(),
   );
-  useEffect(() => {
-    return settingsStore.subscribe((s) =>
-      setWithCredentials(s.tryItOutWithCredentials),
-    );
-  }, []);
+  useEffect(() => settingsStore.subscribe(setSettingsSnapshot), []);
+  const {
+    proxyUrl: effectiveProxyUrl,
+    timeoutMs: effectiveTimeoutMs,
+    withCredentials,
+  } = resolveTryItOutOptions({ proxyUrl, timeoutMs }, settingsSnapshot);
 
   // Re-seed when caller swaps to a new endpoint.
   useEffect(() => {
@@ -312,8 +314,8 @@ const TryItOutPanel: React.FC<Props> = ({
               : bodyKind === 'json'
               ? safeParse(spec.body)
               : spec.body,
-          timeoutMs,
-          proxyUrl,
+          timeoutMs: effectiveTimeoutMs,
+          proxyUrl: effectiveProxyUrl,
           withCredentials,
         },
         { cancelToken: cancelRef.current.token },

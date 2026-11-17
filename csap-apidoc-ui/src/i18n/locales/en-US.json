@@ -172,7 +172,7 @@
   "settings.vault.enabledToast": "Encryption enabled",
   "settings.vault.pwdChangedToast": "Master password updated",
   "settings.tryout.proxy.label": "CORS proxy URL (optional)",
-  "settings.tryout.proxy.help": "Prepended to Try-it-out targets, e.g. https://proxy.example.com/?url=",
+  "settings.tryout.proxy.help": "Prepended to Try-it-out targets, e.g. https://proxy.example.com/?url=. A csap-apidoc-devtools built-in proxy URL (ending in /csap/apidoc/devtools/proxy) is called with its JSON envelope protocol instead",
   "settings.tryout.proxy.placeholder": "Leave empty to skip the proxy",
   "settings.tryout.timeout.label": "Request timeout (ms)",
   "settings.tryout.withCredentials.label": "Send cookies on cross-origin requests (withCredentials)",

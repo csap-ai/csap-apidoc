@@ -172,7 +172,7 @@
   "settings.vault.enabledToast": "已启用加密",
   "settings.vault.pwdChangedToast": "主密码已修改",
   "settings.tryout.proxy.label": "CORS 代理 URL（可选）",
-  "settings.tryout.proxy.help": "会被前置到 Try-it-out 的目标地址，例如 https://proxy.example.com/?url=",
+  "settings.tryout.proxy.help": "会被前置到 Try-it-out 的目标地址，例如 https://proxy.example.com/?url=；若填写 csap-apidoc-devtools 内置代理地址（以 /csap/apidoc/devtools/proxy 结尾），会按内置代理的 JSON 协议发送",
   "settings.tryout.proxy.placeholder": "留空表示不使用代理",
   "settings.tryout.timeout.label": "请求超时（毫秒）",
   "settings.tryout.withCredentials.label": "跨域请求附带 Cookie (withCredentials)",

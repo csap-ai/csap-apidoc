@@ -39,7 +39,12 @@ export interface TryItOutRequest {
   body?: string | object | FormData | null;
   /** Per-call timeout override in ms; default 30s. */
   timeoutMs?: number;
-  /** Append to outgoing URL (used for the L3 user-configured CORS proxy). */
+  /**
+   * Optional CORS proxy (Settings → Try it out). A URL ending in
+   * `/csap/apidoc/devtools/proxy` uses the built-in devtools proxy's JSON
+   * envelope; any other value is used as a prefix:
+   * `proxyUrl + encodeURIComponent(targetUrl)`.
+   */
   proxyUrl?: string | null;
   /**
    * When true, the underlying axios/XHR layer will set `withCredentials`
@@ -51,6 +56,8 @@ export interface TryItOutRequest {
    */
   withCredentials?: boolean;
 }
+
+export const DEFAULT_TIMEOUT_MS = 30_000;
 
 export type TryItOutBodyKind =
   | 'json'
@@ -204,10 +211,139 @@ function ensureContentType(
   return { ...headers, 'Content-Type': 'application/json' };
 }
 
-function applyProxy(rawUrl: string, proxyUrl: string | null | undefined): string {
-  if (!proxyUrl) return rawUrl;
-  // Proxy URL convention: "https://proxy.example/?url=" — we just append.
-  return proxyUrl + encodeURIComponent(rawUrl);
+/** Path of the built-in reverse proxy shipped by csap-apidoc-devtools. */
+export const DEVTOOLS_PROXY_PATH = '/csap/apidoc/devtools/proxy';
+
+/**
+ * True when `proxyUrl` points at the csap-apidoc-devtools proxy
+ * (`POST /csap/apidoc/devtools/proxy`, JSON envelope). Anything else is
+ * treated as a generic prefix proxy (`proxyUrl + encodeURIComponent(url)`).
+ */
+export function isDevtoolsProxyUrl(proxyUrl: string | null | undefined): boolean {
+  if (!proxyUrl) return false;
+  const path = proxyUrl.trim().split(/[?#]/)[0].replace(/\/+$/, '');
+  return path.endsWith(DEVTOOLS_PROXY_PATH);
+}
+
+/** Append query params to a URL the same way axios `params` would (null/undefined skipped). */
+export function appendQuery(url: string, query: TryItOutRequest['query']): string {
+  if (!query) return url;
+  const parts: string[] = [];
+  for (const [k, v] of Object.entries(query)) {
+    if (v === null || v === undefined) continue;
+    parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
+  }
+  if (parts.length === 0) return url;
+  const hashIdx = url.indexOf('#');
+  const base = hashIdx >= 0 ? url.slice(0, hashIdx) : url;
+  const hash = hashIdx >= 0 ? url.slice(hashIdx) : '';
+  const sep = base.includes('?') ? (/[?&]$/.test(base) ? '' : '&') : '?';
+  return base + sep + parts.join('&') + hash;
+}
+
+function currentOrigin(): string | undefined {
+  return typeof window !== 'undefined' && window.location
+    ? window.location.origin
+    : undefined;
+}
+
+/** A proxy cannot resolve "/path" against the doc page, so resolve it here. */
+export function toAbsoluteUrl(url: string, origin = currentOrigin()): string {
+  if (/^https?:\/\//i.test(url) || !origin) return url;
+  return origin.replace(/\/+$/, '') + (url.startsWith('/') ? url : '/' + url);
+}
+
+export interface PreparedTransport {
+  /** What axios actually requests. */
+  method: HttpMethod;
+  url: string;
+  headers: Record<string, string>;
+  params?: TryItOutRequest['query'];
+  data?: unknown;
+  via: 'direct' | 'prefix-proxy' | 'devtools-proxy';
+}
+
+/**
+ * Turn a logical try-it-out request into the wire request:
+ *   - no proxy        → direct call, query via axios params;
+ *   - prefix proxy    → `proxyUrl + encodeURIComponent(absoluteTargetWithQuery)`;
+ *   - devtools proxy  → `POST proxyUrl` with the JSON envelope
+ *                       `{ method, url, headers, body }` expected by
+ *                       DevtoolsProxyController (body must be a string).
+ */
+export function prepareTransport(
+  req: TryItOutRequest,
+  headers: Record<string, string>,
+  origin?: string,
+): PreparedTransport {
+  const proxyUrl = req.proxyUrl ? req.proxyUrl.trim() : '';
+  let data: unknown;
+  if (req.body !== undefined && req.body !== null) {
+    if (
+      req.body instanceof FormData ||
+      typeof req.body === 'string' ||
+      req.method === 'GET' ||
+      req.method === 'DELETE' ||
+      req.method === 'HEAD'
+    ) {
+      data = req.body;
+    } else {
+      data = JSON.stringify(req.body);
+    }
+  }
+  if (!proxyUrl) {
+    return { method: req.method, url: req.url, headers, params: req.query, data, via: 'direct' };
+  }
+  const target = toAbsoluteUrl(appendQuery(req.url, req.query), origin);
+  if (isDevtoolsProxyUrl(proxyUrl)) {
+    if (data instanceof FormData) {
+      throw new Error('内置代理只支持文本/JSON 请求体，不支持 multipart/form-data');
+    }
+    const body =
+      data === undefined || data === null
+        ? null
+        : typeof data === 'string'
+        ? data
+        : JSON.stringify(data);
+    return {
+      method: 'POST',
+      url: proxyUrl,
+      headers: { 'Content-Type': 'application/json' },
+      data: JSON.stringify({ method: req.method, url: target, headers, body }),
+      via: 'devtools-proxy',
+    };
+  }
+  // Generic prefix proxy, e.g. "https://proxy.example/?url=".
+  return {
+    method: req.method,
+    url: proxyUrl + encodeURIComponent(target),
+    headers,
+    data,
+    via: 'prefix-proxy',
+  };
+}
+
+/**
+ * Merge the panel's explicit props with the persisted Try-it-out settings.
+ * Explicit (non-undefined) props win; otherwise the settings apply.
+ */
+export function resolveTryItOutOptions(
+  overrides: { proxyUrl?: string | null; timeoutMs?: number },
+  settings: {
+    tryItOutProxyUrl: string | null;
+    tryItOutTimeoutMs: number;
+    tryItOutWithCredentials: boolean;
+  },
+): { proxyUrl: string | null; timeoutMs: number; withCredentials: boolean } {
+  const proxyUrl =
+    overrides.proxyUrl !== undefined ? overrides.proxyUrl : settings.tryItOutProxyUrl;
+  const timeoutMs =
+    overrides.timeoutMs !== undefined ? overrides.timeoutMs : settings.tryItOutTimeoutMs;
+  return {
+    proxyUrl: proxyUrl && proxyUrl.trim() ? proxyUrl.trim() : null,
+    timeoutMs: timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS,
+    withCredentials: !!settings.tryItOutWithCredentials,
+  };
 }
 
 export interface SendOptions {
@@ -242,15 +378,28 @@ export async function sendTryItOutRequest(
     };
   }
 
-  const finalUrl = applyProxy(req.url, req.proxyUrl);
   const headersWithCT = ensureContentType(requestEcho.headers, req.body ?? null);
+  let wire: PreparedTransport;
+  try {
+    wire = prepareTransport(req, headersWithCT);
+  } catch (err) {
+    return {
+      ok: false,
+      failed: true,
+      reason: 'config',
+      message: (err as Error).message,
+      latencyMs: 0,
+      request: requestEcho,
+    };
+  }
+  const finalUrl = wire.url;
 
   const config: AxiosRequestConfig = {
-    method: req.method,
-    url: finalUrl,
-    headers: headersWithCT,
-    params: req.query,
-    timeout: req.timeoutMs ?? 30_000,
+    method: wire.method,
+    url: wire.url,
+    headers: wire.headers,
+    params: wire.params,
+    timeout: req.timeoutMs && req.timeoutMs > 0 ? req.timeoutMs : DEFAULT_TIMEOUT_MS,
     // Hand over raw text; we'll classify + parse ourselves.
     transformResponse: [(data: any) => data],
     // Treat any HTTP status as a "successful round-trip" so the UI can
@@ -262,20 +411,7 @@ export async function sendTryItOutRequest(
     // unrelated traffic; same-origin requests carry cookies regardless.
     ...(req.withCredentials ? { withCredentials: true } : {}),
   };
-
-  if (req.body !== undefined && req.body !== null) {
-    if (
-      req.body instanceof FormData ||
-      typeof req.body === 'string' ||
-      req.method === 'GET' ||
-      req.method === 'DELETE' ||
-      req.method === 'HEAD'
-    ) {
-      config.data = req.body;
-    } else {
-      config.data = JSON.stringify(req.body);
-    }
-  }
+  if (wire.data !== undefined) config.data = wire.data;
 
   let res: AxiosResponse<string>;
   try {
