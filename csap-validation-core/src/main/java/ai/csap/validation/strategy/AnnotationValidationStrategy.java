@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 import ai.csap.validation.factory.Validate;
 import ai.csap.validation.type.ValidationStrategyType;
 
-import jakarta.validation.ConstraintValidatorContext;
 
 /**
  * 注解方式验证策略实现
@@ -22,7 +21,7 @@ public class AnnotationValidationStrategy implements ValidationStrategy<Object> 
     }
 
     @Override
-    public boolean validation(Object value, Validate.ConstraintValidatorField validatorField, ConstraintValidatorContext validatorContext) {
-        return !validatorField.getValidator().isValid(value, validatorContext);
+    public boolean validation(Object value, Validate.ConstraintValidatorField validatorField) {
+        return validatorField.getValidator() != null && !validatorField.getValidator().isValid(value);
     }
 }

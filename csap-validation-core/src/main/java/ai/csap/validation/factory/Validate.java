@@ -9,16 +9,17 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import ai.csap.apidoc.type.ModelType;
-import ai.csap.apidoc.util.ValidateException;
+import ai.csap.validation.ValidationViolationException;
+import ai.csap.validation.constraint.ConstraintValidatorAdapter;
 import ai.csap.validation.strategy.context.ValidationStrategyContext;
 import ai.csap.validation.type.ValidationStrategyType;
 import ai.csap.validation.type.ValidationTipType;
 
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.StrUtil;
-import jakarta.validation.ConstraintValidator;
-import jakarta.validation.ConstraintValidatorContext;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -253,27 +254,28 @@ public class Validate {
          * @param tipType 提示类型
          * @return 字段验证
          */
-        public ValidateField validators(Object value, ValidationTipType tipType,
-                                        ConstraintValidatorContext validatorContext) {
-            return validators(value, tipType, getConstraintValidators(), validatorContext);
+        public ValidateField validators(Object value, ValidationTipType tipType) {
+            return validators(value, tipType, getConstraintValidators());
         }
 
         /**
-         * 验证当前字段
+         * 验证当前字段,第一条失败的规则抛出 {@link ValidationViolationException}
          *
          * @param value                   需要验证的数据
+         * @param tipType                 提示类型
          * @param constraintValidatorList 需要验证的业务逻辑
          * @return 字段验证
          */
         public ValidateField validators(Object value, ValidationTipType tipType,
-                                        List<ConstraintValidatorField> constraintValidatorList,
-                                        ConstraintValidatorContext validatorContext) {
+                                        List<ConstraintValidatorField> constraintValidatorList) {
             if (CollectionUtil.isNotEmpty(constraintValidatorList)) {
-                constraintValidatorList.stream()
-                                       .filter(i -> ValidationStrategyContext.validate(i, value, validatorContext))
-                                       .findFirst().ifPresent(i -> {
-                                           throw new ValidateException(i.getCode(), (Objects.nonNull(i.getTipType()) ? i.getTipType() : tipType).validateMessage(this, i.getMessage()));
-                                       });
+                for (ConstraintValidatorField i : constraintValidatorList) {
+                    if (i != null && ValidationStrategyContext.validate(i, value)) {
+                        ValidationTipType tip = Objects.nonNull(i.getTipType()) ? i.getTipType() : tipType;
+                        throw new ValidationViolationException(i.getCode(), tip.validateMessage(this, i.getMessage()),
+                                getFieldName(), i.ruleName());
+                    }
+                }
             }
             return this;
         }
@@ -313,12 +315,14 @@ public class Validate {
          */
         private ValidationStrategyType type;
         /**
-         * 内置验证逻辑
+         * 内置验证逻辑(jakarta 或 javax 的 ConstraintValidator,由注解解析得到,不序列化)
          */
-        private ConstraintValidator<? extends Annotation, Object> validator;
+        @JsonIgnore
+        private ConstraintValidatorAdapter validator;
         /**
-         * 当前注解
+         * 当前注解(不序列化)
          */
+        @JsonIgnore
         private Annotation annotation;
         /**
          * 编码
@@ -340,5 +344,17 @@ public class Validate {
          * 自定义属性
          */
         private Map<String, Object> attributes;
+
+        /**
+         * 规则名称,用于日志和指标:注解规则为注解简单类名,其他为规则类型
+         *
+         * @return 规则名称
+         */
+        public String ruleName() {
+            if (ValidationStrategyType.Annotation.equals(type) && annotation != null) {
+                return annotation.annotationType().getSimpleName();
+            }
+            return type != null ? type.getKey() : "unknown";
+        }
     }
 }

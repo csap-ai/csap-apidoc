@@ -6,7 +6,6 @@ import ai.csap.validation.factory.Validate;
 import ai.csap.validation.type.ValidationStrategyType;
 
 import cn.hutool.core.util.ObjectUtil;
-import jakarta.validation.ConstraintValidatorContext;
 
 /**
  * 不能为空字符 策略实现
@@ -23,7 +22,7 @@ public class NotEmptyValidationStrategy implements ValidationStrategy<Object> {
     }
 
     @Override
-    public boolean validation(Object value, Validate.ConstraintValidatorField validatorField, ConstraintValidatorContext validatorContext) {
+    public boolean validation(Object value, Validate.ConstraintValidatorField validatorField) {
         return ObjectUtil.isEmpty(value);
     }
 }

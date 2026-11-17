@@ -24,6 +24,12 @@ csap:
     devtool:
       enabled: true   # 仅开发环境开启
       cache: true
+  # 运行时请求参数校验(1.2.0 起):off(默认)/ observe(记录并放行)/ enforce(拦截)
+  # validation:
+  #   mode: observe
+  #   http-status: 200          # 校验失败的 HTTP 状态码,响应体始终是 {code, message}
+  #   endpoints:                # 按接口覆盖,键为 Controller 全限定类名.方法名
+  #     "[ai.csap.example.controller.UserController.createUser]": enforce
 
 # Management Endpoints
 management:
