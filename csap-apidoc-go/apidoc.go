@@ -10,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/filter"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
 )
@@ -40,6 +41,9 @@ type Options struct {
 	UIPrefix string
 	// DisableUI 为 true 时不提供 /csap-api.html 页面。
 	DisableUI bool
+	// FilterMode 是返回字段过滤的模式,默认 filter.ModePath(路径白名单)。
+	// 从 Java 迁移、要求返回与 Java 逐字节一致时用 filter.ModeCsap。
+	FilterMode filter.Mode
 }
 
 // Doc 是运行时文档。并发安全:注册路由、刷新规则、处理请求可以同时发生,
@@ -209,6 +213,25 @@ type Endpoint struct {
 	Method string
 	Path   string // 注册时的原始路径
 	Rules  strategy.MethodRules
+	// Doc 是该接口的文档(请求参数树用于校验)。
+	Doc *model.Method
+	// ResponseMask 是返回字段过滤掩码,nil 表示不过滤(该接口没有返回规则)。
+	ResponseMask *filter.Node
+	// Checks 是请求参数校验项(必填、校验规则、单值参数的类型)。
+	Checks []FieldCheck
+}
+
+// FieldCheck 是一个请求字段的校验项,由文档构建时从结构体标签和请求规则算出。
+type FieldCheck struct {
+	In        string   // 取值位置:PATH / QUERY / HEADER / FORM / FORM_DATA / BODY
+	Name      string   // 非 BODY 时的参数名
+	Path      []string // BODY 时在 JSON 里的路径(经过数组时对每个元素校验)
+	Field     string   // 规则路径,如 request.items.name
+	FieldName string   // 字段名,错误信息 TIP_1/TIP_2 用
+	Remark    string   // 字段说明,错误信息 TIP_3 用
+	Required  bool
+	DataType  string // 单值参数的类型名(Integer、Long…),非空时校验格式
+	Rules     []strategy.ValidateRule
 }
 
 // Endpoint 按方法和注册路径查找接口。
@@ -313,10 +336,10 @@ func (d *Doc) buildLocked() *Snapshot {
 		cs.keys[ruleKey]++
 
 		mr := d.rules[ruleKey]
-		m := b.method(cs.info, op, r.method, r.path, name, key, mr)
+		m, mask, checks := b.method(cs.info, op, r.method, r.path, name, key, mr)
 		cs.c.MethodList = append(cs.c.MethodList, m)
 		snap.methods[group][key] = m
-		snap.endpoints[r.method+" "+r.path] = &Endpoint{Key: ruleKey, Method: r.method, Path: r.path, Rules: mr}
+		snap.endpoints[r.method+" "+r.path] = &Endpoint{Key: ruleKey, Method: r.method, Path: r.path, Rules: mr, Doc: m, ResponseMask: mask, Checks: checks}
 	}
 	for name, cs := range ctrls {
 		resp.ApiList = append(resp.ApiList, cs.c)

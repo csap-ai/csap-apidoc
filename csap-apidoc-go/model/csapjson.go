@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"sort"
+	"strconv"
 	"time"
 )
 
@@ -25,16 +26,28 @@ var inlineExcept = map[string]bool{"methods": true, "paramNames": true}
 //   - tab 缩进,冒号后无空格;
 //   - 对象的键按字母序;
 //   - 值为 null 的键省略;
-//   - 空数组写成 [];元素全是基本类型的数组写在一行(methods、paramNames 除外),其余逐个换行。
+//   - 空数组写成 [];元素全是基本类型的数组写在一行(methods、paramNames 除外),其余逐个换行;
+//   - 参数节点同时有 children 和 parameters 时,parameters 的元素写成 {"$ref":"<路径>.children.parameters[i]"}。
+//     Java 里 CsapDocParameter.getParameters() 返回的就是 children.parameters 同一个 List,
+//     fastjson 的循环引用检测把第二次出现的元素写成 $ref,这里照样输出。
 //
-// depth 是 v 所在的缩进层级(顶层为 0)。
+// depth 是 v 所在的缩进层级:0 表示 v 是顶层(JSONPath 为 $),1 表示 v 是 ApidocResult 的 data($.data)。
 func MarshalCsap(v any, depth int) ([]byte, error) {
+	path := "$"
+	if depth == 1 {
+		path = "$.data"
+	}
+	return MarshalCsapAt(v, depth, path)
+}
+
+// MarshalCsapAt 同 MarshalCsap,path 是 v 在整个输出里的 JSONPath(用于生成 $ref)。
+func MarshalCsapAt(v any, depth int, path string) ([]byte, error) {
 	tree, err := toTree(v)
 	if err != nil {
 		return nil, err
 	}
 	var buf bytes.Buffer
-	if err := writeValue(&buf, tree, depth, ""); err != nil {
+	if err := writeValue(&buf, tree, depth, "", path); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
@@ -53,7 +66,7 @@ func ResultJSON(code, message string, data Raw) []byte {
 		m["data"] = data
 	}
 	var buf bytes.Buffer
-	_ = writeValue(&buf, m, 0, "")
+	_ = writeValue(&buf, m, 0, "", "$")
 	return buf.Bytes()
 }
 
@@ -110,7 +123,7 @@ func marshalNoEscape(v any) ([]byte, error) {
 	return bytes.TrimRight(b.Bytes(), "\n"), nil
 }
 
-func writeValue(buf *bytes.Buffer, v any, depth int, key string) error {
+func writeValue(buf *bytes.Buffer, v any, depth int, key, path string) error {
 	switch t := v.(type) {
 	case nil:
 		buf.WriteString("null")
@@ -139,12 +152,15 @@ func writeValue(buf *bytes.Buffer, v any, depth int, key string) error {
 			return nil
 		}
 		sort.Strings(keys)
+		refParams := isRefParams(t)
 		buf.WriteString("{\n")
 		for i, k := range keys {
 			indent(buf, depth+1)
 			writeString(buf, k)
 			buf.WriteByte(':')
-			if err := writeValue(buf, t[k], depth+1, k); err != nil {
+			if k == "parameters" && refParams {
+				writeRefs(buf, t[k].([]any), depth+1, path+".children.parameters")
+			} else if err := writeValue(buf, t[k], depth+1, k, path+"."+k); err != nil {
 				return err
 			}
 			if i < len(keys)-1 {
@@ -172,7 +188,7 @@ func writeValue(buf *bytes.Buffer, v any, depth int, key string) error {
 				if i > 0 {
 					buf.WriteByte(',')
 				}
-				if err := writeValue(buf, e, depth, ""); err != nil {
+				if err := writeValue(buf, e, depth, "", ""); err != nil {
 					return err
 				}
 			}
@@ -182,7 +198,7 @@ func writeValue(buf *bytes.Buffer, v any, depth int, key string) error {
 		buf.WriteString("[\n")
 		for i, e := range t {
 			indent(buf, depth+1)
-			if err := writeValue(buf, e, depth+1, ""); err != nil {
+			if err := writeValue(buf, e, depth+1, "", path+"["+strconv.Itoa(i)+"]"); err != nil {
 				return err
 			}
 			if i < len(t)-1 {
@@ -200,4 +216,38 @@ func writeValue(buf *bytes.Buffer, v any, depth int, key string) error {
 		buf.Write(b)
 	}
 	return nil
+}
+
+// isRefParams 判断 m 是不是"有子节点的参数":children 是带 parameters 的对象,自身也有 parameters 数组。
+func isRefParams(m map[string]any) bool {
+	ps, ok := m["parameters"].([]any)
+	if !ok {
+		return false
+	}
+	c, ok := m["children"].(map[string]any)
+	if !ok {
+		return false
+	}
+	cps, ok := c["parameters"].([]any)
+	return ok && len(cps) == len(ps)
+}
+
+func writeRefs(buf *bytes.Buffer, ps []any, depth int, base string) {
+	if len(ps) == 0 {
+		buf.WriteString("[]")
+		return
+	}
+	buf.WriteString("[\n")
+	for i := range ps {
+		indent(buf, depth+1)
+		buf.WriteString(`{"$ref":`)
+		writeString(buf, base+"["+strconv.Itoa(i)+"]")
+		buf.WriteByte('}')
+		if i < len(ps)-1 {
+			buf.WriteByte(',')
+		}
+		buf.WriteByte('\n')
+	}
+	indent(buf, depth)
+	buf.WriteByte(']')
 }

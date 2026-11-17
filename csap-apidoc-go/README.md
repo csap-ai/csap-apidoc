@@ -9,7 +9,7 @@ CSAP Apidoc 的 Go 实现，协议为 Apache-2.0。
 - **与 Java 版协议兼容**：可直接复用 `csap-apidoc-ui` 文档页面和 `devtools` 管理页面。
 - **导出**：支持 OpenAPI 3.1 和 Postman。
 
-> 状态：开发中。M1（文档生成、文档页面、OpenAPI 导出、gin 适配）已完成，返回过滤、请求校验、YAML/SQL 规则、后台管理在后续里程碑。设计见 [docs/DESIGN.md](docs/DESIGN.md)，接手请先读 [docs/HANDOFF.md](docs/HANDOFF.md)。
+> 状态：开发中。M1（文档生成、文档页面、OpenAPI 导出、gin 适配）和 M2（返回字段过滤、请求参数校验）已完成，YAML/SQL 规则来源、后台管理在后续里程碑。设计见 [docs/DESIGN.md](docs/DESIGN.md)，接手请先读 [docs/HANDOFF.md](docs/HANDOFF.md)。
 
 ## 用法（gin）
 
@@ -38,6 +38,17 @@ g := ginadapter.Mount(r, doc) // 挂 /csap/apidoc*、/csap/openapi.json、/csap-
 g.GET("/api/v1/users/:id",
     apidoc.Op("example.UserController", "get").Summary("查询用户").Req(GetUserReq{}).Resp(User{}),
     getUser)
+```
+
+返回字段过滤和请求参数校验是两个中间件，规则改了下一个请求就生效：
+
+```go
+r.Use(
+    ginadapter.ResponseFilter(doc), // 按规则只输出白名单字段
+    ginadapter.RequestValidator(validate.New(doc, validate.Options{
+        Mode: validate.Observe, // Off(默认) / Observe(只记录) / Enforce(拦截)
+    })),
+)
 ```
 
 启动后打开 `/csap-api.html` 查看文档，`/csap/openapi.json` 是 OpenAPI 3.1。完整示例见 [examples/gin-basic](examples/gin-basic/main.go)：

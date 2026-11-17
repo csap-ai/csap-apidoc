@@ -23,18 +23,26 @@
 | 分支基线 | `origin/chore/apidoc-next-iteration` b4b9819（2026-04-11），即线上运行的代码，见第 3 节 |
 | Go 模块路径 | `github.com/csap-ai/csap-apidoc/csap-apidoc-go`，最低 Go 1.22（以后发布到 GitHub `csap-ai` 组织） |
 | 提交 | **没有提交，也没有推送**。`git status` 显示 `?? csap-apidoc-go/` |
-| 代码 | **M1 已完成**（2026-11-17）：`model`（含 Java 格式编码器）、`strategy`（接口、合并、Memory）、`strategy/tag`、根包（生成、快照、`/csap/apidoc*`、`/csap/openapi.json`）、`openapi`、`ui`（内嵌前端）、`adapter/gin`、`examples/gin-basic`。`go vet`、`go test -race ./...` 通过，根包覆盖率 84%。其余包（`filter` `validate` `strategy/{yaml,sql}` `devtools` `postman` `adapter/nethttp`）仍只有 `doc.go` |
+| 代码 | **M1、M2 已完成**（2026-11-17），M2 新增 `filter`（掩码编译、字节流裁剪）、`validate`（请求校验、内置正则）、gin 中间件；以下为 M1 的内容：`model`（含 Java 格式编码器）、`strategy`（接口、合并、Memory）、`strategy/tag`、根包（生成、快照、`/csap/apidoc*`、`/csap/openapi.json`）、`openapi`、`ui`（内嵌前端）、`adapter/gin`、`examples/gin-basic`。`go vet`、`go test -race ./...` 通过，根包覆盖率 84%。其余包（`filter` `validate` `strategy/{yaml,sql}` `devtools` `postman` `adapter/nethttp`）仍只有 `doc.go` |
 | 文档 | `README.md`、`docs/DESIGN.md`（设计）、本文件 |
 | 许可证 | 沿用仓库根目录的 `LICENSE`（Apache-2.0），模块里不另放 |
 
-下一步：DESIGN.md 第 10 节的事项都已确认（见第 7 节）。M1 已完成，接着做 **M2**（返回字段过滤、请求参数校验、基准测试），一直做到 M5。
+下一步：DESIGN.md 第 10 节的事项都已确认（见第 7 节）。M1、M2 已完成，接着做 **M3**（YAML 策略读写和热加载、SQL 策略），一直做到 M5。
 
 ### 2.1 M1 的验证情况
 
 - `go run ./examples/gin-basic` 后打开 `http://localhost:8080/csap-api.html`：Java 版前端能正常显示分组树、GET 的 QUERY/PATH 参数、POST 的嵌套请求体、外层包装和返回字段，浏览器控制台无报错；按规则只放行 `data.id`、`data.name` 的接口，文档里返回字段只剩这两个。
 - `/csap/apidoc` 的各层对象（顶层、Controller、Method、Model、Parameter）的字段集合，与 kyty 线上导出的 `csap-apidoc.json` 完全一致（jq 比对）。
 - `/csap/apidoc/method` 找不到接口时回 200 空 body、无 Content-Type；缺参数回 400；`/csap/apidoc/{name}?key=` 只返回副本，之后全量文档的方法数不变。
-- **还没做的**：与 Java 实时返回的逐字节比对（第 6.2 节），放到 M2 和返回过滤一起做。数组格式按第 6.2 节的规则实现（元素都是基本类型的数组写一行，`methods`、`paramNames` 除外）。但 MCP 用的那份 `csap-apidoc.json` 里所有数组都是逐个换行的，和这条规则对不上，可能是导出后被重新格式化过。M2 要用 `start-java.sh` 抓一份实时返回确认；如果规则有误，只需改 `model/csapjson.go` 里的 `inlineExcept` 和判断逻辑。
+- 与 Java 实时返回的逐字节比对已在 M2 完成，见 6.2 节。
+
+### 2.2 M2 的验证情况（2026-11-17）
+
+- 返回过滤：路径白名单与 csap 兼容两种模式，`ginadapter.ResponseFilter`。黄金样本 79 个 kaiyun 接口的返回字段集合与 Java 完全一致（DESIGN 5.1）。
+- 请求校验：`validate` 包 + `ginadapter.RequestValidator`，关闭 / 观察 / 拦截三种模式，Java 兼容的错误返回和 7 种 TipType，内置正则已修正（DESIGN 5.5）。Java 那边从没开过校验，没有真实返回可比，按源码复刻。
+- 示例 `examples/gin-basic` 已接上两个中间件，实测过滤和拦截都生效。
+- 性能：裁剪额外开销约为编码耗时的 50%，**没达到** 30% 的目标（DESIGN 5.2）。
+- `go test -race ./...` 通过，覆盖率：根包 86%、filter 83%、validate 79%、strategy 94%。
 
 ## 3. Java 基线是怎么确认的
 
@@ -92,6 +100,8 @@ unzip -q <jar> 'BOOT-INF/lib/csap-apidoc*' 'BOOT-INF/lib/csap-validation*' -d /t
   - 对象数组（Java 里是 List）逐个元素换行。
   - 基本类型数组（Java 里是 `String[]` 等）写在一行，如 `"group":["default"]`。
   - 例外：`methods`（`List<RequestMethod>`）和 `paramNames`（`List<String>`）是 List，虽然元素是基本类型，也逐个换行。
+- **2026-11-17 用实时返回确认**：上面的数组规则正确（MCP 用的 `csap-apidoc.json` 被重新格式化过，所有数组都换行，不能当基准）；文件末尾没有换行。
+- **`$ref`**：参数节点同时有 `children` 和 `parameters` 时（Java `getParameters()` 返回的就是 `children.parameters` 同一个 List），fastjson 的循环引用检测把 `parameters` 的每个元素写成 `{"$ref":"$.data.apiList[0]…children.parameters[i]"}`（一行），空列表写 `[]`。Go 编码器按同样规则输出。用 Go 编码器重新编码 Java 的 2,588,849 字节实时返回，**逐字节一致**。
 - 文档里参数节点的 `key`（如 `"2700240654411083705a6d0c"`）是每次启动随机生成的 ID，只给前端界面用，比对时要忽略。
 - `/csap/apidoc/method` 找不到对应接口时，返回 HTTP 200、空 body、无 Content-Type。缺少必填参数时，返回 Spring 的 400 错误 JSON。
 - `/csap/apidoc/{tableName}`：不带 `key` 时返回全量文档，不按 tableName 过滤；带 `key` 时，`apiList` 只保留这个 Controller，`methodList` 只保留这个方法；tableName 不存在时返回 `apiList: []`。
@@ -110,7 +120,8 @@ unzip -q <jar> 'BOOT-INF/lib/csap-apidoc*' 'BOOT-INF/lib/csap-validation*' -d /t
 
 ### 6.4 可用的真实数据
 
-- kyty 的 77 份 YAML：`/Users/ycf/Documents/local/sports/code/kyty-data-center/kyty-data-center-boot/src/main/resources/csap-api-doc/method-field/`。M2 的返回过滤用它做黄金样本，M3 的 YAML 策略用它测试解析。
+- kyty 的 77 份 YAML：`/Users/ycf/Documents/local/sports/code/kyty-data-center/kyty-data-center-boot/src/main/resources/csap-api-doc/method-field/`。M3 的 YAML 策略用它测试解析。注意：YAML 里有不少已经不存在的字段（如 `data.current`、`data.size`、`success`），也缺 `forceRep` 字段（如 `data.lastId`），所以**只看 YAML 推不出 Java 的实际输出**，要结合类型。
+- M2 的黄金样本（2026-11-17 抓取，放在会话 scratchpad，不进仓库）：用 `start-java.sh a` 启动 Java，用本地 A 库种子里的测试客户端（`env/seed-auth.sql`，`App-Id`/`App-Secret` 请求头，只在本机库有效）调 88 个 GET 接口，79 个成功返回（7 个 403 无权限、1 个 400、1 个走路径 B 不过滤）。抓取方法：`jq` 从 `/csap/apidoc` 取路由，逐个 `curl "$path?limit=3"`，存为 `<Controller 全名>.<方法名>.json`。重跑黄金测试：`CSAP_GOLDEN_DOC=<apidoc.json> CSAP_GOLDEN_RESP=<目录> go test ./filter -run Golden -v`。
 - football-data-hub 的比对环境可以启动 Java 实例，抓取真实返回做逐字节比对：`tools/parity/env/start-java.sh a`，端口 38081。启动后：
   - `curl http://127.0.0.1:38081/csap/apidoc` 可以拿到 Java 生成的全量文档：59 个 Controller、88 个方法，约 2.5MB。
   - 抓 `?key=` 的结果前要先重启 Java，否则会被第 6.1 节的缓存缺陷影响。

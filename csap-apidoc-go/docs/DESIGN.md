@@ -138,25 +138,34 @@ type Watcher interface {      // 能感知外部变更:文件变更 / 轮询版�
 2. **规则变更**：Watch 回调触发，重新生成快照，再原子替换。正在处理的请求继续用旧快照，不加锁。
 3. **多实例**：SQL 策略在保存时把版本号加 1，并发 Redis 通知（可选）；其他实例收到通知后重新加载。没有 Redis 时按配置的间隔轮询版本号（默认 5 秒）。
 
-## 5. 返回字段过滤
+## 5. 返回字段过滤（M2 已实现）
 
 ### 5.1 语义
 
-两种模式：
+两种模式（`Options.FilterMode`）：
 
-- **路径白名单（默认）**：某个接口配置了任意 `include` 规则后，返回 JSON 里只保留 `include: true` 的路径及其上级节点，其余全部去掉。没有配置的接口不过滤。
-- **csap 兼容模式**：完全复刻 Java 的行为。按"类"挂过滤器，类型链上每个类各自有自己的 includes；强制输出的字段（如 `forceRep`）始终放行；配置 `response-type=toUnderlineCase` 时，蛇形字段名也自动放行。从 Java 迁移过来时用这个模式，返回结果可以逐字节对齐。
+- **路径白名单 `filter.ModePath`（默认）**：接口配置了任意返回规则后，只输出 `include: true` 的路径、`doc_force` 字段，以及有下级被放行的上级字段，其余去掉。某个被放行的字段如果没有任何下级规则，它的值整段输出。没有返回规则的接口不过滤，也不缓冲。文档页面显示的返回字段和实际输出完全一致（规则 `hidden: true` 只在文档里隐藏，不影响输出；`doc_hidden` 标签的字段既不显示也不输出，与 Java `hidden` 一致）。
+- **csap 兼容模式 `filter.ModeCsap`**：完全复刻 Java 的 `FilterClassParam` + fastjson `SimplePropertyPreFilter`：
+  - 沿返回类型链遍历字段，放行的字段（`doc_force` 或 `include: true`）进入所在类型的白名单；没放行的，只要当时还不在白名单里，就进入黑名单。只有放行的字段才继续展开。
+  - 同一类型出现在多个路径时，规则合并到同一个过滤器。
+  - 输出时**先查黑名单**再查白名单：白名单非空只输出白名单；白名单为空则输出黑名单之外的全部。
+  - 由此产生的 Java 怪异行为也一并复刻，例如同一类型先在 A 路径没放行 `name`、后在 B 路径放行 `name`，结果两处都不输出 `name`（见 `mask_test.go`）。
+  - 不会自动放行上级：上级没写 `include: true`，下级规则无效。
+- 两种模式下，规则路径都同时认驼峰和下划线写法（Java 规则用 Java 字段名 `data.rows.leagueId`，返回 JSON 是 `league_id`），对应 Java 的 `response-type: toUnderlineCase` 别名。
+- 两种模式都只对**配置了返回规则的接口**生效。Java 对扫描到的接口一律挂过滤器（没规则时只剩 `forceRep` 字段），Go 版不这样做，避免误伤没配规则的接口。
+
+**黄金样本验证（2026-11-17）**：用 football-data-hub 的比对环境启动 Java 线上 jar，抓了 79 个 kaiyun 接口的真实返回。Java 序列化开了 `WriteMapNullValue`，白名单字段即使为 null 也会输出，所以每个对象的键集合就是它的白名单。`filter/golden_test.go` 逐个对象比较 Go 掩码放行的键和 Java 实际输出的键，**79 个接口全部一致**；另外验证了 Prune 不改动 Java 返回，并能去掉额外注入的字段。数据属于使用方，不进仓库，测试默认跳过，运行方法见测试文件注释。
 
 ### 5.2 实现
 
-- 每个接口按快照预先编译一棵 **字段掩码树**（`map[string]*node`）。
-- 序列化时，由适配器提供的 `Render(c, v)` 或过滤中间件先用 `encoding/json` 编码，然后按掩码树做 token 级裁剪，只遍历一次，不生成中间 map。
-- 允许使用方换成自己的编码器（如 fastjson 风格），过滤引擎只处理 JSON 字节流。
-- 性能目标：裁剪带来的额外开销不超过编码本身耗时的 30%。在 `filter` 包里写基准测试。
+- 构建快照时，每个接口编译一棵**字段掩码树**（`filter.Node`），放在 `Snapshot.Endpoint(...).ResponseMask`。
+- 运行时由中间件（`ginadapter.ResponseFilter(doc)`）缓冲业务输出，按掩码在字节流上裁剪（`filter.Prune`）：只遍历一次，保持原有键顺序和格式，不生成中间 map，不依赖编码器，换成 fastjson 风格的编码器也能用。不是合法 JSON 时原样输出并记日志。
+- **性能**（`filter/bench_test.go`，100 行、约 18KB 的返回，Apple M 系列）：`encoding/json` 编码 67µs；裁剪 37µs，只有 1 次内存分配。即额外开销约为编码耗时的 **50%**，没达到原定的 30%。剩下的开销分散在逐字节扫描上；要再降，需要改成序列化前按结构体过滤（只编码放行的字段，反而比不过滤还快），列为后续优化。
+- 流式输出（SSE 等）的接口不要配置返回规则：缓冲期间 `Flush` 不生效。
 
 ### 5.3 统一外层包装
 
-外层包装（如 `{code,message,data}`）注册一次即可，规则路径以 `data.` 开头，与 Java 的写法保持一致。
+`Options.Wrapper` 注册一次（如 `{code,message,data}`），`DataField`（默认 `data`）在文档和掩码里替换成各接口的 `Resp` 类型，规则路径以 `data.` 开头，与 Java 的写法保持一致。外层包装里需要始终输出的字段打 `doc_force:"true"`（对应 Java `forceRep`），没打的（如 `success`）在接口有规则时会被去掉，与 Java 一致。
 
 ## 5.5 请求参数校验（对应 csap-validation）
 
@@ -173,31 +182,30 @@ type Watcher interface {      // 能感知外部变更:文件变更 / 轮询版�
 
 **实测情况**：kyty-data-center 的 YAML 里写了 35 段 `validate` 规则（如 `OutputCoachCareerController.getCoachCareer` 的 `coachId` 必填），但项目没有配置 `csap.validation.enabled`，所以这些规则在线上**从来没有生效过**。
 
-### 5.5.2 Go 版方案
+### 5.5.2 Go 版方案（M2 已实现）
 
-Go 可以完整支持，而且线上也能实时生效。
-
-| 项 | 设计 |
+| 项 | 实现 |
 |---|---|
-| 执行位置 | **HTTP 中间件，在 handler 之前对原始请求校验**。Go 没有 Spring 那种"参数解析后"的钩子，在原始请求上校验，可以不依赖 handler 的写法，适用于任何框架，规则也能运行时替换。也可以选择在泛型 handler（`apidoc.Handle[Req,Resp]`）绑定之后再校验结构体 |
-| 参数位置 | 按规则里的 `paramType` 取值：`QUERY` / `PATH` / `HEADER` / `FORM`，`BODY` 用 JSON 路径（如 `items[].name`）。读请求体时有大小上限，读完放回 `r.Body`，handler 照常能读到 |
-| 内置规则 | `NotNull`、`NotEmpty`、`Pattern`，兼容 Java 的 YAML 格式与 45 种内置正则。新增 `min` / `max`、`length`、`enum`、类型校验（int / long / bool / date / datetime，对应 Java 411 的类型错误） |
-| 扩展 | `apidoc.RegisterValidator(name, func(v any, rule Rule) error)` 注册自定义规则，如业务字典校验 |
-| 失败返回 | 默认与 Java 一致：HTTP 200，`{code, message}` 取规则配置，错误信息格式支持 7 种 `tipType`。外层包装和 HTTP 状态码（如 400）可配置。按 `level` 从小到大校验，遇到第一条失败就返回 |
-| 实时 | 校验规则和文档、返回过滤共用同一份快照（第 4 节）。在后台改"哪些参数必填"，几秒内生效，多实例同步，留修改记录可回滚 |
-| 文档联动 | `required` 和各条校验规则会显示在文档页面和 OpenAPI 导出里（`required`、`pattern`、`minimum` 等） |
-| 开关 | 全局开关、接口级开关，外加**观察模式**：只记录校验失败的请求，不拦截。像 kyty 这种规则写了但从没生效过的项目，先用观察模式跑一段时间，确认不会误拦截正常调用方，再切成拦截模式 |
+| 执行位置 | 中间件，在业务 handler 之前对原始请求校验：`ginadapter.RequestValidator(validate.New(doc, opts))`；其他框架用 `Validator.Handle` / `Validator.Middleware` |
+| 校验项 | 构建快照时从结构体标签和请求规则算出每个接口的 `FieldCheck` 列表（位置、名字或 JSON 路径、必填、规则、类型），放在 `Endpoint.Checks`。规则里 `hidden: true` 的字段只在文档里隐藏，照常校验 |
+| 取值 | `PATH` 由适配器传入（gin 用 `c.Param`），`QUERY`、`HEADER`、`FORM` 按名字取，`BODY` 按 JSON 路径取，经过数组时对每个元素校验。上级对象为 null 时不校验下级（与 Java 一致）。请求体最多读 `MaxBodyBytes`（默认 1MB），读完放回 `r.Body`；超限、不是 JSON、multipart 时跳过请求体字段，交给 handler |
+| 规则类型 | 与 Java 相同的 `NotNull`、`NotEmpty`、`Pattern`；新增 `NotBlank`、`Min`、`Max`、`Length`/`Size`（`"2,20"`、`"2,"`）、`Enum`（`"a,b,c"`）；`pattern` 可以写内置规则名（如 `PATTERN_35`）；`validate.Register(name, fn)` 注册自定义规则 |
+| 正则 | 与 Java `matches()` 一样整串匹配，自动加 `^(?:…)$`；编译结果缓存 |
+| 类型校验 | 单值参数和请求体里的基本类型字段，按 `Integer`/`Long`/`Double`/`Float`/`Boolean` 检查格式，失败返回 `400`、`<说明>,数据格式错误`（对应 Java `MethodArgumentTypeMismatch` 和 fastjson `DeserializerValidate`） |
+| 顺序 | 按字段顺序，每个字段内按 `level` 从小到大，第一条失败即返回 |
+| 失败返回 | 默认与 Java 一致：HTTP 200，`ApidocResult{code, message}`（Java 路径 B 的格式：tab 缩进、`success:false`、无 `data`），`code`、`message` 取规则配置，信息格式按 `TipType`（7 种，默认 `TIP_1`：`字段username,用户名不能为空`）。`Options.Respond` 可以换成自己的外层包装和 HTTP 状态码 |
+| 模式 | `Off`（默认，与 Java 一致）、`Observe`（只调用 `OnViolation` 记录，默认 slog Warn，放行请求）、`Enforce`（拦截）；`Endpoints` 按接口覆盖 |
+| 实时 | 校验项在快照里，规则变更后下一个请求即生效（测试 `TestRulesHotReload`） |
+
+**与 Java 不同的地方（有意为之）**：
+
+- Java 只在 `required: true` 时才执行 `validate` 规则，而只写 `required: true`、不写 `validate` 时**什么都不校验**（`addRequestValidate` 在规则列表为空时直接返回）。Go 版：`required: true` 没写规则时按"不能为空"校验（错误码 `RequiredCode` 默认 `400`）；非必填字段传了值也执行规则，没传则跳过。
+- Java 的 `Pattern` 对 null 放行，Go 版相同；`NotEmpty` 对空数组、空对象也判失败（与 Hutool `ObjectUtil.isEmpty` 一致）。
 
 ### 5.5.3 需要注意的地方
 
 1. **正则引擎不同**：Go 的 `regexp` 是 RE2，不支持零宽断言。内置正则里 `PATTERN_43`（邮编）用了 `(?!\d)`，需要改写。
-2. **Java 内置正则本身有错**，Go 版修正后补测试：
-   - `PATTERN_12`：`[]0-9"*`
-   - `PATTERN_21`：正则里带着中文"或"
-   - `PATTERN_36`：`{3.4}`
-   - `PATTERN_41`：末尾多了 `\n`
-   - `PATTERN_27`、`PATTERN_30`、`PATTERN_33`：末尾多了空格
-   - `PATTERN_35`：手机号号段过时
+2. **Java 内置正则本身有错**，Go 版已修正（`validate/patterns.go` 里每条都在 `Fixed` 字段注明了原版问题，`TestBuiltinPatterns` 覆盖）：`PATTERN_12`、`14`、`17`、`21`、`27`、`30`、`31`、`33`、`34`、`35`、`36`、`41`、`42`、`43`。
 3. **已有项目开启校验，行为会改变**：原来能调通的请求，可能开启后被拦截。所以默认关闭，并提供观察模式。
 4. **性能**：每个接口的规则预先编译，正则做缓存。只有接口有 BODY 规则时才读请求体。
 
@@ -246,7 +254,7 @@ csap-apidoc-go/
 | 阶段 | 内容 | 验收 |
 |---|---|---|
 | M1 核心（**已完成** 2026-11-17） | model、tag 策略、gin 适配、`/csap/apidoc*`、文档页面、OpenAPI 导出 | 示例项目能打开 `/csap-api.html`，`/csap/apidoc` 能被 Java 版前端正常解析 |
-| M2 过滤与校验 | 返回字段过滤（路径白名单、csap 兼容模式、外层包装）、请求参数校验（中间件、内置与自定义规则、观察模式）、基准测试 | 用 football-data-hub 的 77 份 YAML 和 Java 的真实返回做黄金样本，逐字节一致 |
+| M2 过滤与校验（**已完成** 2026-11-17） | 返回字段过滤（路径白名单、csap 兼容模式、外层包装）、请求参数校验（中间件、内置与自定义规则、观察模式）、基准测试 | 用 Java 的真实返回做黄金样本：79 个 kaiyun 接口的返回字段集合与 Java 完全一致；`/csap/apidoc` 编码器对 2.5MB 的 Java 实时返回逐字节还原。性能目标 30% 未达到，实测约 50%（见 5.2） |
 | M3 配置 | YAML 策略（读写、热加载）、SQL 策略（版本号、轮询、Redis 通知） | 改 YAML 或数据库后几秒内生效，不重启 |
 | M4 管理 | devtools 接口与前端（含必填和校验规则配置）、修改记录、回滚、鉴权 | 用 devtools 页面勾选字段后，返回结果实时变化，并能回滚 |
 | M5 发布 | net/http 适配、Postman 导出、中英文 README、CI、v0.1.0 tag | `go get` 可用，测试覆盖率不低于 80% |
