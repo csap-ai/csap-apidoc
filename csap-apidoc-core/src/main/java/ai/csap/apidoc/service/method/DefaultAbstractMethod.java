@@ -32,6 +32,7 @@ import ai.csap.apidoc.model.CsapDocParameter;
 import ai.csap.apidoc.model.ParamGroupMethodProperty;
 import ai.csap.apidoc.service.ApidocContext;
 import ai.csap.apidoc.service.FilterData;
+import ai.csap.apidoc.service.ResponseRuleIndex;
 import ai.csap.apidoc.type.CamelCaseType;
 import ai.csap.apidoc.type.ModelType;
 import ai.csap.apidoc.util.ApidocClazzUtils;
@@ -378,7 +379,11 @@ public class DefaultAbstractMethod implements FilterData {
             ParamGroupMethodProperty.ParamDataValidate responseGroup = ApidocContext
                     .paramStrategy(strategyModel.getParamType())
                     .paramResponseGroup(strategyModel, keyName, docMethod, types.getMethod(), field);
-            exits = force || responseGroup != null && responseGroup.getInclude();
+            if (responseGroup != null) {
+                // 该接口配置了返回规则(运行时返回字段过滤只对这类接口生效)
+                ResponseRuleIndex.markResponseRule(docMethod.getKey());
+            }
+            exits = force || responseGroup != null && Boolean.TRUE.equals(responseGroup.getInclude());
             if (exits) {
                 docParameter.setKeyName(keyName);
                 docModel.getParameters().add(docParameter);

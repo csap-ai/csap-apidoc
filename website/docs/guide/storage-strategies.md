@@ -292,7 +292,7 @@ DevTools 写 YAML 时，目标路径是把 classpath 根目录中的 `target/cla
 :::warning 1.1.x 不会改写实际的响应 JSON
 1.1.x 只登记上述清单，**没有**任何组件在序列化响应时使用它，`@JsonFieldFilter` / `@JsonFieldFilters` 也不再被读取。接口实际返回的 JSON 仍由你的序列化配置（如 Jackson）决定，与文档中的返回字段可能不一致。
 
-如果需要让实际响应与文档一致，需要自行在序列化环节读取 `IValidateFactory#response(...)` 的结果并过滤字段。运行时的返回字段过滤计划在 1.2.0 提供。
+1.2.0 起可以开启运行时返回字段过滤，让实际响应与文档一致，见 [返回字段过滤](/guide/runtime-filter)。
 :::
 
 ## 相关页面

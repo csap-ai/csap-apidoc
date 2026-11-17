@@ -49,6 +49,7 @@ export default defineConfig({
           items: [
             { text: '注解', link: '/guide/annotations' },
             { text: '存储策略与返回过滤', link: '/guide/storage-strategies' },
+            { text: '返回字段过滤', link: '/guide/runtime-filter' },
             { text: '参数校验', link: '/guide/validation' },
             { text: 'DevTools', link: '/guide/devtools' },
           ],

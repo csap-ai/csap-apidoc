@@ -37,6 +37,12 @@
             <artifactId>csap-apidoc-devtools</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 运行时返回字段过滤,默认关闭(csap.apidoc.runtime.filter.enabled) -->
+        <dependency>
+            <groupId>ai.csap.apidoc</groupId>
+            <artifactId>csap-apidoc-runtime</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
 </project>

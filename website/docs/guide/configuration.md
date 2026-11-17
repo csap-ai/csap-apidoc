@@ -140,6 +140,17 @@ public class DemoApplication {
 1.1.0 中代理的自动配置 `DevtoolsProxyAutoConfiguration` 只登记在 `META-INF/spring.factories` 中，Spring Boot 3 不读取这个文件，这组配置在 Spring Boot 3 上不生效。1.1.1 起它也登记在 `AutoConfiguration.imports` 中，Spring Boot 2 和 3 都生效。
 :::
 
+## csap.apidoc.runtime.filter
+
+运行时返回字段过滤（1.2.0 起），默认关闭。说明见 [返回字段过滤](/guide/runtime-filter)。
+
+| 配置 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `csap.apidoc.runtime.filter.enabled` | `boolean` | `false` | 是否开启 |
+| `csap.apidoc.runtime.filter.mode` | `FilterMode` | `path` | `path`：按字段路径放行，与文档一致；`csap`：按类型白名单 / 黑名单，兼容 csap-framework |
+| `csap.apidoc.runtime.filter.engine` | `FilterEngine` | `auto` | `auto` 按接口实际使用的消息转换器选择；`jackson`、`fastjson`、`fastjson2` 只过滤用该库输出的响应 |
+| `csap.apidoc.runtime.filter.endpoints` | `Map<String, FilterMode>` | 空 | 按接口覆盖模式，键为"类名.方法名"（YAML 中写成 `"[com.example.UserController.get]"`），值为 `off`、`path`、`csap` |
+
 ## csap.validation
 
 对应 `ai.csap.validation.properties.ValidationProperties`，需要引入（可选的）`csap-validation-boot-starter`。详见 [参数校验](/guide/validation)。
