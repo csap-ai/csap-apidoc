@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/filter"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy/tag"
@@ -28,9 +29,16 @@ type methodCtx struct {
 	paramTypes []string
 	wrapData   string       // 生成返回时:外层包装里业务数据字段的 json 名
 	wrapResp   reflect.Type // 生成返回时:替换进 wrapData 字段的业务类型
+
+	bodyPrefix string       // 请求体字段规则路径的前缀,如 "request."
+	checks     []FieldCheck // 请求校验
+
+	outPaths  []string                  // 返回里要输出的字段路径(json 名),用于编译过滤掩码
+	mapPaths  map[string]bool           // 值为 map 的返回字段路径
+	docHidden map[*model.Parameter]bool // 规则 hidden=true:文档不显示,但不影响输出
 }
 
-func (b *builder) method(info GroupInfo, op *Operation, httpMethod, rawPath, name, key string, mr strategy.MethodRules) *model.Method {
+func (b *builder) method(info GroupInfo, op *Operation, httpMethod, rawPath, name, key string, mr strategy.MethodRules) (*model.Method, *filter.Node, []FieldCheck) {
 	full := docPath(rawPath)
 	apiPath, paths := []string{full}, []string{}
 	if info.Path != "" {
@@ -55,7 +63,8 @@ func (b *builder) method(info GroupInfo, op *Operation, httpMethod, rawPath, nam
 		tags = []string{}
 	}
 	headers := append([]model.MethodHeader(nil), b.doc.opts.MethodHeaders...)
-	mc := &methodCtx{key: key, httpMethod: httpMethod, rules: mr, keyCount: map[string]int{}}
+	mc := &methodCtx{key: key, httpMethod: httpMethod, rules: mr, keyCount: map[string]int{},
+		mapPaths: map[string]bool{}, docHidden: map[*model.Parameter]bool{}}
 
 	m := &model.Method{
 		ApiPath:       apiPath,
@@ -84,7 +93,49 @@ func (b *builder) method(info GroupInfo, op *Operation, httpMethod, rawPath, nam
 	if len(mc.paramTypes) == 0 {
 		m.ParamTypes = []string{model.ParamDefault}
 	}
-	return m
+	var mask *filter.Node
+	if len(mr.Response) > 0 && (op.resp != nil || b.wrapper(op) != nil) {
+		if b.doc.opts.FilterMode == filter.ModeCsap {
+			mask = b.csapMask(op, mr)
+		} else {
+			mask = filter.Compile(mc.outPaths, mc.mapPaths)
+		}
+	}
+	for _, md := range m.Request {
+		md.Parameters = removeHidden(md.Parameters, mc.docHidden)
+	}
+	for _, md := range m.Response {
+		md.Parameters = removeHidden(md.Parameters, mc.docHidden)
+	}
+	return m, mask, mc.checks
+}
+
+func (b *builder) wrapper(op *Operation) *Wrapper {
+	if b.doc.opts.Wrapper != nil && !op.noWrap {
+		return b.doc.opts.Wrapper
+	}
+	return nil
+}
+
+func removeHidden(ps []*model.Parameter, hidden map[*model.Parameter]bool) []*model.Parameter {
+	if len(hidden) == 0 {
+		return ps
+	}
+	out := ps[:0:0]
+	for _, p := range ps {
+		if hidden[p] {
+			continue
+		}
+		if p.Children != nil {
+			p.Children.Parameters = removeHidden(p.Children.Parameters, hidden)
+			p.Parameters = p.Children.Parameters
+		}
+		out = append(out, p)
+	}
+	if out == nil {
+		out = []*model.Parameter{}
+	}
+	return out
 }
 
 // ---------- 请求 ----------
@@ -105,6 +156,7 @@ func (b *builder) request(m *model.Method, op *Operation, rawPath string, mc *me
 	if bodyName == "" {
 		bodyName = "request"
 	}
+	mc.bodyPrefix = bodyName + "."
 	if t := deref(op.req); t != nil && t.Kind() == reflect.Struct {
 		pp := pathParams(rawPath)
 		var bodyFields []reqField
@@ -197,10 +249,7 @@ func (b *builder) basicParam(rf reqField, mc *methodCtx) *model.Parameter {
 		return nil
 	}
 	keyName := rf.name + "." + rf.name
-	rule, hasRule := mc.rules.Request[keyName]
-	if hasRule && rule.Hidden != nil && *rule.Hidden {
-		return nil
-	}
+	rule, hasRule := strategy.Lookup(mc.rules.Request, keyName)
 	p := &model.Parameter{
 		DataType:     dataType(rf.sf.Type, rf.meta),
 		DefaultValue: rf.meta.DefaultValue,
@@ -217,9 +266,54 @@ func (b *builder) basicParam(rf reqField, mc *methodCtx) *model.Parameter {
 		Version:      []string{model.Default},
 	}
 	applyRequestRule(p, rule, hasRule)
+	mc.addCheck(p, keyName, nil, rule.Validate)
+	if hasRule && rule.Hidden != nil && *rule.Hidden {
+		return nil // 文档里隐藏,校验照常
+	}
 	p.Key = mc.paramKey("req", keyName)
 	mc.paramTypes = append(mc.paramTypes, p.ParamType)
 	return p
+}
+
+// addCheck 记录一个需要校验的请求字段。bodyPath 为 nil 表示单值参数(按 Name 从对应位置取值)。
+func (mc *methodCtx) addCheck(p *model.Parameter, keyName string, bodyPath []string, rules []strategy.ValidateRule) {
+	if !p.Required && len(rules) == 0 && !typedParam(p.DataType) {
+		return
+	}
+	in := p.ParamType
+	if in == model.ParamBody && bodyPath == nil {
+		bodyPath = []string{p.Name}
+	}
+	if in != model.ParamBody {
+		bodyPath = nil
+	}
+	remark := p.Value
+	if remark == "" {
+		remark = p.Name
+	}
+	mc.checks = append(mc.checks, FieldCheck{
+		In: in, Name: p.Name, Path: bodyPath, Field: keyName, FieldName: p.Name, Remark: remark,
+		Required: p.Required, DataType: p.DataType, Rules: rules,
+	})
+}
+
+func (mc *methodCtx) addCheckNoType(p *model.Parameter, keyName string, bodyPath []string, rules []strategy.ValidateRule) {
+	if !p.Required && len(rules) == 0 {
+		return
+	}
+	n := len(mc.checks)
+	mc.addCheck(p, keyName, bodyPath, rules)
+	if len(mc.checks) > n {
+		mc.checks[n].DataType = ""
+	}
+}
+
+func typedParam(dataType string) bool {
+	switch dataType {
+	case "Integer", "Long", "Double", "Float", "Boolean":
+		return true
+	}
+	return false
 }
 
 func applyRequestRule(p *model.Parameter, rule strategy.FieldRule, ok bool) {
@@ -252,10 +346,7 @@ func applyRequestRule(p *model.Parameter, rule strategy.FieldRule, ok bool) {
 
 func (b *builder) response(m *model.Method, op *Operation, mc *methodCtx) {
 	resp := op.resp
-	var w *Wrapper
-	if b.doc.opts.Wrapper != nil && !op.noWrap {
-		w = b.doc.opts.Wrapper
-	}
+	w := b.wrapper(op)
 	if w == nil {
 		if resp == nil {
 			return
@@ -304,10 +395,11 @@ func (b *builder) structParams(t reflect.Type, prefix string, request bool, mc *
 	return out
 }
 
-// field 生成一个结构体字段的文档节点。返回 nil 表示该字段不显示。
+// field 生成一个结构体字段的文档节点。返回 nil 表示该字段既不在文档里、也不输出。
 //
-// 显示规则(与 Java 一致):接口配置了任意请求(返回)规则后,只显示规则里有的(include=true 的)
-// 字段和 doc_force 字段;没配置规则的接口显示全部字段。doc_hidden 和规则 hidden=true 的字段不显示。
+// 显示规则:接口配置了任意返回规则后,返回字段只保留 include: true 的、doc_force 的,
+// 以及有下级被保留的上级字段;请求规则同理(规则里出现即保留)。没有规则的接口保留全部字段。
+// doc_hidden 的字段不显示也不输出(与 Java hidden 一致);规则 hidden: true 只在文档里隐藏。
 func (b *builder) field(f reflect.StructField, meta tag.Meta, prefix string, request bool, mc *methodCtx, stack []reflect.Type) *model.Parameter {
 	if meta.Name == "-" || meta.Hidden {
 		return nil
@@ -321,21 +413,18 @@ func (b *builder) field(f reflect.StructField, meta tag.Meta, prefix string, req
 		ft = mc.wrapResp
 	}
 	keyName := prefix + meta.Name
-	var rule strategy.FieldRule
-	var hasRule bool
+	rules := mc.rules.Response
 	if request {
-		rule, hasRule = mc.rules.Request[keyName]
-		if len(mc.rules.Request) > 0 && !hasRule && !meta.Force {
-			return nil
-		}
-	} else {
-		rule, hasRule = mc.rules.Response[keyName]
-		if len(mc.rules.Response) > 0 && !meta.Force && !(hasRule && rule.Include != nil && *rule.Include) {
-			return nil
-		}
+		rules = mc.rules.Request
 	}
-	if hasRule && rule.Hidden != nil && *rule.Hidden && !meta.Force {
-		return nil
+	rule, hasRule := strategy.Lookup(rules, keyName)
+	selected := len(rules) == 0 || meta.Force
+	if !selected {
+		if request {
+			selected = hasRule
+		} else {
+			selected = hasRule && rule.Include != nil && *rule.Include
+		}
 	}
 
 	paramType := model.ParamQuery // Java @ApiModelProperty.paramType 的默认值
@@ -358,9 +447,48 @@ func (b *builder) field(f reflect.StructField, meta tag.Meta, prefix string, req
 		Value:        meta.Value,
 		Version:      []string{model.Default},
 	}
+
+	// 子节点
+	elem, isList := childType(ft)
+	if elem != nil && !inStack(stack, elem) {
+		mt := model.ModelObject
+		if isList {
+			mt = model.ModelArray
+		}
+		child := objectModel(elem, mt)
+		child.Parameters = b.structParams(elem, keyName+".", request, mc, append(stack, elem))
+		if selected || len(child.Parameters) > 0 {
+			p.Children = child
+			p.Parameters = child.Parameters
+		}
+	}
+	if !selected && p.Children == nil {
+		return nil
+	}
+	if !request {
+		if selected {
+			mc.outPaths = append(mc.outPaths, keyName)
+		}
+		if p.Children != nil && deref(ft).Kind() == reflect.Map {
+			mc.mapPaths[keyName] = true
+		}
+	}
+
 	if request {
 		applyRequestRule(p, rule, hasRule)
 		mc.paramTypes = append(mc.paramTypes, p.ParamType)
+		if selected {
+			var bodyPath []string
+			if rest, ok := strings.CutPrefix(keyName, mc.bodyPrefix); ok && mc.bodyPrefix != "" {
+				bodyPath = strings.Split(rest, ".")
+			}
+			if p.DataType != "" && !isBase(ft) {
+				// 对象、列表字段只做必填/规则校验,不做类型校验
+				mc.addCheckNoType(p, keyName, bodyPath, rule.Validate)
+			} else {
+				mc.addCheck(p, keyName, bodyPath, rule.Validate)
+			}
+		}
 	} else if hasRule {
 		if rule.Description != "" {
 			p.Description = rule.Description
@@ -372,24 +500,14 @@ func (b *builder) field(f reflect.StructField, meta tag.Meta, prefix string, req
 			p.Example = rule.Example
 		}
 	}
+	if hasRule && rule.Hidden != nil && *rule.Hidden && !meta.Force {
+		mc.docHidden[p] = true
+	}
 	side := "resp"
 	if request {
 		side = "req"
 	}
 	p.Key = mc.paramKey(side, keyName)
-
-	// 子节点
-	elem, isList := childType(ft)
-	if elem != nil && !inStack(stack, elem) {
-		mt := model.ModelObject
-		if isList {
-			mt = model.ModelArray
-		}
-		child := objectModel(elem, mt)
-		child.Parameters = b.structParams(elem, keyName+".", request, mc, append(stack, elem))
-		p.Children = child
-		p.Parameters = child.Parameters
-	}
 	return p
 }
 

@@ -16,6 +16,7 @@ import (
 	ginadapter "github.com/csap-ai/csap-apidoc/csap-apidoc-go/adapter/gin"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/validate"
 )
 
 // Result 是统一外层包装,对应 Java 的 ApiResult。
@@ -90,13 +91,24 @@ func (UserController) Create(c *gin.Context) {
 
 func main() {
 	// 规则可以来自 YAML / SQL(M3),这里用内存策略演示:
-	// getUser 只在文档里显示 id、name 两个返回字段(与 Java include 语义一致)。
+	//   - get:返回只输出 id、name(文档和实际返回都一样,phone 等字段会被去掉)
+	//   - create:name 必填且长度 2-20,phone 用内置手机号正则
 	rules := strategy.NewMemory(strategy.Rules{
 		strategy.Key("example.UserController", "get"): {
 			Response: map[string]strategy.FieldRule{
-				"data":      {Include: model.Bool(true)},
 				"data.id":   {Include: model.Bool(true)},
 				"data.name": {Include: model.Bool(true), Description: "规则里改过的说明"},
+			},
+		},
+		strategy.Key("example.UserController", "create"): {
+			Request: map[string]strategy.FieldRule{
+				"request.name": {Required: model.Bool(true), Validate: []strategy.ValidateRule{
+					{Type: "NotEmpty", Code: "1001", Message: "姓名不能为空", Level: 1},
+					{Type: "Length", Pattern: "2,20", Code: "1002", Message: "姓名长度 2-20", Level: 2},
+				}},
+				"request.phone": {Validate: []strategy.ValidateRule{
+					{Type: "Pattern", Pattern: "PATTERN_35", Code: "1003", Message: "手机号格式不正确"},
+				}},
 			},
 		},
 	})
@@ -109,7 +121,10 @@ func main() {
 	doc.Group(apidoc.GroupInfo{Name: "example.UserController", Title: "用户管理", Description: "用户的增删改查", Path: "/api/v1/users"})
 
 	r := gin.New()
-	r.Use(gin.Recovery())
+	r.Use(gin.Recovery(),
+		ginadapter.ResponseFilter(doc), // 按规则裁剪返回字段
+		ginadapter.RequestValidator(validate.New(doc, validate.Options{Mode: validate.Enforce})), // 请求参数校验
+	)
 	g := ginadapter.Mount(r, doc)
 
 	uc := UserController{}
