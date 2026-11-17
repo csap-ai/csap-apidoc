@@ -1,6 +1,6 @@
 # 配置参考
 
-本页列出 CSAP Apidoc 1.1.0 中全部真实存在的配置：`@EnableApidoc` 注解属性，以及 `application.yml` 中 `csap.apidoc`、`csap.apidoc.devtools.proxy`、`csap.validation` 三组配置项。配置项名称使用 Spring Boot 的 kebab-case 写法。
+本页列出 CSAP Apidoc 1.1.1 中全部真实存在的配置：`@EnableApidoc` 注解属性，以及 `application.yml` 中 `csap.apidoc`、`csap.apidoc.devtools.proxy`、`csap.validation` 三组配置项。配置项名称使用 Spring Boot 的 kebab-case 写法。
 
 :::warning 不存在的配置项
 早期文档中出现过的 `csap.apidoc.enabled`、`csap.apidoc.title`、`csap.apidoc.version`、`csap.apidoc.description`、`csap.apidoc.base-package`、`csap.apidoc.strategy`、`csap.apidoc.storage-strategy`、`csap.apidoc.ui-path`、`csap.apidoc.security.*`、`csap.apidoc.devtools.port`、`csap.apidoc.path`、`csap.apidoc.filename` 在代码中都**不存在**，写了也不会生效。
@@ -20,16 +20,16 @@
 | `apiPackageClasses` | `Class<?>[]` | 空 | 直接指定 Controller 类，可与 `apiPackages` 同时使用 |
 | `enumPackages` | `String[]` | 空 | 枚举扫描包，带 `@ApiResponseCode` 的枚举会作为响应码文档。与配置项 `csap.apidoc.enum-packages` 合并 |
 | `enumPackageClasses` | `Class<?>[]` | 空 | 直接指定枚举类 |
-| `modelPackages` | `String[]` | 空 | 模型扫描包。1.1.0 中只被收集，文档生成没有使用 |
-| `modelPackageClasses` | `Class<?>[]` | 空 | 直接指定模型类。1.1.0 中只被收集，文档生成没有使用 |
-| `type` | `ApiStrategyType` | `ANNOTATION` | 文档策略。1.1.0 中只有 `ANNOTATION` 的实现会被注册为 Bean，请保持默认 |
+| `modelPackages` | `String[]` | 空 | 模型扫描包。目前只被收集，文档生成没有使用 |
+| `modelPackageClasses` | `Class<?>[]` | 空 | 直接指定模型类。目前只被收集，文档生成没有使用 |
+| `type` | `ApiStrategyType` | `ANNOTATION` | 文档主体策略，一般保持默认。1.1.1 起 `YAML`、`JSON` 会注册对应策略；`SQL_LITE` 没有实现，启动即报错并提示改用 `paramType = SQL_LITE`。见 [存储策略](/guide/storage-strategies) |
 | `paramType` | `ApiStrategyType` | `ANNOTATION` | 参数（字段规则）策略：`ANNOTATION`、`YAML`、`SQL_LITE`，决定每个接口显示哪些请求 / 返回字段，见 [存储策略](/guide/storage-strategies) |
 | `requestType` | `String` | `"default"` | 请求参数解析器名称，对应 `IMethodRequest` Bean 的 `name()`；内置只有 `default` |
 | `responseType` | `String` | `"default"` | 返回参数解析器名称，对应 `IMethodResponse` Bean 的 `name()`；内置只有 `default` |
 | `path` | `String` | `"csap-api-doc"` | YAML / SQLite 策略文件所在的目录名。支持 `${属性名:默认值}` 占位符 |
 | `fileName` | `String` | `""` | SQLite 数据库文件名，只在 `SQL_LITE` 策略下生效；为空时使用 `apidoc`。支持占位符 |
 | `prefixStrategy` | `FilePrefixStrategyType` | `DEFAULT` | YAML 文件的命名方式：`DEFAULT` 按类分别生成文件；`FIXED` 使用固定前缀 `api` 的文件 |
-| `showChildPackageFlag` | `boolean` | `true` | 1.1.0 中这个注解属性没有被读取。控制枚举扫描是否包含子包请使用配置项 `csap.apidoc.show-child-package-flag` |
+| `showChildPackageFlag` | `boolean` | `true` | 目前这个注解属性没有被读取。控制枚举扫描是否包含子包请使用配置项 `csap.apidoc.show-child-package-flag` |
 
 `ApiStrategyType` 的取值为 `JSON`、`ANNOTATION`、`SQL_LITE`、`YAML`，位于 `ai.csap.apidoc.ApiStrategyType`；`FilePrefixStrategyType` 位于 `ai.csap.apidoc.FilePrefixStrategyType`。
 
@@ -83,8 +83,8 @@ public class DemoApplication {
 | --- | --- | --- | --- |
 | `csap.apidoc.enum-packages` | `List<String>` | 空 | 枚举扫描包，带 `@ApiResponseCode` 的枚举会作为响应码文档。与 `@EnableApidoc(enumPackages)` 合并 |
 | `csap.apidoc.show-child-package-flag` | `Boolean` | `true` | 扫描 `enum-packages` 时是否包含子包 |
-| `csap.apidoc.model-packages` | `List<String>` | 空 | 模型扫描包。1.1.0 中只被收集，文档生成没有使用 |
-| `csap.apidoc.api-packages` | `List<String>` | 空 | 已废弃（`@Deprecated`），1.1.0 中不会被读取。Controller 扫描包请用 `@EnableApidoc(apiPackages)` |
+| `csap.apidoc.model-packages` | `List<String>` | 空 | 模型扫描包。目前只被收集，文档生成没有使用 |
+| `csap.apidoc.api-packages` | `List<String>` | 空 | 已废弃（`@Deprecated`），目前不会被读取。Controller 扫描包请用 `@EnableApidoc(apiPackages)` |
 | `csap.apidoc.response-type` | `CamelCaseType` | `none` | 返回字段命名转换，用于返回字段过滤：`none` 不处理；`toCamelCase` 对下划线命名的字段，同时放行其驼峰形式；`toUnderlineCase` 对驼峰命名的字段，同时放行其下划线形式。适用于实际返回的 JSON 命名与 Java 字段命名不一致的情况 |
 
 ### 分页约定 result
@@ -117,7 +117,7 @@ public class DemoApplication {
 | 配置项 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `csap.apidoc.devtool.enabled` | `Boolean` | `false` | 是否启用 DevTools。为 `true` 时注册 `/devtools-ui` 页面和 `/devtools/**`、`/csap/yaml/**` 接口，并在启动日志中打印 DevTools 地址 |
-| `csap.apidoc.devtool.cache` | `Boolean` | `true` | 1.1.0 中这个值没有被任何代码读取，设置后没有效果 |
+| `csap.apidoc.devtool.cache` | `Boolean` | `true` | 目前这个值没有被任何代码读取，设置后没有效果 |
 
 ## csap.apidoc.devtools.proxy
 
@@ -136,23 +136,23 @@ public class DemoApplication {
 这个代理按设计会让应用向任意允许的地址发起请求，属于 SSRF 能力。只在开发环境启用，务必配置 `allowed-hosts`，不要暴露在公网，必要时用 Spring Security 保护该接口。
 :::
 
-:::warning Spring Boot 3
-1.1.0 中代理的自动配置 `DevtoolsProxyAutoConfiguration` 只登记在 `META-INF/spring.factories` 中。Spring Boot 3 不再从这个文件读取自动配置，因此在 Spring Boot 3 项目中这组配置不会生效。
+:::tip Spring Boot 3
+1.1.0 中代理的自动配置 `DevtoolsProxyAutoConfiguration` 只登记在 `META-INF/spring.factories` 中，Spring Boot 3 不读取这个文件，这组配置在 Spring Boot 3 上不生效。1.1.1 起它也登记在 `AutoConfiguration.imports` 中，Spring Boot 2 和 3 都生效。
 :::
 
 ## csap.validation
 
-对应 `ai.csap.validation.properties.ValidationProperties`，需要引入 `csap-validation-boot-starter`。详见 [参数校验](/guide/validation)。
+对应 `ai.csap.validation.properties.ValidationProperties`，需要引入（可选的）`csap-validation-boot-starter`。详见 [参数校验](/guide/validation)。
 
 | 配置项 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `csap.validation.enabled` | `Boolean` | `true` | 是否在运行时拦截请求并校验参数。见下方提示 |
+| `csap.validation.enabled` | `Boolean` | 未配置时视为关闭 | 为 `true` 时注册请求拦截器 `ValidateIntercept`。见下方提示 |
 | `csap.validation.tip-type` | `ValidationTipType` | `TIP_1` | 校验失败提示信息的格式，见下表 |
-| `csap.validation.code` | `String` | `code` | 1.1.0 中这个值没有被任何代码读取 |
-| `csap.validation.message` | `String` | `message` | 1.1.0 中这个值没有被任何代码读取 |
+| `csap.validation.code` | `String` | `code` | 目前这个值没有被任何代码读取 |
+| `csap.validation.message` | `String` | `message` | 目前这个值没有被任何代码读取 |
 
 :::warning 运行时校验需要显式开启
-`ValidationProperties.enabled` 的默认值虽然是 `true`，但注册请求拦截器的条件是 `@ConditionalOnProperty(prefix = "csap.validation", name = "enabled", havingValue = "true")`，没有写这个属性时条件不成立。要让运行时校验生效，必须在配置文件里**明确写上** `csap.validation.enabled: true`。
+`ValidationProperties.enabled` 的默认值虽然是 `true`，但注册请求拦截器的条件是 `@ConditionalOnProperty(prefix = "csap.validation", name = "enabled", havingValue = "true")`，没有写这个属性时条件不成立，所以必须在配置文件里**明确写上** `csap.validation.enabled: true` 才会注册拦截器（1.1.1 起 IDE 的配置提示也显示默认 `false`）。另外，1.1.x 中没有组件在请求处理时调用这个拦截器，开启后 CSAP 规则校验仍不会执行，见 [参数校验](/guide/validation)。
 :::
 
 `tip-type` 的取值（以字段 `graphId`、描述「用户名」、提示「只能是0-9的数字」为例）：
@@ -219,7 +219,7 @@ csap:
     devtool:
       enabled: false
 
-    # DevTools 代理（默认关闭；Spring Boot 3 上 1.1.0 不生效）
+    # DevTools 代理（默认关闭）
     devtools:
       proxy:
         enabled: false
@@ -231,7 +231,7 @@ csap:
         strip-headers: [Cookie, X-Forwarded-For, X-Real-IP]
         log-bodies: false
 
-  # 参数校验（需要 csap-validation-boot-starter）
+  # 参数校验（需要引入可选的 csap-validation-boot-starter）
   validation:
     enabled: true
     tip-type: TIP_1

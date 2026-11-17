@@ -97,7 +97,7 @@ curl -o postman_collection.json http://localhost:8080/csap/openapi/postman
 
 ## 在 Java 代码里生成
 
-服务端转换由 `ai.csap.apidoc.service.standard.PostmanConverterService` 完成。它在 1.1.0 中**没有注册为 Spring Bean**（`CsapDocController` 内部直接 `new` 一个），所以不能 `@Autowired` 注入，需要自己创建：
+服务端转换由 `ai.csap.apidoc.service.standard.PostmanConverterService` 完成。它目前**没有注册为 Spring Bean**（`CsapDocController` 内部直接 `new` 一个），所以不能 `@Autowired` 注入，需要自己创建：
 
 ```java
 import ai.csap.apidoc.model.CsapDocResponse;
@@ -117,5 +117,5 @@ public class PostmanExporter {
 需要 `Map` 形式时用 `convertToPostmanCollectionMap(doc)`。请在应用启动完成之后调用：文档是在 `ApplicationStartedEvent` 之后异步生成的。
 
 :::warning OpenApiConverterService
-`csap-apidoc-core` 里还有一个 `OpenApiConverterService`，但 1.1.0 既没有把它注册为 Bean，也没有对应的 HTTP 接口，而且它只遍历 `globalApiList`，对普通扫描出来的接口不会生成任何路径。不建议使用；需要 OpenAPI 请从文档页面导出。
+`csap-apidoc-core` 里还有一个 `OpenApiConverterService`，但目前既没有把它注册为 Bean，也没有对应的 HTTP 接口；它只遍历 `globalApiList`，对普通扫描出来的接口不会生成任何路径；参数的 `required` 为空时还会空指针。不建议使用；需要 OpenAPI 请从文档页面导出。
 :::

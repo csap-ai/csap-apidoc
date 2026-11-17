@@ -1,22 +1,26 @@
 # 常见问题
 
-本页收集使用 CSAP Apidoc 1.1.0 时的常见问题。每条答案都以当前代码为准。
+本页收集使用 CSAP Apidoc 1.1.x 时的常见问题。每条答案都以当前代码为准。
 
 ## 安装与依赖
 
 ### 需要引入哪些依赖？
 
-两个 starter：`ai.csap.apidoc.boot:csap-apidoc-boot-starter` 和 `ai.csap.apidoc.boot:csap-validation-boot-starter`，版本 `1.1.0`。文档页面、存储策略和 DevTools 已经包含在文档 starter 中，不需要再单独引入 `csap-apidoc-ui` 或 `csap-apidoc-devtools`。见 [安装](/guide/installation)。
+只需要 `ai.csap.apidoc.boot:csap-apidoc-boot-starter`，版本 `1.1.1`。`ai.csap.apidoc.boot:csap-validation-boot-starter` 是可选的，只在需要它的校验异常处理器或 `ValidationProperties` 时引入。文档页面、存储策略和 DevTools 已经包含在文档 starter 中，不需要再单独引入 `csap-apidoc-ui` 或 `csap-apidoc-devtools`。见 [安装](/guide/installation)。
 
 ### 只引入文档 starter，为什么接口出不来？
 
-1.1.0 中文档生成会调用 `IValidateFactory` Bean，而这个 Bean 由 `csap-validation-boot-starter` 注册。缺少它时接口文档无法生成，启动日志中会出现“有 N 个文档加载失败”的警告。加上校验 starter 即可。
+这是 1.1.0 的问题：文档生成会调用 `IValidateFactory` Bean，而这个 Bean 由 `csap-validation-boot-starter` 注册，缺少它时生成文档空指针，启动日志中会出现“有 N 个文档加载失败”的警告。1.1.1 已修复，升级到 1.1.1 即可，不需要再加校验 starter。
+
+### Java 11 上启动报 `UnsupportedClassVersionError`？
+
+1.1.0 的 jar 实际是 Java 17 字节码（class 文件版本 61），Java 11 无法加载。升级到 1.1.1，它的 jar 是 Java 11 字节码。
 
 ### 支持 Spring Boot 3 吗？
 
-支持。Spring Boot 2.x 和 3.x 使用同一套构件和版本号。仓库中有 `example/example-spring-boot2`（Spring Boot 2.7.18）和 `example/example-spring-boot3`（Spring Boot 3.2.0）两个示例。Spring Boot 3 需要 JDK 17 及以上，框架本身需要 JDK 11 及以上。
+支持。Spring Boot 2.x 和 3.x 使用同一套构件和版本号。仓库中有 `example/example-spring-boot2`（Spring Boot 2.7.18）和 `example/example-spring-boot3`（Spring Boot 3.2.0）两个示例。Spring Boot 3 需要 JDK 17 及以上，框架本身（1.1.1）需要 JDK 11 及以上。
 
-有一个已知限制：DevTools 的 HTTP 代理（`csap.apidoc.devtools.proxy.*`）在 Spring Boot 3 上不会被注册，见 [配置参考](/guide/configuration)。
+1.1.0 在 Spring Boot 3 上不会注册 DevTools 的 HTTP 代理（`csap.apidoc.devtools.proxy.*`），1.1.1 已修复，见 [配置参考](/guide/configuration)。
 
 ### 坐标 `com.csap.framework.boot:csap-framework-apidoc-boot-starter` 找不到？
 
@@ -32,7 +36,7 @@
 2. Controller 是否在这个包（或其子包）下。
 3. Controller 类上是否**同时**有 `@RestController`（或 `@Controller`）和 `ai.csap.apidoc.annotation.Api`。
 4. `@Api` 是否设置了 `hidden = true`。
-5. 依赖中是否有 `csap-validation-boot-starter`（见上一节）。
+5. 如果还在用 1.1.0，依赖中是否有 `csap-validation-boot-starter`（见上一节）；1.1.1 不需要。
 6. 启动日志中是否有 `apidoc 加载完成，但有 N 个文档加载失败` 的警告，以及它上方的异常。
 
 ### 某个接口方法没有出现
@@ -104,7 +108,7 @@ DevTools 没有开启。确认当前生效的配置中有 `csap.apidoc.devtool.e
 
 ### 加了校验 starter，请求参数没有被校验
 
-运行时校验的拦截器只有在配置中**明确写了** `csap.validation.enabled: true` 时才会注册（条件是 `@ConditionalOnProperty(havingValue = "true")`，不写时不成立）。见 [参数校验](/guide/validation)。
+运行时校验的拦截器只有在配置中**明确写了** `csap.validation.enabled: true` 时才会注册（条件是 `@ConditionalOnProperty(havingValue = "true")`，不写时不成立）。另外，1.1.x 中没有组件在请求处理时调用这个拦截器，即使开启，CSAP 规则校验也不会执行（计划 1.2.0 补上），需要自己接入，见 [参数校验](/guide/validation)。Spring 标准的 `@Valid` / `@Validated` 校验不受影响。
 
 ### 引入校验 starter 后，项目原有的参数错误返回格式变了
 

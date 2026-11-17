@@ -25,7 +25,7 @@ The doc protocol, the rule file format and the docs page are shared across langu
 
 | Language | Status | Frameworks |
 |---|---|---|
-| **Java** | ✅ Released [1.1.0](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
+| **Java** | ✅ Released [1.1.1](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
 | **Go** | 🚧 In development ([PR #13](https://github.com/csap-ai/csap-apidoc/pull/13)) | gin, net/http |
 | **Rust** | 📋 Planned | axum, actix-web |
 | More | 📋 Coming | see the [roadmap](docs/ROADMAP.md) |
@@ -43,18 +43,13 @@ The doc protocol, the rule file format and the docs page are shared across langu
 
 ## Quick start (Java)
 
-**1. Add the dependencies** (1.1.0 needs both starters; from 1.1.1 the first one is enough):
+**1. Add the dependency**:
 
 ```xml
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.1.0</version>
-</dependency>
-<dependency>
-    <groupId>ai.csap.apidoc.boot</groupId>
-    <artifactId>csap-validation-boot-starter</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
@@ -105,7 +100,7 @@ Full documentation (currently in Chinese) lives at **<https://apidoc.csap.ai>**.
 | Coordinates | Purpose |
 |---|---|
 | `ai.csap.apidoc.boot:csap-apidoc-boot-starter` | Spring Boot starter: core, docs page, YAML/SQLite strategies, DevTools |
-| `ai.csap.apidoc.boot:csap-validation-boot-starter` | Validation starter |
+| `ai.csap.apidoc.boot:csap-validation-boot-starter` | Validation starter, optional: add it only if you need its validation exception handler or `ValidationProperties` |
 | `ai.csap.apidoc:csap-apidoc-annotation` | Annotations |
 | `ai.csap.apidoc:csap-apidoc-core` | Scanning and doc generation |
 | `ai.csap.apidoc:csap-apidoc-ui` | Docs page |

@@ -126,7 +126,7 @@ public ApidocResult<List<Order>> listOrders(OrderQuery query) { ... }
 `@ApiOperation` 也可以写在接口或父类的方法上，实现类会继承。
 
 :::warning
-`@ApiOperation` 的 `auth` 和 `authType` 属性在 1.1.0 中没有被读取，设置它们不会影响文档。要给调试界面提示鉴权方式，请用 [@DocAuth](#鉴权提示docauth)。
+`@ApiOperation` 的 `auth` 和 `authType` 属性目前没有被读取，设置它们不会影响文档。要给调试界面提示鉴权方式，请用 [@DocAuth](#鉴权提示docauth)。
 :::
 
 :::warning
@@ -151,8 +151,8 @@ public ApidocResult<List<Order>> search(
 - `name` 可以覆盖文档中显示的参数名，不填时使用 Java 参数名。
 - `@ApiProperty` 写在接口或父类方法的参数上时，实现类同样能读到。
 
-:::warning 方法级写法在 1.1.0 不生效
-`@ApiProperty` 和 `@ApiPropertys` 的注解定义允许标在方法上（通过 `name` 匹配参数）。但 1.1.0 生成文档时只读取**参数上**的 `@ApiProperty`，方法级写法不会被读取。请把 `@ApiProperty` 直接标在参数上。
+:::warning 方法级写法目前不生效
+`@ApiProperty` 和 `@ApiPropertys` 的注解定义允许标在方法上（通过 `name` 匹配参数）。但目前生成文档时只读取**参数上**的 `@ApiProperty`，方法级写法不会被读取。请把 `@ApiProperty` 直接标在参数上。
 :::
 
 对象类型参数（如 `@RequestBody User user`）按模型字段处理，见下一节。
@@ -204,7 +204,7 @@ private String username;
 - 字段出现在**返回参数**里需要 `@Response.include` 为 `true`。注意 `@Group.response` 的默认值是 `@Response(include = false)`，所以要返回某个字段时必须显式写 `response = @Response`（`@Response` 自身的 `include` 默认是 `true`）。
 
 :::warning
-1.1.0 不读取 `@Request.value`。即使写 `request = @Request(value = false)`，匹配到的字段仍会进入该方法的请求参数。
+目前不读取 `@Request.value`。即使写 `request = @Request(value = false)`，匹配到的字段仍会进入该方法的请求参数。
 :::
 
 `groups` 只在注解策略下生效；改用 YAML 或 SQLite 规则时，框架不读 `groups`，改从规则文件判断。见 [存储策略](/guide/storage-strategies)。
@@ -305,7 +305,7 @@ public enum OrderCode implements BizCode {
 ```
 
 :::warning
-1.1.0 读取返回码的方式比较特殊：枚举必须实现一个**继承自** `ai.csap.apidoc.util.IValidate` 的接口（如上面的 `BizCode`）。直接 `implements IValidate` 的枚举只会登记名称，不会列出码值；实现了与 `IValidate` 无关的接口则会在读取时出错。`@ApiResponseCode` 的 `group`、`version` 属性目前没有被读取。
+读取返回码的方式比较特殊：枚举必须实现一个**继承自** `ai.csap.apidoc.util.IValidate` 的接口（如上面的 `BizCode`）。直接 `implements IValidate` 的枚举只会登记名称，不会列出码值；实现了与 `IValidate` 无关的接口则会在读取时出错。`@ApiResponseCode` 的 `group`、`version` 属性目前没有被读取。
 :::
 
 ## 分组与版本
@@ -328,7 +328,7 @@ public class OrderController {
 }
 ```
 
-`@Headers` 和 `@ApiResponseCode` 上的 `group`、`version` 在 1.1.0 中没有被读取。
+`@Headers` 和 `@ApiResponseCode` 上的 `group`、`version` 目前没有被读取。
 
 ## 请求头：headers 与 @DocGlobalHeader
 
@@ -392,9 +392,9 @@ public class OrderController {
 | 注解 | 用途 |
 |------|------|
 | `@DataTypeValidate` | 标在 Controller 方法参数上。参数类型转换失败（`MethodArgumentTypeMismatchException`）时，由校验模块的异常处理器返回注解里的 `code` 和 `message`。需要引入 `csap-validation-boot-starter`，见 [参数校验](/guide/validation) |
-| `@JsonFieldFilter` / `@JsonFieldFilters` | 1.1.0 中没有任何代码读取，标注无效果 |
-| `@Description` | 1.1.0 中没有任何代码读取 |
-| `@RequestParamBody` | 1.1.0 中没有任何代码读取 |
+| `@JsonFieldFilter` / `@JsonFieldFilters` | 目前没有任何代码读取，标注无效果 |
+| `@Description` | 目前没有任何代码读取 |
+| `@RequestParamBody` | 目前没有任何代码读取 |
 
 ## 相关页面
 

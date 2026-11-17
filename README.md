@@ -25,7 +25,7 @@ CSAP Apidoc 在服务运行时直接从代码生成 API 文档,不需要单独�
 
 | 语言 | 状态 | 支持的框架 |
 |---|---|---|
-| **Java** | ✅ 已发布 [1.1.0](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
+| **Java** | ✅ 已发布 [1.1.1](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
 | **Go** | 🚧 开发中([PR #13](https://github.com/csap-ai/csap-apidoc/pull/13)) | gin、net/http |
 | **Rust** | 📋 规划中 | axum、actix-web |
 | 更多语言 | 📋 陆续支持 | 见 [路线图](docs/ROADMAP.md) |
@@ -43,18 +43,13 @@ CSAP Apidoc 在服务运行时直接从代码生成 API 文档,不需要单独�
 
 ## 快速开始(Java)
 
-**1. 添加依赖**(1.1.0 需要两个 starter,1.1.1 起只需要第一个):
+**1. 添加依赖**:
 
 ```xml
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.1.0</version>
-</dependency>
-<dependency>
-    <groupId>ai.csap.apidoc.boot</groupId>
-    <artifactId>csap-validation-boot-starter</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
@@ -110,7 +105,7 @@ public class User {
 | 坐标 | 说明 |
 |---|---|
 | `ai.csap.apidoc.boot:csap-apidoc-boot-starter` | Spring Boot starter,包含核心、文档页面、YAML/SQLite 策略、DevTools |
-| `ai.csap.apidoc.boot:csap-validation-boot-starter` | 参数校验 starter |
+| `ai.csap.apidoc.boot:csap-validation-boot-starter` | 参数校验 starter,可选:只在需要它的校验异常处理器或 `ValidationProperties` 时引入 |
 | `ai.csap.apidoc:csap-apidoc-annotation` | 注解 |
 | `ai.csap.apidoc:csap-apidoc-core` | 扫描与文档生成 |
 | `ai.csap.apidoc:csap-apidoc-ui` | 文档页面 |

@@ -9,7 +9,7 @@
 | `CsapResourcesProvider` | 提供网关聚合的服务列表 | 声明同类型 Bean，替换默认实现 |
 | `CsapHeadersProvider` | 给接口追加公共请求头 | 声明同类型 Bean，替换默认实现 |
 | `GlobalCsapRequestParamProvider` | 给分页类接口追加公共请求参数 | 声明同类型 Bean，替换默认实现 |
-| `GlobalCsapResponseParamProvider` | 公共返回参数（1.1.0 未使用） | 声明同类型 Bean |
+| `GlobalCsapResponseParamProvider` | 公共返回参数（目前未使用） | 声明同类型 Bean |
 | `ParamGroupStrategy` | 字段规则来源（是否出现、必填、校验） | 继承内置实现并声明 Bean |
 | `IMethodRequest` / `IMethodResponse` | 请求 / 返回参数的解析方式 | 声明 Bean，并在 `@EnableApidoc` 里按名称选用 |
 
@@ -90,8 +90,8 @@ public class ApidocHeadersConfig {
 }
 ```
 
-:::warning 只对声明了请求头的接口生效
-1.1.0 中，公共请求头只会追加到 `@ApiOperation(headers = …)` 至少声明了一个请求头的接口上，其余接口不会带上它们。另外它只影响文档展示，不会让在线调试自动发送这些请求头；调试时的公共请求头请在页面的「全局请求头」里配置，见[在线调试](/guide/testing)。
+:::warning 生效范围
+公共请求头追加在 `@ApiOperation(headers = …)` 声明的请求头之后。`headers` 的默认值含一个 `Content-Type`，所以一般接口都会带上公共请求头；只有显式写成 `headers = {}` 的接口不会追加。另外它只影响文档展示，不会让在线调试自动发送这些请求头；调试时的公共请求头请在页面的「全局请求头」里配置，见[在线调试](/guide/testing)。
 :::
 
 ## GlobalCsapRequestParamProvider
@@ -195,7 +195,7 @@ public interface GlobalCsapResponseParamProvider extends Supplier<Map<String, Li
 }
 ```
 
-默认实现（静态方法 `GlobalCsapResponseParamProvider.defaultParam()`）描述了 `ApidocResult` 的 `code`、`message`、`data`、`language`、`time` 五个字段。自动配置会注册它（带 `@ConditionalOnMissingBean`），但 **1.1.0 的文档生成流程没有调用它**，替换它不会改变任何文档输出。这里列出只是为了说明它的现状。
+默认实现（静态方法 `GlobalCsapResponseParamProvider.defaultParam()`）描述了 `ApidocResult` 的 `code`、`message`、`data`、`language`、`time` 五个字段。自动配置会注册它（带 `@ConditionalOnMissingBean`），但 **目前的文档生成流程没有调用它**，替换它不会改变任何文档输出。这里列出只是为了说明它的现状。
 
 ## ParamGroupStrategy
 
@@ -378,11 +378,11 @@ public class Application {
 
 ## 不建议依赖的类型
 
-下面这些类型虽然是 public 的，但在 1.1.0 中不适合作为扩展点：
+下面这些类型虽然是 public 的，但目前不适合作为扩展点：
 
 | 类型 | 原因 |
 | --- | --- |
 | `ai.csap.apidoc.GlobalDocModelControllerProvider` | 只有接口定义，框架内没有任何地方使用 |
 | `ai.csap.apidoc.DevtoolsClass` | 默认实现的 `devtools()` 返回 `false`；改为返回 `true` 后，隐藏接口的判断会读取一个通常为 `null` 的字段，可能导致扫描出错 |
 | `ai.csap.apidoc.service.standard.PostmanConverterService` | 没有注册为 Bean，需要时直接 `new`，见[导出](/guide/export) |
-| `ai.csap.apidoc.service.standard.OpenApiConverterService` | 没有注册为 Bean，也不处理普通扫描出来的接口，见[导出](/guide/export) |
+| `ai.csap.apidoc.service.standard.OpenApiConverterService` | 没有注册为 Bean，不处理普通扫描出来的接口，参数 `required` 为空时会空指针，见[导出](/guide/export) |

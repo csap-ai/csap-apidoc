@@ -22,7 +22,7 @@ export default defineConfig({
       { text: '发布说明', link: '/changelog' },
       { text: '下载', link: '/download/' },
       {
-        text: 'v1.1.0',
+        text: 'v1.1.1',
         items: [
           { text: 'GitHub Releases', link: `${repo}/releases` },
           { text: 'Maven Central', link: 'https://central.sonatype.com/namespace/ai.csap.apidoc' },

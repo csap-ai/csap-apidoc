@@ -14,7 +14,7 @@ CSAP Apidoc 是一个多语言的运行时 API 文档框架,以 Apache-2.0 协�
 
 | 语言 | 状态 | 支持的框架 |
 | --- | --- | --- |
-| Java | 已发布,当前版本 **1.1.0**(首个发布到 Maven Central 的版本) | Spring Boot 2.x / 3.x |
+| Java | 已发布,当前版本 **1.1.1**(1.1.0 是首个发布到 Maven Central 的版本,但实际需要 Java 17,建议升级到 1.1.1) | Spring Boot 2.x / 3.x |
 | Go | 开发中,见 [Go 版](/go/) | gin、net/http |
 | Rust | 规划中 | axum、actix-web |
 | 更多语言 | 陆续支持 | — |
@@ -53,7 +53,7 @@ CSAP Apidoc 是一个多语言的运行时 API 文档框架,以 Apache-2.0 协�
 
 ### 其他模块
 
-- **参数校验**：`csap-validation-boot-starter` 可以在运行时按文档中的规则校验请求参数。见 [参数校验](/guide/validation)。
+- **参数校验**：可选的 `csap-validation-boot-starter` 提供统一的校验异常处理和 `csap.validation.*` 配置。按文档规则在运行时校验请求参数，在 1.1.x 中还不执行（计划 1.2.0），见 [参数校验](/guide/validation)。
 - **DevTools**：开发阶段的可视化工具，用来扫描接口、勾选每个接口的请求 / 返回字段并写回 YAML 或 SQLite。只有显式开启 `csap.apidoc.devtool.enabled=true` 时才会注册。见 [DevTools](/guide/devtools)。
 - **网关聚合**：通过 `csap.apidoc.resources` 把多个服务的文档汇总到一个页面。见 [网关聚合](/guide/gateway-aggregation)。
 
@@ -64,7 +64,7 @@ CSAP Apidoc 是一个多语言的运行时 API 文档框架,以 Apache-2.0 协�
 - 希望文档页面直接集成在应用里、不想另外部署文档服务的团队。
 - 多个微服务需要在网关处统一查看文档的场景。
 
-运行环境要求 JDK 11 及以上；Spring Boot 3 项目需要 JDK 17 及以上（这是 Spring Boot 3 本身的要求）。
+运行环境要求 JDK 11 及以上（1.1.1 起；1.1.0 的 jar 实际需要 JDK 17）；Spring Boot 3 项目需要 JDK 17 及以上（这是 Spring Boot 3 本身的要求）。
 
 ## 和 Swagger / Knife4j 的区别
 
@@ -75,7 +75,7 @@ Swagger 系列工具（如 springdoc-openapi、springfox）以 OpenAPI 规范为
 | 注解 | 使用自己的注解（包名 `ai.csap.apidoc.annotation`）。`@Api`、`@ApiOperation`、`@ApiModel`、`@ApiModelProperty` 与 Swagger 2 注解同名，但包名和属性不同，Swagger 注解不会被识别。 |
 | 文档数据 | 通过自己的接口（如 `/csap/apidoc`）提供文档数据，格式不是 OpenAPI。需要 OpenAPI 时，在文档页面导出 OpenAPI 3.0 文件。 |
 | 字段粒度 | 字段可以按接口选择显示，规则可以放在注解、YAML 或 SQLite 中。 |
-| 校验 | 文档展示的校验规则和运行时校验（`csap-validation-boot-starter`）使用同一套规则。 |
+| 校验 | 文档展示的校验规则会登记到校验模块，供运行时校验使用；1.1.x 中运行时校验还不执行，计划 1.2.0 提供。 |
 | 界面 | 文档页面由 `csap-apidoc-ui` 提供，随 starter 一起引入，访问 `/csap-api.html`。 |
 
 如果你的项目已经在用 Swagger 注解，迁移时需要把 import 换成 `ai.csap.apidoc.annotation.*`，并逐个核对属性名；不能直接复用。

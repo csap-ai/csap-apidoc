@@ -207,7 +207,7 @@ public class OrderController {
 
 ### 顶部
 
-- **分组 / 版本**：按 `@Api`、`@ApiOperation` 的 `group`、`version` 筛选接口。本例都使用默认值 `default`。
+- **分组 / 版本**：只有菜单数据里的接口带 `group` / `version` 字段时才显示，用于按分组、版本筛选。目前后端返回的接口树不带这两个字段，所以 1.1.1 的页面不显示这两个下拉框（1.1.0 的页面显示的是写死的占位选项，选择后没有效果）。
 - **导出文档**：把当前文档导出为 OpenAPI 3.0、Postman Collection 或 Markdown 文件，见 [导出](/guide/export)。
 - **切换服务**：配置了 `csap.apidoc.resources` 时出现，用于在多个服务的文档之间切换，见 [网关聚合](/guide/gateway-aggregation)。
 

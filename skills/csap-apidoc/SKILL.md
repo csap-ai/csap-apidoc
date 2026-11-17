@@ -15,19 +15,14 @@ CSAP Apidoc 在服务启动时扫描注解生成接口文档,页面地址 `/csap
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.1.0</version>
-</dependency>
-<!-- 1.1.0 必须同时引入,否则生成文档时空指针;1.1.1 起可省略 -->
-<dependency>
-    <groupId>ai.csap.apidoc.boot</groupId>
-    <artifactId>csap-validation-boot-starter</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
 - 坐标只有 `ai.csap.apidoc(.boot)`。旧文档里的 `com.csap.framework.boot:csap-framework-apidoc-boot-starter` **不存在**,看到要改掉。
 - starter 已包含文档页面、YAML/SQLite 策略、DevTools,不要另加。
-- JDK 11+;Spring Boot 3 需要 JDK 17+。
+- `ai.csap.apidoc.boot:csap-validation-boot-starter` 是可选的,只在需要它的校验异常处理器(`ValidateExceptionHandler`)或 `csap.validation.*` 配置(`ValidationProperties`)时引入。
+- JDK 11+;Spring Boot 3 需要 JDK 17+。1.1.0 的 jar 实际是 Java 17 字节码,Java 11 上无法加载;项目还在用 1.1.0 时建议升级到 1.1.1。
 
 ## 2. 开启
 
@@ -80,7 +75,7 @@ public class DemoApplication { ... }
 ## 7. 1.1.x 的限制(写代码和回答问题时要说清楚)
 
 - 规则里的返回字段 `include` 和请求 `validate` **只影响文档**;运行时的返回字段过滤和参数校验在开源版 1.1.x 中不执行,计划 1.2.0 提供。不要向用户承诺"配了 include 接口就不会返回这个字段"。
-- 1.1.0 的文档页面是旧版构建,没有环境切换、鉴权、快照、多语言;1.1.1 起才有。
+- 1.1.0 jar 里的文档页面是旧版构建,没有环境切换、全局请求头、鉴权、历史与重放、命名快照、中英文;这些从 1.1.1 起可用。
 - 手工改 YAML 后需要重启;DevTools 修改会即时生效。
 
 ## 8. 写完后的检查

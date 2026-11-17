@@ -48,7 +48,7 @@ csap:
 | --- | --- |
 | `name` | 下拉框里显示的名称 |
 | `url` | 该服务 `/csap/apidoc/parent` 的访问地址，格式要求见下文 |
-| `version` | 会原样出现在接口返回的 `resources` 里，1.1.0 的页面不使用它 |
+| `version` | 会原样出现在接口返回的 `resources` 里，页面目前不使用它 |
 
 配置类是 `ai.csap.apidoc.model.CsapDocResource`，由默认的 `CsapResourcesProvider` 从 `csap.apidoc.resources` 读取。需要从注册中心等地方动态生成服务列表时，可以自己提供一个 `CsapResourcesProvider` Bean，见 [Java 扩展点](/api/java)。
 
@@ -79,36 +79,35 @@ spring:
 
 ## `url` 的格式要求
 
-页面在请求接口详情时，取 `url` 按 `/` 切分后的**第一段路径**作为前缀，拼成 `<前缀>/csap/apidoc/method`。这个规则决定了 `url` 只能写成下面这种形式：
+页面把 `url` 末尾的 `/csap/apidoc/parent`（或 `/csap/apidoc`）去掉，得到该服务的基础地址，再拼出其他地址：
 
-```
-/<一段前缀>/csap/apidoc/parent
-```
+- 接口详情：`<基础地址>/csap/apidoc/method`
+- 在线调试的默认 URL：`<基础地址><接口路径>`
+- 导出时的服务地址：`<基础地址>`
 
-下面这些写法在 1.1.0 中都会出问题：
+1.1.1 起，下面这些写法都可以用，相对 / 绝对形式和全部前缀段都会保留，查询串（如 `?token=...`）也会带到详情请求上：
 
-| 写法 | 结果 |
+| 写法 | 详情请求 |
 | --- | --- |
-| `http://order-service:8081/csap/apidoc/parent`（绝对地址） | 接口列表能加载（对方允许跨域时），但点开接口时详情请求发到了聚合入口自己的 `/csap/apidoc/method`，取不到详情 |
-| `/api/order/csap/apidoc/parent`（多段前缀） | 详情请求变成 `api/csap/apidoc/method`，丢掉了 `order` |
-| `/csap/apidoc/parent`（无前缀） | 详情请求变成 `csap/csap/apidoc/method` |
+| `/order-api/csap/apidoc/parent`（单段前缀） | `/order-api/csap/apidoc/method` |
+| `/gw/v2/order-api/csap/apidoc/parent`（多段前缀） | `/gw/v2/order-api/csap/apidoc/method` |
+| `http://order-service:8081/csap/apidoc/parent`（绝对地址） | `http://order-service:8081/csap/apidoc/method`，需要对方允许跨域 |
+| `/csap/apidoc/parent`（无前缀） | `/csap/apidoc/method`，即聚合入口自己 |
 
-另外，拼出来的详情地址是不带开头 `/` 的相对地址，按页面地址解析。文档页面需要部署在站点根路径（`/csap-api.html`）下，前缀才能落在正确的位置上。
-
-:::warning
-上述限制意味着：不同环境用 Spring Profile 配置成不同的绝对地址、或者给同一服务配多级版本前缀，这类做法目前都不可用。请统一通过网关的单段前缀访问各服务。
+:::warning 1.1.0 的限制
+1.1.0 的页面只取 `url` 按 `/` 切分后的第一段作为前缀，并拼成不带开头 `/` 的相对地址。绝对地址、多段前缀、无前缀的写法在 1.1.0 中都取不到接口详情，在线调试的地址还会重复拼接服务前缀。请升级到 1.1.1。
 :::
 
 ## 切换服务后的行为
 
 - 选中服务后，左侧接口树、接口详情、[在线调试](/guide/testing)的默认 URL 和[导出](/guide/export)都以该服务为准。在线调试的默认 URL 是「`url` 去掉末尾 `/csap/apidoc/parent`」再加上接口路径，例如 `/order-api/orders/{id}`。
 - 服务列表只在页面首次加载时读取一次。修改 `resources` 后需要刷新页面。
-- 首次加载时左侧显示的是聚合入口自己的接口。切换到其他服务后，下拉框里没有「回到入口」的选项（无前缀的 `url` 用不了，见上文），需要刷新页面。
+- 首次加载时左侧显示的是聚合入口自己的接口。切换到其他服务后，要回到入口，可以刷新页面；也可以在 `resources` 里给入口自己加一项，`url` 写 `/csap/apidoc/parent`（1.1.1 起可用）。
 - 在线调试里「服务」作用域的全局请求头、鉴权方案的服务绑定，都以这里选中的服务 `url` 作为服务标识。
 
 ## 跨域
 
-按上面的方式通过同一个网关访问时，页面、文档接口和被调试的接口同源，不涉及跨域。只有把 `url` 写成其他域名的地址时，才需要对方服务允许跨域，而且如上文所述，这种写法目前取不到接口详情。
+按上面的方式通过同一个网关访问时，页面、文档接口和被调试的接口同源，不涉及跨域。只有把 `url` 写成其他域名的地址时，才需要对方服务允许跨域（1.1.0 中这种写法还取不到接口详情）。
 
 ## 关于 WebFlux 网关
 

@@ -2,6 +2,10 @@
 
 本页介绍文档页面 `/csap-api.html` 里的接口调试功能：环境切换、全局请求头、鉴权方案、发送请求、请求历史与重放、命名快照，以及这些数据保存在哪里。
 
+:::tip 版本说明
+本页的环境切换、全局请求头、鉴权、请求历史与重放、命名快照和中英文切换从 1.1.1 起可用。1.1.0 的 jar 里打包的是旧版文档页面，没有这些功能，请升级到 1.1.1。
+:::
+
 ## 两个调试入口
 
 在左侧选中一个接口后，右侧顶部有三个标签：
@@ -98,7 +102,7 @@ API Key 选择 Cookie 位置时，浏览器不允许 JavaScript 为跨域请求�
 :::
 
 :::tip 后端的 @DocAuth / @DocGlobalHeader
-在 Controller、方法或包上标注 `@DocAuth`、`@DocGlobalHeader` 后，文档数据里每个方法会带上 `authHint` 和 `globalHeaderHints` 字段（见 [REST 接口](/api/rest)）。1.1.0 的页面还没有读取这两个字段，鉴权方案和全局请求头仍需在页面里手动配置。
+在 Controller、方法或包上标注 `@DocAuth`、`@DocGlobalHeader` 后，文档数据里每个方法会带上 `authHint` 和 `globalHeaderHints` 字段（见 [REST 接口](/api/rest)）。1.1.1 起，打开试运行面板时会按这两个字段预填：`@DocGlobalHeader` 预填请求头（「全局请求头」里已有的不预填）；`@DocAuth` 为 bearer / basic 时预填 `Authorization` 前缀，为 API Key 时按位置预填 header 或 query，为 OAuth2 Client Credentials 时只显示“建议认证”标签；当前服务已绑定鉴权方案时不预填。没有值的预填行默认不启用，预填内容不会写入设置。1.1.0 的页面不读取这两个字段。
 :::
 
 ## 跨域与设置
@@ -113,11 +117,11 @@ API Key 选择 Cookie 位置时，浏览器不允许 JavaScript 为跨域请求�
 | 请求超时（毫秒） | 1000 到 300000 |
 | 跨域请求附带 Cookie (withCredentials) | 打开后跨域请求携带浏览器 Cookie，默认关闭 |
 
-:::warning 1.1.0 的已知限制
-「CORS 代理 URL」和「请求超时」两项会被保存，但试运行 v2 面板发送时并没有读取它们：请求不经代理，超时固定为 30 秒。「withCredentials」开关是生效的。
+:::tip 版本说明
+1.1.1 起三项设置都生效。1.1.0 中「CORS 代理 URL」和「请求超时」只会被保存，发送时没有读取：请求不经代理，超时固定为 30 秒。
 :::
 
-DevTools 模块另外提供了一个服务端转发接口 `POST /csap/apidoc/devtools/proxy`，默认关闭，开启方式和安全注意事项见 [DevTools](/guide/devtools)。它的请求格式是 JSON（`method`、`url`、`headers`、`body`），文档页面目前不会调用它，也不能直接填到上面的「CORS 代理 URL」里使用。
+DevTools 模块另外提供了一个服务端转发接口 `POST /csap/apidoc/devtools/proxy`，默认关闭，开启方式和安全注意事项见 [DevTools](/guide/devtools)。它的请求格式是 JSON（`method`、`url`、`headers`、`body`）。1.1.1 起，「CORS 代理 URL」填以 `/csap/apidoc/devtools/proxy` 结尾的地址时，试运行会按这个格式把请求交给它转发；填其他地址时，按“代理地址 + URL 编码后的目标地址”拼接。
 
 ## 请求历史与重放
 

@@ -59,8 +59,8 @@
 | --- | --- | --- | --- | --- |
 | `flush` | query | Boolean | 否 | 默认 `false`，见下面的说明 |
 
-:::warning flush 参数目前不起作用
-文档在应用启动后生成一次并缓存。`flush=true` 只在缓存为空时才会被使用，而应用启动完成后缓存总是已经存在，所以带上 `flush=true` 也只会返回缓存。想看到代码改动后的文档，需要重启应用，或者开启 `csap.apidoc.devtool.enabled` 后依赖 `/csap/apidoc/method` 的按类重新扫描（见[架构](/guide/architecture)）。
+:::tip flush 参数
+1.1.1 起，`flush=true` 会重新全量扫描，完成后替换缓存再返回；应用启动时的扫描尚未完成时，请求会等待扫描结束，拿到完整文档。1.1.0 中缓存存在时 `flush` 不起作用。重新扫描不会加载新编译的代码，代码改动后仍需重启应用。
 :::
 
 `data` 的类型是 `ai.csap.apidoc.model.CsapDocResponse`：
@@ -169,12 +169,8 @@ curl http://localhost:8080/csap/apidoc
 curl "http://localhost:8080/csap/apidoc/com.example.UserController?key=com.example.UserController.getUser"
 ```
 
-:::danger 已知问题：带 key 调用会破坏缓存
-带 `key` 调用时，过滤是直接在缓存的 Controller 对象上执行的（`CsapDocController.apiList` 里在 `peek` 中调用 `setMethodList`），外层虽然复制了一份 `CsapDocResponse`，但只是浅拷贝，Controller 对象与缓存共享。结果是：调用一次之后，缓存里这个 Controller 只剩下 `key` 对应的那一个接口，之后 `/csap/apidoc`、`/csap/apidoc/parent` 和文档页面里该 Controller 的其他接口都会消失。
-
-未开启 DevTools 时只能重启应用恢复。开启 `csap.apidoc.devtool.enabled` 时，再次请求该 Controller（例如在页面里点开它的任意接口，触发 `/csap/apidoc/method` 的重新扫描）通常可以恢复，但不要依赖这一点。
-
-在问题修复之前，请不要在共享环境里带 `key` 调用这个接口；需要单个接口的信息时请用 `/csap/apidoc/method`。
+:::tip 1.1.0 的缓存问题
+1.1.0 中带 `key` 调用时，过滤直接作用在缓存的 Controller 对象上，调用一次之后，全量文档里这个 Controller 只剩下 `key` 对应的接口。1.1.1 改为在副本上过滤，缓存不受影响。还在用 1.1.0 时，请不要在共享环境里带 `key` 调用这个接口。
 :::
 
 ## GET /csap/apidoc/parent
@@ -356,5 +352,5 @@ curl -o postman_collection.json http://localhost:8080/csap/openapi/postman
 `error` 的取值有 `invalid_request`、`invalid_method`、`invalid_url`、`host_not_allowed`、`upstream_unreachable`（HTTP 502）和 `body_too_large`（HTTP 415）。
 
 :::warning
-这个接口可以让服务端访问名单内的任意地址，本身不做调用方鉴权。只在内网或开发环境开启，并用 Spring Security 等保护它。1.1.0 的文档页面不会调用这个接口。
+这个接口可以让服务端访问名单内的任意地址，本身不做调用方鉴权。只在内网或开发环境开启，并用 Spring Security 等保护它。1.1.1 起，文档页面「设置」里的代理地址填以 `/csap/apidoc/devtools/proxy` 结尾的地址时，在线调试会通过这个接口转发；1.1.0 的文档页面不会调用它。
 :::

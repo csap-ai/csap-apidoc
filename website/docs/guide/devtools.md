@@ -34,7 +34,7 @@ csap:
       enabled: true
 ```
 
-`csap.apidoc.devtool.enabled` 默认为 `false`。同组的 `csap.apidoc.devtool.cache`（默认 `true`）在 1.1.0 中没有被读取。
+`csap.apidoc.devtool.enabled` 默认为 `false`。同组的 `csap.apidoc.devtool.cache`（默认 `true`）目前没有被读取。
 
 ## 入口
 
@@ -72,7 +72,7 @@ http://localhost:<端口><context-path>/devtools-ui
 保存后：
 
 - YAML 策略：写入 `src/main/resources/<path>/method-field/` 下的 YAML 文件（文件名规则见 [存储策略 - YAML 策略](/guide/storage-strategies#yaml-策略)）；
-- SQLite 策略：写入 `<path>/<fileName>.db` 的 `api_method` 表。
+- SQLite 策略：写入 `<path>/<fileName>.db` 的 `api_method` 表。1.1.1 起数据库文件不存在时会在第一次写入时自动创建。
 
 同时会更新内存中的规则缓存。开启 DevTools 时，按 Controller 或单个接口查询文档的接口（`/csap/apidoc/{className}`、`/csap/apidoc/method`）会重新解析对应的 Controller，因此保存后重新打开该接口的文档即可看到变化，不需要重启。
 
@@ -86,14 +86,14 @@ YAML 文件写回源码目录依赖于"classpath 根目录是 `target/classes`"�
 |------|------|------|
 | GET | `/devtools-ui`、`/devtools-ui/**` | 转发到 DevTools 页面 |
 | POST | `/devtools/getFields` | 获取某个类，或某个 Controller 方法参数 / 返回值的字段结构 |
-| POST | `/devtools/hiddenMethod` | 1.1.0 中直接返回 `true`，没有实际作用 |
+| POST | `/devtools/hiddenMethod` | 目前直接返回 `true`，没有实际作用 |
 | GET | `/csap/yaml/scannerApi` | 扫描 Controller 及其接口 |
 | GET | `/csap/yaml/getAllMethod` | 获取某个 Controller 的全部方法 |
 | POST | `/csap/yaml/addRequestParam` | 保存某个方法的请求字段规则 |
 | POST | `/csap/yaml/addResponseParam` | 保存某个方法的返回字段规则 |
 | GET | `/csap/yaml/getMethodValidateFields` | 读取某个请求字段已保存的规则 |
 | GET | `/csap/yaml/validatePatternTypes` | 内置正则列表 |
-| POST | `/csap/yaml/write`、`/csap/yaml/writeSelect`、`/csap/yaml/writeFieldMethod` | 导出完整文档。依赖 `@EnableApidoc(type = YAML / JSON)` 的实现，1.1.0 未注册，调用会失败 |
+| POST | `/csap/yaml/write`、`/csap/yaml/writeSelect`、`/csap/yaml/writeFieldMethod` | 导出完整文档。只在 `@EnableApidoc(type = YAML / JSON)` 时可用（1.1.1 起会注册对应策略）；`type` 为默认的 `ANNOTATION` 时返回“当前配置不支持”的错误 |
 
 ## 调试代理（可选）
 
@@ -121,9 +121,11 @@ csap:
 
 注意配置前缀是 `csap.apidoc.devtools.proxy`（`devtools`），与 DevTools 开关 `csap.apidoc.devtool.enabled`（`devtool`）不同。
 
-:::warning Spring Boot 3
-代理的自动配置类 `ai.csap.apidoc.devtools.proxy.DevtoolsProxyAutoConfiguration` 只登记在 jar 的 `META-INF/spring.factories` 中。Spring Boot 3 不再从这个文件加载自动配置，因此在 Spring Boot 3 项目里需要手动 `@Import(DevtoolsProxyAutoConfiguration.class)`，上面的配置才会生效。
+:::tip Spring Boot 3
+1.1.0 中代理的自动配置类 `ai.csap.apidoc.devtools.proxy.DevtoolsProxyAutoConfiguration` 只登记在 `META-INF/spring.factories` 中，Spring Boot 3 项目需要手动 `@Import(DevtoolsProxyAutoConfiguration.class)`。1.1.1 起它也登记在 `AutoConfiguration.imports` 中，Spring Boot 2 和 3 都不需要手动导入。
 :::
+
+文档页面「设置」里的代理地址填 `/csap/apidoc/devtools/proxy` 时，1.1.1 起在线调试会按这个代理的协议转发请求，见 [跨域与代理](/guide/cors)。
 
 ## 安全注意事项
 

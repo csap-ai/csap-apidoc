@@ -28,8 +28,12 @@ public class Application {
 
 YAML 和 SQLite 的实现都已经包含在 `csap-apidoc-boot-starter` 中（它传递依赖 `csap-apidoc-yaml`、`csap-apidoc-sqlite`），不需要额外引入。
 
-:::warning 不要修改 type
-`@EnableApidoc` 还有一个 `type` 属性（文档主体来源）。1.1.0 只注册了 `ANNOTATION` 的实现，`type` 改成 `YAML`、`JSON`、`SQL_LITE` 会导致文档加载失败。选择规则来源请改 `paramType`，`type` 保持默认。`paramType = JSON` 在 1.1.0 中同样没有实现。
+:::warning type 与 paramType 的区别
+`@EnableApidoc` 还有一个 `type` 属性（文档主体来源），和 `paramType` 不是一回事。选择规则来源请改 `paramType`，`type` 一般保持默认 `ANNOTATION`。
+
+- 1.1.1 起 `type = YAML` / `JSON` 会注册对应的文档策略（1.1.0 中没有注册，文档静默为空）。注意 `JSON` 策略写出的 `.json` 文件内容其实是 YAML 格式。
+- `type = SQL_LITE` 没有可用的实现，1.1.1 起启动时直接报错，并提示改用 `paramType = SQL_LITE`。
+- `paramType = JSON` 目前没有实现。
 :::
 
 ## 字段如何进入文档
@@ -240,8 +244,12 @@ DevTools 写 YAML 时，目标路径是把 classpath 根目录中的 `target/cla
 
 规则在启动时读取一次并缓存。
 
-:::warning 需要自行准备数据库文件
-1.1.0 的发行包里没有附带空白的 SQLite 模板库。数据库文件不存在时，文档生成和 DevTools 写入都会出错。使用 SQLite 策略前，请先创建 `<path>/<fileName>.db`，并建好包含上表各列的 `api_method` 表。
+:::tip 数据库文件会自动创建
+1.1.1 起不需要手工准备数据库：数据库文件不存在时，读取规则得到空结果（不报错）；DevTools 第一次写入规则时会自动创建 `<path>/<fileName>.db` 并建好 `api_method` 表，打开连接时也会确保表存在。1.1.0 依赖一个没有随发行包提供的模板库，文件不存在时会出错。
+:::
+
+:::warning 旧模板建的库需要删除重建
+用旧模板库建出来的 `api_method` 表，`controller_id`、`info_id`、`value`、`key`、`group`、`version` 等列是 `NOT NULL` 且没有默认值，而框架插入时不写这些列，DevTools 写入会失败。1.1.1 只在表不存在时建表，不会改已有的表结构。遇到这种情况，请删除旧的 `.db` 文件，让框架重新创建（需要保留的规则请先导出 `request`、`response` 两列）。
 :::
 
 ## 如何选择
@@ -278,13 +286,13 @@ DevTools 写 YAML 时，目标路径是把 classpath 根目录中的 `target/cla
 
 这份清单可以通过 `IValidateFactory#response(Class<?> controller, Method method)` 取得，返回 `List<FilterClassParam>`，每项包含实体类型 `type`、`includes`、`excludes`。前提是：
 
-- 引入了 `csap-validation-boot-starter`（`IValidateFactory` 由它注册）；
+- 引入了 `csap-validation-boot-starter`（`IValidateFactory` Bean 由它注册；不引入时文档 starter 内部使用一个默认实现，文档照常生成，但它不是 Bean，无法注入）；
 - 文档已经生成。文档在应用启动完成后异步生成。
 
-:::warning 1.1.0 不会改写实际的响应 JSON
-1.1.0 只登记上述清单，**没有**任何组件在序列化响应时使用它，`@JsonFieldFilter` / `@JsonFieldFilters` 也不再被读取。接口实际返回的 JSON 仍由你的序列化配置（如 Jackson）决定，与文档中的返回字段可能不一致。
+:::warning 1.1.x 不会改写实际的响应 JSON
+1.1.x 只登记上述清单，**没有**任何组件在序列化响应时使用它，`@JsonFieldFilter` / `@JsonFieldFilters` 也不再被读取。接口实际返回的 JSON 仍由你的序列化配置（如 Jackson）决定，与文档中的返回字段可能不一致。
 
-如果需要让实际响应与文档一致，需要自行在序列化环节读取 `IValidateFactory#response(...)` 的结果并过滤字段。
+如果需要让实际响应与文档一致，需要自行在序列化环节读取 `IValidateFactory#response(...)` 的结果并过滤字段。运行时的返回字段过滤计划在 1.2.0 提供。
 :::
 
 ## 相关页面

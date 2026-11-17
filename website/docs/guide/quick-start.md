@@ -9,33 +9,23 @@
 
 ## 第 1 步：添加依赖
 
-在 `pom.xml` 中加入两个 starter：
+在 `pom.xml` 中加入文档 starter：
 
 ```xml
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.1.0</version>
-</dependency>
-<dependency>
-    <groupId>ai.csap.apidoc.boot</groupId>
-    <artifactId>csap-validation-boot-starter</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 </dependency>
 ```
 
 Gradle 写法：
 
 ```groovy
-implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.1.0'
-implementation 'ai.csap.apidoc.boot:csap-validation-boot-starter:1.1.0'
+implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.1.1'
 ```
 
-:::warning 为什么要加校验 starter
-在 1.1.0 中，生成文档时会调用校验模块提供的 `IValidateFactory` Bean，这个 Bean 由 `csap-validation-boot-starter` 注册。只引入 `csap-apidoc-boot-starter` 时没有这个 Bean，接口文档无法生成，启动日志会出现“有 N 个文档加载失败”的警告。加上它并不会自动拦截请求做校验，运行时校验需要另外开启，见 [参数校验](/guide/validation)。
-:::
-
-`csap-apidoc-boot-starter` 已经包含文档页面（`csap-apidoc-ui`）、YAML / SQLite 存储策略和 DevTools，不需要再单独引入。各模块的说明见 [安装](/guide/installation)。
+`csap-apidoc-boot-starter` 已经包含文档页面（`csap-apidoc-ui`）、YAML / SQLite 存储策略和 DevTools，不需要再单独引入。参数校验 starter `csap-validation-boot-starter` 是可选的，只在需要它的校验异常处理器或 `csap.validation.*` 配置时引入。各模块的说明见 [安装](/guide/installation)。
 
 ## 第 2 步：开启文档
 

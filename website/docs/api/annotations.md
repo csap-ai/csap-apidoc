@@ -1,8 +1,8 @@
 # 注解参考
 
-本页列出 CSAP Apidoc 1.1.0 全部注解及其属性，内容按 `csap-apidoc-annotation` 模块的源码整理。用法和示例见 [注解使用指南](/guide/annotations)。
+本页列出 CSAP Apidoc 1.1.1 全部注解及其属性，内容按 `csap-apidoc-annotation` 模块的源码整理。用法和示例见 [注解使用指南](/guide/annotations)。
 
-注解都在 `ai.csap.apidoc.annotation` 包下（`@EnableApidoc` 除外）。表格「说明」一栏标注「未读取」的属性，在 1.1.0 中没有代码使用它，设置后不影响文档。
+注解都在 `ai.csap.apidoc.annotation` 包下（`@EnableApidoc` 除外）。表格「说明」一栏标注「未读取」的属性，目前没有代码使用它，设置后不影响文档。
 
 ## 速查
 
@@ -39,8 +39,8 @@
 | `value` | `String[]` | `{}` | `apiPackages` 的别名 |
 | `apiPackages` | `String[]` | `{}` | 扫描 Controller 的包，始终包含子包；支持 `*`、`**`、`?` 通配符 |
 | `apiPackageClasses` | `Class<?>[]` | `{}` | 直接指定 Controller 类，只收录带 `@Api` 的类 |
-| `type` | `ApiStrategyType` | `ANNOTATION` | 文档主体的来源。1.1.0 只注册了 `ANNOTATION` 的实现，改为其他值会导致文档加载失败 |
-| `paramType` | `ApiStrategyType` | `ANNOTATION` | 字段规则的来源：`ANNOTATION`、`YAML`、`SQL_LITE`。`JSON` 在 1.1.0 中没有实现。见 [存储策略](/guide/storage-strategies) |
+| `type` | `ApiStrategyType` | `ANNOTATION` | 文档主体的来源，一般保持默认。`YAML`、`JSON` 从 1.1.1 起会注册对应策略；`SQL_LITE` 启动即报错，提示改用 `paramType = SQL_LITE` |
+| `paramType` | `ApiStrategyType` | `ANNOTATION` | 字段规则的来源：`ANNOTATION`、`YAML`、`SQL_LITE`。`JSON` 目前没有实现。见 [存储策略](/guide/storage-strategies) |
 | `requestType` | `String` | `"default"` | 请求参数解析器的名称，内置只有 `default` |
 | `responseType` | `String` | `"default"` | 返回参数解析器的名称，内置只有 `default` |
 | `path` | `String` | `"csap-api-doc"` | YAML / SQLite 规则文件所在的 classpath 目录；支持 `${property:default}` 占位符 |
@@ -112,7 +112,7 @@
 | `version` | `String[]` | `"default"` | 版本；保持默认时继承方法 |
 
 :::warning
-1.1.0 生成文档时只读取标在**参数上**的 `@ApiProperty`。标在方法上（靠 `name` 匹配参数）的写法不会被读取。
+目前生成文档时只读取标在**参数上**的 `@ApiProperty`。标在方法上（靠 `name` 匹配参数）的写法不会被读取。
 :::
 
 ## @ApiPropertys
@@ -123,7 +123,7 @@
 |------|------|--------|------|
 | `value` | `ApiProperty[]` | 必填 | 多个参数说明 |
 
-1.1.0 生成文档时不读取 `@ApiPropertys`。
+目前生成文档时不读取 `@ApiPropertys`。
 
 ## @ApiModel
 
@@ -283,11 +283,11 @@
 |------|------|--------|------|
 | `value` | `JsonFieldFilter[]` | 必填 | 多个过滤规则 |
 
-1.1.0 中没有代码读取这两个注解，标注后返回的 JSON 不会变化。
+目前没有代码读取这两个注解，标注后返回的 JSON 不会变化。
 
 ## @Description
 
-标注位置：类、字段、方法。1.1.0 中未读取。
+标注位置：类、字段、方法。目前未读取。
 
 | 属性 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
@@ -297,7 +297,7 @@
 
 ## @RequestParamBody
 
-标注位置：参数。没有属性。1.1.0 中未读取。
+标注位置：参数。没有属性。目前未读取。
 
 ## 枚举类型
 

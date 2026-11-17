@@ -4,7 +4,7 @@
 
 ## 模块
 
-仓库是一个 Maven 多模块工程，版本 `1.1.0`。除两个 starter 的 groupId 是 `ai.csap.apidoc.boot` 外，其余模块的 groupId 都是 `ai.csap.apidoc`。
+仓库是一个 Maven 多模块工程，当前发布版本 `1.1.1`。除两个 starter 的 groupId 是 `ai.csap.apidoc.boot` 外，其余模块的 groupId 都是 `ai.csap.apidoc`。
 
 | 模块 | 作用 | 直接依赖的本项目模块 |
 | --- | --- | --- |
@@ -18,7 +18,7 @@
 | `csap-apidoc-sqlite` | SQLite 文档策略和参数策略 | core、standard |
 | `csap-apidoc-devtools` | DevTools 接口、DevTools 页面、可选的转发代理 | core、standard |
 | `csap-apidoc-boot-starter` | 自动配置、`@EnableApidoc` | core、yaml、sqlite、annotation、devtools |
-| `csap-validation-boot-starter` | 校验自动配置，提供 `IValidateFactory` Bean | validation-core |
+| `csap-validation-boot-starter` | 校验自动配置（可选），提供 `IValidateFactory` Bean、`ValidationProperties`、`ValidateExceptionHandler` | validation-core |
 
 另外还有三个只含 POM 配置的模块：`csap-apidoc-dependency`（BOM，统一依赖版本）、`csap-apidoc-build`（共享构建配置，各模块的父 POM）、`csap-apidoc-parent`（给使用方继承的父 POM）。
 
@@ -34,7 +34,7 @@ csap-apidoc-boot-starter ──┬─▶ csap-apidoc-devtools ──┬─▶ cs
 csap-validation-boot-starter ──▶ csap-validation-core
 ```
 
-业务项目一般只引入两个 starter，见[安装](/guide/installation)。
+业务项目一般只引入 `csap-apidoc-boot-starter`；需要校验异常处理器或 `ValidationProperties` 时再加 `csap-validation-boot-starter`，见[安装](/guide/installation)。没有 `IValidateFactory` Bean 时，文档 starter 内部使用一个默认实现（1.1.1 起；1.1.0 中会空指针）。
 
 ## 启动流程
 
@@ -75,8 +75,8 @@ csap-validation-boot-starter ──▶ csap-validation-core
 
 1. **并发处理每个类**，整体最多等待 60 秒。类上必须同时有 `@Controller`（`@RestController` 也算）和 `@Api`，`@Api(hidden = true)` 的类跳过。
 2. **收集方法**：遍历类的全部 public 方法（含继承的），只处理带 `@ApiOperation` 的；`@ApiOperation` 和 `@RequestMapping` 都支持从接口、父类继承。跳过桥接方法、`@Api` 的 `hiddenMethod` 里列出的方法；`showMethod` 不为空时只保留其中的方法。路径和 HTTP 方法都相同的重复映射只保留一个。
-3. **HTTP 方法**取自 `@RequestMapping`（含 `@GetMapping` 等）。没有声明 method 时，按代码记录为 POST、DELETE、GET。
-4. **请求头**：`@ApiOperation(headers = …)` 声明的请求头，再追加 `CsapHeadersProvider` 提供的公共请求头。注意 1.1.0 中只有声明了 `headers` 的方法才会追加公共请求头。
+3. **HTTP 方法**取自 `@RequestMapping`（含 `@GetMapping` 等）。`@RequestMapping` 没有写 `method` 时记录为 GET、POST、PUT、DELETE（1.1.1 起）；有 `@ApiOperation` 但没有任何映射注解的方法不是接口，会被跳过。
+4. **请求头**：`@ApiOperation(headers = …)` 声明的请求头，再追加 `CsapHeadersProvider` 提供的公共请求头。`headers` 默认含一个 `Content-Type`，所以一般方法都会追加；只有显式写成 `headers = {}` 的方法，公共请求头也不会追加。
 5. **提示信息**：收集 `@DocGlobalHeader` 和 `@DocAuth`，写入 `globalHeaderHints`、`authHint`。
 6. **请求参数**：交给名称为 `requestType` 的 `IMethodRequest` 解析。方法名包含 `csap.apidoc.result.request-page-method` 中任一项（默认 `Page`）时，再追加 `GlobalCsapRequestParamProvider` 提供的分页等公共参数。
 7. **返回参数**：交给名称为 `responseType` 的 `IMethodResponse` 解析，返回类型为 `Optional<T>` 时取 `T`。
@@ -84,8 +84,8 @@ csap-validation-boot-starter ──▶ csap-validation-core
 
 最后 Controller 按 `@Api` 的 `position`、再按类名排序，填入 `apiInfo` 和 `resources`。
 
-:::warning 文档策略只注册了注解一种
-`@EnableApidoc` 的 `type` 可选 `ANNOTATION`、`YAML`、`JSON`、`SQL_LITE`。`csap-apidoc-yaml`、`csap-apidoc-sqlite` 里有对应的 `YamlApidocStrategy`、`JsonApidocStrategy`、`SqliteApidocStrategy` 类，但 1.1.0 的自动配置只把 `ApiDocService`（`ANNOTATION`）注册成了 Bean。`type` 设为其他值时找不到策略，文档为空（日志里会有加载失败的记录）。常用的 YAML / SQLite 是指 `paramType`，即下一节的字段规则来源，它们是注册了的。详见[存储策略](/guide/storage-strategies)。
+:::warning 文档策略 type
+`@EnableApidoc` 的 `type` 可选 `ANNOTATION`、`YAML`、`JSON`、`SQL_LITE`。默认的 `ANNOTATION` 由 `ApiDocService` 处理。1.1.1 起，`type = YAML` / `JSON` 时由 `ApidocImportBeanDefinitionRegistrar` 注册 `YamlApidocStrategy` / `JsonApidocStrategy`（1.1.0 没有注册，文档静默为空）；`SqliteApidocStrategy` 无法正常工作，`type = SQL_LITE` 启动即报错，提示改用 `paramType = SQL_LITE`。常用的 YAML / SQLite 是指 `paramType`，即下一节的字段规则来源。详见[存储策略](/guide/storage-strategies)。
 :::
 
 ## 字段规则从哪里来
@@ -110,7 +110,7 @@ csap-validation-boot-starter ──▶ csap-validation-core
 - **返回参数**：策略返回的规则里 `include` 为 `true`，或者字段标注了 `forceRep = true`，字段才会出现。必填同样优先取策略里的。
 - **方法上的简单参数**（如 `@RequestParam Long id`）：必填取「策略规则」与「`@ApiProperty(required)`」的或；描述优先取策略里的，其次是 `@ApiProperty` 的。
 
-同一份规则在生成文档时也会登记到 `IValidateFactory`，供运行时的参数校验和返回字段过滤使用，所以文档展示的规则和实际生效的规则是一致的。参见[参数校验](/guide/validation)、[存储策略](/guide/storage-strategies)。
+同一份规则在生成文档时也会登记到 `IValidateFactory`。但 1.1.x 中没有组件在请求处理时使用这些登记结果：运行时的参数校验和返回字段过滤都不执行（计划 1.2.0 提供）。参见[参数校验](/guide/validation)、[存储策略](/guide/storage-strategies)。
 
 ## 缓存与刷新
 
@@ -118,19 +118,19 @@ csap-validation-boot-starter ──▶ csap-validation-core
 
 | 场景 | 实际行为 |
 | --- | --- |
-| 应用启动 | 异步生成一次。缓存对象在扫描开始时就已创建，启动后很短时间内的请求可能拿到尚未生成完的文档 |
-| `GET /csap/apidoc?flush=true` | 缓存已存在时直接返回缓存，`flush` 不生效 |
+| 应用启动 | 异步生成一次。1.1.1 起扫描写入一个新对象，完成后才替换缓存；扫描完成前到来的请求会等待，拿到的是完整文档（1.1.0 中可能拿到尚未生成完的文档） |
+| `GET /csap/apidoc?flush=true` | 重新全量扫描，完成后替换缓存（1.1.1 起；1.1.0 中缓存已存在时直接返回缓存，`flush` 不生效） |
 | `GET /csap/apidoc/parent`、`/csap/openapi/postman` | 只读缓存 |
 | `GET /csap/apidoc/method`、`/csap/apidoc/{tableName}`，且 `csap.apidoc.devtool.enabled=true` | 先重新扫描参数里指定的那个类，用新结果替换缓存里该 Controller 的接口列表，再返回 |
 | 同上，但未开启 DevTools | 只读缓存 |
 
 由此可以得出：
 
-- 生产环境改了代码，要**重启应用**才能看到新文档。
+- 生产环境改了代码，要**重启应用**才能看到新文档（`flush=true` 只重新扫描已加载的类，不会加载新代码）。
 - 开发时开启 `csap.apidoc.devtool.enabled`，在页面里点开某个接口就会重新扫描它所在的类，已有 Controller 里方法和参数的变化能及时反映出来。新增的 Controller 类不在启动时确定的扫描结果里，仍然需要重启。
-- `csap.apidoc.devtool.cache` 这个配置项存在，但 1.1.0 的代码没有读取它，设置与否没有区别。
+- `csap.apidoc.devtool.cache` 这个配置项存在，但目前的代码没有读取它，设置与否没有区别。
 - `YamlParamGroupStrategy` 读出的 YAML 规则另有一层按 `StrategyModel` 缓存，通过 DevTools 写入时会同步更新这层缓存。
-- `GET /csap/apidoc/{tableName}?key=` 会破坏缓存，见 [REST 接口](/api/rest) 中的已知问题。
+- 1.1.0 中 `GET /csap/apidoc/{tableName}?key=` 会改坏缓存（之后全量文档永久缺方法），1.1.1 已修复，见 [REST 接口](/api/rest)。
 
 ## 文档页面如何取数
 
