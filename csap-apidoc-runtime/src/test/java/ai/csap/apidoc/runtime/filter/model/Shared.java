@@ -14,6 +14,10 @@ public class Shared {
     private final List<Team> list = new ArrayList<>(Arrays.asList(team, new Team(31, "T"), team));
     private final Map<String, Team> map = new LinkedHashMap<>();
     private final List<Object> nested = new ArrayList<>();
+    // 与上面同一个实例;写成字段使 Jackson 的属性顺序固定(只有 getter 的属性顺序取决于反射返回的方法顺序)
+    private final Team teamAgain = team;
+    private final List<Team> listAgain = list;
+    private final Map<String, Team> mapAgain = map;
 
     public Shared() {
         map.put("x", team);
@@ -28,7 +32,7 @@ public class Shared {
     }
 
     public Team getTeamAgain() {
-        return team;
+        return teamAgain;
     }
 
     public List<Team> getList() {
@@ -36,7 +40,7 @@ public class Shared {
     }
 
     public List<Team> getListAgain() {
-        return list;
+        return listAgain;
     }
 
     public Map<String, Team> getMap() {
@@ -44,7 +48,7 @@ public class Shared {
     }
 
     public Map<String, Team> getMapAgain() {
-        return map;
+        return mapAgain;
     }
 
     public List<Object> getNested() {
