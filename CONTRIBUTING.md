@@ -1,10 +1,10 @@
-# Contributing to CSAP Framework API Doc
+# Contributing to CSAP Apidoc
 
 First off, thank you for considering contributing to CSAP Framework API Doc! It's people like you that make it such a great tool.
 
 ## Table of Contents
 
-- [Contributing to CSAP Framework API Doc](#contributing-to-csap-framework-api-doc)
+- [Contributing to CSAP Apidoc](#contributing-to-csap-apidoc)
   - [Table of Contents](#table-of-contents)
   - [Code of Conduct](#code-of-conduct)
   - [How Can I Contribute?](#how-can-i-contribute)
@@ -30,7 +30,7 @@ First off, thank you for considering contributing to CSAP Framework API Doc! It'
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by our Code of Conduct. By participating, you are expected to uphold this code. Please report unacceptable behavior to support@csap.com.
+This project and everyone participating in it is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to support@csap.ai.
 
 ## How Can I Contribute?
 
@@ -149,47 +149,67 @@ Describe the tests you ran and how to reproduce them.
 - Node.js 16+ (for frontend development)
 - Git
 
-### Backend Setup
+### Backend Setup (Java)
 
 ```bash
-# Clone the repository
 git clone https://github.com/csap-ai/csap-apidoc.git
-cd csap-framework-apidoc
+cd csap-apidoc
 
-# Build the project
+# Build (tests are skipped by default in the root pom)
 mvn clean install
 
-# Run tests
-mvn test
+# Run the tests
+mvn -DskipTests=false test
 ```
 
-### Frontend Setup (DevTools)
+### Frontend Setup
+
+There are two frontends. Their production builds are committed under each module's `src/main/resources/static/` and packed into the jars.
 
 ```bash
-# Navigate to devtools directory
+# Docs page (csap-api.html)
+cd csap-apidoc-ui
+npm ci
+npm run dev       # development server
+npm test          # unit tests (vitest)
+npm run build     # production build
+./build.sh        # build and copy into src/main/resources/static/
+
+# DevTools
 cd csap-apidoc-devtools/devtools
-
-# Install dependencies
-npm install
-
-# Start development server
+npm ci
 npm run dev
-
-# Build for production
-npm run build
 ```
 
-### Running the Example
+If you change a frontend, rebuild it and commit the updated `static/` output in the same pull request.
+
+### Running an Example
 
 ```bash
-# Navigate to example directory
-cd example/example-apidoc-spring-boot
-
-# Run the example application
+cd example/example-spring-boot3   # or example-spring-boot2
 mvn spring-boot:run
+# then open http://localhost:8080/csap-api.html
+```
 
-# Access the documentation
-# http://localhost:8080/csap-api.html
+### Website
+
+The website <https://apidoc.csap.ai> lives in `website/` (Rspress). See [website/README.md](website/README.md):
+
+```bash
+cd website
+npm ci
+npm run dev
+```
+
+Documentation must match the code: every configuration key, annotation attribute and path you document should exist in the repository.
+
+### Go
+
+The Go implementation lives in `csap-apidoc-go/` as a separate Go module (Go 1.22+):
+
+```bash
+cd csap-apidoc-go
+go test ./...
 ```
 
 ## Style Guidelines

@@ -1,0 +1,20 @@
+{
+  "name": "csap-apidoc-website",
+  "private": true,
+  "description": "CSAP Apidoc 官网与文档(https://apidoc.csap.ai)",
+  "scripts": {
+    "sync": "node scripts/sync.mjs",
+    "dev": "npm run sync && rspress dev",
+    "build": "npm run sync && rspress build",
+    "preview": "rspress preview"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/csap-ai/csap-apidoc.git",
+    "directory": "website"
+  },
+  "devDependencies": {
+    "rspress": "1.30.0"
+  }
+}

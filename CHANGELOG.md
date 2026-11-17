@@ -75,6 +75,30 @@ is recommended for everyone on 1.1.0.
 
 ## [1.1.0] - 2026-11-17
 
+First version published to Maven Central.
+
+### Known issues
+
+Fixed in 1.1.1:
+
+- The jars are Java 17 bytecode (built with JDK 17), so 1.1.0 needs Java 17
+  or later.
+- The docs page packed in `csap-apidoc-ui-1.1.0.jar` is still the 1.0.0
+  build. Environments, global headers, auth, request history and replay,
+  named snapshots and i18n exist in the source but are not in the jar.
+- With only `csap-apidoc-boot-starter` on the classpath, doc generation
+  fails with a `NullPointerException`; add
+  `csap-validation-boot-starter` as a workaround.
+- `@DocGlobalHeader` / `@DocAuth` hints are returned by the doc API
+  (`globalHeaderHints`, `authHint`), but the docs page does not read them
+  yet, so nothing is pre-filled.
+
+Planned for 1.2.0:
+
+- Runtime response-field filtering and request validation only record
+  rules in this release; the code that applies them is not part of the
+  open-source modules. They return as a standalone module in 1.2.0.
+
 ### Changed
 
 - **Single mainline & version.** This repository (`csap-ai/csap-apidoc`,
@@ -350,5 +374,5 @@ coordinates if your pom still uses the old names from the docs.
 
 ---
 
-For more details on planned features, see [Product Roadmap](csap-framework-apidoc-devtools/APIDOC开发工具产品路线图.md)
+For planned features, see the [roadmap](docs/ROADMAP.md).
 

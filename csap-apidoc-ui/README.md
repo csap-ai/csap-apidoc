@@ -14,7 +14,7 @@
 个独立产品**,共用 Maven 仓库但没有客户端–服务端关系。
 
 完整的产品定位与数据流见
-[`../docs/features/environment-auth-headers.md`](../docs/features/environment-auth-headers.md) §1–§3。
+[`../docs/design/environment-auth-headers.md`](../docs/design/environment-auth-headers.md) §1–§3。
 
 ---
 
@@ -121,7 +121,7 @@ header。**后者覆盖前者,同名键大小写不敏感**(`Authorization` 与
   `Headers`(键值表)、`Raw`(原始 HTTP 响应)。状态码徽章、耗时、
   响应大小一并显示。
 - **网络/CORS 失败**会落到响应区的红色提示框,而不是吞成 toast。
-  CORS 报错见 [`../docs/cors.md`](../docs/cors.md)。
+  CORS 报错见 [CORS 排错指南](https://apidoc.csap.ai/guide/cors)。
 
 ### 4.5 主密码与保险箱锁
 
@@ -160,7 +160,7 @@ header。**后者覆盖前者,同名键大小写不敏感**(`Authorization` 与
 
 试运行 v2 是浏览器直发 `fetch` 到目标业务服务,会受同源策略约束。绝
 大多数「Send 后 status 0 / Failed to fetch」是 CORS 问题。完整排错指
-南见 [`../docs/cors.md`](../docs/cors.md)(四种典型场景 + 快速 checklist
+南见 [CORS 排错指南](https://apidoc.csap.ai/guide/cors)(四种典型场景 + 快速 checklist
 + 生产部署推荐形态)。
 
 ---
@@ -179,6 +179,6 @@ header。**后者覆盖前者,同名键大小写不敏感**(`Authorization` 与
 
 ## 8. 相关文档
 
-- [`../docs/features/environment-auth-headers.md`](../docs/features/environment-auth-headers.md) — 完整设计文档(数据模型 / UX / 决策记录)
+- [`../docs/design/environment-auth-headers.md`](../docs/design/environment-auth-headers.md) — 完整设计文档(数据模型 / UX / 决策记录)
 - [`src/stores/README-vault.md`](src/stores/README-vault.md) — Vault 存储布局与威胁模型
-- [`../docs/cors.md`](../docs/cors.md) — 试运行 CORS 排错指南
+- [CORS 排错指南](https://apidoc.csap.ai/guide/cors) — 试运行 CORS 排错指南

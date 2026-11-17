@@ -1,15 +1,19 @@
-name: Docs (GitHub Pages)
+name: Website (GitHub Pages)
 
-# Builds the MkDocs Material site under docs/ and deploys it to GitHub Pages.
-# Pages must be enabled with "Source: GitHub Actions" under repo Settings.
+# 构建 website/ 下的 Rspress 官网并发布到 GitHub Pages(自定义域名 apidoc.csap.ai,见 website/docs/public/CNAME)。
+# 仓库 Settings → Pages 的 Source 需为 "GitHub Actions"。
 
 on:
   push:
     branches: [ main ]
     paths:
-      - 'docs/**'
-      - 'mkdocs.yml'
-      - 'requirements-docs.txt'
+      - 'website/**'
+      - 'CHANGELOG.md'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'website/**'
+      - 'CHANGELOG.md'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -19,41 +23,44 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     name: Build site
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # mkdocs-material 'git-revision-date' if added later
+          fetch-depth: 0  # "最后更新"时间取自 git 历史
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
-          cache: pip
-          cache-dependency-path: requirements-docs.txt
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: website/package-lock.json
 
-      - name: Install MkDocs + Material
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-docs.txt
+      - name: Install
+        run: npm ci
 
-      - name: Build with strict link checks (warnings only)
-        run: mkdocs build --site-dir _site
+      - name: Build (含死链检查)
+        run: npm run build
 
       - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: website/doc_build
 
   deploy:
     name: Deploy to GitHub Pages
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment:

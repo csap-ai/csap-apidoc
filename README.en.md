@@ -1,46 +1,49 @@
-# CSAP Framework API Doc
-
 <div align="center">
 
-[中文](README.md) | [English](README.en.md)
+# CSAP Apidoc
 
-[![Maven Central](https://img.shields.io/maven-central/v/com.csap/csap-apidoc-core)](https://central.sonatype.com/artifact/com.csap/csap-apidoc-core)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Build](https://github.com/csap-ai/csap-apidoc/actions/workflows/ci.yml/badge.svg)](https://github.com/csap-ai/csap-apidoc/actions/workflows/ci.yml)
-[![Java](https://img.shields.io/badge/Java-17%2B-orange)](https://openjdk.org/projects/jdk/17/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-green)](https://spring.io/projects/spring-boot)
+**Runtime API documentation, for many languages**
 
-**Contract-first API documentation and validation framework for Spring Boot applications**
+Docs generated when your service starts · per-endpoint control of visible fields · try requests right in the docs page
+
+[![Maven Central](https://img.shields.io/maven-central/v/ai.csap.apidoc.boot/csap-apidoc-boot-starter?label=Maven%20Central)](https://central.sonatype.com/namespace/ai.csap.apidoc)
+[![CI](https://github.com/csap-ai/csap-apidoc/actions/workflows/ci.yml/badge.svg)](https://github.com/csap-ai/csap-apidoc/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Website](https://img.shields.io/badge/docs-apidoc.csap.ai-4f46e5)](https://apidoc.csap.ai)
+
+[简体中文](README.md) | English
 
 </div>
 
----
+## What it is
 
-CSAP Apidoc scans your Spring MVC annotations at startup, generates a live API reference with a built-in testing UI, and exports to OpenAPI, Postman, Markdown, and more -- all with a single `@EnableApidoc` annotation.
+CSAP Apidoc builds your API documentation from the code at runtime: no separate doc files, no extra doc server. Annotate controllers and models (or write YAML rules), start the service, and `/csap-api.html` shows the current docs, where you can also call the endpoints.
 
-## Key Features
+The doc protocol, the rule file format and the docs page are shared across languages, so services written in different languages use the same docs page and the same rule files.
 
-- **Zero Intrusion** -- annotation-driven; no changes to your existing controllers
-- **Auto Generation** -- builds API docs from `@RequestMapping`, `@PathVariable`, `@RequestBody`, etc.
-- **Modern UI** -- React 18 + TypeScript + Ant Design 5 documentation interface
-- **Online Testing** -- built-in HTTP client, no external tools required
-- **Multi-Format Export** -- OpenAPI 3.0, Postman Collection, Markdown, JSON Schema, TypeScript types
-- **Validation Display** -- renders JSR-303 constraints (`@NotNull`, `@Size`, `@Email`, ...) in the docs
-- **Pluggable Storage** -- Annotation (default), SQLite, YAML strategies for parameter persistence
-- **DevTools** -- visual editor for parameter configuration, field management, and data masking
-- **Gateway Aggregation** -- aggregate docs from multiple microservices behind a single gateway UI
+## Language support
 
-## Quick Start
+| Language | Status | Frameworks |
+|---|---|---|
+| **Java** | ✅ Released [1.1.0](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
+| **Go** | 🚧 In development ([PR #13](https://github.com/csap-ai/csap-apidoc/pull/13)) | gin, net/http |
+| **Rust** | 📋 Planned | axum, actix-web |
+| More | 📋 Coming | see the [roadmap](docs/ROADMAP.md) |
 
-### Requirements
+## What you get today (Java 1.1.x)
 
-| Dependency | Version |
-|---|---|
-| JDK | 8+ (17+ recommended) |
-| Maven | 3.6+ |
-| Spring Boot | 2.x or 3.x |
+- **Runtime docs**: annotations are scanned at startup; open `/csap-api.html`.
+- **Field rules**: annotations, YAML files or SQLite decide which request parameters and response fields each endpoint shows; one model can show different fields in different endpoints.
+- **Try it out**: send requests from the docs page with environments, global headers, auth, request history and replay, and named snapshots you can import and export.
+- **Export**: OpenAPI 3.0, Postman v2.1 and Markdown from the docs page, or copy as TypeScript types.
+- **DevTools**: in development, pick fields and configure validation rules in a UI that writes back to YAML.
+- **Gateway aggregation**: browse several services' docs from one page.
 
-### 1. Add the dependency
+> Runtime **response-field filtering** and **request validation** only record rules in 1.1.x and do not enforce them. They come back as a standalone module in 1.2.0; see the [roadmap](docs/ROADMAP.md).
+
+## Quick start (Java)
+
+**1. Add the dependencies** (1.1.0 needs both starters; from 1.1.1 the first one is enough):
 
 ```xml
 <dependency>
@@ -48,276 +51,74 @@ CSAP Apidoc scans your Spring MVC annotations at startup, generates a live API r
     <artifactId>csap-apidoc-boot-starter</artifactId>
     <version>1.1.0</version>
 </dependency>
+<dependency>
+    <groupId>ai.csap.apidoc.boot</groupId>
+    <artifactId>csap-validation-boot-starter</artifactId>
+    <version>1.1.0</version>
+</dependency>
 ```
 
-### 2. Enable on your application class
+**2. Enable it** with the packages to scan:
 
 ```java
 @SpringBootApplication
-@EnableApidoc("com.yourcompany.yourproject")
-public class Application {
+@EnableApidoc("com.example.demo")
+public class DemoApplication {
     public static void main(String[] args) {
-        SpringApplication.run(Application.class, args);
+        SpringApplication.run(DemoApplication.class, args);
     }
 }
 ```
 
-### 3. Annotate your controllers
+**3. Annotate**:
 
 ```java
 @RestController
 @RequestMapping("/api/users")
-@Api(tags = "User Management", description = "User CRUD operations")
+@Api(value = "Users")
 public class UserController {
 
     @GetMapping("/{id}")
-    @ApiOperation(value = "Get User", description = "Fetch a user by ID")
-    public Response<User> getUser(@PathVariable Long id) {
-        return Response.success(userService.findById(id));
-    }
+    @ApiOperation("Get a user")
+    public User get(@ApiProperty(value = "User ID", required = true) @PathVariable Long id) { ... }
+}
 
-    @PostMapping
-    @ApiOperation(value = "Create User", description = "Create a new user")
-    public Response<User> createUser(@Valid @RequestBody UserCreateRequest body) {
-        return Response.success(userService.create(body));
-    }
+@ApiModel(description = "User")
+public class User {
+    @ApiModelProperty(value = "User ID", forceRep = true)
+    private Long id;
+    @ApiModelProperty(value = "User name", forceReq = true, forceRep = true)
+    private String name;
 }
 ```
 
-### 4. Open the docs
+**4. Start** the service and open <http://localhost:8080/csap-api.html>.
 
-Start your application and visit:
-
-| URL | Description |
-|---|---|
-| `http://localhost:8080/csap-api.html` | API documentation UI |
-| `http://localhost:8080/api/csap/doc` | Raw API data endpoint |
-| `http://localhost:8080/csap/openapi/postman` | Postman Collection export |
-
-## Architecture
-
-```
-┌──────────────────────────────────────────────────────────┐
-│                  Spring Boot Application                  │
-├──────────────────────────────────────────────────────────┤
-│                                                            │
-│  ┌────────────┐   ┌──────────────┐   ┌───────────────┐  │
-│  │ Controller │──▶│  Apidoc Core │──▶│   Storage     │  │
-│  │   Layer    │   │   Scanner    │   │   Strategy    │  │
-│  └────────────┘   └──────┬───────┘   └───────┬───────┘  │
-│                          │                     │          │
-│                          ▼                     ▼          │
-│                   ┌──────────────┐   ┌───────────────┐  │
-│                   │  Annotation  │   │ SQLite / YAML │  │
-│                   │  Processor   │   │ / Standard    │  │
-│                   └──────────────┘   └───────────────┘  │
-│                                                            │
-│  ┌────────────┐   ┌──────────────┐   ┌───────────────┐  │
-│  │  REST API  │──▶│   DevTools   │──▶│   Web UI      │  │
-│  │  Endpoints │   │   Service    │   │   (React 18)  │  │
-│  └────────────┘   └──────────────┘   └───────────────┘  │
-│                                                            │
-└──────────────────────────────────────────────────────────┘
-```
-
-## Modules
-
-### Core
-
-| Module | Description |
-|---|---|
-| `csap-apidoc-annotation` | `@Api`, `@ApiOperation`, `@ApiModel`, `@ApiProperty` annotations |
-| `csap-apidoc-common` | Shared utilities, constants, and base models |
-| `csap-apidoc-core` | Document scanning, parsing, and generation engine |
-| `csap-apidoc-boot-starter` | Spring Boot auto-configuration starter |
-
-### Extensions
-
-| Module | Description |
-|---|---|
-| `csap-apidoc-strategy` | Storage strategy abstraction layer |
-| `csap-apidoc-sqlite` | SQLite-based document persistence |
-| `csap-apidoc-yaml` | YAML file-based document persistence |
-| `csap-apidoc-standard` | Standard-format document output |
-| `csap-apidoc-devtools` | Visual configuration and management interface |
-| `csap-apidoc-ui` | React-based documentation UI |
-| `csap-validation-core` | JSR-303 validation rule integration |
-
-## Configuration
-
-### Parameter Strategy
-
-Choose how parameter metadata is stored via `paramType`:
-
-```java
-@EnableApidoc(
-    value = "com.yourcompany.yourproject",
-    paramType = ApiStrategyType.ANNOTATION   // default
-)
-```
-
-| Strategy | Best For | Key Trait |
-|---|---|---|
-| **ANNOTATION** (default) | Most projects | Type-safe, lives in source code |
-| **SQL_LITE** | Dynamic parameter management | Visual config via DevTools |
-| **YAML** | Version-controlled docs | Human-readable, easy to review |
-
-### Multi-Package Scanning
-
-```java
-@EnableApidoc(
-    apiPackages   = {"com.example.controller"},
-    enumPackages  = {"com.example.enums"},
-    modelPackages = {"com.example.model"},
-    showChildPackageFlag = true
-)
-```
-
-### DevTools
-
-Add the optional DevTools dependency for a visual editor:
-
-```xml
-<dependency>
-    <groupId>ai.csap.apidoc</groupId>
-    <artifactId>csap-apidoc-devtools</artifactId>
-    <version>1.1.0</version>
-    <scope>provided</scope>
-</dependency>
-```
-
-Then visit `http://localhost:8080/csap-api-devtools.html` after startup.
-
-### Gateway Aggregation
-
-Aggregate API docs from multiple microservices behind a gateway:
-
-```yaml
-csap:
-  apidoc:
-    resources:
-      - name: Admin API
-        url: /admin-service/csap/apidoc/parent
-        version: v1.0
-      - name: Store API
-        url: /store-service/csap/apidoc/parent
-        version: v1.0
-```
-
-### Environment Variable Support
-
-`path` and `fileName` accept Spring Boot placeholder syntax for per-environment overrides:
-
-```java
-@EnableApidoc(
-    value = "com.yourcompany.yourproject",
-    paramType = ApiStrategyType.SQL_LITE,
-    path     = "${csap.apidoc.data.path:/tmp/apidoc}",
-    fileName = "${csap.apidoc.db.file:${spring.application.name}}"
-)
-```
-
-## Core Annotations
-
-| Annotation | Target | Purpose |
-|---|---|---|
-| `@Api` | Class | Define an API group on a controller |
-| `@ApiOperation` | Method | Describe an API endpoint |
-| `@ApiModel` | Class | Describe a data model / DTO |
-| `@ApiModelProperty` | Field | Describe a model field (type, example, required, sensitive) |
-| `@ApiProperty` | Method | Supplement parameter docs for a method |
-| `@ApiPropertys` | Method | Define docs for multiple parameters at once |
-| `@EnumValue` | Field | Mark the stored code field of an enum |
-| `@EnumMessage` | Field | Mark the display label field of an enum |
+Why `forceReq` / `forceRep`, and how to choose fields per endpoint: see [Quick start](https://apidoc.csap.ai/guide/quick-start) (Chinese).
 
 ## Documentation
 
-| Resource | Description |
+Full documentation (currently in Chinese) lives at **<https://apidoc.csap.ai>**. See also the [changelog](CHANGELOG.md) and the [roadmap](docs/ROADMAP.md).
+
+## Modules
+
+| Coordinates | Purpose |
 |---|---|
-| [Quick Start Guide](QUICK_START.md) | 5-minute integration walkthrough |
-| [Annotation Reference](ANNOTATION_REFERENCE.md) | Complete annotation API |
-| [Gateway Aggregation](GATEWAY-AGGREGATION.md) | Multi-service documentation setup |
-| [FAQ](FAQ.md) | 60+ frequently asked questions |
-| [Architecture](ARCHITECTURE.md) | System design and internals |
-| [Postman Converter](csap-apidoc-core/README-Postman.md) | Postman export details |
+| `ai.csap.apidoc.boot:csap-apidoc-boot-starter` | Spring Boot starter: core, docs page, YAML/SQLite strategies, DevTools |
+| `ai.csap.apidoc.boot:csap-validation-boot-starter` | Validation starter |
+| `ai.csap.apidoc:csap-apidoc-annotation` | Annotations |
+| `ai.csap.apidoc:csap-apidoc-core` | Scanning and doc generation |
+| `ai.csap.apidoc:csap-apidoc-ui` | Docs page |
+| `ai.csap.apidoc:csap-apidoc-devtools` | DevTools |
+| `ai.csap.apidoc:csap-apidoc-yaml` / `csap-apidoc-sqlite` / `csap-apidoc-standard` | Rule storage strategies |
+| `ai.csap.apidoc:csap-validation-core` | Validation engine |
 
-## Examples
-
-Two example projects are provided:
-
-- **[Spring Boot 2.x Example](example/example-spring-boot2)** -- `javax.servlet`, JDK 8/11
-- **[Spring Boot 3.x Example](example/example-spring-boot3)** -- `jakarta.servlet`, JDK 17+
-- [Annotation Guide](example/example-spring-boot3/ANNOTATIONS.md) -- correct usage patterns
-- [Strategy Comparison](example/example-spring-boot3/STRATEGIES.md) -- ANNOTATION vs SQLite vs YAML
+Java modules live at the repository root, the Go implementation in `csap-apidoc-go/`, and the website in `website/`.
 
 ## Contributing
 
-We welcome contributions of all kinds -- bug reports, feature requests, documentation improvements, and code.
-
-Please read our **[Contributing Guide](CONTRIBUTING.md)** before submitting a pull request.
-
-Quick overview:
-
-1. Fork the repo and create a branch from `main`
-2. Follow the existing code style ([style guide](docs/development/code-style/CODE_STYLE_README.md))
-3. Add tests for new functionality
-4. Ensure `mvn test` passes
-5. Open a Pull Request
-
-See also: [Security Policy](SECURITY.md)
-
-## Roadmap
-
-### Completed
-
-- Core documentation generation
-- Multiple annotation support (`@Api`, `@ApiOperation`, `@ApiModel`, `@ApiProperty`, ...)
-- DevTools visual editor
-- React 18 frontend
-- Postman Collection export
-- Pluggable storage strategies (Annotation, SQLite, YAML)
-- JSR-303 validation integration
-- Sensitive data masking
-
-### In Progress
-
-- Enhanced online API testing
-- Mock data generation
-- JSON Schema import/export
-- Field library and templates
-
-### Planned
-
-- Version management and change tracking
-- Team collaboration features
-- API lifecycle management
-- Internationalization (i18n) and dark mode
-
-Full roadmap: [Product Roadmap](csap-apidoc-devtools/APIDOC开发工具产品路线图.md)
+Issues and pull requests are welcome; please read [CONTRIBUTING.md](CONTRIBUTING.md) first. Report security issues privately as described in [SECURITY.md](SECURITY.md), not in public issues.
 
 ## License
 
-This project is licensed under the [Apache License 2.0](LICENSE).
-
-## Part of CSAP
-
-CSAP Framework Apidoc is the open-source contract layer of the **[CSAP Platform](https://github.com/csap-ai/csap-platform)** (Contract-driven System Analysis Platform). CSAP ingests API contracts and SkyWalking traces to surface AI-powered runtime insights, automated regression detection, and intelligent upgrade planning.
-
-- [CSAP Platform](https://github.com/csap-ai/csap-platform) -- full platform repository
-- [csap.ai](https://csap.ai) -- project website
-
-## Contact
-
-- **Issues**: [GitHub Issues](https://github.com/csap-ai/csap-apidoc/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/csap-ai/csap-apidoc/discussions)
-- **Email**: support@csap.ai
-
----
-
-<div align="center">
-
-If this project is useful to you, please consider giving it a star.
-
-Made with care by the CSAP Team
-
-</div>
+[Apache License 2.0](LICENSE)
