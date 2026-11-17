@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go/model"
-	"github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go/strategy"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
 )
 
 type result struct {
@@ -284,7 +284,7 @@ func TestDisplayName(t *testing.T) {
 			t.Errorf("%v: got %q want %q", typ, got, want)
 		}
 	}
-	if got := fullName(reflect.TypeOf(page[item]{})); got != "github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go.page" {
+	if got := fullName(reflect.TypeOf(page[item]{})); got != "github.com/csap-ai/csap-apidoc/csap-apidoc-go.page" {
 		t.Errorf("fullName: %s", got)
 	}
 }

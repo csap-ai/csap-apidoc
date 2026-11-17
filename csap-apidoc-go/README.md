@@ -15,8 +15,8 @@ CSAP Apidoc 的 Go 实现，协议为 Apache-2.0。
 
 ```go
 import (
-    apidoc "github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go"
-    ginadapter "github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go/adapter/gin"
+    apidoc "github.com/csap-ai/csap-apidoc/csap-apidoc-go"
+    ginadapter "github.com/csap-ai/csap-apidoc/csap-apidoc-go/adapter/gin"
 )
 
 type GetUserReq struct {

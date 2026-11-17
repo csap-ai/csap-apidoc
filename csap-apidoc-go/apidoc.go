@@ -10,8 +10,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go/model"
-	"github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go/strategy"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
 )
 
 // Wrapper 描述统一外层包装,如 {code,message,data}。注册一次,所有接口的返回都套在里面,

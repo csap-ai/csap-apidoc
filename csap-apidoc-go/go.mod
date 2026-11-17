@@ -1,4 +1,4 @@
-module github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go
+module github.com/csap-ai/csap-apidoc/csap-apidoc-go
 
 go 1.22
 

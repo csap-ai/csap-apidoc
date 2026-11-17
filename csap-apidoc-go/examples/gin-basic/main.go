@@ -12,10 +12,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	apidoc "github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go"
-	ginadapter "github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go/adapter/gin"
-	"github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go/model"
-	"github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go/strategy"
+	apidoc "github.com/csap-ai/csap-apidoc/csap-apidoc-go"
+	ginadapter "github.com/csap-ai/csap-apidoc/csap-apidoc-go/adapter/gin"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
 )
 
 // Result 是统一外层包装,对应 Java 的 ApiResult。

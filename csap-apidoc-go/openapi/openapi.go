@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go/model"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
 )
 
 // Build 把文档模型转成 OpenAPI 3.1 文档(JSON 对象)。

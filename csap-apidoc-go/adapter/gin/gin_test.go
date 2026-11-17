@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	apidoc "github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go"
+	apidoc "github.com/csap-ai/csap-apidoc/csap-apidoc-go"
 )
 
 type userCtl struct{}
@@ -37,7 +37,7 @@ func TestMountAndRegister(t *testing.T) {
 	}
 
 	snap := doc.Snapshot()
-	group := "github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go/adapter/gin.userCtl"
+	group := "github.com/csap-ai/csap-apidoc/csap-apidoc-go/adapter/gin.userCtl"
 	m := snap.Method(group, group+".Get")
 	if m == nil {
 		t.Fatalf("inferred method missing, groups: %v", names(snap))

@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go/model"
-	"github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go/strategy"
-	"github.com/csap-ai/csap-framework-apidoc/csap-apidoc-go/strategy/tag"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy/tag"
 )
 
 type builder struct {
