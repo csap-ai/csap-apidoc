@@ -26,23 +26,28 @@ import ai.csap.apidoc.runtime.filter.model.Match;
 import ai.csap.apidoc.runtime.filter.model.MatchPage;
 
 /**
- * 粗略的性能检查(不是 JMH),默认跳过:
+ * 过滤开销的性能检查(不是 JMH),默认跳过:
  * <pre>mvn -pl csap-apidoc-runtime test -DskipTests=false -Dtest=FilterOverheadBenchmarkTest -Dcsap.perf=true</pre>
- * 返回体:100 行 Match(含嵌套对象、Map),Jackson 输出约 17KB。各场景交替运行多轮,取每轮平均耗时的最小值。
+ * 返回体:100 行 Match(含嵌套对象、Map),Jackson 输出约 17KB。
  * <ul>
  *   <li>无规则接口:只多两个 ResponseBodyAdvice 的判断(序列化不变),单独计时;</li>
  *   <li>规则放行全部字段:输出不变,差值就是过滤判定的开销;</li>
  *   <li>典型规则:只放行部分字段,输出变小。</li>
  * </ul>
+ * 机器负载高、波动大时,绝对耗时没有意义,只看比值:同一个 JVM 内充分预热后,每一轮紧挨着各跑一批
+ * "不过滤"和"过滤"(轮间交换先后顺序),得到这一轮的耗时比值;报告多轮比值的中位数和四分位范围。
+ * 轮数、每批次数可用 {@code -Dcsap.perf.rounds}、{@code -Dcsap.perf.batch} 调整。
  */
 @EnabledIfSystemProperty(named = "csap.perf", matches = "true")
 class FilterOverheadBenchmarkTest {
 
     private static final int ROWS = 100;
 
-    private static final int ROUNDS = 15;
+    private static final int ROUNDS = Integer.getInteger("csap.perf.rounds", 41);
 
-    private static final int ITERATIONS = 2000;
+    private static final int BATCH = Integer.getInteger("csap.perf.batch", 400);
+
+    private static final long WARMUP_NANOS = Long.getLong("csap.perf.warmupMs", 4000) * 1_000_000;
 
     private static final List<String> ALL_FIELDS = Arrays.asList("total", "size", "rows.id", "rows.leagueId",
             "rows.internal", "rows.home.id", "rows.home.name", "rows.home.secret", "rows.away.id", "rows.away.name",
@@ -141,6 +146,27 @@ class FilterOverheadBenchmarkTest {
         }
     }
 
+    private static long sink;
+
+    private static long batch(IntSupplier task, int n) {
+        long start = System.nanoTime();
+        for (int i = 0; i < n; i++) {
+            sink += task.getAsInt();
+        }
+        return System.nanoTime() - start;
+    }
+
+    private static double percentile(double[] sorted, double p) {
+        double idx = p * (sorted.length - 1);
+        int lo = (int) Math.floor(idx);
+        int hi = (int) Math.ceil(idx);
+        return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+    }
+
+    private static String time(double nanos) {
+        return nanos < 10_000 ? String.format("%.0fns", nanos) : String.format("%.1fµs", nanos / 1000);
+    }
+
     private static void report(String name, Map<String, IntSupplier> cases) {
         Map<String, IntSupplier> ordered = new LinkedHashMap<>();
         for (String key : Arrays.asList("不过滤", "规则放行全部", "典型规则", "两个 advice")) {
@@ -148,37 +174,56 @@ class FilterOverheadBenchmarkTest {
                 ordered.put(key, cases.get(key));
             }
         }
-        Map<String, Double> best = new LinkedHashMap<>();
-        long sink = 0;
-        for (IntSupplier task : ordered.values()) {
-            for (int i = 0; i < ITERATIONS; i++) {
-                sink += task.getAsInt();
+        // 预热:轮流执行直到总时长
+        long warmEnd = System.nanoTime() + WARMUP_NANOS;
+        while (System.nanoTime() < warmEnd) {
+            for (IntSupplier task : ordered.values()) {
+                batch(task, BATCH / 4 + 1);
             }
         }
-        for (int r = 0; r < ROUNDS; r++) {
-            for (Map.Entry<String, IntSupplier> e : ordered.entrySet()) {
-                long start = System.nanoTime();
-                for (int i = 0; i < ITERATIONS; i++) {
-                    sink += e.getValue().getAsInt();
-                }
-                double nanos = (System.nanoTime() - start) / (double) ITERATIONS;
-                best.merge(e.getKey(), nanos, Math::min);
-            }
-        }
+        IntSupplier base = ordered.get("不过滤");
         StringBuilder sb = new StringBuilder(name).append(':');
-        Double base = best.get("不过滤");
-        best.forEach((k, v) -> {
-            sb.append(' ').append(k).append(' ');
-            if (v < 10_000) {
-                sb.append(String.format("%.0fns", v));
-            } else {
-                sb.append(String.format("%.1fµs", v / 1000));
+        if (base == null) {
+            ordered.forEach((k, task) -> {
+                double[] per = new double[ROUNDS];
+                for (int r = 0; r < ROUNDS; r++) {
+                    per[r] = batch(task, BATCH) / (double) BATCH;
+                }
+                Arrays.sort(per);
+                sb.append(' ').append(k).append(" 中位 ").append(time(percentile(per, 0.5))).append(" |");
+            });
+            System.out.println(sb);
+            return;
+        }
+        for (Map.Entry<String, IntSupplier> e : ordered.entrySet()) {
+            if (e.getValue() == base) {
+                continue;
             }
-            if (base != null && !"不过滤".equals(k)) {
-                sb.append(String.format(" (%+.1f%%)", (v - base) / base * 100));
+            double[] ratios = new double[ROUNDS];
+            double[] baseTimes = new double[ROUNDS];
+            double[] filterTimes = new double[ROUNDS];
+            for (int r = 0; r < ROUNDS; r++) {
+                long b;
+                long f;
+                if ((r & 1) == 0) {
+                    b = batch(base, BATCH);
+                    f = batch(e.getValue(), BATCH);
+                } else {
+                    f = batch(e.getValue(), BATCH);
+                    b = batch(base, BATCH);
+                }
+                ratios[r] = (double) f / b;
+                baseTimes[r] = b / (double) BATCH;
+                filterTimes[r] = f / (double) BATCH;
             }
-            sb.append(" |");
-        });
+            Arrays.sort(ratios);
+            Arrays.sort(baseTimes);
+            Arrays.sort(filterTimes);
+            sb.append(String.format(" %s 开销 %+.1f%% (IQR %+.1f%% ~ %+.1f%%, 不过滤 %s / 过滤 %s) |", e.getKey(),
+                    (percentile(ratios, 0.5) - 1) * 100, (percentile(ratios, 0.25) - 1) * 100,
+                    (percentile(ratios, 0.75) - 1) * 100, time(percentile(baseTimes, 0.5)),
+                    time(percentile(filterTimes, 0.5))));
+        }
         System.out.println(sb + (sink == 42 ? " " : ""));
     }
 }

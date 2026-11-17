@@ -6,7 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -20,6 +23,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import ai.csap.apidoc.event.ApidocRulesRefreshedEvent;
+import ai.csap.apidoc.runtime.filter.Golden;
 import ai.csap.apidoc.runtime.filter.ResponseRuleRegistry;
 
 /**
@@ -116,5 +120,33 @@ abstract class AbstractFilterIntegrationTest {
         // fastjson 转换器排在第一个时字符串会带引号,与过滤无关
         String text = mvc.perform(get("/text")).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
         assertEquals("plain", text.replace("\"", ""));
+    }
+
+    String raw(String path) throws Exception {
+        return mvc.perform(get(path)).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+    }
+
+    /**
+     * 完整 Spring MVC 流程的原始响应与黄金样本逐字节一致(含热更新前后)
+     */
+    @Test
+    @Order(6)
+    void rawBodiesMatchGolden() throws Exception {
+        Map<String, String> actual = new LinkedHashMap<>();
+        java.util.List<String> paths = Arrays.asList("/page", "/result", "/wrapped", "/csapMode", "/offMode", "/list",
+                "/noRules", "/viewed", "/text");
+        publishV1();
+        for (String p : paths) {
+            actual.put("v1" + p, raw(p));
+        }
+        publish(DemoApplication.documentV2());
+        for (String p : paths) {
+            actual.put("v2" + p, raw(p));
+        }
+        publishV1();
+        for (String p : paths) {
+            actual.put("v1again" + p, raw(p));
+        }
+        Golden.verify("it-" + getClass().getSimpleName(), actual);
     }
 }
