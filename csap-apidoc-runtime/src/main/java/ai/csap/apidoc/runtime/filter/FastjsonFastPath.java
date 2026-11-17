@@ -167,6 +167,25 @@ final class FastjsonFastPath {
     }
 
     /**
+     * csap 模式快速写出(与原来"挂上按类型判断的 PropertyPreFilter 后 {@code serializer.write(value)}"等价):
+     * 类型规则只与对象的类型有关,{@link Masked} 对每个 Bean / Map 类型直接返回按规则预编译的序列化器
+     *
+     * @param serializer JSONSerializer(满足 {@link #eligible})
+     * @param value      值(非 null)
+     * @param rules      接口的类型规则
+     * @param session    过滤状态
+     */
+    static void writeCsap(JSONSerializer serializer, Object value, TypeRules rules, FilterSession session)
+            throws IOException {
+        Masked masked = new Masked(serializer, session, rules);
+        try {
+            masked.write(value);
+        } finally {
+            masked.copyTo(serializer);
+        }
+    }
+
+    /**
      * 一段正在写出的值:掩码和写法
      */
     static final class Frame {
@@ -271,12 +290,22 @@ final class FastjsonFastPath {
      */
     static final class Masked extends JSONSerializer {
         private final FilterSession session;
+
+        /**
+         * csap 模式的类型规则;path 模式为 null
+         */
+        private final TypeRules rules;
         private Frame[] frames = new Frame[16];
         private int size;
 
         Masked(JSONSerializer source, FilterSession session) {
+            this(source, session, null);
+        }
+
+        Masked(JSONSerializer source, FilterSession session, TypeRules rules) {
             super(source.out, source.getMapping());
             this.session = session;
+            this.rules = rules;
             copy(source, this);
         }
 
@@ -314,11 +343,54 @@ final class FastjsonFastPath {
 
         @Override
         public ObjectSerializer getObjectWriter(Class<?> clazz) {
+            if (rules != null) {
+                return csapWriter(clazz);
+            }
             Frame top = size == 0 ? NATIVE_FRAME : frames[size - 1];
             if (top.kind == Frame.NATIVE || !FilterSession.isContainerType(clazz)) {
                 return super.getObjectWriter(clazz);
             }
             return Dispatcher.INSTANCE;
+        }
+
+        /**
+         * csap 模式:Bean 用按规则预编译的副本(总是副本:其字段缓存的序列化器来自本类,不能放进共享的原序列化器);
+         * 规则作用于该类型的 Map 用只输出放行键的 MapSerializer;其他类型用原序列化器
+         */
+        private ObjectSerializer csapWriter(Class<?> clazz) {
+            ObjectSerializer serializer = super.getObjectWriter(clazz);
+            if (!(serializer instanceof JavaBeanSerializer) && !(serializer instanceof MapSerializer)) {
+                Class<?> type = serializer == null ? null : serializer.getClass();
+                if (!FilterSession.isContainerType(clazz) || type == ListSerializer.class
+                        || type == CollectionCodec.class || type == ObjectArrayCodec.class) {
+                    return serializer;
+                }
+                // 其他容器序列化器(如带固定元素序列化器的数组、自定义序列化器)可能绕过本类直接用原序列化器
+                return serializer == null ? null
+                        : rules.plan(PlanCache.FASTJSON, new ConfigKey(getMapping(), clazz), k -> new LegacyWriter(serializer));
+            }
+            SerializeConfig config = getMapping();
+            Object key = config == SerializeConfig.globalInstance ? clazz : new ConfigKey(config, clazz);
+            return rules.plan(PlanCache.FASTJSON, key, k -> csapPlan(serializer, clazz));
+        }
+
+        private ObjectSerializer csapPlan(ObjectSerializer serializer, Class<?> clazz) {
+            TypeRules r = rules;
+            if (serializer instanceof MapSerializer) {
+                if (serializer.getClass() != MapSerializer.class || !r.appliesTo(clazz)) {
+                    return serializer.getClass() == MapSerializer.class ? serializer : new LegacyWriter(serializer);
+                }
+                MapSerializer map = new MapSerializer();
+                map.getPropertyPreFilters().add((s, object, name) -> r.allows(object.getClass(), name));
+                return map;
+            }
+            try {
+                ObjectSerializer subset = Plan.copy((JavaBeanSerializer) serializer, f -> r.allows(clazz, f.name),
+                        true);
+                return subset != null ? subset : new LegacyWriter(serializer);
+            } catch (Exception | LinkageError e) {
+                return new LegacyWriter(serializer);
+            }
         }
 
         /**
@@ -465,6 +537,30 @@ final class FastjsonFastPath {
         }
     }
 
+    /**
+     * csap 模式下无法预编译的序列化器:写出期间挂上原来的按类型判断的 PropertyPreFilter
+     */
+    static final class LegacyWriter implements ObjectSerializer {
+        private final ObjectSerializer target;
+
+        LegacyWriter(ObjectSerializer target) {
+            this.target = target;
+        }
+
+        @Override
+        public void write(JSONSerializer serializer, Object object, Object fieldName, Type fieldType, int features)
+                throws IOException {
+            FastjsonResponseFilterEngine.Filters filters =
+                    new FastjsonResponseFilterEngine.Filters(((Masked) serializer).session, false);
+            serializer.getPropertyPreFilters().add(filters);
+            try {
+                target.write(serializer, object, fieldName, fieldType, features);
+            } finally {
+                serializer.getPropertyPreFilters().remove(filters);
+            }
+        }
+    }
+
     private static final class ConfigKey {
         private final SerializeConfig config;
         private final Class<?> type;
@@ -533,6 +629,52 @@ final class FastjsonFastPath {
                 }
             }
             return LEGACY;
+        }
+
+        /**
+         * 原序列化器的副本,只含 keep 放行的字段(原序列化器是 ASM 的,副本也用 ASM);不是 fastjson 自带的
+         * Bean 序列化器时返回 null
+         */
+        static JavaBeanSerializer copy(JavaBeanSerializer serializer, java.util.function.Predicate<FieldInfo> keep,
+                                       boolean asmAllowed) throws Exception {
+            Class<?> serializerType = serializer.getClass();
+            boolean asm = serializerType != JavaBeanSerializer.class;
+            if (asm && !serializerType.getSimpleName().startsWith("ASMSerializer_")) {
+                return null;
+            }
+            SerializeBeanInfo info = (SerializeBeanInfo) BEAN_INFO.get(serializer);
+            FieldInfo[] fields = (FieldInfo[]) BI_FIELDS.get(info);
+            FieldInfo[] sorted = (FieldInfo[]) BI_SORTED.get(info);
+            List<FieldInfo> kept = new ArrayList<>(fields.length);
+            for (FieldInfo f : fields) {
+                if (keep.test(f)) {
+                    kept.add(f);
+                }
+            }
+            FieldInfo[] keptFields = kept.toArray(new FieldInfo[0]);
+            FieldInfo[] keptSorted;
+            if (sorted == fields) {
+                keptSorted = keptFields;
+            } else {
+                List<FieldInfo> list = new ArrayList<>(sorted.length);
+                for (FieldInfo f : sorted) {
+                    if (keep.test(f)) {
+                        list.add(f);
+                    }
+                }
+                keptSorted = list.toArray(new FieldInfo[0]);
+            }
+            SerializeBeanInfo subset = new SerializeBeanInfo((Class<?>) BI_TYPE.get(info),
+                    (com.alibaba.fastjson.annotation.JSONType) BI_JSON_TYPE.get(info), (String) BI_TYPE_NAME.get(info),
+                    (String) BI_TYPE_KEY.get(info), BI_FEATURES.getInt(info), keptFields, keptSorted);
+            if (asm && asmAllowed) {
+                try {
+                    return new ASMSerializerFactory().createJavaBeanSerializer(subset);
+                } catch (Exception | LinkageError e) {
+                    // 退回非 ASM
+                }
+            }
+            return new JavaBeanSerializer(subset);
         }
 
         private static Plan bean(JavaBeanSerializer serializer, FieldMask mask) throws Exception {

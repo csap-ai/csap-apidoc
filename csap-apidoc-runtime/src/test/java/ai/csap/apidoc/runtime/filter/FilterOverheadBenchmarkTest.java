@@ -60,6 +60,14 @@ class FilterOverheadBenchmarkTest {
 
     private static final FieldMask SOME = FieldMask.compile(TYPICAL, Set.of("rows.byHalf"));
 
+    /**
+     * csap 模式下与典型规则效果相同的类型规则
+     */
+    private static final TypeRules CSAP_TYPICAL = TypeRules.EMPTY
+            .and(MatchPage.class, Set.of("rows", "total"), Set.of())
+            .and(Match.class, Set.of("id", "league_id", "home", "away", "by_half"), Set.of())
+            .and(ai.csap.apidoc.runtime.filter.model.Team.class, Set.of("name"), Set.of());
+
     private static MatchPage payload() {
         MatchPage page = new MatchPage();
         page.getRows().clear();
@@ -84,7 +92,9 @@ class FilterOverheadBenchmarkTest {
                 "规则放行全部", () -> bytes(() -> converter.writeValueAsBytes(
                         engine.apply(page, Engines.path(ALL, page), type))),
                 "典型规则", () -> bytes(() -> converter.writeValueAsBytes(
-                        engine.apply(page, Engines.path(SOME, page), type)))));
+                        engine.apply(page, Engines.path(SOME, page), type))),
+                "csap 典型规则", () -> bytes(() -> converter.writeValueAsBytes(
+                        engine.apply(page, Engines.csap(CSAP_TYPICAL, page), type)))));
     }
 
     @Test
@@ -94,7 +104,9 @@ class FilterOverheadBenchmarkTest {
         report("fastjson", Map.of(
                 "不过滤", () -> JSON.toJSONBytes(page).length,
                 "规则放行全部", () -> JSON.toJSONBytes(engine.apply(page, Engines.path(ALL, page), null)).length,
-                "典型规则", () -> JSON.toJSONBytes(engine.apply(page, Engines.path(SOME, page), null)).length));
+                "典型规则", () -> JSON.toJSONBytes(engine.apply(page, Engines.path(SOME, page), null)).length,
+                "csap 典型规则", () -> JSON.toJSONBytes(engine.apply(page, Engines.csap(CSAP_TYPICAL, page), null))
+                        .length));
     }
 
     @Test
@@ -106,7 +118,9 @@ class FilterOverheadBenchmarkTest {
                 "规则放行全部", () -> com.alibaba.fastjson2.JSON.toJSONBytes(
                         engine.apply(page, Engines.path(ALL, page), null)).length,
                 "典型规则", () -> com.alibaba.fastjson2.JSON.toJSONBytes(
-                        engine.apply(page, Engines.path(SOME, page), null)).length));
+                        engine.apply(page, Engines.path(SOME, page), null)).length,
+                "csap 典型规则", () -> com.alibaba.fastjson2.JSON.toJSONBytes(
+                        engine.apply(page, Engines.csap(CSAP_TYPICAL, page), null)).length));
     }
 
     /**
@@ -169,7 +183,7 @@ class FilterOverheadBenchmarkTest {
 
     private static void report(String name, Map<String, IntSupplier> cases) {
         Map<String, IntSupplier> ordered = new LinkedHashMap<>();
-        for (String key : Arrays.asList("不过滤", "规则放行全部", "典型规则", "两个 advice")) {
+        for (String key : Arrays.asList("不过滤", "规则放行全部", "典型规则", "csap 典型规则", "两个 advice")) {
             if (cases.containsKey(key)) {
                 ordered.put(key, cases.get(key));
             }

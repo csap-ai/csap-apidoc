@@ -120,7 +120,11 @@ public class Fastjson2ResponseFilterEngine implements ResponseFilterEngine {
                 return;
             }
             FilterSession session = root.session;
-            boolean fast = session.isPathMode() && Fastjson2FastPath.eligible(writer, features);
+            boolean fast = Fastjson2FastPath.eligible(writer, features);
+            if (fast && !session.isPathMode()) {
+                Fastjson2FastPath.writeRoot(writer, root.value, session.getEndpoint().getTypeRules(), session);
+                return;
+            }
             if (fast && root.value == session.getOriginal()) {
                 session.begin(root.value);
                 try {

@@ -141,58 +141,77 @@ final class Fastjson2FastPath {
      *
      * @param writer  JSONWriter
      * @param value   值(非 null)
-     * @param mask    值适用的掩码(不是 OUTSIDE)
+     * @param scope   path 模式为值适用的掩码(不是 OUTSIDE),csap 模式为接口的类型规则
      * @param session 过滤状态
      */
-    static void writeRoot(JSONWriter writer, Object value, FieldMask mask, FilterSession session) {
+    static void writeRoot(JSONWriter writer, Object value, Object scope, FilterSession session) {
         FilterSession previous = CURRENT.get();
         CURRENT.set(session);
         try {
-            write(writer, value, mask);
+            write(writer, value, scope);
         } finally {
             CURRENT.set(previous);
         }
     }
 
     /**
+     * 键在该范围内的子范围:path 模式为子掩码,csap 模式仍是同一份类型规则;不输出时返回 null
+     */
+    private static Object child(Object scope, Class<?> owner, String name) {
+        if (scope instanceof FieldMask) {
+            FieldMask mask = (FieldMask) scope;
+            if (mask == FieldMask.PASS) {
+                return mask;
+            }
+            FieldMask child = mask.lookup(name);
+            return child == FieldMask.DROP ? null : child;
+        }
+        return ((TypeRules) scope).allows(owner, name) ? scope : null;
+    }
+
+    /**
      * 与原来"值的运行时类型的 ObjectWriter 在过滤器下写出"等价
      */
-    static void write(JSONWriter writer, Object value, FieldMask mask) {
+    static void write(JSONWriter writer, Object value, Object scope) {
         if (!FilterSession.isContainer(value)) {
             writer.getObjectWriter(value.getClass()).write(writer, value, null, null, 0);
             return;
         }
-        write(writer, value, plan(writer, value, mask), mask);
+        write(writer, value, plan(writer, value, scope), scope);
     }
 
-    private static Plan plan(JSONWriter writer, Object value, FieldMask mask) {
-        return mask.plan(PlanCache.FASTJSON2, value.getClass(), t -> Plan.create(writer, t, mask, value));
+    private static Plan plan(JSONWriter writer, Object value, Object scope) {
+        Class<?> type = value.getClass();
+        if (scope instanceof FieldMask) {
+            return ((FieldMask) scope).plan(PlanCache.FASTJSON2, type, t -> Plan.create(writer, t, scope, value));
+        }
+        return ((TypeRules) scope).plan(PlanCache.FASTJSON2, type, t -> Plan.create(writer, t, scope, value));
     }
 
     /**
      * 写出容器值(已确定是容器,计划已查好)
      */
-    static void write(JSONWriter writer, Object value, Plan plan, FieldMask mask) {
+    static void write(JSONWriter writer, Object value, Plan plan, Object scope) {
         switch (plan.kind) {
             case Plan.NATIVE:
                 plan.writer.write(writer, value, null, null, 0);
                 break;
             case Plan.SEQUENCE:
-                writeSequence(writer, value, mask);
+                writeSequence(writer, value, scope);
                 break;
             case Plan.MAP:
-                writeMap(writer, (Map<?, ?>) value, mask);
+                writeMap(writer, (Map<?, ?>) value, scope);
                 break;
             default:
-                writeLegacy(writer, value, mask);
+                writeLegacy(writer, value, scope);
                 break;
         }
     }
 
     /**
-     * 集合、数组:元素沿用当前掩码(同一类型的元素沿用上一个元素的计划)
+     * 集合、数组:元素沿用当前范围(同一类型的元素沿用上一个元素的计划)
      */
-    private static void writeSequence(JSONWriter writer, Object value, FieldMask mask) {
+    private static void writeSequence(JSONWriter writer, Object value, Object scope) {
         writer.startArray();
         Class<?> lastType = null;
         Plan lastPlan = null;
@@ -206,11 +225,11 @@ final class Fastjson2FastPath {
                 if (item == null) {
                     writer.writeNull();
                 } else if (item.getClass() == lastType) {
-                    write(writer, item, lastPlan, mask);
+                    write(writer, item, lastPlan, scope);
                 } else if (FilterSession.isContainer(item)) {
                     lastType = item.getClass();
-                    lastPlan = plan(writer, item, mask);
-                    write(writer, item, lastPlan, mask);
+                    lastPlan = plan(writer, item, scope);
+                    write(writer, item, lastPlan, scope);
                 } else {
                     writer.getObjectWriter(item.getClass()).write(writer, item, i, null, 0);
                 }
@@ -221,38 +240,39 @@ final class Fastjson2FastPath {
                 if (i != 0) {
                     writer.writeComma();
                 }
-                writeElement(writer, item, i++, mask);
+                writeElement(writer, item, i++, scope);
             }
         } else {
             for (int i = 0, n = Array.getLength(value); i < n; i++) {
                 if (i != 0) {
                     writer.writeComma();
                 }
-                writeElement(writer, Array.get(value, i), i, mask);
+                writeElement(writer, Array.get(value, i), i, scope);
             }
         }
         writer.endArray();
     }
 
-    private static void writeElement(JSONWriter writer, Object item, int index, FieldMask mask) {
+    private static void writeElement(JSONWriter writer, Object item, int index, Object scope) {
         if (item == null) {
             writer.writeNull();
         } else if (FilterSession.isContainer(item)) {
-            write(writer, item, mask);
+            write(writer, item, scope);
         } else {
             writer.getObjectWriter(item.getClass()).write(writer, item, index, null, 0);
         }
     }
 
     /**
-     * 与 {@code ObjectWriterImplMap#writeWithFilter} 相同,PropertyPreFilter / ValueFilter 换成掩码判断
+     * 与 {@code ObjectWriterImplMap#writeWithFilter} 相同,PropertyPreFilter / ValueFilter 换成掩码 / 类型规则判断
      */
-    private static void writeMap(JSONWriter writer, Map<?, ?> map, FieldMask mask) {
+    private static void writeMap(JSONWriter writer, Map<?, ?> map, Object scope) {
         writer.startObject();
         boolean writeNulls = writer.isWriteNulls();
-        FieldMask lastMask = null;
+        Object lastScope = null;
         Class<?> lastType = null;
         Plan lastPlan = null;
+        Class<?> mapType = map.getClass();
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             Object value = entry.getValue();
             if (value == null && !writeNulls) {
@@ -260,7 +280,8 @@ final class Fastjson2FastPath {
             }
             Object entryKey = entry.getKey();
             String key = entryKey == null ? null : entryKey.toString();
-            if (!(mask == FieldMask.PASS || mask.allows(key))) {
+            Object child = child(scope, mapType, key);
+            if (child == null) {
                 continue;
             }
             writer.writeName(key);
@@ -268,9 +289,8 @@ final class Fastjson2FastPath {
             if (value == null) {
                 writer.writeNull();
             } else if (FilterSession.isContainer(value)) {
-                FieldMask child = mask == FieldMask.PASS ? FieldMask.PASS : mask.lookup(key);
-                if (child != lastMask || value.getClass() != lastType) {
-                    lastMask = child;
+                if (child != lastScope || value.getClass() != lastType) {
+                    lastScope = child;
                     lastType = value.getClass();
                     lastPlan = plan(writer, value, child);
                 }
@@ -285,17 +305,22 @@ final class Fastjson2FastPath {
     /**
      * 无法预编译的值:临时挂上原来的过滤器写出(其中再遇到放行的容器值时回到快速路径)
      */
-    private static void writeLegacy(JSONWriter writer, Object value, FieldMask mask) {
+    private static void writeLegacy(JSONWriter writer, Object value, Object scope) {
         FilterSession session = CURRENT.get();
         JSONWriter.Context context = writer.getContext();
-        session.push(mask);
+        boolean path = scope instanceof FieldMask;
+        if (path) {
+            session.push((FieldMask) scope);
+        }
         Fastjson2ResponseFilterEngine.installFilters(context, session, null, null, true);
         try {
             writer.getObjectWriter(value.getClass()).write(writer, value, null, null, 0);
         } finally {
             context.setPropertyPreFilter(null);
             context.setValueFilter(null);
-            session.pop();
+            if (path) {
+                session.pop();
+            }
         }
     }
 
@@ -321,7 +346,7 @@ final class Fastjson2FastPath {
         public void write(JSONWriter writer, Object object, Object fieldName, Type fieldType, long features) {
             Masked masked = (Masked) object;
             Slot slot = masked.slot;
-            Fastjson2FastPath.write(writer, masked.value, slot.plan(writer, masked.value), slot.mask);
+            Fastjson2FastPath.write(writer, masked.value, slot.plan(writer, masked.value), slot.scope);
         }
     }
 
@@ -329,11 +354,11 @@ final class Fastjson2FastPath {
      * 一个容器字段:子掩码,以及按值的类型缓存的计划(大多数字段的值总是同一类型)
      */
     static final class Slot {
-        final FieldMask mask;
+        final Object scope;
         private Cached cached;
 
-        Slot(FieldMask mask) {
-            this.mask = mask;
+        Slot(Object scope) {
+            this.scope = scope;
         }
 
         Plan plan(JSONWriter writer, Object value) {
@@ -342,7 +367,7 @@ final class Fastjson2FastPath {
             if (c != null && c.type == type) {
                 return c.plan;
             }
-            Plan p = Fastjson2FastPath.plan(writer, value, mask);
+            Plan p = Fastjson2FastPath.plan(writer, value, scope);
             cached = new Cached(type, p);
             return p;
         }
@@ -379,7 +404,7 @@ final class Fastjson2FastPath {
             this.writer = writer;
         }
 
-        static Plan create(JSONWriter jsonWriter, Class<?> type, FieldMask mask, Object sample) {
+        static Plan create(JSONWriter jsonWriter, Class<?> type, Object scope, Object sample) {
             ObjectWriter writer = jsonWriter.getObjectWriter(type);
             if (writer == null) {
                 return LEGACY_PLAN;
@@ -395,7 +420,7 @@ final class Fastjson2FastPath {
                 return LEGACY_PLAN;
             }
             try {
-                return bean(jsonWriter, type, mask, writer, sample);
+                return bean(jsonWriter, type, scope, writer, sample);
             } catch (RuntimeException | LinkageError e) {
                 return LEGACY_PLAN;
             }
@@ -410,8 +435,9 @@ final class Fastjson2FastPath {
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})
-        private static Plan bean(JSONWriter jsonWriter, Class<?> type, FieldMask mask, ObjectWriter writer,
+        private static Plan bean(JSONWriter jsonWriter, Class<?> type, Object scope, ObjectWriter writer,
                                  Object sample) {
+            boolean csap = scope instanceof TypeRules;
             List<FieldWriter> all = writer.getFieldWriters();
             if (all == null) {
                 return LEGACY_PLAN;
@@ -437,13 +463,17 @@ final class Fastjson2FastPath {
                 }
                 if (!FilterSession.isLeafType(fw.fieldClass)) {
                     flat = false;
+                    // csap 模式原来由字段自己写出容器值(格式生效),这里改由值的类型写出,带格式时不预编译
+                    if (csap && fw.format != null) {
+                        return LEGACY_PLAN;
+                    }
                 }
             }
             List<FieldWriter> kept = new ArrayList<>(all.size());
-            List<FieldMask> children = new ArrayList<>(all.size());
+            List<Object> children = new ArrayList<>(all.size());
             for (FieldWriter fw : all) {
-                FieldMask child = mask == FieldMask.PASS ? FieldMask.PASS : mask.lookup(fw.fieldName);
-                if (child != FieldMask.DROP) {
+                Object child = child(scope, type, fw.fieldName);
+                if (child != null) {
                     kept.add(fw);
                     children.add(child);
                 }

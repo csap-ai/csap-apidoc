@@ -98,7 +98,11 @@ public class FastjsonResponseFilterEngine implements ResponseFilterEngine {
                 serializer.writeNull();
                 return;
             }
-            boolean fast = session.isPathMode() && FastjsonFastPath.eligible(serializer);
+            boolean fast = FastjsonFastPath.eligible(serializer);
+            if (fast && !session.isPathMode()) {
+                FastjsonFastPath.writeCsap(serializer, value, session.getEndpoint().getTypeRules(), session);
+                return;
+            }
             if (fast && value == session.getOriginal()) {
                 session.begin(value);
                 try {
