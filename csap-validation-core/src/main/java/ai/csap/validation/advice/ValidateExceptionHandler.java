@@ -1,7 +1,6 @@
 package ai.csap.validation.advice;
 
 import org.springframework.core.annotation.Order;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -115,13 +114,15 @@ public class ValidateExceptionHandler {
     }
 
     /**
-     * 校验失败响应的 HTTP 状态码
+     * 校验失败响应的 HTTP 状态码.
+     * <p>返回 int 并使用 {@code ResponseEntity.status(int)}:Spring 6 删除了 {@code status(HttpStatus)},
+     * 按 Spring 5.2 编译的代码只能用两边都有的重载。
      *
      * @param properties 配置
-     * @return 状态码
+     * @return 状态码,不合法时为 200
      */
-    public static HttpStatus httpStatus(ValidationProperties properties) {
-        HttpStatus status = properties == null ? null : HttpStatus.resolve(properties.getHttpStatus());
-        return status == null ? HttpStatus.OK : status;
+    public static int httpStatus(ValidationProperties properties) {
+        int status = properties == null ? 200 : properties.getHttpStatus();
+        return status >= 100 && status <= 599 ? status : 200;
     }
 }
