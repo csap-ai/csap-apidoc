@@ -1,0 +1,28 @@
+# 示例规则,格式与 Java 的 method-field.yaml 相同;也可以在 /devtools-ui 页面上修改。
+example.UserHandler:
+  get:
+    response:
+      code:
+        include: true
+      message:
+        include: true
+      data.id:
+        include: true
+      data.name:
+        include: true
+  create:
+    request:
+      request.name:
+        required: true
+        validate:
+          - type: Length
+            pattern: "2,20"
+            code: "1002"
+            message: 姓名长度 2-20
+            level: 1
+      request.phone:
+        validate:
+          - type: Pattern
+            pattern: PATTERN_35
+            code: "1003"
+            message: 手机号格式不正确

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -137,9 +138,17 @@ func main() {
 			auth, realm = devtools.BasicAuth("admin", pwd), "csap-apidoc devtools"
 		}
 		ginadapter.MountDevtools(r, devtools.MustNew(doc, devtools.Options{Auth: auth, Realm: realm}))
-		log.Printf("后台管理: http://localhost%s/devtools-ui", *addr)
+		log.Printf("后台管理: http://%s/devtools-ui", hostPort(*addr))
 	}
 
-	log.Printf("文档: http://localhost%s/csap-api.html", *addr)
+	log.Printf("文档: http://%s/csap-api.html", hostPort(*addr))
 	log.Fatal(r.Run(*addr))
+}
+
+// hostPort 把 ":8080" 补成 "localhost:8080",用于打印访问地址。
+func hostPort(addr string) string {
+	if strings.HasPrefix(addr, ":") {
+		return "localhost" + addr
+	}
+	return addr
 }

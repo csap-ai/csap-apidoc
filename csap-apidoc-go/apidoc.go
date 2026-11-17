@@ -529,13 +529,15 @@ func routeName(method, path string) string {
 
 // docPath 把 gin 的 :id、*path 转成文档里的 {id}、{path}。
 func docPath(p string) string {
-	if !strings.ContainsAny(p, ":*") {
+	if !strings.ContainsAny(p, ":*") && !strings.Contains(p, "...}") {
 		return p
 	}
 	segs := strings.Split(p, "/")
 	for i, s := range segs {
 		if strings.HasPrefix(s, ":") || strings.HasPrefix(s, "*") {
 			segs[i] = "{" + s[1:] + "}"
+		} else if strings.HasPrefix(s, "{") && strings.HasSuffix(s, "...}") {
+			segs[i] = strings.TrimSuffix(s, "...}") + "}" // ServeMux 的 {path...}
 		}
 	}
 	return strings.Join(segs, "/")
