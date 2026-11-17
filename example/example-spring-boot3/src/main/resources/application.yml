@@ -44,9 +44,13 @@ csap:
     #       - X-Forwarded-For
     #       - X-Real-IP
     #     log-bodies: false
-  # 验证框架配置
+  # 运行时请求参数校验(1.2.0 起):off(默认)/ observe(记录并放行)/ enforce(拦截)
+  # 1.1.x 的 enabled: true 仍然有效,等同 mode: enforce
   validation:
-    enabled: true
+    mode: enforce
+    # http-status: 200          # 校验失败的 HTTP 状态码,响应体始终是 {code, message}
+    # endpoints:                # 按接口覆盖,键为 Controller 全限定类名.方法名
+    #   "[ai.csap.example.controller.ProductController.updateStock]": observe
 
   # ─────────────────────────────────────────────────────────────────────
   # Demo Security (JWT, in-memory users)

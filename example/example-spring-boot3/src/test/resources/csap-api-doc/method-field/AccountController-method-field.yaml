@@ -1,0 +1,15 @@
+# 测试用:登记字段,校验规则来自 Account 上的 jakarta.validation 注解,email 另加一条 YAML 规则
+ai.csap.example.validation.AccountController:
+  createAccount:
+    request:
+      account.username:
+        required: true
+        paramType: BODY
+      account.email:
+        required: true
+        paramType: BODY
+        validate:
+          - type: NotEmpty
+            level: 0
+            code: "1001"
+            message: 邮箱不能为空
