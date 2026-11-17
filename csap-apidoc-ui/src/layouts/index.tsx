@@ -22,6 +22,11 @@ import TryItOutPanel, { RequestSpec } from '@/components/TryItOutPanel';
 import { apidocMethodUrl, apidocParentUrl, apidocServiceBase } from '@/utils/apidocUrl';
 import { hasApiDetail, EMPTY_API_DETAIL } from '@/utils/apiDetail';
 import {
+  filterTreeByGroupVersion,
+  groupVersionOptions,
+  GroupVersionOptions,
+} from '@/utils/groupVersion';
+import {
   buildHintPrefill,
   DocHints,
   EMPTY_HINTS,
@@ -77,6 +82,9 @@ const LayoutIndex = () => {
   const [ObjQuery, setObjQuery] = useState<any>({});
   const [loading, setLoading] = useState(false);
   const [totalApis, setTotalApis] = useState(0);
+  const [gvOptions, setGvOptions] = useState<GroupVersionOptions>({ groups: [], versions: [] });
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
   // @DocGlobalHeader / @DocAuth hints of the endpoint currently shown,
   // keyed by method key so a stale set is never applied to another endpoint.
   const [docHints, setDocHints] = useState<{ key: string; hints: DocHints } | null>(null);
@@ -223,12 +231,14 @@ const LayoutIndex = () => {
 
       let apiList = [];
       let resources = [];
+      let parentData = null;
       try {
         const parsedData = JSON.parse(text);
 
         // 直接从data中提取apiList
         apiList = parsedData?.data?.apiList || [];
         resources = parsedData?.data?.resources || [];
+        parentData = parsedData?.data ?? null;
         // 确保apiList是数组
         if (!Array.isArray(apiList)) {
           apiList = [];
@@ -249,6 +259,11 @@ const LayoutIndex = () => {
         title: item.title || item.name || t('layout.untitled'),
         children: item.children || []
       }));
+
+      // 分组 / 版本:每次加载(含切换服务)按当前服务的数据刷新,并清空已选项
+      setGvOptions(groupVersionOptions(parentData, validatedList));
+      setSelectedGroup(null);
+      setSelectedVersion(null);
 
       if (apiList.length > 0) {
         console.log('有效的apiList数据:', apiList);
@@ -296,7 +311,7 @@ const LayoutIndex = () => {
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
-    let ds = finalData
+    let ds = filterTreeByGroupVersion(finalData, selectedGroup, selectedVersion)
       .map((i) => {
         return Object.assign({}, i);
       })
@@ -322,6 +337,12 @@ const LayoutIndex = () => {
         behavior: 'smooth',
       });
     }
+  };
+
+  const applyGroupVersion = (group: string | null, version: string | null) => {
+    setSelectedGroup(group);
+    setSelectedVersion(version);
+    setTreeData(filterTreeByGroupVersion(finalData, group, version));
   };
 
   const childrenList = (c: any[], v) => {
@@ -883,6 +904,12 @@ const LayoutIndex = () => {
         apiOptions={apiOptions}
         ref={selectRefValue}
         onExport={handleExport}
+        groupOptions={gvOptions.groups}
+        versionOptions={gvOptions.versions}
+        group={selectedGroup}
+        version={selectedVersion}
+        onGroupChange={(g) => applyGroupVersion(g, selectedVersion)}
+        onVersionChange={(v) => applyGroupVersion(selectedGroup, v)}
       />
       {/* C3 — banner sits in the layout chrome (just under the top bar)
           rather than as the outermost overlay above <App>. Renders null
