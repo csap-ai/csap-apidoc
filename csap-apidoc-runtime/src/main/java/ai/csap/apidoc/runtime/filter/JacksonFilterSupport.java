@@ -46,7 +46,7 @@ import com.fasterxml.jackson.databind.util.NameTransformer;
  * <ul>
  *   <li>{@link MaskingBeanSerializer}:包住每个 Bean 序列化器,按当前掩码(path)或类型规则(csap)选用预编译的
  *       {@link SubsetBeanSerializer}——只含放行属性,放行属性写出期间压入子掩码;按 (序列化器, 掩码节点) 缓存在掩码上;</li>
- *   <li>{@link Introspector}:没有自定义 {@code @JsonFilter} 的 Map 使用过滤器 {@link #FILTER_ID}(Map 按键过滤);</li>
+ *   <li>{@link Introspector}:没有自定义 {@code @JsonFilter} 的类(含 Map)使用过滤器 {@link #FILTER_ID};</li>
  *   <li>{@link Provider}:{@link #FILTER_ID} 返回本次请求的过滤器,其他过滤器 id 交给原有的 FilterProvider;</li>
  *   <li>{@link SessionFilter}:每个请求新建,按 {@link FilterSession} 决定 Map 的键(以及无法预编译的 Bean,
  *       如带 {@code @JsonAnyGetter}、数组形状、{@code @JsonUnwrapped})是否输出;</li>
@@ -124,7 +124,9 @@ public final class JacksonFilterSupport {
     }
 
     /**
-     * 没有自定义过滤器 id 的 Map 统一使用 {@link #FILTER_ID}
+     * 没有自定义过滤器 id 的类(含 Map)统一使用 {@link #FILTER_ID}。
+     * Bean 实际由 {@link MaskingBeanSerializer} 选用预编译的序列化器;带过滤器 id 也使 Jackson 不启用数组形状等
+     * 与过滤器不兼容的写法,与之前的输出保持一致。
      */
     public static final class Introspector extends AnnotationIntrospectorPair {
         private static final long serialVersionUID = 1L;
@@ -137,8 +139,7 @@ public final class JacksonFilterSupport {
         @Override
         public Object findFilterId(Annotated a) {
             Object id = super.findFilterId(a);
-            if (id == null && a instanceof AnnotatedClass
-                    && Map.class.isAssignableFrom(((AnnotatedClass) a).getRawType())) {
+            if (id == null && a instanceof AnnotatedClass) {
                 return FILTER_ID;
             }
             return id;
@@ -289,8 +290,8 @@ public final class JacksonFilterSupport {
      *   <li>没有过滤状态(未经过滤入口)或掩码为 PASS:原序列化器;</li>
      *   <li>类上有自定义 {@code @JsonFilter}:原序列化器(与之前一致,只应用自定义过滤器);</li>
      *   <li>普通 Bean:{@link SubsetBeanSerializer},按掩码节点 / 类型规则缓存;</li>
-     *   <li>其他(数组形状、{@code @JsonUnwrapped}、{@code @JsonAnyGetter}、非标准 Bean 序列化器):
-     *       原序列化器加上 {@link #FILTER_ID},由 {@link SessionFilter} 逐属性判断。</li>
+     *   <li>其他({@code @JsonUnwrapped}、{@code @JsonAnyGetter}、非标准 Bean 序列化器):
+     *       原序列化器(带 {@link #FILTER_ID}),由 {@link SessionFilter} 逐属性判断。</li>
      * </ul>
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -305,6 +306,11 @@ public final class JacksonFilterSupport {
         private volatile Probe probe;
 
         private volatile JsonSerializer<Object> legacy;
+
+        /**
+         * 全部属性、不压栈的预编译序列化器(PASS 子树用,省去每个对象查找过滤器)
+         */
+        private volatile JsonSerializer<Object> all;
 
         MaskingBeanSerializer(BeanSerializerBase delegate) {
             this.delegate = delegate;
@@ -337,10 +343,20 @@ public final class JacksonFilterSupport {
             return l;
         }
 
+        private JsonSerializer<Object> all() {
+            JsonSerializer<Object> a = all;
+            if (a == null) {
+                a = probe().plain ? subset(SubsetBeanSerializer.CSAP, w -> w, null)
+                        : (JsonSerializer<Object>) (JsonSerializer) delegate;
+                all = a;
+            }
+            return a;
+        }
+
         private JsonSerializer<Object> select(FilterSession session, Object value) {
             boolean pathMode = session.isPathMode();
             if (pathMode && session.current() == FieldMask.PASS) {
-                return (JsonSerializer<Object>) (JsonSerializer) delegate;
+                return all();
             }
             Probe p = probe();
             if (p.customFilter) {
@@ -388,7 +404,12 @@ public final class JacksonFilterSupport {
                 if (subset.full) {
                     session.push(FieldMask.PASS);
                     try {
-                        delegate.serialize(value, gen, provider);
+                        JsonSerializer<Object> a = all();
+                        if (a instanceof SubsetBeanSerializer) {
+                            ((SubsetBeanSerializer) a).serialize(value, gen, provider, session);
+                        } else {
+                            a.serialize(value, gen, provider);
+                        }
                     } finally {
                         session.pop();
                     }
@@ -487,8 +508,8 @@ public final class JacksonFilterSupport {
 
         Probe(BeanSerializerBase src) {
             super(src);
-            this.customFilter = _propertyFilterId != null;
-            this.plain = src.getClass() == BeanSerializer.class && _anyGetterWriter == null && _propertyFilterId == null;
+            this.customFilter = _propertyFilterId != null && !FILTER_ID.equals(_propertyFilterId);
+            this.plain = src.getClass() == BeanSerializer.class && _anyGetterWriter == null && !customFilter;
         }
     }
 
@@ -501,6 +522,9 @@ public final class JacksonFilterSupport {
 
         static final int PATH = 0;
 
+        /**
+         * 不压栈(csap 模式;path 模式的 PASS 子树)
+         */
         static final int CSAP = 1;
 
         static final int OUTSIDE = 2;
