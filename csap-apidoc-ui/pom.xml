@@ -5,10 +5,10 @@
     <parent>
         <groupId>ai.csap.apidoc</groupId>
         <artifactId>csap-apidoc-build</artifactId>
-        <version>1.0.0</version>
+        <version>1.1.0</version>
         <relativePath>../csap-apidoc-build</relativePath>
     </parent>
     <artifactId>csap-apidoc-ui</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <packaging>jar</packaging>
 </project>

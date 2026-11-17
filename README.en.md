@@ -6,7 +6,7 @@
 
 [![Maven Central](https://img.shields.io/maven-central/v/com.csap/csap-apidoc-core)](https://central.sonatype.com/artifact/com.csap/csap-apidoc-core)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Build](https://github.com/csap-ai/csap-framework-apidoc/actions/workflows/ci.yml/badge.svg)](https://github.com/csap-ai/csap-framework-apidoc/actions/workflows/ci.yml)
+[![Build](https://github.com/csap-ai/csap-apidoc/actions/workflows/ci.yml/badge.svg)](https://github.com/csap-ai/csap-apidoc/actions/workflows/ci.yml)
 [![Java](https://img.shields.io/badge/Java-17%2B-orange)](https://openjdk.org/projects/jdk/17/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-green)](https://spring.io/projects/spring-boot)
 
@@ -44,9 +44,9 @@ CSAP Apidoc scans your Spring MVC annotations at startup, generates a live API r
 
 ```xml
 <dependency>
-    <groupId>com.csap.framework.boot</groupId>
-    <artifactId>csap-framework-apidoc-boot-starter</artifactId>
-    <version>1.0.0</version>
+    <groupId>ai.csap.apidoc.boot</groupId>
+    <artifactId>csap-apidoc-boot-starter</artifactId>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -126,22 +126,22 @@ Start your application and visit:
 
 | Module | Description |
 |---|---|
-| `csap-framework-apidoc-annotation` | `@Api`, `@ApiOperation`, `@ApiModel`, `@ApiProperty` annotations |
-| `csap-framework-apidoc-common` | Shared utilities, constants, and base models |
-| `csap-framework-apidoc-core` | Document scanning, parsing, and generation engine |
-| `csap-framework-apidoc-boot-starter` | Spring Boot auto-configuration starter |
+| `csap-apidoc-annotation` | `@Api`, `@ApiOperation`, `@ApiModel`, `@ApiProperty` annotations |
+| `csap-apidoc-common` | Shared utilities, constants, and base models |
+| `csap-apidoc-core` | Document scanning, parsing, and generation engine |
+| `csap-apidoc-boot-starter` | Spring Boot auto-configuration starter |
 
 ### Extensions
 
 | Module | Description |
 |---|---|
-| `csap-framework-apidoc-strategy` | Storage strategy abstraction layer |
-| `csap-framework-apidoc-sqlite` | SQLite-based document persistence |
-| `csap-framework-apidoc-yaml` | YAML file-based document persistence |
-| `csap-framework-apidoc-standard` | Standard-format document output |
-| `csap-framework-apidoc-devtools` | Visual configuration and management interface |
-| `csap-framework-apidoc-web` | React-based documentation UI |
-| `csap-framework-validation-core` | JSR-303 validation rule integration |
+| `csap-apidoc-strategy` | Storage strategy abstraction layer |
+| `csap-apidoc-sqlite` | SQLite-based document persistence |
+| `csap-apidoc-yaml` | YAML file-based document persistence |
+| `csap-apidoc-standard` | Standard-format document output |
+| `csap-apidoc-devtools` | Visual configuration and management interface |
+| `csap-apidoc-ui` | React-based documentation UI |
+| `csap-validation-core` | JSR-303 validation rule integration |
 
 ## Configuration
 
@@ -179,9 +179,9 @@ Add the optional DevTools dependency for a visual editor:
 
 ```xml
 <dependency>
-    <groupId>com.csap.framework</groupId>
-    <artifactId>csap-framework-apidoc-devtools</artifactId>
-    <version>1.0.0</version>
+    <groupId>ai.csap.apidoc</groupId>
+    <artifactId>csap-apidoc-devtools</artifactId>
+    <version>1.1.0</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -239,7 +239,7 @@ csap:
 | [Gateway Aggregation](GATEWAY-AGGREGATION.md) | Multi-service documentation setup |
 | [FAQ](FAQ.md) | 60+ frequently asked questions |
 | [Architecture](ARCHITECTURE.md) | System design and internals |
-| [Postman Converter](csap-framework-apidoc-core/README-Postman.md) | Postman export details |
+| [Postman Converter](csap-apidoc-core/README-Postman.md) | Postman export details |
 
 ## Examples
 
@@ -293,7 +293,7 @@ See also: [Security Policy](SECURITY.md)
 - API lifecycle management
 - Internationalization (i18n) and dark mode
 
-Full roadmap: [Product Roadmap](csap-framework-apidoc-devtools/APIDOC开发工具产品路线图.md)
+Full roadmap: [Product Roadmap](csap-apidoc-devtools/APIDOC开发工具产品路线图.md)
 
 ## License
 
@@ -308,8 +308,8 @@ CSAP Framework Apidoc is the open-source contract layer of the **[CSAP Platform]
 
 ## Contact
 
-- **Issues**: [GitHub Issues](https://github.com/csap-ai/csap-framework-apidoc/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/csap-ai/csap-framework-apidoc/discussions)
+- **Issues**: [GitHub Issues](https://github.com/csap-ai/csap-apidoc/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/csap-ai/csap-apidoc/discussions)
 - **Email**: support@csap.ai
 
 ---

@@ -81,7 +81,7 @@ CSAP Framework API Doc is a modular, extensible API documentation framework for 
 
 ### 1. Annotation Processor
 
-**Location**: `csap-framework-apidoc-annotation`
+**Location**: `csap-apidoc-annotation`
 
 **Responsibilities**:
 - Define documentation annotations
@@ -97,7 +97,7 @@ CSAP Framework API Doc is a modular, extensible API documentation framework for 
 
 ### 2. Scanner Engine
 
-**Location**: `csap-framework-apidoc-core`
+**Location**: `csap-apidoc-core`
 
 **Responsibilities**:
 - Scan Spring MVC controllers
@@ -112,7 +112,7 @@ CSAP Framework API Doc is a modular, extensible API documentation framework for 
 
 ### 3. Parser & Converter
 
-**Location**: `csap-framework-apidoc-core`
+**Location**: `csap-apidoc-core`
 
 **Responsibilities**:
 - Parse Java types
@@ -127,7 +127,7 @@ CSAP Framework API Doc is a modular, extensible API documentation framework for 
 
 ### 4. Document Generator
 
-**Location**: `csap-framework-apidoc-core`
+**Location**: `csap-apidoc-core`
 
 **Responsibilities**:
 - Generate documentation data
@@ -141,7 +141,7 @@ CSAP Framework API Doc is a modular, extensible API documentation framework for 
 
 ### 5. Storage Strategy
 
-**Location**: `csap-framework-apidoc-strategy`
+**Location**: `csap-apidoc-strategy`
 
 **Responsibilities**:
 - Persist documentation
@@ -163,7 +163,7 @@ public interface ApidocStorageStrategy {
 
 ### 6. REST API
 
-**Location**: `csap-framework-apidoc-core`
+**Location**: `csap-apidoc-core`
 
 **Responsibilities**:
 - Expose documentation data
@@ -177,7 +177,7 @@ public interface ApidocStorageStrategy {
 
 ### 7. Web UI
 
-**Location**: `csap-framework-apidoc-web`, `csap-framework-apidoc-devtools`
+**Location**: `csap-apidoc-ui`, `csap-apidoc-devtools`
 
 **Responsibilities**:
 - Display documentation
@@ -195,23 +195,23 @@ public interface ApidocStorageStrategy {
 
 ```
 csap-framework-apidoc/
-├── csap-framework-apidoc-annotation     # Annotation definitions
-├── csap-framework-apidoc-common         # Common utilities
-├── csap-framework-apidoc-core           # Core logic
+├── csap-apidoc-annotation     # Annotation definitions
+├── csap-apidoc-common         # Common utilities
+├── csap-apidoc-core           # Core logic
 │   ├── scanner/                         # Scanning logic
 │   ├── parser/                          # Parsing logic
 │   ├── generator/                       # Generation logic
 │   └── service/                         # Service layer
-├── csap-framework-apidoc-boot           # Spring Boot integration
-│   ├── csap-framework-apidoc-boot-starter
-│   └── csap-framework-validation-boot-starter
-├── csap-framework-apidoc-strategy       # Storage strategies
-│   ├── csap-framework-apidoc-sqlite
-│   ├── csap-framework-apidoc-yaml
-│   └── csap-framework-apidoc-standard
-├── csap-framework-apidoc-devtools       # DevTools UI
-├── csap-framework-apidoc-web            # Web UI
-└── csap-framework-validation-core       # Validation integration
+├── csap-apidoc-boot           # Spring Boot integration
+│   ├── csap-apidoc-boot-starter
+│   └── csap-validation-boot-starter
+├── csap-apidoc-strategy       # Storage strategies
+│   ├── csap-apidoc-sqlite
+│   ├── csap-apidoc-yaml
+│   └── csap-apidoc-standard
+├── csap-apidoc-devtools       # DevTools UI
+├── csap-apidoc-ui            # Web UI
+└── csap-validation-core       # Validation integration
 ```
 
 ## Data Flow
@@ -424,7 +424,7 @@ Each class has one reason to change:
 ### 5. Don't Repeat Yourself (DRY)
 
 Common functionality extracted to:
-- `csap-framework-apidoc-common`
+- `csap-apidoc-common`
 - Shared utilities
 - Reusable components
 
@@ -497,5 +497,5 @@ Common functionality extracted to:
 For more details on specific modules, see:
 - [README.md](README.md) - General overview
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Development guidelines
-- [Product Roadmap](csap-framework-apidoc-devtools/APIDOC开发工具产品路线图.md) - Future plans
+- [Product Roadmap](csap-apidoc-devtools/APIDOC开发工具产品路线图.md) - Future plans
 

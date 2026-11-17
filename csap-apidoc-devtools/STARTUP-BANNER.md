@@ -254,7 +254,7 @@ public DevtoolsStartupBanner devtoolsStartupBanner() {
 
 **检查清单**：
 1. ✅ 确认配置了 `csap.apidoc.devtool.enabled=true`
-2. ✅ 确认依赖了 `csap-framework-apidoc-boot-starter`
+2. ✅ 确认依赖了 `csap-apidoc-boot-starter`
 3. ✅ 确认应用完全启动成功
 4. ✅ 检查日志级别是否过滤了 INFO 级别
 

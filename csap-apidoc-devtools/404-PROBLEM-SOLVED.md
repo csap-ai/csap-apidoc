@@ -193,7 +193,7 @@ http://localhost:8085/devtools-ui
 
 ### 1. 重新构建
 ```bash
-cd csap-framework-apidoc-devtools
+cd csap-apidoc-devtools
 ./build.sh
 ```
 

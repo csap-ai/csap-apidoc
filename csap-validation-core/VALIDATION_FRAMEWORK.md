@@ -12,7 +12,7 @@
 
 ## 项目概述
 
-`csap-framework-validation-core` 是 CSAP 框架的核心验证模块，提供了一套完整的、可扩展的参数验证解决方案。它不仅支持标准的 JSR-303/JSR-380 Bean Validation，还扩展了级联验证、自定义验证策略等高级特性。
+`csap-validation-core` 是 CSAP 框架的核心验证模块，提供了一套完整的、可扩展的参数验证解决方案。它不仅支持标准的 JSR-303/JSR-380 Bean Validation，还扩展了级联验证、自定义验证策略等高级特性。
 
 ### 主要特性
 

@@ -189,8 +189,8 @@ mvn checkstyle:checkstyle
 
 ## 📞 获取帮助
 
-- **问题反馈**: [GitHub Issues](https://github.com/csap-ai/csap-framework-apidoc/issues)
-- **团队讨论**: [GitHub Discussions](https://github.com/csap-ai/csap-framework-apidoc/discussions)
+- **问题反馈**: [GitHub Issues](https://github.com/csap-ai/csap-apidoc/issues)
+- **团队讨论**: [GitHub Discussions](https://github.com/csap-ai/csap-apidoc/discussions)
 - **文档问题**: 在相应文档下提Issue
 
 ## 📅 更新日志
