@@ -7,7 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.1.0] - Unreleased
+## [1.1.1] - 2026-11-17
+
+Patch release fixing the defects found after 1.1.0 was published. Upgrading
+is recommended for everyone on 1.1.0.
+
+### Fixed
+
+- **Bytecode level.** 1.1.0 was built with JDK 17 and shipped Java 17 class
+  files (major 61), so it could not be loaded on Java 11. Every module is now
+  compiled with `--release 11`, whatever JDK runs the build.
+- **Documentation starter alone works.** With only
+  `csap-apidoc-boot-starter` on the classpath, generating docs failed with a
+  `NullPointerException` because `IValidateFactory` came from the validation
+  starter. A default factory is now provided; `csap-validation-boot-starter`
+  is optional again.
+- **Docs page is built from source.** The 1.1.0 jar contained an old build of
+  `csap-api.html` without environments, auth, history, snapshots or i18n. The
+  page is rebuilt, and the release workflow now builds it from source every
+  time.
+- `GET /csap/apidoc/{name}?key=` no longer corrupts the shared doc cache
+  (afterwards the full doc permanently lost methods).
+- `flush=true` rescans again; requests during startup wait for the scan to
+  finish instead of seeing a half-built document.
+- `@EnableApidoc(type = YAML / JSON)` registers the matching strategy (docs
+  used to be silently empty). `type = SQL_LITE` now fails at startup with a
+  hint to use `paramType = SQL_LITE`; that doc strategy never worked.
+- `paramType = SQL_LITE` creates its database from DDL on first use instead of
+  relying on a template file that was not shipped.
+- Spring Boot 3: `DevtoolsProxyAutoConfiguration` is registered in
+  `AutoConfiguration.imports`.
+- `@RequestMapping` without `method` is documented as GET/POST/PUT/DELETE;
+  methods without a mapping annotation are skipped.
+- `ApiAuthorization`: example values of `BEARER_TOKEN` and `BASIC_AUTH` were
+  swapped.
+- `ApiStatus`, `ModelType` and `CamelCaseType` `resolve()` always returned
+  `null`.
+- Built-in regexes in `ValidatePatternType` corrected.
+- Postman export: double slashes in URLs and an NPE when `required` is unset.
+- Configuration metadata: `csap.validation.enabled` default shown correctly.
+- Docs page:
+  - **Security:** exporting settings no longer writes vault secrets in
+    plaintext (encrypted vaults export ciphertext only; plaintext vaults omit
+    secrets).
+  - Try-it-out uses the proxy URL and timeout from settings, including the
+    built-in DevTools proxy protocol.
+  - Gateway aggregation builds detail URLs correctly and no longer repeats
+    the service prefix.
+  - Endpoints without declared headers no longer show a blank detail panel.
+  - Headers and auth are prefilled from `@DocGlobalHeader` / `@DocAuth`
+    hints.
+  - Group/version dropdowns are no longer hard-coded placeholders.
+
+### Changed
+
+- CI runs the test suites (the root pom skips tests by default) and builds
+  the examples; JUnit 5 tests actually run now (surefire 2.22.2 with both
+  JUnit Platform and TestNG providers).
+- Examples: Spring Boot 2 `mainClass` fixed; configuration keys that do not
+  exist were removed.
+
+### Known issues
+
+- Runtime response-field filtering and request validation are still only
+  recorded, not enforced, when the open-source modules are used on their
+  own. Planned for 1.2.0.
+
+## [1.1.0] - 2026-11-17
 
 ### Changed
 

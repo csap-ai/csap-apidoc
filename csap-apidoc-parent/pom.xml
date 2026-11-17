@@ -6,12 +6,12 @@
     <parent>
         <artifactId>csap-apidoc-build</artifactId>
         <groupId>ai.csap.apidoc</groupId>
-        <version>1.1.0</version>
+        <version>1.1.1</version>
         <relativePath>../csap-apidoc-build</relativePath>
     </parent>
     <artifactId>csap-apidoc-parent</artifactId>
     <name>CSAP Apidoc Parent</name>
     <description>Parent POM for projects using CSAP Apidoc.</description>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 
 </project>
