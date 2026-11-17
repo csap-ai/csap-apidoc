@@ -12,6 +12,8 @@ import java.util.stream.Collectors;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
+import org.springframework.beans.factory.support.AbstractBeanDefinition;
+import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
@@ -31,6 +33,9 @@ import ai.csap.apidoc.annotation.Api;
 import ai.csap.apidoc.autoconfigure.EnableApidocConfig;
 import ai.csap.apidoc.autoconfigure.StrategyModel;
 import ai.csap.apidoc.core.ApidocBeanDefinitionRegistrar;
+import ai.csap.apidoc.strategy.ApidocStrategy;
+import ai.csap.apidoc.strategy.standard.JsonApidocStrategy;
+import ai.csap.apidoc.strategy.standard.YamlApidocStrategy;
 import ai.csap.apidoc.util.ApidocClazzUtils;
 
 import cn.hutool.core.collection.CollectionUtil;
@@ -141,6 +146,42 @@ public class ApidocImportBeanDefinitionRegistrar implements ImportBeanDefinition
      * @param registry      注册对象
      */
     public void handleStrategy(EnableApidocConfig csapDocConfig, BeanDefinitionRegistry registry) {
+        ApiStrategyType type = csapDocConfig.getType();
+        if (type == null || type == ApiStrategyType.ANNOTATION) {
+            // 注解模式由 ApiDocService 处理,自动配置中已注册
+            return;
+        }
+        switch (type) {
+            case YAML:
+                registerStrategy(registry, YamlApidocStrategy.class);
+                break;
+            case JSON:
+                registerStrategy(registry, JsonApidocStrategy.class);
+                break;
+            default:
+                // 没有可用的文档策略时直接启动失败,避免文档静默为空
+                throw new IllegalStateException(String.format(
+                        "@EnableApidoc(type = ApiStrategyType.%s) 暂不支持:没有可用的 %s 文档策略。"
+                                + "type 目前只支持 ANNOTATION、YAML、JSON;"
+                                + "如需把参数配置存到 SQLite,请使用 paramType = ApiStrategyType.SQL_LITE。",
+                        type.name(), type.name()));
+        }
+    }
+
+    /**
+     * 注册文档策略 Bean(构造器自动注入各个 Handle 与 EnableApidocConfig)
+     *
+     * @param registry      注册对象
+     * @param strategyClass 策略类型
+     */
+    private void registerStrategy(BeanDefinitionRegistry registry, Class<? extends ApidocStrategy> strategyClass) {
+        String beanName = strategyClass.getName();
+        if (registry.containsBeanDefinition(beanName)) {
+            return;
+        }
+        registry.registerBeanDefinition(beanName, BeanDefinitionBuilder.genericBeanDefinition(strategyClass)
+                .setAutowireMode(AbstractBeanDefinition.AUTOWIRE_CONSTRUCTOR)
+                .getBeanDefinition());
     }
 
     @Override

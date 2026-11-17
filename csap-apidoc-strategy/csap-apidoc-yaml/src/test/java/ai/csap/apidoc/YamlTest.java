@@ -31,25 +31,34 @@ import lombok.SneakyThrows;
  */
 public class YamlTest {
 
+    /**
+     * 与生产代码 AbstractHandle.YAML_MAPPER 一致:忽略模型里已不存在的字段(如旧的 yamlParameter)
+     */
+    private static YAMLMapper yamlMapper() {
+        YAMLMapper mapper = new YAMLMapper();
+        mapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        return mapper;
+    }
+
     @SneakyThrows
     @Test
     public void yamlToObject() {
         ClassLoader classLoader = getClass().getClassLoader();
         String controllerPath = URLDecoder.decode(classLoader.getResource("application-controller.yaml").getPath(), StandardCharsets.UTF_8);
-        Map<String, CsapDocModelController> map2 = new YAMLMapper().readValue(new FileInputStream(controllerPath), new com.fasterxml.jackson.core.type.TypeReference<>() {
+        Map<String, CsapDocModelController> map2 = yamlMapper().readValue(new FileInputStream(controllerPath), new com.fasterxml.jackson.core.type.TypeReference<>() {
         });
         System.out.println(map2);
         String methodPath = URLDecoder.decode(classLoader.getResource("application-method.yaml").getPath(), StandardCharsets.UTF_8);
-        Map<String, Map<String, CsapDocMethod>> methodMap = new YAMLMapper().readValue(new FileInputStream(methodPath), new com.fasterxml.jackson.core.type.TypeReference<>() {
+        Map<String, Map<String, CsapDocMethod>> methodMap = yamlMapper().readValue(new FileInputStream(methodPath), new com.fasterxml.jackson.core.type.TypeReference<>() {
         });
         System.out.println(methodMap);
         String paramPath = URLDecoder.decode(classLoader.getResource("application-param.yaml").getPath(), StandardCharsets.UTF_8);
-        Map<String, Map<String, CsapDocModel>> paramMap = new YAMLMapper().readValue(new FileInputStream(paramPath), new com.fasterxml.jackson.core.type.TypeReference<>() {
+        Map<String, Map<String, CsapDocModel>> paramMap = yamlMapper().readValue(new FileInputStream(paramPath), new com.fasterxml.jackson.core.type.TypeReference<>() {
         });
         System.out.println(paramMap);
 
         String enumPath = URLDecoder.decode(classLoader.getResource("application-enum.yaml").getPath(), StandardCharsets.UTF_8);
-        Map<String, List<Map<String, Object>>> enumMap = new YAMLMapper().readValue(new FileInputStream(enumPath), new com.fasterxml.jackson.core.type.TypeReference<>() {
+        Map<String, List<Map<String, Object>>> enumMap = yamlMapper().readValue(new FileInputStream(enumPath), new com.fasterxml.jackson.core.type.TypeReference<>() {
         });
         System.out.println(enumMap);
     }

@@ -53,7 +53,7 @@ public class Application {
 - `enumPackages`: 枚举类包路径
 - `modelPackages`: 实体类包路径
 - `paramType`: 参数策略（ANNOTATION/SQL_LITE/YAML）
-- `type`: 文档策略（ANNOTATION/SQL_LITE/YAML）
+- `type`: 文档策略（ANNOTATION/YAML/JSON；SQL_LITE 暂不支持作为文档策略，配置后启动报错）
 - `path`: 存储路径
 - `fileName`: 文件名（SQLite 模式）
 - `showChildPackageFlag`: 是否扫描子包
