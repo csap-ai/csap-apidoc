@@ -27,7 +27,8 @@ import ai.csap.apidoc.runtime.filter.model.MatchPage;
 
 /**
  * 过滤开销的性能检查(不是 JMH),默认跳过:
- * <pre>mvn -pl csap-apidoc-runtime test -DskipTests=false -Dtest=FilterOverheadBenchmarkTest -Dcsap.perf=true</pre>
+ * <pre>mvn -pl csap-apidoc-runtime test -DskipTests=false -Djacoco.skip=true -Dtest=FilterOverheadBenchmarkTest -Dcsap.perf=true</pre>
+ * (JaCoCo 的探针会改变被测代码的耗时,测量时关掉。)
  * 返回体:100 行 Match(含嵌套对象、Map),Jackson 输出约 17KB。
  * <ul>
  *   <li>无规则接口:只多两个 ResponseBodyAdvice 的判断(序列化不变),单独计时;</li>

@@ -68,23 +68,32 @@ them on a few endpoints first.
 
 ### Known issues
 
-- Response filtering adds serialization cost on endpoints that have rules
-  (endpoints without rules are unaffected). Measured overhead per response
-  (100 rows, about 17 KB of JSON, median of 3 runs):
+- Response filtering still adds some serialization cost on endpoints that
+  have rules (endpoints without rules are unaffected). Filtering no longer
+  turns on the JSON library's per-property filters; serializers containing
+  only the allowed fields are compiled per rule node and type and reused.
+  Extra time per response compared with the same response unfiltered
+  (100 rows, about 17 KB of JSON, JDK 17, median ratio of 41 interleaved
+  rounds in one JVM; typical rules write less JSON, so they can come out
+  faster than no filtering):
 
-  | Engine    | No filter | Typical rules     | Rules allow all fields |
-  | --------- | --------- | ----------------- | ---------------------- |
-  | Jackson   | 62 µs     | 70 µs (+7%)       | 88 µs (+45%)           |
-  | fastjson  | 39 µs     | 116 µs (+205%)    | 138 µs (+244%)         |
-  | fastjson2 | 20 µs     | 112 µs (+362%)    | 197 µs (+711%)         |
+  | Engine    | No filter | Typical rules | Rules allow all fields | csap mode, typical rules |
+  | --------- | --------- | ------------- | ---------------------- | ------------------------ |
+  | Jackson   | 29 µs     | 0%            | +31%                   | -15%                     |
+  | fastjson  | 29 µs     | -5%           | +24%                   | -22%                     |
+  | fastjson2 | 13 µs     | +2%           | +32%                   | +3%                      |
 
   Endpoints without rules only pay for two `ResponseBodyAdvice` checks
-  (about 0.2 µs). Measured with `FilterOverheadBenchmarkTest`
-  (`-Dcsap.perf=true`, JDK 17) on a busy machine, so treat the numbers as
-  rough.
+  (under 0.1 µs). Measured with `FilterOverheadBenchmarkTest`
+  (`-Dcsap.perf=true -Djacoco.skip=true`) on a busy machine.
 
-  fastjson2 is the most expensive: enabling its property filter moves it to
-  a slower serialization path.
+  The compiled fast path is skipped, and the slower per-property filters
+  are used for the whole response, when the converter has other filters
+  configured, or uses ReferenceDetection, WriteClassName, BeanToArray,
+  PrettyFormat or the null-as-empty features (fastjson2), or WriteClassName,
+  BeanToArray or PrettyFormat (fastjson 1.x). Values written by a custom
+  serializer are also filtered the old way. The output is the same either
+  way.
 - The DevTools page has no dark mode yet.
 - Overloaded methods with the same name share one set of rules and one
   per-endpoint setting (the key is `ClassName.methodName`), for both
