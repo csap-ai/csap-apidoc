@@ -568,9 +568,14 @@ public final class ApiDocService extends AbstractApiDocService implements Filter
     public static CsapDocMethod forMapping(Method method, CsapDocMethod docMethod) {
         // 使用 AnnotatedElementUtils 支持注解继承（实现类 > 接口 > 父类）
         RequestMapping methodAnnotation = AnnotatedElementUtils.findMergedAnnotation(method, RequestMapping.class);
+        if (methodAnnotation == null) {
+            // 有 @ApiOperation 但没有任何映射注解:不是接口方法,不添加请求方式,调用方会跳过该方法
+            return docMethod;
+        }
         if (ArrayUtil.isEmpty(methodAnnotation.method())) {
+            // @RequestMapping 未指定 method 时 Spring 接受所有请求方式,文档按常用顺序列出(第一个作为主请求方式)
             docMethod.getMethods()
-                     .addAll(Lists.newArrayList(RequestMethod.POST, RequestMethod.DELETE, RequestMethod.POST, RequestMethod.GET));
+                     .addAll(Lists.newArrayList(RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE));
         } else {
             docMethod.getMethods().addAll(Lists.newArrayList(methodAnnotation.method()));
         }
