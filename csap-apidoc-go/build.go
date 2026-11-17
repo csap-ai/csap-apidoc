@@ -87,6 +87,8 @@ func (b *builder) method(info GroupInfo, op *Operation, httpMethod, rawPath, nam
 		Value:         title,
 		Version:       []string{model.Default},
 	}
+	m.GlobalHeaderHints = mergeHeaderHints(b.doc.opts.HeaderHints, info.HeaderHints, op.headerHints)
+	m.AuthHint = firstAuth(op.authHint, info.Auth, b.doc.opts.Auth)
 	b.request(m, op, rawPath, mc)
 	b.response(m, op, mc)
 	m.ParamTypes = uniq(mc.paramTypes...)
@@ -108,6 +110,33 @@ func (b *builder) method(info GroupInfo, op *Operation, httpMethod, rawPath, nam
 		md.Parameters = removeHidden(md.Parameters, mc.docHidden)
 	}
 	return m, mask, mc.checks
+}
+
+// mergeHeaderHints 按 全局 < 分组 < 接口 合并请求头建议,同名时后者覆盖,保持首次出现的顺序。
+// 与 Java DocHintsCollector 一致,结果总是非 nil(输出 [])。
+func mergeHeaderHints(levels ...[]model.GlobalHeaderHint) []model.GlobalHeaderHint {
+	out := []model.GlobalHeaderHint{}
+	idx := map[string]int{}
+	for _, l := range levels {
+		for _, h := range l {
+			if i, ok := idx[h.Name]; ok {
+				out[i] = h
+				continue
+			}
+			idx[h.Name] = len(out)
+			out = append(out, h)
+		}
+	}
+	return out
+}
+
+func firstAuth(hs ...*model.AuthHint) *model.AuthHint {
+	for _, h := range hs {
+		if h != nil {
+			return h
+		}
+	}
+	return nil
 }
 
 func (b *builder) wrapper(op *Operation) *Wrapper {

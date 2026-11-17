@@ -44,6 +44,10 @@ type Options struct {
 	// FilterMode 是返回字段过滤的模式,默认 filter.ModePath(路径白名单)。
 	// 从 Java 迁移、要求返回与 Java 逐字节一致时用 filter.ModeCsap。
 	FilterMode filter.Mode
+	// HeaderHints、Auth 是全局的"在线调试"建议(对应 Java 包上的 @DocGlobalHeader / @DocAuth),
+	// 分组(GroupInfo)和接口(Operation.HeaderHint / Auth)可以覆盖。
+	HeaderHints []model.GlobalHeaderHint
+	Auth        *model.AuthHint
 }
 
 // Doc 是运行时文档。并发安全:注册路由、刷新规则、处理请求可以同时发生,

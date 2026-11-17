@@ -25,6 +25,8 @@ type Operation struct {
 	hidden      bool
 	tags        []string
 	status      string
+	headerHints []model.GlobalHeaderHint
+	authHint    *model.AuthHint
 }
 
 // Op 新建一条接口声明。group 对应 Java 的 Controller 全名(规则文件的一级键),
@@ -65,6 +67,35 @@ func (o *Operation) Tags(tags ...string) *Operation { o.tags = tags; return o }
 // Deprecated 标记接口已过时。
 func (o *Operation) Deprecated() *Operation { o.status = model.StatusDeprecated; return o }
 
+// HeaderHint 添加一条"在线调试"全局请求头建议(对应 Java @DocGlobalHeader),
+// 文档页面调试时自动预填,不影响后端处理。同名时接口 > 分组 > Options 全局。
+func (o *Operation) HeaderHint(name, description, example string, required bool) *Operation {
+	o.headerHints = append(o.headerHints, model.GlobalHeaderHint{Name: name, Description: description, Example: example, Required: required})
+	return o
+}
+
+// Auth 设置"在线调试"的认证建议(对应 Java @DocAuth),scheme 为 bearer / basic / oauth2_client / none。
+// API Key 用 APIKeyAuth。优先级:接口 > 分组 > Options 全局。
+func (o *Operation) Auth(scheme, description string) *Operation {
+	o.authHint = NewAuthHint(scheme, description, "", "")
+	return o
+}
+
+// APIKeyAuth 设置 API Key 认证建议,in 为 header 或 query,name 为参数名。
+func (o *Operation) APIKeyAuth(in, name, description string) *Operation {
+	o.authHint = NewAuthHint("apikey", description, in, name)
+	return o
+}
+
+// NewAuthHint 生成认证建议。与 Java 一致:只有 apikey 方案才保留 in 和 name。
+func NewAuthHint(scheme, description, in, name string) *model.AuthHint {
+	h := &model.AuthHint{Scheme: scheme, Description: description}
+	if scheme == "apikey" {
+		h.In, h.Name = model.Str(in), model.Str(name)
+	}
+	return h
+}
+
 // Group 返回分组名。
 func (o *Operation) GroupName() string { return o.group }
 
@@ -90,6 +121,9 @@ type GroupInfo struct {
 	Path        string   // 公共路径前缀(@RequestMapping),用于拆分 apiPath / paths
 	Tags        []string //
 	Hidden      bool     // 整个分组不出现在文档里
+	// HeaderHints、Auth 是分组级的"在线调试"建议(对应 Java 类上的 @DocGlobalHeader / @DocAuth)。
+	HeaderHints []model.GlobalHeaderHint
+	Auth        *model.AuthHint
 }
 
 // Route 是适配器收集到的一条路由。

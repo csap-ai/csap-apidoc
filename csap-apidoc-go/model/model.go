@@ -134,27 +134,50 @@ type Controller struct {
 
 // Method 对应 Java CsapDocMethod。
 type Method struct {
-	ApiPath       []string       `json:"apiPath"`
-	ClassName     string         `json:"className"`
-	Description   string         `json:"description"`
-	Group         []string       `json:"group"`
-	Hidden        bool           `json:"hidden"`
-	Key           string         `json:"key"`
-	MethodHeaders []MethodHeader `json:"methodHeaders"`
-	Methods       []string       `json:"methods"`
-	Name          string         `json:"name"`
-	ParamNames    []string       `json:"paramNames"`
-	ParamType     string         `json:"paramType"`
-	ParamTypes    []string       `json:"paramTypes"`
-	Paths         []string       `json:"paths"`
-	Request       []*Model       `json:"request"`
-	Response      []*Model       `json:"response"`
-	Search        []string       `json:"search"`
-	SimpleName    string         `json:"simpleName"`
-	Status        string         `json:"status"`
-	Tags          []string       `json:"tags"`
-	Value         string         `json:"value"`
-	Version       []string       `json:"version"`
+	ApiPath []string `json:"apiPath"`
+	// AuthHint 是文档页面"在线调试"的认证建议(Java 1.1.0 新增),nil 时不输出。
+	AuthHint    *AuthHint `json:"authHint"`
+	ClassName   string    `json:"className"`
+	Description string    `json:"description"`
+	// GlobalHeaderHints 是"在线调试"的全局请求头建议(Java 1.1.0 新增),没有时输出 []。
+	GlobalHeaderHints []GlobalHeaderHint `json:"globalHeaderHints"`
+	Group             []string           `json:"group"`
+	Hidden            bool               `json:"hidden"`
+	Key               string             `json:"key"`
+	MethodHeaders     []MethodHeader     `json:"methodHeaders"`
+	Methods           []string           `json:"methods"`
+	Name              string             `json:"name"`
+	ParamNames        []string           `json:"paramNames"`
+	ParamType         string             `json:"paramType"`
+	ParamTypes        []string           `json:"paramTypes"`
+	Paths             []string           `json:"paths"`
+	Request           []*Model           `json:"request"`
+	Response          []*Model           `json:"response"`
+	Search            []string           `json:"search"`
+	SimpleName        string             `json:"simpleName"`
+	Status            string             `json:"status"`
+	Tags              []string           `json:"tags"`
+	Value             string             `json:"value"`
+	Version           []string           `json:"version"`
+}
+
+// GlobalHeaderHint 对应 Java CsapDocGlobalHeaderHint(@DocGlobalHeader):
+// 文档页面"在线调试"时自动预填的请求头,不参与后端实际处理。
+type GlobalHeaderHint struct {
+	Description string `json:"description"`
+	Example     string `json:"example"`
+	Name        string `json:"name"`
+	Required    bool   `json:"required"`
+}
+
+// AuthHint 对应 Java CsapDocAuthHint(@DocAuth):"在线调试"的认证建议。
+// Scheme 为 bearer / basic / apikey / oauth2_client / none;In、Name 只在 apikey 时有意义
+// (In 为 header / query),其他方案时为 nil,不输出。
+type AuthHint struct {
+	Description string  `json:"description"`
+	In          *string `json:"in"`
+	Name        *string `json:"name"`
+	Scheme      string  `json:"scheme"`
 }
 
 // MethodHeader 对应 Java CsapDocMethodHeaders。
