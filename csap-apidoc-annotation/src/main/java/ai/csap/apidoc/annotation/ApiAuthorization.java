@@ -12,8 +12,8 @@ package ai.csap.apidoc.annotation;
  **/
 public enum ApiAuthorization {
     //认证类型
-    BEARER_TOKEN("Authorization", "Basic YWRtaW46MTIzNDU2"),
-    BASIC_AUTH("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsib2F1dGgyLXJl"),
+    BEARER_TOKEN("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsib2F1dGgyLXJl"),
+    BASIC_AUTH("Authorization", "Basic YWRtaW46MTIzNDU2"),
     OAUTH_2("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsib2F1dGgyLXJl"),
     OTHER("", "");
 
