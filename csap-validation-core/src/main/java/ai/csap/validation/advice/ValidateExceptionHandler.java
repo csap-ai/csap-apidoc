@@ -1,6 +1,7 @@
 package ai.csap.validation.advice;
 
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -13,12 +14,18 @@ import ai.csap.apidoc.annotation.DataTypeValidate;
 import ai.csap.apidoc.core.ApidocResult;
 import ai.csap.apidoc.core.ApidocResultEnum;
 import ai.csap.apidoc.util.ValidateException;
+import ai.csap.validation.ValidationViolationException;
+import ai.csap.validation.properties.ValidationProperties;
 
-import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * 公用的异常处理
+ * 公用的异常处理.
+ *
+ * <p>响应体为 {@link ApidocResult}({@code code} + {@code message}),HTTP 状态码默认 200,
+ * 可用 {@code csap.validation.http-status} 修改。
+ * <p>{@code ConstraintViolationException} 分属 jakarta.validation / javax.validation 两套 API,
+ * 由 starter 按 classpath 分别注册处理器,这里不引用任何一套,保证 Spring Boot 2 / 3 都能加载本类。
  *
  * @author ycf
  */
@@ -26,6 +33,15 @@ import lombok.extern.slf4j.Slf4j;
 @ControllerAdvice
 @Slf4j
 public class ValidateExceptionHandler {
+    private final ValidationProperties properties;
+
+    public ValidateExceptionHandler() {
+        this(new ValidationProperties());
+    }
+
+    public ValidateExceptionHandler(ValidationProperties properties) {
+        this.properties = properties;
+    }
 
     /**
      * 内部自定义异常错误
@@ -35,7 +51,10 @@ public class ValidateExceptionHandler {
      */
     @ExceptionHandler({ValidateException.class})
     public ResponseEntity<ApidocResult<?>> handlerSellerException(ValidateException e) {
-        log.error("ValidateException{}", e.getMessage(), e);
+        if (!(e instanceof ValidationViolationException)) {
+            // ValidationViolationException 已由 ViolationRecorder 记录
+            log.warn("ValidateException code={} message={}", e.getCode(), e.getMessage());
+        }
         return getResponse(ApidocResult.error(e.getCode(), e.getMessage(), e.getData()));
     }
 
@@ -86,23 +105,23 @@ public class ValidateExceptionHandler {
     }
 
     /**
-     * 单参数和自定义参数异常处理
-     *
-     * @param e ConstraintViolationException
-     * @return ResponseEntity
-     */
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ApidocResult<?>> constraintViolationException(ConstraintViolationException e) {
-        return getResponse(ApidocResult.error("400", e.getMessage().split(",")[0].split(":")[1]));
-    }
-
-    /**
      * 通用的response
      *
      * @param apidocResult 返回的参数
      * @return ResponseEntity
      */
-    private ResponseEntity<ApidocResult<?>> getResponse(ApidocResult<?> apidocResult) {
-        return ResponseEntity.ok(apidocResult);
+    protected ResponseEntity<ApidocResult<?>> getResponse(ApidocResult<?> apidocResult) {
+        return ResponseEntity.status(httpStatus(properties)).body(apidocResult);
+    }
+
+    /**
+     * 校验失败响应的 HTTP 状态码
+     *
+     * @param properties 配置
+     * @return 状态码
+     */
+    public static HttpStatus httpStatus(ValidationProperties properties) {
+        HttpStatus status = properties == null ? null : HttpStatus.resolve(properties.getHttpStatus());
+        return status == null ? HttpStatus.OK : status;
     }
 }
