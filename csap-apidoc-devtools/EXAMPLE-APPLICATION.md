@@ -7,9 +7,9 @@
 **pom.xml**
 ```xml
 <dependency>
-    <groupId>com.csap.framework.boot</groupId>
-    <artifactId>csap-framework-apidoc-boot-starter</artifactId>
-    <version>1.0.0</version>
+    <groupId>ai.csap.apidoc.boot</groupId>
+    <artifactId>csap-apidoc-boot-starter</artifactId>
+    <version>1.1.0</version>
 </dependency>
 ```
 

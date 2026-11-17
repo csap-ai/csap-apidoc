@@ -36,9 +36,9 @@ Simply add the Maven dependency:
 
 ```xml
 <dependency>
-    <groupId>com.csap.framework.boot</groupId>
-    <artifactId>csap-framework-apidoc-boot-starter</artifactId>
-    <version>1.0.0</version>
+    <groupId>ai.csap.apidoc.boot</groupId>
+    <artifactId>csap-apidoc-boot-starter</artifactId>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -346,7 +346,7 @@ While the core is open source, we plan to offer:
 - **Professional Edition**: Enhanced features, priority support
 - **Enterprise Edition**: Full features, SLA, custom development
 
-See the [Product Roadmap](csap-framework-apidoc-devtools/APIDOC开发工具产品路线图.md) for details.
+See the [Product Roadmap](csap-apidoc-devtools/APIDOC开发工具产品路线图.md) for details.
 
 ### Can I use it in commercial projects?
 
@@ -370,11 +370,11 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ### Where can I report bugs?
 
-Report bugs on [GitHub Issues](https://github.com/csap-ai/csap-framework-apidoc/issues).
+Report bugs on [GitHub Issues](https://github.com/csap-ai/csap-apidoc/issues).
 
 ### How do I request a feature?
 
-Open a feature request on [GitHub Discussions](https://github.com/csap-ai/csap-framework-apidoc/discussions).
+Open a feature request on [GitHub Discussions](https://github.com/csap-ai/csap-apidoc/discussions).
 
 ### Can I customize/extend the framework?
 
@@ -426,8 +426,8 @@ Include:
 ## Still Have Questions?
 
 - 📧 Email: support@csap.com
-- 💬 GitHub Discussions: [Discussions](https://github.com/csap-ai/csap-framework-apidoc/discussions)
-- 🐛 Bug Reports: [Issues](https://github.com/csap-ai/csap-framework-apidoc/issues)
+- 💬 GitHub Discussions: [Discussions](https://github.com/csap-ai/csap-apidoc/discussions)
+- 🐛 Bug Reports: [Issues](https://github.com/csap-ai/csap-apidoc/issues)
 - 📚 Documentation: [Official Docs](https://docs.csap.com)
 
 We're here to help! 🚀

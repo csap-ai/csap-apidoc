@@ -81,9 +81,9 @@
 ## 🔗 外部资源
 
 ### 官方链接
-- [GitHub 仓库](https://github.com/csap-ai/csap-framework-apidoc)
-- [问题追踪](https://github.com/csap-ai/csap-framework-apidoc/issues)
-- [讨论区](https://github.com/csap-ai/csap-framework-apidoc/discussions)
+- [GitHub 仓库](https://github.com/csap-ai/csap-apidoc)
+- [问题追踪](https://github.com/csap-ai/csap-apidoc/issues)
+- [讨论区](https://github.com/csap-ai/csap-apidoc/discussions)
 
 ### 相关项目
 - [Spring Boot](https://spring.io/projects/spring-boot)
@@ -96,9 +96,9 @@
 找不到你需要的信息？
 
 - 📧 **邮件**: support@csap.ai
-- 💬 **GitHub 讨论**: [提问](https://github.com/csap-ai/csap-framework-apidoc/discussions)
-- 🐛 **报告 Bug**: [提交问题](https://github.com/csap-ai/csap-framework-apidoc/issues)
-- 💡 **功能建议**: [功能请求](https://github.com/csap-ai/csap-framework-apidoc/discussions)
+- 💬 **GitHub 讨论**: [提问](https://github.com/csap-ai/csap-apidoc/discussions)
+- 🐛 **报告 Bug**: [提交问题](https://github.com/csap-ai/csap-apidoc/issues)
+- 💡 **功能建议**: [功能请求](https://github.com/csap-ai/csap-apidoc/discussions)
 
 ## 🤝 贡献文档
 

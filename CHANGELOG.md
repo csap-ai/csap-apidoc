@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - Unreleased
+
+### Changed
+
+- **Single mainline & version.** This repository (`csap-ai/csap-apidoc`,
+  branch `main`) is now the only development line; the former gitee
+  repository becomes a read-only mirror and its old branches are kept as
+  `archive/*` tags. `1.0.0` keeps meaning the build that has been running
+  in production since 2025-12 (identical to the initial public commit);
+  everything below ships as `1.1.0`, the first version published to
+  Maven Central.
+- Docs: Maven coordinates corrected to the real artifacts
+  (`ai.csap.apidoc.boot:csap-apidoc-boot-starter`,
+  `ai.csap.apidoc.boot:csap-validation-boot-starter`,
+  `ai.csap.apidoc:csap-apidoc-devtools`, `ai.csap.apidoc:csap-apidoc-ui`);
+  the old `com.csap.framework*` / `csap-framework-apidoc-*` names in the
+  READMEs and guides never matched what the build produces. Repository
+  links point to `github.com/csap-ai/csap-apidoc`.
+
+### Added
+
+- `csap-apidoc-go/`: Go implementation (separate Go module, protocol
+  compatible with this Java version), see `csap-apidoc-go/README.md`.
+
 ### Added
 
 - **Maven Central publishing infrastructure** — this project now
@@ -250,16 +274,16 @@ First public release. Baseline feature set:
 
 ## Migration Guides
 
-### Installing 1.0.0
+### Installing 1.1.0
 
-No migration required — this is the first public release. Add the Maven
-dependency to your Spring Boot project:
+Coming from a `1.0.0` build: bump the version and switch to the real
+coordinates if your pom still uses the old names from the docs.
 
 ```xml
 <dependency>
-    <groupId>com.csap.framework.boot</groupId>
-    <artifactId>csap-framework-apidoc-boot-starter</artifactId>
-    <version>1.0.0</version>
+    <groupId>ai.csap.apidoc.boot</groupId>
+    <artifactId>csap-apidoc-boot-starter</artifactId>
+    <version>1.1.0</version>
 </dependency>
 ```
 

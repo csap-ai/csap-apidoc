@@ -4,7 +4,7 @@ name: Release to Maven Central
 # Portal. Triggered manually after a release-cut PR is merged.
 #
 # Prerequisites (see docs/guides/PUBLISHING.md for the full walkthrough):
-#   * `pom.xml` version = the release to cut (e.g. `1.0.0`; no `-SNAPSHOT`)
+#   * `pom.xml` version = the release to cut (e.g. `1.1.0`; no `-SNAPSHOT`)
 #   * GitHub Actions secrets configured:
 #       - CENTRAL_USERNAME, CENTRAL_PASSWORD — User Token from the Central Portal
 #       - GPG_PRIVATE_KEY                    — armored private key (`gpg --armor --export-secret-keys <keyid>`)
@@ -15,9 +15,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version — must match <version> in pom.xml (e.g. 1.0.0)"
+        description: "Release version — must match <version> in pom.xml (e.g. 1.1.0)"
         required: true
-        default: "1.0.0"
+        default: "1.1.0"
       dry_run:
         description: "If true, build + sign locally but skip the upload to Central"
         required: false

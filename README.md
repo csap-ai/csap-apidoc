@@ -4,7 +4,7 @@
 
 [中文](README.md) | [English](README.en.md)
 
-[![Maven Central](https://img.shields.io/badge/maven--central-v1.0.0-blue)](https://search.maven.org/)
+[![Maven Central](https://img.shields.io/badge/maven--central-v1.1.0-blue)](https://search.maven.org/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Java](https://img.shields.io/badge/java-8%2B-orange.svg)](https://www.oracle.com/java/technologies/javase-downloads.html)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-2.x%2F3.x-brightgreen.svg)](https://spring.io/projects/spring-boot)
@@ -40,9 +40,9 @@
 
 ```xml
 <dependency>
-    <groupId>com.csap.framework.boot</groupId>
-    <artifactId>csap-framework-apidoc-boot-starter</artifactId>
-    <version>1.0.0</version>
+    <groupId>ai.csap.apidoc.boot</groupId>
+    <artifactId>csap-apidoc-boot-starter</artifactId>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -52,9 +52,9 @@
 
 ```xml
 <dependency>
-    <groupId>com.csap.framework.boot</groupId>
-    <artifactId>csap-framework-validation-boot-starter</artifactId>
-    <version>1.0.0</version>
+    <groupId>ai.csap.apidoc.boot</groupId>
+    <artifactId>csap-validation-boot-starter</artifactId>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -72,17 +72,17 @@
 ```xml
 <!-- DevTools 开发工具（开发环境推荐） -->
 <dependency>
-    <groupId>com.csap.framework</groupId>
-    <artifactId>csap-framework-apidoc-devtools</artifactId>
-    <version>1.0.0</version>
+    <groupId>ai.csap.apidoc</groupId>
+    <artifactId>csap-apidoc-devtools</artifactId>
+    <version>1.1.0</version>
     <scope>provided</scope>  <!-- 生产环境可排除 -->
 </dependency>
 
 <!-- 或者使用独立 Web 界面 -->
 <dependency>
-    <groupId>com.csap.framework</groupId>
-    <artifactId>csap-framework-apidoc-web</artifactId>
-    <version>1.0.0</version>
+    <groupId>ai.csap.apidoc</groupId>
+    <artifactId>csap-apidoc-ui</artifactId>
+    <version>1.1.0</version>
     <scope>provided</scope>  <!-- 生产环境可排除 -->
 </dependency>
 ```
@@ -286,24 +286,24 @@ public class User {
 
 | 模块                                       | 说明          | 主要功能                                            |
 | ------------------------------------------ | ------------- | --------------------------------------------------- |
-| **csap-framework-apidoc-annotation**       | 注解模块      | 提供`@Api`、`@ApiOperation`、`@ApiModel` 等文档注解 |
-| **csap-framework-apidoc-common**           | 公共模块      | 通用工具类、常量定义、基础模型                      |
-| **csap-framework-apidoc-core**             | 核心模块      | 文档扫描、解析、生成核心逻辑                        |
-| **csap-framework-apidoc-boot-starter**     | API文档启动器 | API 文档自动配置、快速集成                          |
-| **csap-framework-validation-boot-starter** | 验证启动器    | JSR-303 验证、自定义验证注解、统一异常处理          |
+| **csap-apidoc-annotation**       | 注解模块      | 提供`@Api`、`@ApiOperation`、`@ApiModel` 等文档注解 |
+| **csap-apidoc-common**           | 公共模块      | 通用工具类、常量定义、基础模型                      |
+| **csap-apidoc-core**             | 核心模块      | 文档扫描、解析、生成核心逻辑                        |
+| **csap-apidoc-boot-starter**     | API文档启动器 | API 文档自动配置、快速集成                          |
+| **csap-validation-boot-starter** | 验证启动器    | JSR-303 验证、自定义验证注解、统一异常处理          |
 
 ### 功能模块
 
 
 | 模块                               | 说明        | 主要功能                 |
 | ---------------------------------- | ----------- | ------------------------ |
-| **csap-framework-apidoc-strategy** | 存储策略    | 支持多种文档持久化方式   |
-| **csap-framework-apidoc-sqlite**   | SQLite 存储 | 基于 SQLite 的文档存储   |
-| **csap-framework-apidoc-yaml**     | YAML 存储   | 基于 YAML 文件的文档存储 |
-| **csap-framework-apidoc-standard** | 标准输出    | 标准格式文档输出         |
-| **csap-framework-apidoc-devtools** | 开发工具    | 提供可视化文档管理界面   |
-| **csap-framework-apidoc-web**      | Web 前端    | React 实现的文档展示界面 |
-| **csap-framework-validation-core** | 验证核心    | JSR-303 验证规则集成     |
+| **csap-apidoc-strategy** | 存储策略    | 支持多种文档持久化方式   |
+| **csap-apidoc-sqlite**   | SQLite 存储 | 基于 SQLite 的文档存储   |
+| **csap-apidoc-yaml**     | YAML 存储   | 基于 YAML 文件的文档存储 |
+| **csap-apidoc-standard** | 标准输出    | 标准格式文档输出         |
+| **csap-apidoc-devtools** | 开发工具    | 提供可视化文档管理界面   |
+| **csap-apidoc-ui**      | Web 前端    | React 实现的文档展示界面 |
+| **csap-validation-core** | 验证核心    | JSR-303 验证规则集成     |
 
 ## 🔧 高级配置
 
@@ -441,9 +441,9 @@ public void exportToPostman() {
 
 ```xml
 <dependency>
-    <groupId>com.csap.framework</groupId>
-    <artifactId>csap-framework-apidoc-devtools</artifactId>
-    <version>1.0.0</version>
+    <groupId>ai.csap.apidoc</groupId>
+    <artifactId>csap-apidoc-devtools</artifactId>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -457,9 +457,9 @@ public void exportToPostman() {
 
 ```xml
 <dependency>
-    <groupId>com.csap.framework</groupId>
-    <artifactId>csap-framework-apidoc-web</artifactId>
-    <version>1.0.0</version>
+    <groupId>ai.csap.apidoc</groupId>
+    <artifactId>csap-apidoc-ui</artifactId>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -523,9 +523,9 @@ csap:
     <id>dev</id>
     <dependencies>
       <dependency>
-        <groupId>com.csap.framework</groupId>
-        <artifactId>csap-framework-apidoc-devtools</artifactId>
-        <version>1.0.0</version>
+        <groupId>ai.csap.apidoc</groupId>
+        <artifactId>csap-apidoc-devtools</artifactId>
+        <version>1.1.0</version>
       </dependency>
     </dependencies>
   </profile>
@@ -751,7 +751,7 @@ csap:
 - [ ]  AI 辅助测试
 - [ ]  细粒度权限控制
 
-查看完整路线图: [产品路线图](csap-framework-apidoc-devtools/APIDOC开发工具产品路线图.md)
+查看完整路线图: [产品路线图](csap-apidoc-devtools/APIDOC开发工具产品路线图.md)
 
 ## 📖 文档
 
@@ -760,8 +760,8 @@ csap:
 - [网关聚合指南](GATEWAY-AGGREGATION.md) - 微服务网关聚合文档配置
 - [常见问题 FAQ](FAQ.md) - 60+ 常见问题解答
 - [架构设计](ARCHITECTURE.md) - 系统架构和设计原则
-- [Postman 转换器](csap-framework-apidoc-core/README-Postman.md) - Postman 集成
-- [产品路线图](csap-framework-apidoc-devtools/APIDOC开发工具产品路线图.md) - 未来规划
+- [Postman 转换器](csap-apidoc-core/README-Postman.md) - Postman 集成
+- [产品路线图](csap-apidoc-devtools/APIDOC开发工具产品路线图.md) - 未来规划
 - [贡献指南](CONTRIBUTING.md) - 如何参与贡献
 - [安全策略](SECURITY.md) - 安全相关说明
 
@@ -806,8 +806,8 @@ csap:
 
 ## 📮 联系我们
 
-- **问题反馈**: [GitHub Issues](https://github.com/csap-ai/csap-framework-apidoc/issues)
-- **功能建议**: [GitHub Discussions](https://github.com/csap-ai/csap-framework-apidoc/discussions)
+- **问题反馈**: [GitHub Issues](https://github.com/csap-ai/csap-apidoc/issues)
+- **功能建议**: [GitHub Discussions](https://github.com/csap-ai/csap-apidoc/discussions)
 - **邮件**: support@csap.ai
 
 ## 🔗 相关链接

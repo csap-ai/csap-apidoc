@@ -8,24 +8,24 @@
 * @csap-team
 
 # Core modules
-/csap-framework-apidoc-core/ @csap-team
-/csap-framework-apidoc-annotation/ @csap-team
-/csap-framework-apidoc-common/ @csap-team
+/csap-apidoc-core/ @csap-team
+/csap-apidoc-annotation/ @csap-team
+/csap-apidoc-common/ @csap-team
 
 # Boot starter
-/csap-framework-apidoc-boot/ @csap-team
+/csap-apidoc-boot/ @csap-team
 
 # Storage strategies
-/csap-framework-apidoc-strategy/ @csap-team
-/csap-framework-apidoc-sqlite/ @csap-team
-/csap-framework-apidoc-yaml/ @csap-team
+/csap-apidoc-strategy/ @csap-team
+/csap-apidoc-sqlite/ @csap-team
+/csap-apidoc-yaml/ @csap-team
 
 # Frontend / DevTools
-/csap-framework-apidoc-devtools/ @csap-team
-/csap-framework-apidoc-web/ @csap-team
+/csap-apidoc-devtools/ @csap-team
+/csap-apidoc-ui/ @csap-team
 
 # Validation
-/csap-framework-validation-core/ @csap-team
+/csap-validation-core/ @csap-team
 
 # Documentation
 *.md @csap-team

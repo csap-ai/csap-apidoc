@@ -17,9 +17,9 @@ Add the following dependency to your `pom.xml`:
 
 ```xml
 <dependency>
-    <groupId>com.csap.framework.boot</groupId>
-    <artifactId>csap-framework-apidoc-boot-starter</artifactId>
-    <version>1.0.0</version>
+    <groupId>ai.csap.apidoc.boot</groupId>
+    <artifactId>csap-apidoc-boot-starter</artifactId>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -28,7 +28,7 @@ Add the following dependency to your `pom.xml`:
 Add the following to your `build.gradle`:
 
 ```groovy
-implementation 'com.csap.framework.boot:csap-framework-apidoc-boot-starter:1.0.0'
+implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.1.0'
 ```
 
 ## ⚙️ Step 2: Enable API Documentation (Annotation-Based - Recommended)
@@ -587,15 +587,15 @@ You now have a fully functional API documentation system!
 
 - 📚 Read the [Full Documentation](README.md)
 - 🔧 Explore [Advanced Configuration](docs/configuration.md)
-- 🎨 Customize the [DevTools Interface](csap-framework-apidoc-devtools/devtools/README.md)
-- 🚀 Check out the [Product Roadmap](csap-framework-apidoc-devtools/APIDOC开发工具产品路线图.md)
-- 💬 Join our [Community Discussions](https://github.com/csap-ai/csap-framework-apidoc/discussions)
+- 🎨 Customize the [DevTools Interface](csap-apidoc-devtools/devtools/README.md)
+- 🚀 Check out the [Product Roadmap](csap-apidoc-devtools/APIDOC开发工具产品路线图.md)
+- 💬 Join our [Community Discussions](https://github.com/csap-ai/csap-apidoc/discussions)
 
 ## 🤝 Need Help?
 
 - 📧 Email: support@csap.com
-- 🐛 Report Issues: [GitHub Issues](https://github.com/csap-ai/csap-framework-apidoc/issues)
-- 💬 Ask Questions: [GitHub Discussions](https://github.com/csap-ai/csap-framework-apidoc/discussions)
+- 🐛 Report Issues: [GitHub Issues](https://github.com/csap-ai/csap-apidoc/issues)
+- 💬 Ask Questions: [GitHub Discussions](https://github.com/csap-ai/csap-apidoc/discussions)
 
 Happy documenting! 🎊
 

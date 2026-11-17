@@ -8,7 +8,7 @@
 - **Java 版本**: 11+
 - **Servlet API**: javax.servlet.*
 - **Validation API**: javax.validation.*
-- **CSAP API Doc 版本**: 1.0.0
+- **CSAP API Doc 版本**: 1.1.0
 
 ## 🚀 快速开始
 
@@ -47,14 +47,14 @@ mvn clean spring-boot:run
     <dependency>
         <groupId>ai.csap.apidoc.boot</groupId>
         <artifactId>csap-apidoc-boot-starter</artifactId>
-        <version>1.0.0</version>
+        <version>1.1.0</version>
     </dependency>
 
     <!-- CSAP Validation Starter -->
     <dependency>
         <groupId>ai.csap.apidoc.boot</groupId>
         <artifactId>csap-validation-boot-starter</artifactId>
-        <version>1.0.0</version>
+        <version>1.1.0</version>
     </dependency>
 </dependencies>
 ```

@@ -17,7 +17,7 @@ GitHub Actions workflow run: `Release to Maven Central` →
 1. Cut a release PR that bumps `<version>` in the parent `pom.xml` (and
    whatever `CHANGELOG.md` / `README.md` references), merge to `main`.
 2. Go to **Actions → Release to Maven Central → Run workflow**.
-3. Type the version (e.g. `1.0.0`), leave `dry_run=false`, click **Run**.
+3. Type the version (e.g. `1.1.0`), leave `dry_run=false`, click **Run**.
 4. 5–15 minutes later the bundle is live on
    [central.sonatype.com](https://central.sonatype.com/artifact/ai.csap.apidoc/csap-apidoc)
    and (within ~30 min, sometimes longer) on

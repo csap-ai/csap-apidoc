@@ -68,7 +68,7 @@ If applicable, add screenshots to help explain your problem.
 - OS: [e.g. macOS 14.0]
 - Java Version: [e.g. Java 17]
 - Spring Boot Version: [e.g. 3.2.0]
-- CSAP Apidoc Version: [e.g. 1.0.0]
+- CSAP Apidoc Version: [e.g. 1.1.0]
 
 **Additional context:**
 Add any other context about the problem here.
@@ -153,7 +153,7 @@ Describe the tests you ran and how to reproduce them.
 
 ```bash
 # Clone the repository
-git clone https://github.com/csap-ai/csap-framework-apidoc.git
+git clone https://github.com/csap-ai/csap-apidoc.git
 cd csap-framework-apidoc
 
 # Build the project
@@ -167,7 +167,7 @@ mvn test
 
 ```bash
 # Navigate to devtools directory
-cd csap-framework-apidoc-devtools/devtools
+cd csap-apidoc-devtools/devtools
 
 # Install dependencies
 npm install
@@ -294,14 +294,14 @@ refactor(core): simplify document scanning logic
 mvn test
 
 # Run tests for specific module
-cd csap-framework-apidoc-core
+cd csap-apidoc-core
 mvn test
 
 # Run specific test class
 mvn test -Dtest=PostmanConverterServiceTest
 
 # Run frontend tests
-cd csap-framework-apidoc-devtools/devtools
+cd csap-apidoc-devtools/devtools
 npm test
 ```
 
