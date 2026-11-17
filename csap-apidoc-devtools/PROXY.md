@@ -7,7 +7,7 @@ browser (`fetch` → target service). When the doc UI lives on a different
 origin from the target service and the target service does not return
 `Access-Control-Allow-*`, the browser blocks the response and the user sees
 "Failed to fetch" with no useful diagnostics. See
-[`docs/cors.md`](../docs/cors.md) for the full landscape.
+[the CORS guide](https://apidoc.csap.ai/guide/cors) for the full landscape.
 
 This module exposes a small same-origin reverse proxy the UI can call
 instead of going direct. Because the proxy runs inside the host application

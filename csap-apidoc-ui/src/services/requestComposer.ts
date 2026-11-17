@@ -9,7 +9,7 @@
  * returns a deterministic RequestSpec, which makes it trivial to unit
  * test and reason about.
  *
- * See docs/features/environment-auth-headers.md §5, §6, §7.2/§7.3, §8 (M5).
+ * See docs/design/environment-auth-headers.md §5, §6, §7.2/§7.3, §8 (M5).
  */
 
 import type { RequestSpec } from '@/components/TryItOutPanel';

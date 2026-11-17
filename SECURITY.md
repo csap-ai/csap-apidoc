@@ -1,208 +1,43 @@
-# Security Policy
+# Security Policy / 安全策略
 
-## Supported Versions
+## Supported versions / 支持的版本
 
-We release patches for security vulnerabilities for the following versions:
+| Version | Supported |
+| ------- | --------- |
+| 1.1.x   | ✅ |
+| < 1.1   | ❌ (never published to Maven Central / 未发布到 Maven Central) |
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.1.x   | :white_check_mark: |
-| 1.0.x   | :white_check_mark: |
-| < 1.0   | :x:                |
+Security fixes are released as a new patch version of the latest minor line.
 
-## Reporting a Vulnerability
+安全修复以最新次版本线的补丁版本发布。
 
-We take the security of CSAP Framework API Doc seriously. If you believe you have found a security vulnerability, please report it to us as described below.
+## Reporting a vulnerability / 报告漏洞
 
-### Please DO NOT
+**Please do not open a public issue for security problems.** / **请不要用公开 Issue 报告安全问题。**
 
-- **Do not** open a public GitHub issue for security vulnerabilities
-- **Do not** disclose the vulnerability publicly until we've had a chance to address it
+1. **Preferred / 首选**: GitHub private vulnerability reporting — open <https://github.com/csap-ai/csap-apidoc/security/advisories/new>. Only the maintainers can see the report.
+   通过 GitHub 私密漏洞报告提交,只有维护者可见。
+2. **Alternative / 备用**: email **support@csap.ai** with the subject `[SECURITY] csap-apidoc`.
+   发送邮件至 **support@csap.ai**,标题写 `[SECURITY] csap-apidoc`。
 
-### Please DO
+Please include / 请尽量包含:
 
-**Report security vulnerabilities via email to: security@csap.com**
+- the affected version and module / 受影响的版本和模块
+- steps to reproduce, or a proof of concept / 复现步骤或概念验证
+- the impact as you understand it / 你理解的影响范围
 
-Please include the following information in your report:
+## What to expect / 处理流程
 
-- Type of vulnerability (e.g., XSS, SQL injection, authentication bypass)
-- Full paths of source file(s) related to the vulnerability
-- Location of the affected source code (tag/branch/commit or direct URL)
-- Step-by-step instructions to reproduce the issue
-- Proof-of-concept or exploit code (if possible)
-- Impact of the issue, including how an attacker might exploit it
+- We acknowledge the report and start the assessment as soon as possible, and keep you updated while we work on it.
+  我们会尽快确认收到并开始评估,处理过程中保持沟通。
+- Once fixed, we publish a patch release and a GitHub Security Advisory, and credit you unless you prefer to stay anonymous.
+  修复后发布补丁版本和 GitHub 安全公告;除非你希望匿名,我们会在公告中致谢。
 
-### What to Expect
+## Deployment notes / 部署注意事项
 
-1. **Acknowledgment**: We will acknowledge receipt of your vulnerability report within 48 hours.
-
-2. **Initial Assessment**: We will provide an initial assessment of the report within 5 business days, including:
-   - Confirmation of the vulnerability
-   - Severity assessment (Critical/High/Medium/Low)
-   - Expected timeline for a fix
-
-3. **Progress Updates**: We will keep you informed about the progress of fixing the vulnerability.
-
-4. **Resolution**: Once the vulnerability is fixed:
-   - We will notify you before public disclosure
-   - We will credit you in the release notes (if you wish)
-   - We will publish a security advisory
-
-5. **Public Disclosure**: We aim to disclose vulnerabilities within 90 days of the initial report.
-
-## Security Best Practices
-
-### For Users
-
-When using CSAP Framework API Doc in production:
-
-1. **Disable Documentation in Production**
-   ```yaml
-   # application-prod.yml
-   csap:
-     apidoc:
-       enabled: false
-   ```
-
-2. **Enable Authentication**
-   ```yaml
-   csap:
-     apidoc:
-       security:
-         enabled: true
-         username: admin
-         password: strong-password-here
-   ```
-
-3. **Use IP Whitelisting**
-   ```yaml
-   csap:
-     apidoc:
-       security:
-         allowed-ips:
-           - 127.0.0.1
-           - 192.168.1.0/24
-   ```
-
-4. **Enable Data Masking**
-   ```java
-   @ApiModelProperty(value = "Phone", sensitive = true, maskPattern = "phone")
-   private String phone;
-   ```
-
-5. **Keep Dependencies Updated**
-   - Regularly update to the latest version
-   - Monitor security advisories
-
-6. **Use HTTPS**
-   - Always use HTTPS in production
-   - Configure proper SSL/TLS certificates
-
-7. **Review Access Logs**
-   - Monitor who accesses the documentation
-   - Check for suspicious activity
-
-### For Contributors
-
-When contributing code:
-
-1. **Never commit sensitive data**
-   - No passwords, API keys, or tokens
-   - Use environment variables for sensitive config
-
-2. **Validate all inputs**
-   - Sanitize user inputs
-   - Use parameterized queries
-   - Validate file uploads
-
-3. **Follow secure coding practices**
-   - Use prepared statements for database queries
-   - Implement proper error handling
-   - Avoid exposing stack traces
-
-4. **Review dependencies**
-   - Check for known vulnerabilities
-   - Keep dependencies up to date
-   - Use tools like OWASP Dependency-Check
-
-5. **Handle authentication properly**
-   - Use strong password hashing (BCrypt)
-   - Implement rate limiting
-   - Use secure session management
-
-## Known Security Considerations
-
-### 1. Information Disclosure
-
-**Risk**: API documentation exposes API endpoints and data structures.
-
-**Mitigation**:
-- Disable in production environments
-- Use authentication
-- Apply IP whitelisting
-
-### 2. Data Masking
-
-**Risk**: Documentation might expose sensitive data in examples.
-
-**Mitigation**:
-- Use the data masking feature
-- Mark sensitive fields appropriately
-- Review generated documentation
-
-### 3. Cross-Site Scripting (XSS)
-
-**Risk**: User-provided content in documentation could execute scripts.
-
-**Mitigation**:
-- All user inputs are sanitized
-- Content Security Policy headers
-- Regular security audits
-
-### 4. SQL Injection (SQLite Storage)
-
-**Risk**: Malformed data could lead to SQL injection.
-
-**Mitigation**:
-- Parameterized queries used throughout
-- Input validation on all data
-- Regular security testing
-
-### 5. Dependency Vulnerabilities
-
-**Risk**: Third-party dependencies might have vulnerabilities.
-
-**Mitigation**:
-- Regular dependency updates
-- Security scanning in CI/CD
-- Monitoring security advisories
-
-## Security Updates
-
-Security updates are released as soon as possible after a vulnerability is confirmed. We use the following severity levels:
-
-- **Critical**: Immediate patch release, public advisory
-- **High**: Patch within 7 days, public advisory
-- **Medium**: Patch in next minor release
-- **Low**: Patch in next release
-
-## Acknowledgments
-
-We would like to thank the following security researchers for responsibly disclosing vulnerabilities:
-
-<!-- Security researchers will be listed here -->
-
-## Contact
-
-For security-related questions or concerns:
-- **Email**: security@csap.com
-- **PGP Key**: [Coming soon]
-
-For general questions, please use:
-- **GitHub Issues**: For bugs and features
-- **Email**: support@csap.com
-
----
-
-Last updated: 2025-10-20
-
+- **DevTools is for development only.** It reads and writes rule files and exposes class inspection endpoints (`/csap/yaml/*`, `/devtools/*`). Keep `csap.apidoc.devtool.enabled` off in production (it is off by default).
+  **DevTools 只用于开发环境**:它会读写规则文件,并提供类结构查询接口。生产环境保持 `csap.apidoc.devtool.enabled` 关闭(默认关闭)。
+- **The docs endpoints are public by default.** `/csap-api.html` and `/csap/apidoc*` have no authentication of their own. If your API structure is sensitive, protect these paths with your application's security (for example Spring Security) or do not expose them outside your network.
+  **文档接口默认对外开放**:`/csap-api.html`、`/csap/apidoc*` 本身不做鉴权。如果接口结构属于敏感信息,请用应用自身的安全机制(如 Spring Security)保护这些路径,或不对外网开放。
+- **Try-it-out secrets stay in the browser.** Environments, headers and credentials used by the docs page are stored in the browser's local storage; the optional vault encrypts them with a passphrase. Do not use production credentials on shared machines.
+  **在线调试的凭据保存在浏览器本地**:可选的保险库会用口令加密。不要在公用电脑上使用生产环境凭据。

@@ -376,9 +376,7 @@ server:
 ## 📚 更多示例
 
 查看其他文档：
-- [启动横幅详细说明](./STARTUP-BANNER.md)
 - [Devtools 部署指南](./DEVTOOLS-DEPLOY.md)
-- [404 问题解决方案](./404-PROBLEM-SOLVED.md)
 
 ---
 
