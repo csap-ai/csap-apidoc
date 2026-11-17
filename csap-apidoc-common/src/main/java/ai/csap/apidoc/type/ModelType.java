@@ -22,7 +22,7 @@ public enum ModelType {
 
     static {
         for (ModelType paramType : values()) {
-            MAPPINGS.put(paramType.name(), null);
+            MAPPINGS.put(paramType.name(), paramType);
         }
     }
 

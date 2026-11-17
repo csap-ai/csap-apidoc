@@ -22,7 +22,7 @@ public enum ApiStatus {
 
     static {
         for (ApiStatus paramType : values()) {
-            MAPPINGS.put(paramType.name(), null);
+            MAPPINGS.put(paramType.name(), paramType);
         }
     }
 
