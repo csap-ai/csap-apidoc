@@ -171,7 +171,7 @@
     .ant-tree.ant-tree-directory
       .ant-tree-treenode-selected
       .ant-tree-switcher {
-      color: #000;
+      color: @text-strong;
     }
 
     .ant-tree-switcher-noop {
@@ -226,7 +226,7 @@
     .ant-tree.ant-tree-directory
       .ant-tree-treenode
       .ant-tree-node-content-wrapper.ant-tree-node-selected {
-      color: rgba(0, 0, 0, 0.85);
+      color: @text-strong;
     }
 
     .post-color {
@@ -296,7 +296,7 @@
         border-bottom: 1px solid @border-color-light;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         backdrop-filter: blur(8px);
-        background: rgba(248, 250, 252, 0.95);
+        background: var(--csap-bg-glass);
         
         .api-header-single-line {
           display: flex;
@@ -498,7 +498,7 @@
         align-items: center;
         gap: 10px;
         padding: 8px 14px;
-        background: linear-gradient(135deg, rgba(255,255,255,1) 0%, rgba(248,250,252,1) 100%);
+        background: var(--csap-bg-card-gradient);
         border-radius: @border-radius-md;
         box-shadow: @shadow-sm;
         margin: 0;
@@ -632,7 +632,7 @@
       }
 
       .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
-        color: rgba(24, 24, 25, 0.9);
+        color: @text-primary;
       }
 
       .ant-tabs-top > .ant-tabs-nav {
@@ -716,7 +716,7 @@
 // Tooltip样式美化
 .ant-tooltip {
   .ant-tooltip-inner {
-    background: @text-primary;
+    background: var(--csap-tooltip-bg);
     border-radius: @border-radius-sm;
     padding: 8px 12px;
     font-size: 13px;
@@ -724,7 +724,7 @@
   }
   
   .ant-tooltip-arrow-content {
-    background: @text-primary;
+    background: var(--csap-tooltip-bg);
   }
 }
 
@@ -785,22 +785,22 @@
     }
     
     .validation-descr {
-      color: #8c8c8c;
+      color: @text-muted;
       margin-bottom: 2px;
     }
     
     .validation-pattern {
-      color: #595959;
+      color: @text-body;
       font-family: 'SF Mono', 'Monaco', monospace;
       font-size: 11px;
-      background: rgba(0, 0, 0, 0.04);
+      background: @fill-color;
       padding: 2px 6px;
       border-radius: 3px;
       margin-bottom: 2px;
     }
     
     .validation-message {
-      color: #8c8c8c;
+      color: @text-muted;
       font-size: 11px;
     }
   }
@@ -828,8 +828,8 @@
   
   .validation-item-complex {
     padding: 8px 10px;
-    background: white;
-    border: 1px solid #f0f0f0;
+    background: @bg-primary;
+    border: 1px solid @split-color;
     border-radius: @border-radius-sm;
     font-size: 12px;
     transition: all 0.2s ease;
@@ -860,7 +860,7 @@
 
 .enum-collapse {
   margin-top: 6px;
-  background: rgba(248, 250, 252, 0.6);
+  background: var(--csap-bg-glass-light);
   border-radius: @border-radius-md;
   border: 1px solid @border-color-light;
   
@@ -886,8 +886,8 @@
   
   .enum-item {
     padding: 8px 10px;
-    background: white;
-    border: 1px solid #e5e7eb;
+    background: @bg-primary;
+    border: 1px solid @border-color;
     border-radius: @border-radius-sm;
     font-size: 12px;
     transition: all 0.2s ease;
@@ -904,12 +904,12 @@
       
       .enum-field-label {
         font-weight: 600;
-        color: #64748b;
+        color: @text-secondary;
         margin-right: 4px;
       }
       
       .enum-field-value {
-        color: #1e293b;
+        color: @text-primary;
       }
     }
   }

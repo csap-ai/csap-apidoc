@@ -8,7 +8,7 @@
   &__list {
     width: 220px;
     flex-shrink: 0;
-    border-right: 1px solid #f0f0f0;
+    border-right: 1px solid @split-color;
     padding-right: 12px;
     display: flex;
     flex-direction: column;
@@ -29,14 +29,14 @@
     gap: 10px;
 
     &:hover {
-      background-color: #fafafa;
+      background-color: @bg-muted;
     }
 
     &--selected {
-      background-color: #e6f7ff;
+      background-color: var(--csap-selected-bg);
 
       &:hover {
-        background-color: #e6f7ff;
+        background-color: var(--csap-selected-bg);
       }
     }
   }
@@ -83,7 +83,7 @@
 
   &__hint {
     margin-top: 8px;
-    color: rgba(0, 0, 0, 0.45);
+    color: @text-muted;
     font-size: 12px;
     line-height: 1.6;
   }
@@ -92,7 +92,7 @@
     margin-top: 24px;
     display: flex;
     justify-content: flex-end;
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid @split-color;
     padding-top: 16px;
   }
 

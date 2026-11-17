@@ -242,16 +242,16 @@ const ValidationRenderer: React.FC<{ validations: ValidateItem[] }> = ({ validat
                   )}
                 </div>
                 {validation.descr && validation.descr !== validation.type && (
-                  <div style={{ color: '#8c8c8c', marginBottom: '2px' }}>
+                  <div style={{ color: 'var(--csap-text-muted)', marginBottom: '2px' }}>
                     {validation.descr}
                   </div>
                 )}
                 {validation.pattern && (
                   <div style={{
-                    color: '#595959',
+                    color: 'var(--csap-text-body)',
                     fontFamily: "'SF Mono', 'Monaco', monospace",
                     fontSize: '11px',
-                    background: 'rgba(0,0,0,0.04)',
+                    background: 'var(--csap-fill)',
                     padding: '2px 6px',
                     borderRadius: '3px',
                     marginBottom: '2px'
@@ -260,7 +260,7 @@ const ValidationRenderer: React.FC<{ validations: ValidateItem[] }> = ({ validat
                   </div>
                 )}
                 {validation.message && (
-                  <div style={{ color: '#8c8c8c', fontSize: '11px' }}>
+                  <div style={{ color: 'var(--csap-text-muted)', fontSize: '11px' }}>
                     💬 {validation.message}
                   </div>
                 )}
@@ -301,7 +301,7 @@ const ValidationRenderer: React.FC<{ validations: ValidateItem[] }> = ({ validat
                 style={{
                   padding: '8px 10px',
                   background: 'white',
-                  border: '1px solid #f0f0f0',
+                  border: '1px solid var(--csap-split)',
                   borderRadius: '4px',
                   fontSize: '12px'
                 }}
@@ -357,17 +357,17 @@ const ValidationRenderer: React.FC<{ validations: ValidateItem[] }> = ({ validat
                 </div>
 
                 {validation.descr && validation.descr !== validation.type && (
-                  <div style={{ color: '#595959', marginLeft: '24px', marginBottom: '4px' }}>
+                  <div style={{ color: 'var(--csap-text-body)', marginLeft: '24px', marginBottom: '4px' }}>
                     📝 {validation.descr}
                   </div>
                 )}
 
                 {validation.pattern && (
                   <div style={{
-                    color: '#262626',
+                    color: 'var(--csap-text-code)',
                     fontFamily: "'SF Mono', 'Monaco', monospace",
                     fontSize: '11px',
-                    background: '#f5f5f5',
+                    background: 'var(--csap-fill-strong)',
                     padding: '4px 8px',
                     borderRadius: '3px',
                     marginLeft: '24px',
@@ -382,7 +382,7 @@ const ValidationRenderer: React.FC<{ validations: ValidateItem[] }> = ({ validat
 
                 {validation.message && (
                   <div style={{
-                    color: '#8c8c8c',
+                    color: 'var(--csap-text-muted)',
                     fontSize: '11px',
                     marginLeft: '24px',
                     padding: '3px 0'
@@ -464,7 +464,7 @@ export const buildColumnsBody = (t: TFunction): ColumnsType<BodyRecord> => [
                         {record.required ? (
                             <ExclamationCircleFilled style={{color: '#ff4d4f', fontSize: '12px'}}/>
                         ) : (
-                            <CheckCircleOutlined style={{color: '#d9d9d9', fontSize: '12px'}}/>
+                            <CheckCircleOutlined style={{color: 'var(--csap-text-tertiary)', fontSize: '12px'}}/>
                         )}
                         <span style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
                             {text || ''}

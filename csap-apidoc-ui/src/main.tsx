@@ -10,8 +10,10 @@ import { useTranslation } from 'react-i18next';
 import zhCN from 'antd/es/locale/zh_CN';
 import enUS from 'antd/es/locale/en_US';
 import App from './App'
+import { ThemeProvider, bootstrapTheme } from '@/theme/ThemeContext';
+// AntD 的亮 / 暗样式表由 bootstrapTheme() 以 <link> 方式加载并切换(见 src/theme/antdStylesheets.ts)
+import "@/styles/theme.less";
 import "@/styles/reset.less";
-import "antd/dist/antd.less";
 
 const ANTD_LOCALES: Record<string, typeof zhCN> = {
   'zh-CN': zhCN,
@@ -31,6 +33,10 @@ const I18nApp = () => {
   );
 };
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <I18nApp />
-);
+void bootstrapTheme().then(() => {
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <ThemeProvider>
+      <I18nApp />
+    </ThemeProvider>
+  );
+});

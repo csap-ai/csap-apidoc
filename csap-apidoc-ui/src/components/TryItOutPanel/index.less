@@ -64,8 +64,8 @@
     margin-top: 4px;
     padding-bottom: 4px;
     font-weight: 600;
-    color: rgba(0, 0, 0, 0.85);
-    border-bottom: 1px solid #f0f0f0;
+    color: @text-strong;
+    border-bottom: 1px solid @split-color;
   }
 
   &__response {
@@ -92,13 +92,13 @@
   }
 
   &__muted {
-    color: rgba(0, 0, 0, 0.55);
+    color: @text-body;
     font-size: 12px;
   }
 
   &__image-wrap {
     padding: 12px;
-    background: #fafafa;
+    background: @bg-muted;
     border-radius: 6px;
     text-align: center;
   }
@@ -124,8 +124,8 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    background: #fcfcfd;
-    border: 1px solid #f0f0f0;
+    background: @bg-subtle;
+    border: 1px solid @split-color;
     border-radius: 6px;
     padding: 12px;
 
@@ -144,7 +144,7 @@
   &__raw-title {
     font-weight: 600;
     font-size: 12px;
-    color: rgba(0, 0, 0, 0.65);
+    color: @text-body;
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }

@@ -10,7 +10,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    border-right: 1px solid #f0f0f0;
+    border-right: 1px solid @split-color;
     padding-right: 12px;
   }
 
@@ -28,11 +28,11 @@
     transition: background-color 120ms ease;
 
     &:hover {
-      background-color: #fafafa;
+      background-color: @bg-muted;
     }
 
     &--selected {
-      background-color: #e6f4ff;
+      background-color: var(--csap-selected-bg);
     }
 
     &-dot {
@@ -50,7 +50,7 @@
 
     &-name {
       font-weight: 500;
-      color: rgba(0, 0, 0, 0.85);
+      color: @text-strong;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -58,7 +58,7 @@
 
     &-type {
       font-size: 11px;
-      color: rgba(0, 0, 0, 0.45);
+      color: @text-muted;
     }
   }
 
@@ -70,15 +70,15 @@
   }
 
   &__section {
-    border: 1px solid #f0f0f0;
+    border: 1px solid @split-color;
     border-radius: 8px;
     padding: 16px;
-    background-color: #fcfcfd;
+    background-color: @bg-subtle;
   }
 
   &__section-title {
     font-weight: 600;
-    color: rgba(0, 0, 0, 0.85);
+    color: @text-strong;
     margin-bottom: 12px;
     display: flex;
     justify-content: space-between;
@@ -120,7 +120,7 @@
   }
 
   &__muted {
-    color: rgba(0, 0, 0, 0.45);
+    color: @text-muted;
   }
 
   &__hint-line {
