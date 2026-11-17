@@ -4,10 +4,15 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.time.Clock;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.ClassUtils;
 
 /**
@@ -30,6 +35,8 @@ public final class ConstraintFlavor {
      */
     public static final String JAVAX = "javax.validation";
 
+    private static final String HIBERNATE_CONSTRAINT_VALIDATOR =
+            "org.hibernate.validator.constraintvalidation.HibernateConstraintValidator";
     private static final Map<String, Optional<ConstraintFlavor>> CACHE = new ConcurrentHashMap<>(4);
 
     private final String packageName;
@@ -115,7 +122,49 @@ public final class ConstraintFlavor {
     }
 
     void initialize(Object validator, Annotation annotation) throws ReflectiveOperationException {
-        initialize.invoke(validator, annotation);
+        Method hibernateInitialize = hibernateInitialize(validator.getClass());
+        if (hibernateInitialize == null) {
+            initialize.invoke(validator, annotation);
+            return;
+        }
+        // Hibernate Validator 的时间类等校验器只走 initialize(ConstraintDescriptor, HibernateConstraintValidatorInitializationContext)
+        Class<?>[] types = hibernateInitialize.getParameterTypes();
+        hibernateInitialize.invoke(validator, descriptorProxy(types[0], annotation), lenientProxy(types[1]));
+    }
+
+    private static Method hibernateInitialize(Class<?> validatorClass) {
+        Class<?> hibernateValidator;
+        try {
+            hibernateValidator = ClassUtils.forName(HIBERNATE_CONSTRAINT_VALIDATOR, validatorClass.getClassLoader());
+        } catch (ClassNotFoundException | LinkageError e) {
+            return null;
+        }
+        if (!hibernateValidator.isAssignableFrom(validatorClass)) {
+            return null;
+        }
+        for (Method method : hibernateValidator.getMethods()) {
+            if ("initialize".equals(method.getName()) && method.getParameterCount() == 2) {
+                return method;
+            }
+        }
+        return null;
+    }
+
+    private static Object descriptorProxy(Class<?> descriptorType, Annotation annotation) {
+        Map<String, Object> attributes = AnnotationUtils.getAnnotationAttributes(annotation);
+        Object lenient = lenientProxy(descriptorType);
+        return Proxy.newProxyInstance(descriptorType.getClassLoader(), new Class<?>[]{descriptorType}, (proxy, method, args) -> {
+            switch (method.getName()) {
+                case "getAnnotation":
+                    return annotation;
+                case "getAttributes":
+                    return attributes;
+                case "getMessageTemplate":
+                    return attributes.get("message");
+                default:
+                    return method.invoke(lenient, args);
+            }
+        });
     }
 
     boolean isValid(Object validator, Object value) throws ReflectiveOperationException {
@@ -124,7 +173,7 @@ public final class ConstraintFlavor {
 
     /**
      * 宽松的上下文代理:校验器只能拿到时钟、构建违规信息等无副作用的调用,
-     * 返回接口的方法继续返回代理,{@code getClock()} 返回系统时钟,其他返回默认值.
+     * 返回接口的方法继续返回代理,{@code getClock()} 返回系统时钟,时间容差为 0,其他返回默认值.
      */
     private static Object lenientProxy(Class<?> type) {
         return Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, (proxy, method, args) -> {
@@ -145,6 +194,18 @@ public final class ConstraintFlavor {
             }
             if (Clock.class.equals(returnType)) {
                 return Clock.systemDefaultZone();
+            }
+            if (Duration.class.equals(returnType)) {
+                return Duration.ZERO;
+            }
+            if (Map.class.equals(returnType)) {
+                return Collections.emptyMap();
+            }
+            if (Set.class.equals(returnType)) {
+                return Collections.emptySet();
+            }
+            if (List.class.equals(returnType) || java.util.Collection.class.equals(returnType)) {
+                return Collections.emptyList();
             }
             if (returnType.isInterface()) {
                 return lenientProxy(returnType);

@@ -52,6 +52,8 @@ class ConstraintResolverTest {
         int age;
         @Phone(code = "1009")
         String phone;
+        @jakarta.validation.constraints.Past
+        java.time.LocalDate birthday;
     }
 
     static class JavaxModel {
@@ -117,6 +119,13 @@ class ConstraintResolverTest {
         assertThat(min.getValidator().isValid(17)).isFalse();
         assertThat(min.getValidator().isValid(18)).isTrue();
         assertThat(min.getMessage()).isEqualTo("must be greater than or equal to 18");
+    }
+
+    @Test
+    void timeConstraintsUseSystemClock() throws Exception {
+        Validate.ConstraintValidatorField past = rules(JakartaModel.class, "birthday").get(0);
+        assertThat(past.getValidator().isValid(java.time.LocalDate.now().minusDays(1))).isTrue();
+        assertThat(past.getValidator().isValid(java.time.LocalDate.now().plusDays(1))).isFalse();
     }
 
     @Test
