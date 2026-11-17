@@ -94,7 +94,9 @@ curl -o openapi.json http://localhost:8080/csap/openapi.json
 - 参数位置按「参数自身 → 所属模型 → 接口」的顺序取第一个明确的类型：
   - `PATH` 写成 `in: path`，并且一律 `required: true`；路径里出现但没有声明的变量（如 `/{id}`）会补一个 `string` 类型的路径参数；`{id:\d+}` 这类带正则的变量会去掉正则。
   - `HEADER` 和接口声明的请求头写成 `in: header`。
+  - 基础类型的方法参数（如 `@PathVariable Long id`）名字出现在路径变量里时，按路径参数处理，不会再重复成 Query 或请求体字段。
   - POST / PUT / PATCH 上的 `BODY` 参数合并成 `application/json` 的 `requestBody`，`FORM` / `FORM_DATA` 参数合并成 `application/x-www-form-urlencoded`；其他方法上的这些参数、以及 `QUERY` / 未指定的参数，写成 `in: query`。
+  - 对象类型的 `@RequestBody` 参数即使没有可展示的字段（例如还没有配置字段规则），也会生成一个 `type: object` 的 `requestBody`。
 - `required` 为空时按非必填处理（1.1.1 及以前这里会空指针）。
 - 嵌套对象和数组会递归展开成 `properties` / `items`，最多展开 12 层。
 - 只生成 `200` 响应，结构来自返回参数；`components.schemas` 只有一个通用的 `StandardResponse`，各接口的结构内联在接口里。

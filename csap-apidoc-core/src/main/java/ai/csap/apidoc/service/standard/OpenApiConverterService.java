@@ -278,10 +278,24 @@ public class OpenApiConverterService {
         Set<String> declared = new LinkedHashSet<>();
         List<CsapDocParameter> jsonBody = new ArrayList<>();
         List<CsapDocParameter> formBody = new ArrayList<>();
+        boolean jsonBodyModel = false;
+        Set<String> pathVariables = new LinkedHashSet<>();
+        Matcher variables = PATH_VARIABLE.matcher(path);
+        while (variables.find()) {
+            pathVariables.add(variables.group(1));
+        }
 
         if (method.getRequest() != null) {
             for (CsapDocModel model : method.getRequest()) {
-                if (model == null || model.getParameters() == null) {
+                if (model == null) {
+                    continue;
+                }
+                boolean simple = model.getModelType() == null || model.getModelType() == ModelType.BASE_DATA;
+                if (model.getParameters() == null || model.getParameters().isEmpty()) {
+                    // 对象类型的 @RequestBody 参数即使没有可展示的字段,也要声明请求体
+                    if (bodyAllowed && !simple && resolveModelParamType(model, method) == ParamType.BODY) {
+                        jsonBodyModel = true;
+                    }
                     continue;
                 }
                 for (CsapDocParameter param : model.getParameters()) {
@@ -289,6 +303,10 @@ public class OpenApiConverterService {
                         continue;
                     }
                     ParamType type = resolveParamType(param, model, method);
+                    // 基础类型的方法参数(如 @PathVariable Long id)名字出现在路径变量里时,按路径参数处理
+                    if (simple && type != ParamType.HEADER && pathVariables.contains(param.getName())) {
+                        type = ParamType.PATH;
+                    }
                     switch (type) {
                         case PATH:
                             addParameter(parameters, declared, param, "path");
@@ -342,9 +360,7 @@ public class OpenApiConverterService {
         }
 
         // 路径里出现但没有声明的变量,补一个 string 类型的路径参数(OpenAPI 要求路径变量必须声明)
-        Matcher matcher = PATH_VARIABLE.matcher(path);
-        while (matcher.find()) {
-            String name = matcher.group(1);
+        for (String name : pathVariables) {
             if (!declared.contains("path:" + name)) {
                 Parameter parameter = new Parameter();
                 parameter.setName(name);
@@ -359,11 +375,11 @@ public class OpenApiConverterService {
             operation.setParameters(parameters);
         }
 
-        if (!jsonBody.isEmpty() || !formBody.isEmpty()) {
+        if (!jsonBody.isEmpty() || !formBody.isEmpty() || jsonBodyModel) {
             RequestBody requestBody = new RequestBody();
             Map<String, MediaType> content = new LinkedHashMap<>();
             boolean required = false;
-            if (!jsonBody.isEmpty()) {
+            if (!jsonBody.isEmpty() || jsonBodyModel) {
                 MediaType mediaType = new MediaType();
                 mediaType.setSchema(buildObjectSchema(jsonBody, 0));
                 content.put("application/json", mediaType);
@@ -382,6 +398,13 @@ public class OpenApiConverterService {
 
         operation.setResponses(buildResponses(method));
         return operation;
+    }
+
+    private ParamType resolveModelParamType(CsapDocModel model, CsapDocMethod method) {
+        if (model.getParamType() != null && model.getParamType() != ParamType.DEFAULT) {
+            return model.getParamType();
+        }
+        return method.getParamType() != null ? method.getParamType() : ParamType.DEFAULT;
     }
 
     /**

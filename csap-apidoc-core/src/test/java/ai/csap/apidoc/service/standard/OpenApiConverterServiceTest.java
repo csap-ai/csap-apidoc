@@ -194,4 +194,48 @@ class OpenApiConverterServiceTest {
         JsonNode op = convert(doc).get("paths").get("/api/user/list").get("get");
         assertEquals("含 \"引号\"\n换行 \\ 反斜杠", op.get("description").asText());
     }
+
+    @Test
+    void simplePathVariableParameterIsNotDuplicatedAsQuery() throws Exception {
+        // 与扫描结果一致:@PathVariable Long id 的 paramType 是 DEFAULT(GET)或继承方法的 BODY(PUT)
+        CsapDocResponse doc = doc();
+        CsapDocModel product = new CsapDocModel();
+        product.setName("com.example.Product");
+        product.setModelType(ModelType.OBJECT);
+        CsapDocModel idModel = model(null, param("id", ParamType.BODY, true, "Long"));
+        idModel.setModelType(ModelType.BASE_DATA);
+        CsapDocMethod update = method("com.example.UserController.update", "/update/{id}", RequestMethod.PUT, ParamType.BODY,
+                List.of(idModel, product), null);
+        CsapDocModel getId = model(null, param("id", ParamType.DEFAULT, true, "Long"));
+        getId.setModelType(ModelType.BASE_DATA);
+        CsapDocMethod detail = method("com.example.UserController.detail", "/detail/{id}", RequestMethod.GET, ParamType.DEFAULT,
+                List.of(getId), null);
+        doc.getApiList().get(0).getMethodList().add(update);
+        doc.getApiList().get(0).getMethodList().add(detail);
+        JsonNode paths = convert(doc).get("paths");
+
+        JsonNode get = paths.get("/api/user/detail/{id}").get("get");
+        assertEquals(1, get.get("parameters").size());
+        assertEquals("path", get.get("parameters").get(0).get("in").asText());
+        assertEquals("integer", get.get("parameters").get(0).get("schema").get("type").asText());
+
+        JsonNode put = paths.get("/api/user/update/{id}").get("put");
+        assertEquals(1, put.get("parameters").size());
+        assertEquals("path", put.get("parameters").get(0).get("in").asText());
+        JsonNode body = put.get("requestBody").get("content").get("application/json").get("schema");
+        assertEquals("object", body.get("type").asText());
+        assertNull(body.get("properties"), "id 已作为路径参数,不应再出现在请求体里");
+    }
+
+    @Test
+    void objectBodyWithoutVisibleFieldsStillDeclaresRequestBody() throws Exception {
+        CsapDocResponse doc = doc();
+        CsapDocModel product = new CsapDocModel();
+        product.setModelType(ModelType.OBJECT);
+        doc.getApiList().get(0).getMethodList().add(
+                method("com.example.UserController.create", "/create", RequestMethod.POST, ParamType.BODY, List.of(product), null));
+        JsonNode post = convert(doc).get("paths").get("/api/user/create").get("post");
+        assertTrue(post.get("requestBody").get("required").asBoolean());
+        assertEquals("object", post.get("requestBody").get("content").get("application/json").get("schema").get("type").asText());
+    }
 }
