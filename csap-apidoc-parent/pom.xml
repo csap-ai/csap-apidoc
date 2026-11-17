@@ -10,6 +10,8 @@
         <relativePath>../csap-apidoc-build</relativePath>
     </parent>
     <artifactId>csap-apidoc-parent</artifactId>
+    <name>CSAP Apidoc Parent</name>
+    <description>Parent POM for projects using CSAP Apidoc.</description>
     <version>1.1.0</version>
 
 </project>

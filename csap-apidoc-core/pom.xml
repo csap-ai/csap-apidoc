@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>csap-apidoc-core</artifactId>
+    <name>CSAP Apidoc Core</name>
+    <description>Document scanning, parsing and generation engine of CSAP Apidoc.</description>
     <dependencies>
         <dependency>
             <groupId>ai.csap.apidoc</groupId>

@@ -9,6 +9,8 @@
     </parent>
 
     <artifactId>csap-apidoc-sqlite</artifactId>
+    <name>CSAP Apidoc SQLite Strategy</name>
+    <description>SQLite-based storage strategy for CSAP Apidoc field rules.</description>
 
     <properties>
         <maven.compiler.source>11</maven.compiler.source>

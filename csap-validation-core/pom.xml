@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>csap-validation-core</artifactId>
+    <name>CSAP Validation Core</name>
+    <description>Request parameter validation engine of CSAP Apidoc.</description>
 
     <dependencies>
         <dependency>
