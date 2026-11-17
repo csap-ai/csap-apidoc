@@ -26,7 +26,8 @@ on:
         options: ["false", "true"]
 
 permissions:
-  contents: read
+  # 发布成功后要推 vX.Y.Z tag,需要写权限
+  contents: write
 
 jobs:
   publish:

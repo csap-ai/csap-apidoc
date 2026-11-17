@@ -28,11 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `csap-apidoc-go/`: Go implementation (separate Go module, protocol
-  compatible with this Java version), see `csap-apidoc-go/README.md`.
-
-### Added
-
 - **Maven Central publishing infrastructure** — this project now
   publishes **exclusively** to Maven Central via the Sonatype Central
   Portal. The parent `pom.xml` exposes a single `release` profile that
