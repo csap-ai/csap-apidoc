@@ -52,7 +52,7 @@ func TestMemory(t *testing.T) {
 	done := make(chan error)
 	go func() { done <- m.Watch(ctx, func() { got <- struct{}{} }) }()
 	time.Sleep(10 * time.Millisecond)
-	v, _ := m.Save(ctx, "G.m", MethodRules{}, "me")
+	v, _ := m.Save(ctx, "G.m", MethodRules{Response: map[string]FieldRule{"data.id": {}}}, "me")
 	if v != 1 {
 		t.Fatalf("version %d", v)
 	}

@@ -114,11 +114,13 @@ func mergeFields(dst, src map[string]FieldRule) map[string]FieldRule {
 }
 
 // Memory 是内存里的可写策略,用于测试、示例,以及在代码里直接下发规则。
+// 修改记录也只保存在内存里。
 type Memory struct {
 	mu      sync.RWMutex
 	rules   Rules
 	version int64
 	subs    []chan struct{}
+	journal Journal
 }
 
 // NewMemory 创建内存策略。
@@ -141,11 +143,17 @@ func (m *Memory) Load(context.Context) (Rules, error) {
 	return out, nil
 }
 
-func (m *Memory) Save(_ context.Context, key string, rules MethodRules, _ string) (int64, error) {
+func (m *Memory) Save(_ context.Context, key string, rules MethodRules, by string) (int64, error) {
 	m.mu.Lock()
-	m.rules[key] = rules
+	before := m.rules[key]
+	if rules.IsEmpty() {
+		delete(m.rules, key)
+	} else {
+		m.rules[key] = Clone(rules)
+	}
 	m.version++
 	v := m.version
+	_, _ = m.journal.Append(Change{Key: key, Before: RulesPtr(before), After: RulesPtr(rules), Version: v, UpdatedBy: by})
 	subs := append([]chan struct{}(nil), m.subs...)
 	m.mu.Unlock()
 	for _, c := range subs {
@@ -155,6 +163,24 @@ func (m *Memory) Save(_ context.Context, key string, rules MethodRules, _ string
 		}
 	}
 	return v, nil
+}
+
+// History 返回修改记录,最新的在前。
+func (m *Memory) History(_ context.Context, key string, limit int) ([]Change, error) {
+	return m.journal.List(key, limit)
+}
+
+// Rollback 把接口恢复成某条修改之前的样子。
+func (m *Memory) Rollback(ctx context.Context, changeID int64, by string) (int64, error) {
+	c, err := m.journal.Get(changeID)
+	if err != nil {
+		return 0, err
+	}
+	var before MethodRules
+	if c.Before != nil {
+		before = *c.Before
+	}
+	return m.Save(ctx, c.Key, before, by)
 }
 
 func (m *Memory) Watch(ctx context.Context, onChange func()) error {

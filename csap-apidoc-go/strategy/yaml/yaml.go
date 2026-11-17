@@ -31,7 +31,14 @@ type Options struct {
 	FS fs.FS
 	// Poll 是检查文件变化的间隔,默认 2 秒;小于 0 表示不监听。
 	Poll time.Duration
+	// History 是修改记录文件(每行一条 JSON,devtools 的修改记录和回滚用)。
+	// 默认 <Dir>/.csap-apidoc-history.jsonl(以点开头,不会被当成规则文件加载);
+	// "-" 表示只记在内存里,重启后丢失。只读(FS)时不记录。
+	History string
 }
+
+// HistoryFile 是修改记录的默认文件名。
+const HistoryFile = ".csap-apidoc-history.jsonl"
 
 // Strategy 读写与 Java method-field.yaml 格式相同的规则文件。
 //
@@ -55,7 +62,14 @@ type Strategy struct {
 	owner   map[string]string // 分组 -> 文件名(相对 Dir)
 	version int64
 	subs    []chan struct{}
+	journal *strategy.Journal
 }
+
+var (
+	_ strategy.Saver     = (*Strategy)(nil)
+	_ strategy.Watcher   = (*Strategy)(nil)
+	_ strategy.Historian = (*Strategy)(nil)
+)
 
 // Dir 创建读写 dir 目录的 YAML 策略。
 func Dir(dir string) *Strategy { return New(Options{Dir: dir}) }
@@ -68,7 +82,17 @@ func New(opts Options) *Strategy {
 	if opts.Poll == 0 {
 		opts.Poll = 2 * time.Second
 	}
-	return &Strategy{opts: opts, owner: map[string]string{}}
+	s := &Strategy{opts: opts, owner: map[string]string{}}
+	switch {
+	case opts.FS != nil:
+	case opts.History == "-":
+		s.journal = strategy.NewJournal("")
+	case opts.History != "":
+		s.journal = strategy.NewJournal(opts.History)
+	default:
+		s.journal = strategy.NewJournal(filepath.Join(opts.Dir, HistoryFile))
+	}
+	return s
 }
 
 func (s *Strategy) Name() string { return "yaml:" + s.opts.Dir }
@@ -145,8 +169,8 @@ func (s *Strategy) Load(context.Context) (strategy.Rules, error) {
 }
 
 // Save 写入一个接口的规则。key 为 strategy.Key(group, name);rules 为空表示删除该接口的规则。
-// by(修改人)YAML 文件不记录,修改记录见 devtools。
-func (s *Strategy) Save(ctx context.Context, key string, rules strategy.MethodRules, _ string) (int64, error) {
+// 每次保存在修改记录文件里留一条记录(修改人 by、修改前后内容),见 Options.History。
+func (s *Strategy) Save(ctx context.Context, key string, rules strategy.MethodRules, by string) (int64, error) {
 	if s.opts.FS != nil {
 		return 0, strategy.ErrReadOnly
 	}
@@ -177,6 +201,14 @@ func (s *Strategy) Save(ctx context.Context, key string, rules strategy.MethodRu
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return 0, err
 	}
+	var before strategy.MethodRules
+	if len(bytes.TrimSpace(src)) > 0 {
+		if doc, err := parse(src); err == nil {
+			if m, ok := doc[group][name]; ok {
+				before = m.toRules()
+			}
+		}
+	}
 	out, err := setMethod(src, group, name, fromRules(rules))
 	if err != nil {
 		return 0, fmt.Errorf("apidoc/yaml: %s: %w", file, err)
@@ -190,6 +222,12 @@ func (s *Strategy) Save(ctx context.Context, key string, rules strategy.MethodRu
 	s.owner[group] = file
 	s.version++
 	v := s.version
+	if s.journal != nil {
+		if _, err := s.journal.Append(strategy.Change{Key: key, Before: strategy.RulesPtr(before),
+			After: strategy.RulesPtr(rules), Version: v, UpdatedBy: by}); err != nil {
+			return v, fmt.Errorf("apidoc/yaml: 规则已保存,但修改记录写入失败: %w", err)
+		}
+	}
 	for _, c := range s.subs {
 		select {
 		case c <- struct{}{}:
@@ -197,6 +235,30 @@ func (s *Strategy) Save(ctx context.Context, key string, rules strategy.MethodRu
 		}
 	}
 	return v, nil
+}
+
+// History 返回修改记录,最新的在前。key 为空返回全部;limit<=0 时默认 100。
+func (s *Strategy) History(_ context.Context, key string, limit int) ([]strategy.Change, error) {
+	if s.journal == nil {
+		return []strategy.Change{}, nil
+	}
+	return s.journal.List(key, limit)
+}
+
+// Rollback 把接口恢复成某条修改之前的样子,回滚本身也留一条记录。
+func (s *Strategy) Rollback(ctx context.Context, changeID int64, by string) (int64, error) {
+	if s.journal == nil {
+		return 0, strategy.ErrReadOnly
+	}
+	c, err := s.journal.Get(changeID)
+	if err != nil {
+		return 0, err
+	}
+	var before strategy.MethodRules
+	if c.Before != nil {
+		before = *c.Before
+	}
+	return s.Save(ctx, c.Key, before, by)
 }
 
 // Watch 监听规则文件变化(轮询文件名、大小、修改时间),以及本策略自己的写入。阻塞到 ctx 结束。

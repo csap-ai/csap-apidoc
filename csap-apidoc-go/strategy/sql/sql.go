@@ -277,16 +277,10 @@ func (s *Strategy) tx(ctx context.Context, fn func(*sql.Tx) (int64, error)) (int
 	return v, tx.Commit()
 }
 
-// Change 是一条修改记录。
-type Change struct {
-	ID        int64
-	Key       string
-	Before    *strategy.MethodRules // nil 表示修改前没有规则
-	After     *strategy.MethodRules // nil 表示这次是删除
-	Version   int64
-	UpdatedBy string
-	UpdatedAt time.Time
-}
+// Change 是一条修改记录,与其他可写策略共用 strategy.Change。
+type Change = strategy.Change
+
+var _ strategy.Historian = (*Strategy)(nil)
 
 // History 返回修改记录,最新的在前。key 为空返回全部;limit<=0 时默认 100。
 func (s *Strategy) History(ctx context.Context, key string, limit int) ([]Change, error) {
@@ -305,7 +299,7 @@ func (s *Strategy) History(ctx context.Context, key string, limit int) ([]Change
 		return nil, err
 	}
 	defer rows.Close()
-	var out []Change
+	out := []Change{}
 	for rows.Next() {
 		var c Change
 		var before, after sql.NullString
@@ -330,6 +324,9 @@ func (s *Strategy) Rollback(ctx context.Context, changeID int64, by string) (int
 	var key string
 	var before sql.NullString
 	err := s.opts.DB.QueryRowContext(ctx, s.q("SELECT rule_key, before_rules FROM "+s.t.history+" WHERE id = ?"), changeID).Scan(&key, &before)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, fmt.Errorf("apidoc/sql: %w: %d", strategy.ErrNoChange, changeID)
+	}
 	if err != nil {
 		return 0, fmt.Errorf("apidoc/sql: change %d: %w", changeID, err)
 	}
