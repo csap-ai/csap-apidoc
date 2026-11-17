@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.web.bind.annotation.RequestMethod;
 
@@ -210,12 +211,17 @@ public class PostmanConverterService {
             url.append(controller.getPath()[0]);
         }
 
-        // 添加方法路径
+        // 添加方法路径(控制器路径与方法路径之间只保留一个 /)
         if (method.getPaths() != null && method.getPaths().length > 0) {
-            if (url.length() > 0 && !url.toString().endsWith("/")) {
-                url.append("/");
+            String methodPath = method.getPaths()[0];
+            if (url.length() > 0 && methodPath != null && !methodPath.isEmpty()) {
+                while (url.length() > 0 && url.charAt(url.length() - 1) == '/') {
+                    url.setLength(url.length() - 1);
+                }
+                url.append('/').append(methodPath.replaceFirst("^/+", ""));
+            } else if (methodPath != null) {
+                url.append(methodPath);
             }
-            url.append(method.getPaths()[0]);
         }
 
         return url.toString();
@@ -245,7 +251,7 @@ public class PostmanConverterService {
                             String value = (ex != null && !ex.trim().isEmpty()) ? ex : getDefaultValueForParam(param.getName());
                             queryParam.setValue(value);
                             // disabled 按 required 取反：非必填则默认禁用
-                            queryParam.setDisabled(!param.getRequired());
+                            queryParam.setDisabled(!Boolean.TRUE.equals(param.getRequired()));
                             queryParam.setDescription(param.getDescription());
                             queryParams.add(queryParam);
                         }
@@ -1169,9 +1175,12 @@ public class PostmanConverterService {
                     }
                 }
             } else {
-                // 相对路径，使用变量
-                this.raw = "{{baseUrl}}/" + url;
-                this.path = Arrays.asList(url.split("/"));
+                // 相对路径，使用变量(去掉开头的 /,避免 {{baseUrl}}//path)
+                String relative = url.replaceFirst("^/+", "");
+                this.raw = "{{baseUrl}}/" + relative;
+                this.path = Arrays.stream(relative.split("/"))
+                        .filter(segment -> !segment.isEmpty())
+                        .collect(Collectors.toList());
             }
         }
 
