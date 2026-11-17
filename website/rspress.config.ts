@@ -6,7 +6,7 @@ export default defineConfig({
   root: 'docs',
   base: '/',
   title: 'CSAP Apidoc',
-  description: 'Spring Boot 运行时 API 文档框架:自动生成文档、在线调试、字段规则热更新、返回字段过滤与参数校验',
+  description: '多语言的运行时 API 文档框架(Java 已发布,Go 开发中):服务启动即生成文档,按接口控制显示字段,文档页内在线调试',
   lang: 'zh',
   icon: '/favicon.ico',
   logo: '/images/logo.png',
