@@ -10,6 +10,7 @@
     </parent>
 
     <artifactId>csap-apidoc-annotation</artifactId>
+    <name>CSAP Apidoc Annotation</name>
     <description>注解形式的API文档</description>
     <dependencies>
         <dependency>
