@@ -18,7 +18,7 @@ csap:
 # Logging
 logging:
   level:
-    com.csap.framework: DEBUG
+    ai.csap.apidoc: DEBUG
     root: INFO
 
 # Note:

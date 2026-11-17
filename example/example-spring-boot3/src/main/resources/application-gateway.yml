@@ -69,7 +69,7 @@ csap:
 # Logging Configuration
 logging:
   level:
-    com.csap.framework: DEBUG
+    ai.csap.apidoc: DEBUG
     org.springframework.cloud.gateway: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
@@ -88,5 +88,5 @@ csap:
 
 logging:
   level:
-    com.csap.framework: INFO
+    ai.csap.apidoc: INFO
 

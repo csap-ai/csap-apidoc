@@ -3,7 +3,7 @@ name: Release to Maven Central
 # Publish the reactor (all modules) to Maven Central via the Sonatype Central
 # Portal. Triggered manually after a release-cut PR is merged.
 #
-# Prerequisites (see docs/guides/PUBLISHING.md for the full walkthrough):
+# Prerequisites (see docs/maintainers/PUBLISHING.md for the full walkthrough):
 #   * `pom.xml` version = the release to cut (e.g. `1.1.0`; no `-SNAPSHOT`)
 #   * GitHub Actions secrets configured:
 #       - CENTRAL_USERNAME, CENTRAL_PASSWORD — User Token from the Central Portal
@@ -17,7 +17,7 @@ on:
       version:
         description: "Release version — must match <version> in pom.xml (e.g. 1.1.0)"
         required: true
-        default: "1.1.0"
+        default: "1.1.1"
       dry_run:
         description: "If true, build + sign locally but skip the upload to Central"
         required: false
@@ -54,6 +54,26 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: GPG_PASSPHRASE
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: npm
+          cache-dependency-path: csap-apidoc-ui/package-lock.json
+
+      # 发布包里的文档页面必须由当前源码构建,避免打进旧前端(1.1.0 的教训)
+      - name: Build docs page from source
+        working-directory: csap-apidoc-ui
+        run: |
+          set -euo pipefail
+          npm ci
+          npm test
+          npm run build
+          rm -rf src/main/resources/static
+          mv dist/index.html dist/csap-api.html
+          cp -r dist src/main/resources/static
+          ls src/main/resources/static/assets/js
+
       - name: Verify pom version matches input
         run: |
           set -euo pipefail
@@ -78,7 +98,7 @@ jobs:
           CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          mvn -B -P release -DskipTests clean verify \
+          mvn -B -P release -DskipTests=false clean verify \
               -Dgpg.passphrase="$GPG_PASSPHRASE"
 
       - name: Deploy to Central
@@ -88,7 +108,7 @@ jobs:
           CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          mvn -B -P release -DskipTests clean deploy \
+          mvn -B -P release -DskipTests=false clean deploy \
               -Dgpg.passphrase="$GPG_PASSPHRASE"
 
       - name: Create git tag
