@@ -3,6 +3,7 @@ package ai.csap.apidoc.web;
 import static ai.csap.apidoc.util.ApidocUtils.apiPath;
 import static ai.csap.apidoc.util.ApidocUtils.formatPath;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -133,26 +134,26 @@ public class CsapDocController {
      * @param key       可选，方法的完全限定名
      * @return 过滤后的响应对象
      */
-    private CsapDocResponse apiList(CsapDocResponse response, String tableName, String key) {
+    CsapDocResponse apiList(CsapDocResponse response, String tableName, String key) {
         // 空值安全检查
         if (response == null || CollectionUtil.isEmpty(response.getApiList())) {
             return response;
         }
         // 如果提供了key参数，进一步过滤每个Controller的methodList
+        // 注意:response 是全局共享的文档缓存,这里只能在副本上过滤,不能修改缓存里的 Controller
         if (StrUtil.isNotBlank(key)) {
             CsapDocResponse docResponse = BeanUtil.copyProperties(response, CsapDocResponse.class);
             // 根据tableName过滤apiList
             List<CsapDocModelController> filteredApiList = response.getApiList().stream()
-                                                                   .filter(controller -> controller.getName()
-                                                                                                   .equals(tableName))
-                                                                   .peek(i -> {
-                                                                       List<CsapDocMethod> filteredMethods = i
-                                                                               .getMethodList()
+                                                                   .filter(controller -> Objects.equals(controller.getName(), tableName))
+                                                                   .map(controller -> {
+                                                                       CsapDocModelController copy = BeanUtil.copyProperties(controller, CsapDocModelController.class);
+                                                                       List<CsapDocMethod> methods = controller.getMethodList();
+                                                                       copy.setMethodList(methods == null ? new ArrayList<>() : methods
                                                                                .stream()
-                                                                               .filter(method -> method.getKey()
-                                                                                                       .equals(key))
-                                                                               .collect(Collectors.toList());
-                                                                       i.setMethodList(filteredMethods);
+                                                                               .filter(method -> Objects.equals(method.getKey(), key))
+                                                                               .collect(Collectors.toList()));
+                                                                       return copy;
                                                                    })
                                                                    .collect(Collectors.toList());
             docResponse.setApiList(filteredApiList);
