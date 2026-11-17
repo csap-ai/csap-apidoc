@@ -250,9 +250,15 @@ public final class JacksonFilterSupport {
         @Override
         public void serialize(FilteredValue filtered, JsonGenerator gen, SerializerProvider serializers)
                 throws IOException {
+            ObjectWriter writer = filtered.writer;
+            // 外层(如 JsonViewResponseBodyAdvice 在本过滤之后包装的 MappingJacksonValue)指定了 view 时沿用
+            Class<?> view = serializers.getActiveView();
+            if (view != null && writer.getConfig().getActiveView() == null) {
+                writer = writer.withView(view);
+            }
             filtered.session.begin(filtered.value);
             try {
-                filtered.writer.writeValue(gen, filtered.value);
+                writer.writeValue(gen, filtered.value);
             } finally {
                 filtered.session.pop();
             }

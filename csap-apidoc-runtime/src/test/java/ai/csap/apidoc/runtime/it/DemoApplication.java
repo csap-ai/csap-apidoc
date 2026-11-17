@@ -71,7 +71,7 @@ public class DemoApplication {
     static CsapDocResponse documentV1() {
         WITH_RULES.clear();
         WITH_RULES.addAll(Arrays.asList(CONTROLLER + ".page", CONTROLLER + ".result", CONTROLLER + ".wrapped",
-                CONTROLLER + ".csapMode", CONTROLLER + ".offMode", CONTROLLER + ".list"));
+                CONTROLLER + ".csapMode", CONTROLLER + ".offMode", CONTROLLER + ".list", CONTROLLER + ".viewed"));
         TYPE_RULES.clear();
         TYPE_RULES.put(CONTROLLER + ".csapMode", csapRules());
         CsapDocParameter rows = p("rows", p("id"), p("leagueId"), p("home", p("id")), p("away", p("name")),
@@ -83,6 +83,7 @@ public class DemoApplication {
                 m("csapMode", p("total")),
                 m("offMode", p("total")),
                 m("list", p("id")),
+                m("viewed", p("a"), p("c")),
                 m("noRules", p("total")));
         CsapDocResponse doc = new CsapDocResponse();
         doc.getApiList().add(CsapDocModelController.builder().name(CONTROLLER)

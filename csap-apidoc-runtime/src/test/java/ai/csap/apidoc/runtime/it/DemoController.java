@@ -4,6 +4,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
+
+import com.fasterxml.jackson.annotation.JsonView;
 import org.springframework.web.bind.annotation.RestController;
 
 import ai.csap.apidoc.runtime.filter.model.ApiResult;
@@ -49,6 +51,12 @@ public class DemoController {
     @GetMapping("/noRules")
     public MatchPage noRules() {
         return new MatchPage();
+    }
+
+    @GetMapping("/viewed")
+    @JsonView(ViewModel.Summary.class)
+    public ViewModel viewed() {
+        return new ViewModel();
     }
 
     @GetMapping("/text")

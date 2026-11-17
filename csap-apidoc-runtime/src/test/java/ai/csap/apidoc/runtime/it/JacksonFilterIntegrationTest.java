@@ -1,5 +1,6 @@
 package ai.csap.apidoc.runtime.it;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -31,6 +32,13 @@ class JacksonFilterIntegrationTest extends AbstractFilterIntegrationTest {
 
     @Autowired
     JacksonResponseFilterEngine engine;
+
+    @Test
+    void jsonViewStillApplies() throws Exception {
+        publishV1();
+        // 规则放行 a、c;@JsonView 再去掉没有标 view 的 c
+        assertEquals(tree("{\"a\":\"a\"}"), call("/viewed"));
+    }
 
     @Test
     void objectMappersAreNotModified() {
