@@ -31,7 +31,7 @@ YAML 和 SQLite 的实现都已经包含在 `csap-apidoc-boot-starter` 中（它
 :::warning type 与 paramType 的区别
 `@EnableApidoc` 还有一个 `type` 属性（文档主体来源），和 `paramType` 不是一回事。选择规则来源请改 `paramType`，`type` 一般保持默认 `ANNOTATION`。
 
-- 1.1.1 起 `type = YAML` / `JSON` 会注册对应的文档策略（1.1.0 中没有注册，文档静默为空）。注意 `JSON` 策略写出的 `.json` 文件内容其实是 YAML 格式。
+- 1.1.1 起 `type = YAML` / `JSON` 会注册对应的文档策略（1.1.0 中没有注册，文档静默为空）。`JSON` 策略在 1.1.1 及以前写出的 `.json` 文件内容其实是 YAML 格式；1.2.0 起写出真正的 JSON（带缩进），读取时仍能识别旧的 YAML 内容（文件以 `{` 或 `[` 开头按 JSON 解析，否则按 YAML 解析），旧文件下次被 DevTools 写入时会自动改写成 JSON。
 - `type = SQL_LITE` 没有可用的实现，1.1.1 起启动时直接报错，并提示改用 `paramType = SQL_LITE`。
 - `paramType = JSON` 目前没有实现。
 :::
@@ -248,8 +248,14 @@ DevTools 写 YAML 时，目标路径是把 classpath 根目录中的 `target/cla
 1.1.1 起不需要手工准备数据库：数据库文件不存在时，读取规则得到空结果（不报错）；DevTools 第一次写入规则时会自动创建 `<path>/<fileName>.db` 并建好 `api_method` 表，打开连接时也会确保表存在。1.1.0 依赖一个没有随发行包提供的模板库，文件不存在时会出错。
 :::
 
-:::warning 旧模板建的库需要删除重建
-用旧模板库建出来的 `api_method` 表，`controller_id`、`info_id`、`value`、`key`、`group`、`version` 等列是 `NOT NULL` 且没有默认值，而框架插入时不写这些列，DevTools 写入会失败。1.1.1 只在表不存在时建表，不会改已有的表结构。遇到这种情况，请删除旧的 `.db` 文件，让框架重新创建（需要保留的规则请先导出 `request`、`response` 两列）。
+:::tip 旧模板建的库会自动迁移（1.2.0 起）
+用旧模板库建出来的 `api_method` 表，`controller_id`、`info_id`、`value`、`key`、`group`、`version` 等列是 `NOT NULL` 且没有默认值，`key` 上还有唯一索引，而框架插入时不写这些列，DevTools 写入会失败。
+
+1.2.0 起，框架每次打开数据库连接时都会检查 `api_method` 表：只要存在没有默认值的 `NOT NULL` 列（主键除外），或者 `key` 上有唯一索引，就在一个事务里迁移——按新的表结构建临时表、拷贝全部数据（`id` 不变，原来为 `NULL` 的列按新结构的默认值补齐）、删除旧表、改名，再重建原有的非唯一索引。旧表中新结构没有的列会保留下来。迁移后的表不再满足检查条件，所以只会迁移一次。
+
+迁移会直接修改数据库文件：在 IDE 中运行时改的是 `src/main/resources` 下的文件，打成 jar 运行时改的是复制到临时目录的副本。重要数据请先备份。
+
+1.1.1 只在表不存在时建表，不会改已有的表结构；仍在使用 1.1.1 时，请删除旧的 `.db` 文件，让框架重新创建（需要保留的规则请先导出 `request`、`response` 两列）。
 :::
 
 ## 如何选择

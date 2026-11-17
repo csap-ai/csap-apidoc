@@ -190,6 +190,7 @@ DevTools 模块另外提供了一个服务端转发接口 `POST /csap/apidoc/dev
 | `csap-apidoc:tryItOutHistory` | 请求历史 |
 | `csap-apidoc:tryItOutSnapshots` | 命名快照 |
 | `csap-apidoc:locale` | 界面语言 |
+| `csap-apidoc:theme` | 界面主题（1.2.0 起） |
 
 全局请求头的值和环境变量不进保险库，始终以明文保存。
 
@@ -209,8 +210,14 @@ DevTools 模块另外提供了一个服务端转发接口 `POST /csap/apidoc/dev
 
 - **导出 JSON**：下载 `csap-apidoc-config-YYYY-MM-DD.json`，包含环境、全局请求头、鉴权方案、设置，以及保险库内容。保险库处于明文模式或已解锁时，凭证会**以明文**写进这个文件；已锁定时不包含凭证。请求历史和快照不在其中，快照请用快照抽屉单独导出。
 - **导入 JSON**：用文件内容覆盖当前的环境、全局请求头、鉴权方案和设置，保险库切回明文模式（需要的话重新开启加密），然后刷新页面。
-- **重置全部**：删除所有以 `csap-apidoc:` 开头的 localStorage 键，包括历史、快照和语言设置，然后刷新页面。
+- **重置全部**：删除所有以 `csap-apidoc:` 开头的 localStorage 键，包括历史、快照、语言和主题设置，然后刷新页面。
 
 ## 界面语言
 
 页面右上角可以在简体中文和 English 之间切换，默认简体中文，选择保存在 `csap-apidoc:locale`。
+
+## 亮色 / 暗色主题
+
+1.2.0 起，页面右上角的主题按钮可以选择「亮色」「暗色」或「跟随系统」，默认跟随系统：操作系统切换深浅色时页面会立即跟着变。选择保存在 `csap-apidoc:theme`（值为 `light`、`dark` 或 `system`），浏览器禁用 localStorage 时仍可切换，只是刷新后回到跟随系统。
+
+暗色主题覆盖文档页面本身、Ant Design 组件和代码编辑器（请求 / 返回示例、在线测试的响应体），导出的文件内容不受主题影响。

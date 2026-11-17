@@ -9,6 +9,7 @@
 | OpenAPI 3.0（JSON） | 浏览器 | 文档页面右上角「导出文档」 |
 | Postman Collection v2.1 | 浏览器 | 文档页面右上角「导出文档」 |
 | Markdown | 浏览器 | 文档页面右上角「导出文档」 |
+| OpenAPI 3.0（JSON） | 服务端（1.2.0 起） | `GET /csap/openapi.json` |
 | Postman Collection v2.1 | 服务端 | `GET /csap/openapi/postman` |
 | 单个接口的 TypeScript 类型 | 浏览器 | 接口标题旁的「复制为 TypeScript」 |
 
@@ -75,6 +76,33 @@ OpenAPI 的 `servers` 和 Postman 的 `baseUrl` 变量按下面的规则取值�
 
 这不是整份文档的导出。在单个接口的详情页点击标题旁的「复制为 TypeScript」，会根据该接口的请求参数和返回参数生成 TypeScript 类型定义，可以复制到剪贴板。
 
+## 服务端导出 OpenAPI
+
+1.2.0 起，`GET /csap/openapi.json` 直接在服务端把当前应用的文档转换成 OpenAPI 3.0（`openapi: 3.0.3`）并返回 JSON，**没有** `ApidocResult` 外层包装。路径与 Go 版一致（Go 版输出的是 OpenAPI 3.1）。
+
+```bash
+curl -o openapi.json http://localhost:8080/csap/openapi.json
+```
+
+和页面导出相比：
+
+- 包含当前应用扫描出的全部接口（以及 `globalApiList` 里的全局接口），不涉及网关聚合；跳过 `hidden` 为 `true` 的 Controller 和接口。
+- `info.title`、`info.description`、`info.version` 取自 `csap.apidoc.api-info`，未配置时为 `CSAP API Documentation`、`1.0.0`。
+- `servers` 固定为一个相对地址 `/`，导入工具会以文档所在的服务为准。
+- 每个 Controller 一个 tag，名称取 Controller 的标题（没有时取类名）。
+- 一个接口声明了多个 HTTP 方法时（例如不写 `method` 的 `@RequestMapping`），每个方法各生成一个操作；`operationId` 取接口的 key（`类全名.方法名`），重复时追加 `_get`、`_post` 等后缀。
+- 参数位置按「参数自身 → 所属模型 → 接口」的顺序取第一个明确的类型：
+  - `PATH` 写成 `in: path`，并且一律 `required: true`；路径里出现但没有声明的变量（如 `/{id}`）会补一个 `string` 类型的路径参数；`{id:\d+}` 这类带正则的变量会去掉正则。
+  - `HEADER` 和接口声明的请求头写成 `in: header`。
+  - 基础类型的方法参数（如 `@PathVariable Long id`）名字出现在路径变量里时，按路径参数处理，不会再重复成 Query 或请求体字段。
+  - POST / PUT / PATCH 上的 `BODY` 参数合并成 `application/json` 的 `requestBody`，`FORM` / `FORM_DATA` 参数合并成 `application/x-www-form-urlencoded`；其他方法上的这些参数、以及 `QUERY` / 未指定的参数，写成 `in: query`。
+  - 对象类型的 `@RequestBody` 参数即使没有可展示的字段（例如还没有配置字段规则），也会生成一个 `type: object` 的 `requestBody`。
+- `required` 为空时按非必填处理（1.1.1 及以前这里会空指针）。
+- 嵌套对象和数组会递归展开成 `properties` / `items`，最多展开 12 层。
+- 只生成 `200` 响应，结构来自返回参数；`components.schemas` 只有一个通用的 `StandardResponse`，各接口的结构内联在接口里。
+- 类型映射：字符串类为 `string`，整数类为 `integer`，`Double` / `Float` / `BigDecimal` 为 `number`，`Boolean` 为 `boolean`，`Map` / `Object` 为 `object`，数组和集合为 `array`；日期以及其他类型一律视为 `string`。
+- 不生成 `securitySchemes`。
+
 ## 服务端导出 Postman
 
 `GET /csap/openapi/postman` 直接在服务端把当前应用的文档转换成 Postman Collection v2.1 并返回 JSON 文本：
@@ -97,25 +125,31 @@ curl -o postman_collection.json http://localhost:8080/csap/openapi/postman
 
 ## 在 Java 代码里生成
 
-服务端转换由 `ai.csap.apidoc.service.standard.PostmanConverterService` 完成。它目前**没有注册为 Spring Bean**（`CsapDocController` 内部直接 `new` 一个），所以不能 `@Autowired` 注入，需要自己创建：
+服务端转换由 `ai.csap.apidoc.service.standard.PostmanConverterService` 和 `OpenApiConverterService` 完成。它们都**没有注册为 Spring Bean**（`CsapDocController` 内部直接 `new`），所以不能 `@Autowired` 注入，需要自己创建：
 
 ```java
 import ai.csap.apidoc.model.CsapDocResponse;
 import ai.csap.apidoc.service.ApidocContext;
+import ai.csap.apidoc.service.standard.OpenApiConverterService;
 import ai.csap.apidoc.service.standard.PostmanConverterService;
 
-public class PostmanExporter {
+public class DocExporter {
 
-    public String export() {
+    public String postman() {
         // 读取已缓存的全量文档，与 GET /csap/apidoc 返回的 data 相同
         CsapDocResponse doc = ApidocContext.cmd(false, false);
         return new PostmanConverterService().convertToPostmanCollection(doc);
     }
+
+    public String openApi() {
+        // 1.2.0 起
+        return new OpenApiConverterService().convertToOpenApi(ApidocContext.cmd(false, false));
+    }
 }
 ```
 
-需要 `Map` 形式时用 `convertToPostmanCollectionMap(doc)`。请在应用启动完成之后调用：文档是在 `ApplicationStartedEvent` 之后异步生成的。
+Postman 需要 `Map` 形式时用 `convertToPostmanCollectionMap(doc)`；OpenAPI 需要结构对象时用 `convertToOpenApiSpec(doc)`。请在应用启动完成之后调用：文档是在 `ApplicationStartedEvent` 之后异步生成的。
 
-:::warning OpenApiConverterService
-`csap-apidoc-core` 里还有一个 `OpenApiConverterService`，但目前既没有把它注册为 Bean，也没有对应的 HTTP 接口；它只遍历 `globalApiList`，对普通扫描出来的接口不会生成任何路径；参数的 `required` 为空时还会空指针。不建议使用；需要 OpenAPI 请从文档页面导出。
+:::warning 1.1.1 及以前的 OpenApiConverterService
+1.1.1 及以前的 `OpenApiConverterService` 只接收 `CsapDocParentResponse`、只遍历 `globalApiList`，对普通扫描出来的接口不会生成任何路径，参数的 `required` 为空时还会空指针。1.2.0 起请使用 `convertToOpenApi(CsapDocResponse)`；旧的 `convertToOpenApi(CsapDocParentResponse)` 仍保留但已标记为过时，它依旧只能处理 `globalApiList`。
 :::

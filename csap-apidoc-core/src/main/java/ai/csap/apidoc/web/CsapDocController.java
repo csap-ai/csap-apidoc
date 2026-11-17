@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 
 import ai.csap.apidoc.annotation.ParamType;
 import org.springframework.context.ApplicationContext;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,6 +33,7 @@ import ai.csap.apidoc.response.CsapDocParentResponseModel;
 import ai.csap.apidoc.response.MethodHeadersResponseModel;
 import ai.csap.apidoc.response.MethodRequestModel;
 import ai.csap.apidoc.service.ApidocContext;
+import ai.csap.apidoc.service.standard.OpenApiConverterService;
 import ai.csap.apidoc.service.standard.PostmanConverterService;
 
 import cn.hutool.core.bean.BeanUtil;
@@ -59,6 +61,7 @@ import cn.hutool.core.util.StrUtil;
  *   <li>GET /csap/apidoc/method - 获取指定方法的详情</li>
  *   <li>GET /csap/apidoc/parent - 获取树形结构文档</li>
  *   <li>GET /csap/openapi/postman - 导出Postman格式</li>
+ *   <li>GET /csap/openapi.json - 导出OpenAPI 3.0格式</li>
  * </ul>
  *
  * @author yangchengfu
@@ -80,14 +83,32 @@ public class CsapDocController {
     private final PostmanConverterService postmanConverterService;
 
     /**
+     * OpenAPI格式转换服务
+     */
+    private final OpenApiConverterService openApiConverterService;
+
+    /**
      * 构造函数，注入依赖的服务
      *
      * @param applicationContext      Spring应用上下文
      * @param postmanConverterService Postman转换服务
      */
     public CsapDocController(ApplicationContext applicationContext, PostmanConverterService postmanConverterService) {
+        this(applicationContext, postmanConverterService, new OpenApiConverterService());
+    }
+
+    /**
+     * 构造函数，可自定义OpenAPI转换服务
+     *
+     * @param applicationContext      Spring应用上下文
+     * @param postmanConverterService Postman转换服务
+     * @param openApiConverterService OpenAPI转换服务
+     */
+    public CsapDocController(ApplicationContext applicationContext, PostmanConverterService postmanConverterService,
+                             OpenApiConverterService openApiConverterService) {
         this.applicationContext = applicationContext;
         this.postmanConverterService = postmanConverterService;
+        this.openApiConverterService = openApiConverterService;
     }
 
     /**
@@ -246,6 +267,17 @@ public class CsapDocController {
     public String postManJson() {
         ApidocResult<CsapDocResponse> apidoc = apidoc(false);
         return postmanConverterService.convertToPostmanCollection(apidoc.getData());
+    }
+
+    /**
+     * 导出OpenAPI 3.0格式的API文档(与 Go 版路径一致)
+     *
+     * @return OpenAPI JSON
+     */
+    @GetMapping(value = "/openapi.json", produces = MediaType.APPLICATION_JSON_VALUE)
+    public String openApiJson() {
+        ApidocResult<CsapDocResponse> apidoc = apidoc(false);
+        return openApiConverterService.convertToOpenApi(apidoc.getData());
     }
 
     /**

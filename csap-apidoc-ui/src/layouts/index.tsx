@@ -9,7 +9,7 @@ import { getMenuList, getApiDetail } from '@/api/apidoc';
 import { buildColumns, buildColumnsBody, buildColumnsBodyResponse } from './columns';
 import { useTranslation } from 'react-i18next';
 import CodeMirror from '@uiw/react-codemirror';
-import { githubLight } from '@uiw/codemirror-theme-github';
+import { useCodeMirrorTheme } from '@/theme/useCodeMirrorTheme';
 import CopyTypeScript from '@/components/CopyTypeScript';
 import axios from 'csap-axios';
 import { extractApiListFromBrokenJson } from '@/utils/jsonFixer';
@@ -56,6 +56,7 @@ const LayoutIndex = () => {
   const { resolve: resolveHeaders, explain: explainHeaders } = useHeaders();
   const { apply: applyAuth, getActiveSchemeFor } = useAuth();
   const { t } = useTranslation();
+  const cmTheme = useCodeMirrorTheme();
 
   // M8.1 — column factories react to language switches automatically.
   const columns = React.useMemo(() => buildColumns(t), [t]);
@@ -483,8 +484,8 @@ const LayoutIndex = () => {
           <div style={{
             padding: '12px 16px',
             marginBottom: '12px',
-            backgroundColor: '#fafafa',
-            border: '1px solid #f0f0f0',
+            backgroundColor: 'var(--csap-bg-muted)',
+            border: '1px solid var(--csap-split)',
             borderRadius: '4px',
             fontSize: '12px',
             display: 'flex',
@@ -496,7 +497,7 @@ const LayoutIndex = () => {
               <span>{t('layout.params.required')}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <CheckCircleOutlined style={{ color: '#d9d9d9', fontSize: '12px' }} />
+              <CheckCircleOutlined style={{ color: 'var(--csap-text-tertiary)', fontSize: '12px' }} />
               <span>{t('layout.params.optional')}</span>
             </div>
           </div>
@@ -542,7 +543,7 @@ const LayoutIndex = () => {
             </div>
           ))
         ) : (
-          <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--csap-text-muted)' }}>
             {t('layout.params.empty')}
           </div>
         )}
@@ -1099,7 +1100,7 @@ const LayoutIndex = () => {
                       </span>
                     </div>
                     <CodeMirror
-                      theme={githubLight}
+                      theme={cmTheme}
                       onChange={onChangeQuery}
                       ref={JsonMirrorRef}
                       height="300px"
@@ -1122,7 +1123,7 @@ const LayoutIndex = () => {
                       )}
                     </div>
                     <CodeMirror
-                      theme={githubLight}
+                      theme={cmTheme}
                       value={JSON.stringify(respCode, null, 2)}
                       height="300px"
                     />

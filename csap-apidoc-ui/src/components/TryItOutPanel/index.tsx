@@ -47,7 +47,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import CodeMirror from '@uiw/react-codemirror';
-import { githubLight } from '@uiw/codemirror-theme-github';
+import { useCodeMirrorTheme } from '@/theme/useCodeMirrorTheme';
 import {
   HttpMethod,
   TryItOutResult,
@@ -197,6 +197,7 @@ const TryItOutPanel: React.FC<Props> = ({
   enrichRequest,
 }) => {
   const { t } = useTranslation();
+  const cmTheme = useCodeMirrorTheme();
   const [method, setMethod] = useState<HttpMethod>(initial.method);
   const [url, setUrl] = useState<string>(initial.url);
   const [headerRows, setHeaderRows] = useState<KvRow[]>(() =>
@@ -626,7 +627,7 @@ const TryItOutPanel: React.FC<Props> = ({
             {
               key: 'body',
               label: 'Body',
-              children: renderResponseBody(result, t),
+              children: renderResponseBody(result, t, cmTheme),
             },
             {
               key: 'headers',
@@ -760,7 +761,7 @@ const TryItOutPanel: React.FC<Props> = ({
                   />
                 ) : (
                   <CodeMirror
-                    theme={githubLight}
+                    theme={cmTheme}
                     height="240px"
                     value={body}
                     onChange={(v) => setBody(v)}
@@ -834,6 +835,7 @@ function safeParse(s: string): object | string {
 function renderResponseBody(
   result: Exclude<TryItOutResult, { failed: true }>,
   t: TFunction,
+  cmTheme: ReturnType<typeof useCodeMirrorTheme>,
 ) {
   if (result.body == null) {
     return (
@@ -866,7 +868,7 @@ function renderResponseBody(
       : (result.body as string);
   return (
     <CodeMirror
-      theme={githubLight}
+      theme={cmTheme}
       height="320px"
       value={text}
       readOnly

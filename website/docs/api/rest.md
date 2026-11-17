@@ -12,12 +12,13 @@
 | GET | `/csap/apidoc/parent` | 接口树（页面左侧列表用） | 同上 |
 | GET | `/csap/apidoc/method` | 单个接口详情 | 同上 |
 | GET | `/csap/openapi/postman` | 导出 Postman Collection | 同上 |
+| GET | `/csap/openapi.json` | 导出 OpenAPI 3.0（1.2.0 起） | 同上 |
 | GET / POST | `/csap/yaml/*` | DevTools：读写 YAML / JSON 文档 | `csap.apidoc.devtool.enabled=true` |
 | POST | `/devtools/*` | DevTools：字段查询、隐藏接口 | `csap.apidoc.devtool.enabled=true` |
 | GET | `/devtools-ui`、`/devtools-ui/**` | DevTools 页面 | `csap.apidoc.devtool.enabled=true` |
 | POST | `/csap/apidoc/devtools/proxy` | 调试用服务端转发 | `csap.apidoc.devtools.proxy.enabled=true` |
 
-前五个文档接口由 `ai.csap.apidoc.web.CsapDocController` 提供，路径前缀 `/csap`。
+前六个文档接口由 `ai.csap.apidoc.web.CsapDocController` 提供，路径前缀 `/csap`。
 
 :::warning
 这些接口本身不做任何鉴权，会暴露接口结构；DevTools 接口还能写文件。生产环境请关闭 DevTools，并按需用 Spring Security 等手段限制 `/csap/**`、`/csap-api.html` 的访问。
@@ -25,7 +26,7 @@
 
 ## 外层包装 ApidocResult
 
-除 `/csap/openapi/postman`、DevTools 页面和转发接口外，接口都返回 `ai.csap.apidoc.core.ApidocResult`：
+除 `/csap/openapi/postman`、`/csap/openapi.json`、DevTools 页面和转发接口外，接口都返回 `ai.csap.apidoc.core.ApidocResult`：
 
 ```json
 {
@@ -305,6 +306,16 @@ curl -o postman_collection.json http://localhost:8080/csap/openapi/postman
 ```
 
 生成规则和局限见[导出](/guide/export)。
+
+## GET /csap/openapi.json
+
+1.2.0 起提供。把全量文档转换成 OpenAPI 3.0（`openapi: 3.0.3`），**直接返回 JSON，没有 `ApidocResult` 包装**，`Content-Type` 为 `application/json`。
+
+```bash
+curl -o openapi.json http://localhost:8080/csap/openapi.json
+```
+
+生成规则见[导出](/guide/export#服务端导出-openapi)。
 
 ## DevTools 接口
 

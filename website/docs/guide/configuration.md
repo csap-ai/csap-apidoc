@@ -60,7 +60,7 @@ public class DemoApplication {
 
 ### 文档基本信息 api-info
 
-对应 `ai.csap.apidoc.properties.CsapApiInfo`，随文档数据一起返回；`/csap/openapi/postman` 导出的 Postman Collection 使用其中的 `title` 和 `description`。
+对应 `ai.csap.apidoc.properties.CsapApiInfo`，随文档数据一起返回；`/csap/openapi/postman` 导出的 Postman Collection 使用其中的 `title` 和 `description`；1.2.0 起 `/csap/openapi.json` 的 `info` 也取自这里（`title`、`description`、`version`）。
 
 | 配置项 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
