@@ -1,5 +1,6 @@
 package ai.csap.apidoc.runtime.filter;
 
+import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.List;
 
@@ -79,7 +80,7 @@ public class FastjsonResponseFilterEngine implements ResponseFilterEngine {
     }
 
     /**
-     * 响应体:写出时加上过滤器
+     * 响应体:写出时加上过滤器。path 模式下条件允许时(见 {@link FastjsonFastPath#eligible})被过滤的值走快速路径
      */
     static final class Root implements JSONSerializable {
         private final Object value;
@@ -91,12 +92,23 @@ public class FastjsonResponseFilterEngine implements ResponseFilterEngine {
         }
 
         @Override
-        public void write(JSONSerializer serializer, Object fieldName, Type fieldType, int features) {
+        public void write(JSONSerializer serializer, Object fieldName, Type fieldType, int features)
+                throws IOException {
             if (value == null) {
                 serializer.writeNull();
                 return;
             }
-            Filters filters = new Filters(session);
+            boolean fast = session.isPathMode() && FastjsonFastPath.eligible(serializer);
+            if (fast && value == session.getOriginal()) {
+                session.begin(value);
+                try {
+                    FastjsonFastPath.writeRoot(serializer, value, session.current(), session);
+                } finally {
+                    session.pop();
+                }
+                return;
+            }
+            Filters filters = new Filters(session, fast);
             List<PropertyPreFilter> preFilters = serializer.getPropertyPreFilters();
             preFilters.add(filters);
             List<ValueFilter> valueFilters = session.isPathMode() ? serializer.getValueFilters() : null;
@@ -122,16 +134,30 @@ public class FastjsonResponseFilterEngine implements ResponseFilterEngine {
     static final class Scoped implements JSONSerializable {
         private final Object value;
         private final FieldMask mask;
-        private final FilterSession session;
+        private final Filters filters;
 
-        Scoped(Object value, FieldMask mask, FilterSession session) {
+        Scoped(Object value, FieldMask mask, Filters filters) {
             this.value = value;
             this.mask = mask;
-            this.session = session;
+            this.filters = filters;
         }
 
         @Override
-        public void write(JSONSerializer serializer, Object fieldName, Type fieldType, int features) {
+        public void write(JSONSerializer serializer, Object fieldName, Type fieldType, int features)
+                throws IOException {
+            FilterSession session = filters.session;
+            if (filters.fast) {
+                // 外层包装里遇到被过滤的值:暂时摘掉全局过滤器,走快速路径
+                serializer.getPropertyPreFilters().remove(filters);
+                serializer.getValueFilters().remove(filters);
+                try {
+                    FastjsonFastPath.writeRoot(serializer, value, mask, session);
+                } finally {
+                    serializer.getPropertyPreFilters().add(filters);
+                    serializer.getValueFilters().add(filters);
+                }
+                return;
+            }
             session.push(mask);
             try {
                 serializer.write(value);
@@ -143,9 +169,15 @@ public class FastjsonResponseFilterEngine implements ResponseFilterEngine {
 
     static final class Filters implements PropertyPreFilter, ValueFilter {
         private final FilterSession session;
+        private final boolean fast;
 
-        Filters(FilterSession session) {
+        /**
+         * @param session 过滤状态
+         * @param fast    放行的容器值是否用快速路径写出
+         */
+        Filters(FilterSession session, boolean fast) {
             this.session = session;
+            this.fast = fast;
         }
 
         @Override
@@ -165,7 +197,7 @@ public class FastjsonResponseFilterEngine implements ResponseFilterEngine {
             if (next == null || next == FieldMask.DROP) {
                 return value;
             }
-            return new Scoped(value, next, session);
+            return new Scoped(value, next, this);
         }
     }
 }

@@ -435,7 +435,7 @@ final class Fastjson2FastPath {
                         || !fw.fieldName.equals(check.fieldName)) {
                     return LEGACY_PLAN;
                 }
-                if (!leaf(fw.fieldClass)) {
+                if (!FilterSession.isLeafType(fw.fieldClass)) {
                     flat = false;
                 }
             }
@@ -456,7 +456,7 @@ final class Fastjson2FastPath {
             for (int i = 0; i < kept.size(); i++) {
                 FieldWriter fw = kept.get(i);
                 Function getter = getter(type, fw, sample);
-                if (leaf(fw.fieldClass)) {
+                if (FilterSession.isLeafType(fw.fieldClass)) {
                     Class<?> boxed = box(fw.fieldClass);
                     Type fieldType = fw.fieldClass.isPrimitive() ? boxed : fw.fieldType;
                     fields.add(creator.createFieldWriter(provider, (Class) type, fw.fieldName, fw.ordinal, fw.features,
@@ -473,28 +473,6 @@ final class Fastjson2FastPath {
             }
             return new Plan(NATIVE, creator.createObjectWriter(fields));
         }
-    }
-
-    /**
-     * 声明类型的值不可能是"容器"(不会被原来的 ValueFilter 包装):基础类型、枚举、基础类型数组、
-     * final 类型、JDK 自带的非集合类型(如 BigDecimal、Date、LocalDateTime)
-     */
-    static boolean leaf(Class<?> type) {
-        if (type.isPrimitive() || type.isEnum()) {
-            return true;
-        }
-        if (type.isArray()) {
-            return type.getComponentType().isPrimitive();
-        }
-        if (type == Object.class || type.isInterface() || Collection.class.isAssignableFrom(type)
-                || Map.class.isAssignableFrom(type)) {
-            return false;
-        }
-        return !isUserType(type.getName());
-    }
-
-    private static boolean isUserType(String name) {
-        return !(name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("jakarta."));
     }
 
     private static Class<?> box(Class<?> type) {

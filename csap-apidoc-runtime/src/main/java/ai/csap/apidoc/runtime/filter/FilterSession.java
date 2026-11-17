@@ -135,6 +135,33 @@ public final class FilterSession {
     }
 
     /**
+     * 该类型的值是否是容器(见 {@link #isContainer(Object)})
+     */
+    static boolean isContainerType(Class<?> type) {
+        return CONTAINER_TYPES.get(type);
+    }
+
+    /**
+     * 声明为该类型的字段,值不可能是容器(见 {@link #isContainer(Object)}):基础类型、枚举、基础类型数组、
+     * JDK 自带的非集合、非 Map 类型(如 String、BigDecimal、Date、LocalDateTime)。
+     * Object、接口、集合、Map 以及应用自己的类型都可能是容器。
+     */
+    static boolean isLeafType(Class<?> type) {
+        if (type.isPrimitive() || type.isEnum()) {
+            return true;
+        }
+        if (type.isArray()) {
+            return type.getComponentType().isPrimitive();
+        }
+        if (type == Object.class || type.isInterface() || Collection.class.isAssignableFrom(type)
+                || Map.class.isAssignableFrom(type)) {
+            return false;
+        }
+        String name = type.getName();
+        return name.startsWith("java.") || name.startsWith("javax.") || name.startsWith("jakarta.");
+    }
+
+    /**
      * 按类型缓存 {@link #isContainer(Object)} 的结果
      */
     private static final ClassValue<Boolean> CONTAINER_TYPES = new ClassValue<Boolean>() {
