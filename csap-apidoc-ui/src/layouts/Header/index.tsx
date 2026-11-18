@@ -27,7 +27,7 @@ interface IProps {
     apiInfo?: any;
     apiList?: any[];
     onExportOpenApi?: (apiKey: string, parentKey: string) => Promise<Record<string, any>>;
-    onExport?: (format: 'openapi' | 'postman' | 'markdown') => Promise<void>;
+    onExport?: (format: 'openapi' | 'postman' | 'markdown' | 'jsonschema') => Promise<void>;
     /** Groups / versions from /csap/apidoc/parent; empty or absent hides the select. */
     groupOptions?: string[];
     versionOptions?: string[];
@@ -53,7 +53,7 @@ const LayoutHeader = (props: IProps, ref) => {
         setValue(() => value);
     };
 
-    const handleExport = async (format: 'openapi' | 'postman' | 'markdown') => {
+    const handleExport = async (format: 'openapi' | 'postman' | 'markdown' | 'jsonschema') => {
         if (!props.onExport) {
             message.warning(t('header.export.notConfigured'));
             return;
@@ -84,6 +84,12 @@ const LayoutHeader = (props: IProps, ref) => {
             onClick: () => handleExport('postman'),
         },
         {
+            key: 'jsonschema',
+            label: t('header.export.jsonschema'),
+            icon: <FileTextOutlined />,
+            onClick: () => handleExport('jsonschema'),
+        },
+        {
             key: 'markdown',
             label: 'Markdown',
             icon: <FileTextOutlined />,
@@ -100,7 +106,7 @@ const LayoutHeader = (props: IProps, ref) => {
             <div className="header-ri">
                 <div className="apiList">
                     <div className="api-item">
-                        <EnvironmentSwitcher />
+                        <EnvironmentSwitcher serviceUrl={value} />
                     </div>
                     <div className="api-item">
                         <div>{t('header.service.label')}</div>
