@@ -268,7 +268,7 @@ type Endpoint struct {
 	Rules  strategy.MethodRules
 	// Doc 是该接口的文档(请求参数树用于校验)。
 	Doc *model.Method
-	// ResponseMask 是返回字段过滤掩码,nil 表示不过滤(该接口没有返回规则,或过滤模式为 off)。
+	// ResponseMask 是返回字段过滤掩码,nil 表示不过滤(该接口没有返回规则、规则都没命中返回字段,或过滤模式为 off)。
 	ResponseMask *filter.Node
 	// Checks 是请求参数校验项(必填、校验规则、单值参数的类型)。
 	Checks []FieldCheck

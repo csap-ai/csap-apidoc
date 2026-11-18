@@ -98,15 +98,19 @@ func (b *builder) method(info GroupInfo, op *Operation, httpMethod, rawPath, nam
 	}
 	var mask *filter.Node
 	if mode := b.doc.filterMode(strategy.Key(info.Name, name)); mode != filter.ModeOff && len(mr.Response) > 0 && (op.resp != nil || b.wrapper(op) != nil) {
-		if mode == filter.ModeCsap {
-			mask = b.csapMask(op, mr)
-		} else {
-			out := mc.outPaths
-			if w := b.wrapper(op); w != nil && op.resp == nil {
-				// 没声明 Resp:业务数据的类型未知,整个放行
-				out = append(out, w.DataField)
+		// 与 Java 一致:只有返回字段路径真正命中过规则的接口才过滤(ResponseRuleIndex.markResponseRule),
+		// 规则路径过期、和返回类型对不上时原样输出。返回值不是结构体(如 map)时无从判断,沿用路径规则。
+		if tr := b.collectTypeRules(op, mr); tr.hit || tr.root == nil {
+			if mode == filter.ModeCsap {
+				mask = tr.csapMask()
+			} else {
+				out := mc.outPaths
+				if w := b.wrapper(op); w != nil && op.resp == nil {
+					// 没声明 Resp:业务数据的类型未知,整个放行
+					out = append(out, w.DataField)
+				}
+				mask = filter.Compile(out, mc.mapPaths)
 			}
-			mask = filter.Compile(out, mc.mapPaths)
 		}
 	}
 	for _, md := range m.Request {

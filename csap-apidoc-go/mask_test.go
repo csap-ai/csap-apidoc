@@ -130,10 +130,11 @@ func TestCsapModeMask(t *testing.T) {
 
 func TestCsapModeEmptyIncludes(t *testing.T) {
 	// 某个类型的字段全部没放行:Java 白名单为空,改为"黑名单之外全部输出",黑名单就是这些字段,结果为 {}。
+	// (规则要命中至少一个返回字段,接口才会过滤,见 TestStaleRulesNotFiltered)
 	d := New(Options{
 		FilterMode: filter.ModeCsap,
 		Strategies: []strategy.Strategy{strategy.NewMemory(strategy.Rules{"G.t": {Response: map[string]strategy.FieldRule{
-			"x": {Include: model.Bool(false)},
+			"id": {Include: model.Bool(false)},
 		}}})},
 	})
 	d.Register("GET", "/t", Op("G", "t").Resp(team{}), "")
@@ -170,6 +171,73 @@ func TestWrapperWithoutRespKeepsData(t *testing.T) {
 		got := render(t, mask, sample)
 		want := `{"code":"0","message":"成功","data":{"rows":[{"id":7,"league_id":3,"home":{"id":1,"name":"A","secret":"s"},"away":{"id":2,"name":"B","secret":"s"},"by_half":{"h1":{"id":1,"name":"A","secret":"s"}},"internal":"x","hidden":"h"}],"total":1,"size":20},"language":"ZH","time":1}`
 		if got != want {
+			t.Fatalf("mode %d:\ngot  %s\nwant %s", mode, got, want)
+		}
+	}
+}
+
+type pageItem struct {
+	AnimationURL string `json:"animationUrl"`
+	MobileLink   string `json:"mobileLink"`
+	PcLink       string `json:"pcLink"`
+	Title        string `json:"title"`
+	Sort         int    `json:"sort"`
+}
+
+type rowsPage[T any] struct {
+	Rows    []T   `json:"rows" doc_force:"true"`
+	Total   int64 `json:"total" doc_force:"true"`
+	Size    int64 `json:"size" doc_force:"true"`
+	Current int64 `json:"current" doc_force:"true"`
+}
+
+var pageSample = apiResult{Code: "0", Message: "成功", Success: true, Time: 1, Language: "ZH", Data: rowsPage[pageItem]{
+	Total: 1, Size: 20, Current: 1,
+	Rows: []pageItem{{AnimationURL: "a", MobileLink: "m", PcLink: "p", Title: "t", Sort: 1}},
+}}
+
+// 规则路径过期(少了 rows 一层),没有一条命中返回字段:与 Java 1.2.0 一致不过滤
+// (DefaultAbstractMethod.group 不会调用 ResponseRuleIndex.markResponseRule,ResponseRuleRegistry 不编译该接口)。
+func TestStaleRulesNotFiltered(t *testing.T) {
+	stale := map[string]strategy.FieldRule{
+		"data.animationUrl": {Include: model.Bool(true)},
+		"data.mobileLink":   {Include: model.Bool(true)},
+		"data.pcLink":       {Include: model.Bool(true)},
+	}
+	for _, mode := range []filter.Mode{filter.ModePath, filter.ModeCsap} {
+		d := New(Options{
+			Wrapper:    &Wrapper{Type: apiResult{}},
+			FilterMode: mode,
+			Strategies: []strategy.Strategy{strategy.NewMemory(strategy.Rules{"G.page": {Response: stale}})},
+		})
+		d.Register("GET", "/page", Op("G", "page").Resp(rowsPage[pageItem]{}), "")
+		if mask := d.Snapshot().Endpoint("GET", "/page").ResponseMask; mask != nil {
+			t.Fatalf("mode %d: stale rules must not filter, got %s", mode, render(t, mask, pageSample))
+		}
+	}
+}
+
+// 只要有一条规则命中,接口就按规则过滤;没放行的字段与 Java 一样进黑名单。
+// 对应 Java 为 ApiResult<Page<Item>> 登记的 FilterClassParam:
+// ApiResult{+code,message,data,language,time -success}、Page{+rows,total,size,current}、Item{+title -其余}。
+func TestRulesHitAfterFix(t *testing.T) {
+	rules := map[string]strategy.FieldRule{
+		"data.animationUrl": {Include: model.Bool(true)}, // 仍然过期,不影响
+		"data.rows.title":   {Include: model.Bool(true)},
+	}
+	want := `{"code":"0","message":"成功","data":{"rows":[{"title":"t"}],"total":1,"size":20,"current":1},"language":"ZH","time":1}`
+	for _, mode := range []filter.Mode{filter.ModePath, filter.ModeCsap} {
+		d := New(Options{
+			Wrapper:    &Wrapper{Type: apiResult{}},
+			FilterMode: mode,
+			Strategies: []strategy.Strategy{strategy.NewMemory(strategy.Rules{"G.page": {Response: rules}})},
+		})
+		d.Register("GET", "/page", Op("G", "page").Resp(rowsPage[pageItem]{}), "")
+		mask := d.Snapshot().Endpoint("GET", "/page").ResponseMask
+		if mask == nil {
+			t.Fatalf("mode %d: mask missing", mode)
+		}
+		if got := render(t, mask, pageSample); got != want {
 			t.Fatalf("mode %d:\ngot  %s\nwant %s", mode, got, want)
 		}
 	}
