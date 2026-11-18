@@ -131,7 +131,7 @@ csap:
 
 - 在 IDE 或 `mvn spring-boot:run` 中运行，规则写回 `src/main/resources`；
 - 改用 `@EnableApidoc(paramType = ApiStrategyType.SQL_LITE)`：打包运行时规则保存在 jar 外、启动目录下的 `./csap-api-doc/apidoc.db`（随 `path`、`fileName` 变化），重启后仍在；
-- [数据库模式](/guide/database-mode)（MySQL / PostgreSQL / 达梦 / 人大金仓）计划在 1.4.0 提供，当前版本没有；1.4.0 还计划提供 [Redis 模式](/guide/redis-mode)（实现中，当前版本没有）。
+- [数据库模式](/guide/database-mode)（MySQL / PostgreSQL / 达梦 / 人大金仓）计划在 1.4.0 提供，当前版本没有；1.4.0 还计划提供 [Redis 模式](/guide/redis-mode)（当前版本没有）。
 
 各策略的实测结果见 [存储策略 - 打包运行时能否在 DevTools 保存](/guide/storage-strategies#打包运行时能否在-devtools-保存)。
 
