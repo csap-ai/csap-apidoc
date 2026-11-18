@@ -10,8 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import ai.csap.apidoc.annotation.Api;
 import ai.csap.apidoc.annotation.ApiOperation;
-import ai.csap.apidoc.annotation.ApiProperty;
-import ai.csap.apidoc.annotation.ApiPropertys;
 import ai.csap.apidoc.annotation.ParamType;
 import ai.csap.apidoc.core.ApidocResult;
 import ai.csap.apidoc.devtools.core.ApidocDevtools;
@@ -68,12 +66,6 @@ public class DevtoolsController {
      * @return 字段信息列表
      */
     @ApiOperation(value = "获取指定类所有字段", description = "不包括父类，支持从方法中获取泛型类型", group = "APP")
-    @ApiPropertys({
-            @ApiProperty(value = "类名称", name = "className", required = false, paramType = ParamType.QUERY),
-            @ApiProperty(value = "Controller类名", name = "controllerClassName", required = false, paramType = ParamType.QUERY),
-            @ApiProperty(value = "方法名", name = "methodName", required = false, paramType = ParamType.QUERY),
-            @ApiProperty(value = "参数索引（-1表示返回值）", name = "parameterIndex", required = false, paramType = ParamType.QUERY)
-    })
     @PostMapping("getFields")
     public ApidocResult<List<Field>> getFields(@RequestBody GetFieldExcled getFieldExcled) {
         // 如果指定了方法信息，从方法中获取泛型类型

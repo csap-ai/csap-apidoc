@@ -193,9 +193,7 @@ public class DefaultAbstractMethod implements FilterData {
 
     /**
      * 方法的单参数 基础数据类型
-     * 支持两种 @ApiProperty 使用方式：
-     * 1. 参数级（优先级最高）：直接标注在参数上
-     * 2. 方法级（向后兼容）：标注在方法上，通过 name 匹配
+     * 只读取标注在参数上的 @ApiProperty;方法上的 @ApiProperty / @ApiPropertys 不会读取(已弃用)。
      *
      * @param typepProperties 模型属性
      * @param method          方法
