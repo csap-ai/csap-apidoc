@@ -250,6 +250,7 @@ v := validate.New(doc, validate.Options{
 - 失败返回默认与 Java 的 `ApidocResult` 一致:HTTP 200,body 含 `code`、`message`、`success:false`、`language`、`time`,没有 `data`;`code`、`message` 取规则配置,信息格式按 `TipType`;`Options.Respond` 可以换成自己的格式。
 - 规则改了,下一个请求就按新规则校验。
 - **与 Java 的差别(1.4.0 起对齐)**:非必填字段上写的规则,只要请求里传了这个字段,Go 就会按规则校验。Java 1.2.0 / 1.3.0 只执行必填字段上的规则,所以同一份规则在当前版本的 Java 上更宽松;**1.4.0 起 Java 向 Go 对齐**(Java 提供开关可恢复旧行为),Go 的行为不变。见[参数校验](/guide/validation)。
+- **Pattern 改为全匹配(v0.2.0)**:`Pattern` 规则原来是子串匹配,v0.2.0 起与 Java 一致,整串匹配。内置正则都带 `^$`,不受影响;自己写的不带锚点的正则,升级后可能从"含有就通过"变成"必须整串匹配"。以 v0.2.0 实现为准。
 
 ## 后台管理
 
