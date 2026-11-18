@@ -16,7 +16,8 @@ import (
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
 )
 
-// SaveScript 是保存用的 Lua 脚本,与 docs/design/redis-mode.md 第 3 节、Java 版内嵌的是同一段文本。
+// SaveScript 是保存用的 Lua 脚本,与 docs/design/redis-mode.md 第 3 节、Java 版内嵌的是同一段文本
+// (save.lua 是 Java 版 csap-apidoc-redis 里同名文件的逐字副本,改动以 Java 为准,TestSaveScriptMatchesJava 会比对)。
 //
 //go:embed save.lua
 var SaveScript string
@@ -42,7 +43,9 @@ type Options struct {
 	KeyPrefix string
 	// Service 是服务名,默认 "default"。键里用 {service} 包起来(Redis Cluster 的 hash tag)。
 	Service string
-	// HistoryLimit 是每个接口保留的修改记录条数,默认 200。
+	// HistoryLimit 是每个接口保留的修改记录条数。0(未设置)用默认值 200;小于 0 表示不裁剪,保留全部。
+	// 与 Java 对齐:Java 脚本对 historyLimit<=0 同样不裁剪(Java 的配置默认值也是 200);
+	// Go 里 0 表示"没设置"所以取默认值,想不裁剪请填负数。
 	HistoryLimit int
 	// Poll 是轮询版本号的间隔,默认 5 秒;小于 0 表示不轮询(只靠订阅)。
 	Poll time.Duration
@@ -78,7 +81,7 @@ func New(opts Options) *Strategy {
 	if opts.Service == "" {
 		opts.Service = DefaultService
 	}
-	if opts.HistoryLimit <= 0 {
+	if opts.HistoryLimit == 0 {
 		opts.HistoryLimit = 200
 	}
 	if opts.Poll == 0 {

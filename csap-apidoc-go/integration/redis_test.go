@@ -344,3 +344,28 @@ func TestImportYAMLToSQLAndRedis(t *testing.T) {
 		})
 	}
 }
+
+// HistoryLimit<0:不裁剪,记录和 changes 索引都保留全部(与 Java 的 historyLimit<=0 一致,不会出现索引被删、记录还在)。
+func TestRedisHistoryUnlimited(t *testing.T) {
+	rdb, prefix := redisEnv(t)
+	ctx := context.Background()
+	s := newRedis(rdb, prefix, "default", -1, -1)
+	for _, n := range []string{"a", "b", "c", "d", "e"} {
+		if _, err := s.Save(ctx, "G.m", rr(n), "u"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	base := prefix + "{default}:"
+	if n, _ := rdb.LLen(ctx, base+"history:G.m").Result(); n != 5 {
+		t.Fatalf("history 长度 %d", n)
+	}
+	if n, _ := rdb.HLen(ctx, base+"changes").Result(); n != 5 {
+		t.Fatalf("changes 索引 %d", n)
+	}
+	if h, err := s.History(ctx, "G.m", 0); err != nil || len(h) != 5 {
+		t.Fatalf("history %v %d", err, len(h))
+	}
+	if _, err := s.Rollback(ctx, 1, "admin"); err != nil {
+		t.Fatalf("最早的记录仍可回滚: %v", err)
+	}
+}

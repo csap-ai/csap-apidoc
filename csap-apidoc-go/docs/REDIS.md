@@ -70,7 +70,7 @@ s := redisstrategy.New(redisstrategy.Options{
     Client:       GoRedis{rdb},
     Service:      "order-service", // 默认 "default"
     KeyPrefix:    "csap:apidoc:",  // 默认值
-    HistoryLimit: 200,             // 每个接口保留的修改记录条数,默认 200
+    HistoryLimit: 200,             // 每个接口保留的修改记录条数,默认 200;负数表示不裁剪
     Poll:         5 * time.Second, // 轮询版本号兜底,默认 5 秒;小于 0 只靠订阅
 })
 doc := apidoc.New(apidoc.Options{Strategies: []strategy.Strategy{s}})
