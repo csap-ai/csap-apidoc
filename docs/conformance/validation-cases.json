@@ -1,0 +1,1771 @@
+{
+  "version": 1,
+  "description": "请求参数校验黄金用例,Java 与 Go 共用,见 docs/design/1.4.0-validation-alignment.md。每个用例只有一个字段:按 field 构造校验项,用 request 里的请求(只用到与 field.in 对应的那一项)走一遍校验,结果必须等于 expect。只比较 ok、rule、code,不比较 message 和字段名(两种语言的字段名写法不同,见设计文档的已知差异)。",
+  "format": {
+    "field.in": "QUERY | HEADER | PATH | BODY",
+    "field.name": "QUERY / HEADER / PATH 的参数名",
+    "field.path": "BODY:相对请求体根的 JSON 路径,点号分隔,经过数组时对每个元素校验",
+    "field.required": "是否必填",
+    "field.rules": "校验规则,同规则 JSON 的 validate 项:type / pattern / code / message / level",
+    "request.query": "原始查询串(不带 ?),空串表示没有查询参数",
+    "request.headers": "请求头名 → 值;不在里面的头表示没带",
+    "request.pathParams": "路径参数名 → 值",
+    "request.body": "JSON 请求体(任意 JSON 值)",
+    "expect": "{ok:true} 通过;{ok:false, rule, code} 失败。rule:NotNull / NotEmpty / Pattern / Required(只配必填没配规则时)"
+  },
+  "cases": [
+    {
+      "id": "query-optional-pattern-absent",
+      "desc": "非必填、没传:不校验",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": ""
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "query-optional-pattern-valid",
+      "desc": "非必填、传了合法值",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p=5"
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "query-optional-pattern-invalid",
+      "desc": "非必填、传了不合法的值:校验失败",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p=abc"
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Pattern",
+        "code": "1002"
+      }
+    },
+    {
+      "id": "query-optional-pattern-empty-string",
+      "desc": "非必填、传了空串(p=):算传了值,正则 ^[0-9]+$ 不匹配,失败",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p="
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Pattern",
+        "code": "1002"
+      }
+    },
+    {
+      "id": "query-optional-pattern-empty-matches",
+      "desc": "非必填、传了空串,正则允许空:通过",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字或空",
+            "pattern": "^[0-9]*$"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p="
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "query-optional-pattern-no-equals",
+      "desc": "p 没带等号(?p)与 p= 同义:传了空串",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p"
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Pattern",
+        "code": "1002"
+      }
+    },
+    {
+      "id": "query-optional-notempty-absent",
+      "desc": "非必填 NotEmpty、没传:不校验",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "NotEmpty",
+            "code": "1001",
+            "level": 1,
+            "message": "不能为空",
+            "pattern": "NotEmpty"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": ""
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "query-optional-notempty-empty-string",
+      "desc": "非必填 NotEmpty、传了空串:失败",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "NotEmpty",
+            "code": "1001",
+            "level": 1,
+            "message": "不能为空",
+            "pattern": "NotEmpty"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p="
+      },
+      "expect": {
+        "ok": false,
+        "rule": "NotEmpty",
+        "code": "1001"
+      }
+    },
+    {
+      "id": "query-optional-notempty-value",
+      "desc": "非必填 NotEmpty、传了值:通过",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "NotEmpty",
+            "code": "1001",
+            "level": 1,
+            "message": "不能为空",
+            "pattern": "NotEmpty"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p=x"
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "query-optional-notnull-absent",
+      "desc": "非必填 NotNull、没传:不校验",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "NotNull",
+            "code": "1003",
+            "level": 1,
+            "message": "不能为null",
+            "pattern": "NotNull"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": ""
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "query-optional-notnull-empty-string",
+      "desc": "非必填 NotNull、传了空串:空串不是 null,通过",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "NotNull",
+            "code": "1003",
+            "level": 1,
+            "message": "不能为null",
+            "pattern": "NotNull"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p="
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "query-required-notempty-absent",
+      "desc": "必填 NotEmpty、没传:失败",
+      "field": {
+        "required": true,
+        "rules": [
+          {
+            "type": "NotEmpty",
+            "code": "1001",
+            "level": 1,
+            "message": "不能为空",
+            "pattern": "NotEmpty"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": ""
+      },
+      "expect": {
+        "ok": false,
+        "rule": "NotEmpty",
+        "code": "1001"
+      }
+    },
+    {
+      "id": "query-required-notempty-empty-string",
+      "desc": "必填 NotEmpty、p=:失败",
+      "field": {
+        "required": true,
+        "rules": [
+          {
+            "type": "NotEmpty",
+            "code": "1001",
+            "level": 1,
+            "message": "不能为空",
+            "pattern": "NotEmpty"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p="
+      },
+      "expect": {
+        "ok": false,
+        "rule": "NotEmpty",
+        "code": "1001"
+      }
+    },
+    {
+      "id": "query-required-notempty-value",
+      "desc": "必填 NotEmpty、传了值:通过",
+      "field": {
+        "required": true,
+        "rules": [
+          {
+            "type": "NotEmpty",
+            "code": "1001",
+            "level": 1,
+            "message": "不能为空",
+            "pattern": "NotEmpty"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p=1"
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "query-required-norules-absent",
+      "desc": "只配必填、没传:Required 失败(默认码 400)",
+      "field": {
+        "required": true,
+        "rules": [],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": ""
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Required",
+        "code": "400"
+      }
+    },
+    {
+      "id": "query-required-norules-empty-string",
+      "desc": "只配必填、p=:Required 失败",
+      "field": {
+        "required": true,
+        "rules": [],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p="
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Required",
+        "code": "400"
+      }
+    },
+    {
+      "id": "query-required-norules-value",
+      "desc": "只配必填、传了值:通过",
+      "field": {
+        "required": true,
+        "rules": [],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p=1"
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "query-required-pattern-absent",
+      "desc": "必填但只有 Pattern、没传:Pattern 对没传的值放行,通过(有规则时由规则决定,不再套 Required)",
+      "field": {
+        "required": true,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": ""
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "query-required-pattern-invalid",
+      "desc": "必填+Pattern、传了不合法的值:失败",
+      "field": {
+        "required": true,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p=x"
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Pattern",
+        "code": "1002"
+      }
+    },
+    {
+      "id": "query-level-order",
+      "desc": "多条规则按 level 升序、同级保持书写顺序,第一条失败的先报(空串:Pattern level 1 先于 NotEmpty level 2)",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "NotEmpty",
+            "code": "2001",
+            "level": 2,
+            "message": "不能为空",
+            "pattern": "NotEmpty"
+          },
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p="
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Pattern",
+        "code": "1002"
+      }
+    },
+    {
+      "id": "query-level-same-keeps-order",
+      "desc": "同 level 保持书写顺序:NotEmpty 写在前,先报",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "NotEmpty",
+            "code": "2001",
+            "level": 1,
+            "message": "不能为空",
+            "pattern": "NotEmpty"
+          },
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p="
+      },
+      "expect": {
+        "ok": false,
+        "rule": "NotEmpty",
+        "code": "2001"
+      }
+    },
+    {
+      "id": "header-optional-pattern-absent",
+      "desc": "非必填请求头、没带:不校验",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "HEADER",
+        "name": "X-Token"
+      },
+      "request": {
+        "headers": {}
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "header-optional-pattern-invalid",
+      "desc": "非必填请求头、带了不合法的值:失败",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "HEADER",
+        "name": "X-Token"
+      },
+      "request": {
+        "headers": {
+          "X-Token": "abc"
+        }
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Pattern",
+        "code": "1002"
+      }
+    },
+    {
+      "id": "header-optional-pattern-valid",
+      "desc": "非必填请求头、带了合法的值:通过",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "HEADER",
+        "name": "X-Token"
+      },
+      "request": {
+        "headers": {
+          "X-Token": "123"
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "header-required-norules-absent",
+      "desc": "必填请求头、没带:Required 失败",
+      "field": {
+        "required": true,
+        "rules": [],
+        "in": "HEADER",
+        "name": "X-Token"
+      },
+      "request": {
+        "headers": {}
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Required",
+        "code": "400"
+      }
+    },
+    {
+      "id": "header-required-norules-value",
+      "desc": "必填请求头、带了:通过",
+      "field": {
+        "required": true,
+        "rules": [],
+        "in": "HEADER",
+        "name": "X-Token"
+      },
+      "request": {
+        "headers": {
+          "X-Token": "t"
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "path-pattern-valid",
+      "desc": "路径参数合法",
+      "field": {
+        "required": true,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "PATH",
+        "name": "id"
+      },
+      "request": {
+        "pathParams": {
+          "id": "7"
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "path-pattern-invalid",
+      "desc": "路径参数不合法:失败",
+      "field": {
+        "required": true,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "PATH",
+        "name": "id"
+      },
+      "request": {
+        "pathParams": {
+          "id": "x7"
+        }
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Pattern",
+        "code": "1002"
+      }
+    },
+    {
+      "id": "path-optional-pattern-invalid",
+      "desc": "路径参数即使标非必填,传了值也校验",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "PATH",
+        "name": "id"
+      },
+      "request": {
+        "pathParams": {
+          "id": "x7"
+        }
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Pattern",
+        "code": "1002"
+      }
+    },
+    {
+      "id": "body-optional-pattern-absent",
+      "desc": "非必填、JSON 里没有这个键:不校验",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "other": 1
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-optional-pattern-null",
+      "desc": "非必填、值为 null:算没传,不校验",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": null
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-optional-pattern-valid",
+      "desc": "非必填、合法值",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": "12"
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-optional-pattern-invalid",
+      "desc": "非必填、不合法的值:失败",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": "ab"
+        }
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Pattern",
+        "code": "1002"
+      }
+    },
+    {
+      "id": "body-optional-pattern-empty-string",
+      "desc": "非必填、空串:算传了值,^[0-9]+$ 不匹配,失败",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": ""
+        }
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Pattern",
+        "code": "1002"
+      }
+    },
+    {
+      "id": "body-optional-pattern-number",
+      "desc": "非必填、数字类型的值按其文本做正则(12 → \"12\")",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": 12
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-optional-notempty-absent",
+      "desc": "非必填 NotEmpty、没有这个键:不校验",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "NotEmpty",
+            "code": "1001",
+            "level": 1,
+            "message": "不能为空",
+            "pattern": "NotEmpty"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {}
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-optional-notempty-null",
+      "desc": "非必填 NotEmpty、null:不校验",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "NotEmpty",
+            "code": "1001",
+            "level": 1,
+            "message": "不能为空",
+            "pattern": "NotEmpty"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": null
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-optional-notempty-empty-string",
+      "desc": "非必填 NotEmpty、空串:失败",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "NotEmpty",
+            "code": "1001",
+            "level": 1,
+            "message": "不能为空",
+            "pattern": "NotEmpty"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": ""
+        }
+      },
+      "expect": {
+        "ok": false,
+        "rule": "NotEmpty",
+        "code": "1001"
+      }
+    },
+    {
+      "id": "body-optional-notempty-empty-array",
+      "desc": "非必填 NotEmpty、空数组:失败",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "NotEmpty",
+            "code": "1001",
+            "level": 1,
+            "message": "不能为空",
+            "pattern": "NotEmpty"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": []
+        }
+      },
+      "expect": {
+        "ok": false,
+        "rule": "NotEmpty",
+        "code": "1001"
+      }
+    },
+    {
+      "id": "body-optional-notempty-empty-object",
+      "desc": "非必填 NotEmpty、空对象:失败",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "NotEmpty",
+            "code": "1001",
+            "level": 1,
+            "message": "不能为空",
+            "pattern": "NotEmpty"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": {}
+        }
+      },
+      "expect": {
+        "ok": false,
+        "rule": "NotEmpty",
+        "code": "1001"
+      }
+    },
+    {
+      "id": "body-optional-notempty-zero",
+      "desc": "非必填 NotEmpty、数字 0 不是空:通过",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "NotEmpty",
+            "code": "1001",
+            "level": 1,
+            "message": "不能为空",
+            "pattern": "NotEmpty"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": 0
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-optional-notempty-false",
+      "desc": "非必填 NotEmpty、false 不是空:通过",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "NotEmpty",
+            "code": "1001",
+            "level": 1,
+            "message": "不能为空",
+            "pattern": "NotEmpty"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": false
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-optional-notempty-array",
+      "desc": "非必填 NotEmpty、非空数组:通过",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "NotEmpty",
+            "code": "1001",
+            "level": 1,
+            "message": "不能为空",
+            "pattern": "NotEmpty"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": [
+            1
+          ]
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-optional-notnull-empty-string",
+      "desc": "非必填 NotNull、空串不是 null:通过",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "NotNull",
+            "code": "1003",
+            "level": 1,
+            "message": "不能为null",
+            "pattern": "NotNull"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": ""
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-optional-notnull-null",
+      "desc": "非必填 NotNull、null:算没传,不校验",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "NotNull",
+            "code": "1003",
+            "level": 1,
+            "message": "不能为null",
+            "pattern": "NotNull"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": null
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-required-notnull-null",
+      "desc": "必填 NotNull、null:失败",
+      "field": {
+        "required": true,
+        "rules": [
+          {
+            "type": "NotNull",
+            "code": "1003",
+            "level": 1,
+            "message": "不能为null",
+            "pattern": "NotNull"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": null
+        }
+      },
+      "expect": {
+        "ok": false,
+        "rule": "NotNull",
+        "code": "1003"
+      }
+    },
+    {
+      "id": "body-required-notnull-absent",
+      "desc": "必填 NotNull、没有这个键:失败",
+      "field": {
+        "required": true,
+        "rules": [
+          {
+            "type": "NotNull",
+            "code": "1003",
+            "level": 1,
+            "message": "不能为null",
+            "pattern": "NotNull"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {}
+      },
+      "expect": {
+        "ok": false,
+        "rule": "NotNull",
+        "code": "1003"
+      }
+    },
+    {
+      "id": "body-required-notnull-empty-string",
+      "desc": "必填 NotNull、空串:通过(NotNull 只看 null)",
+      "field": {
+        "required": true,
+        "rules": [
+          {
+            "type": "NotNull",
+            "code": "1003",
+            "level": 1,
+            "message": "不能为null",
+            "pattern": "NotNull"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": ""
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-required-norules-absent",
+      "desc": "只配必填、值为 absent:Required 失败",
+      "field": {
+        "required": true,
+        "rules": [],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {}
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Required",
+        "code": "400"
+      }
+    },
+    {
+      "id": "body-required-norules-null",
+      "desc": "只配必填、值为 null:Required 失败",
+      "field": {
+        "required": true,
+        "rules": [],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": null
+        }
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Required",
+        "code": "400"
+      }
+    },
+    {
+      "id": "body-required-norules-empty-string",
+      "desc": "只配必填、值为 empty-string:Required 失败",
+      "field": {
+        "required": true,
+        "rules": [],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": ""
+        }
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Required",
+        "code": "400"
+      }
+    },
+    {
+      "id": "body-required-norules-empty-array",
+      "desc": "只配必填、值为 empty-array:Required 失败",
+      "field": {
+        "required": true,
+        "rules": [],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": []
+        }
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Required",
+        "code": "400"
+      }
+    },
+    {
+      "id": "body-required-norules-empty-object",
+      "desc": "只配必填、值为 empty-object:Required 失败",
+      "field": {
+        "required": true,
+        "rules": [],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": {}
+        }
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Required",
+        "code": "400"
+      }
+    },
+    {
+      "id": "body-required-norules-zero",
+      "desc": "只配必填、值为 zero:通过",
+      "field": {
+        "required": true,
+        "rules": [],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": 0
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-required-norules-false",
+      "desc": "只配必填、值为 false:通过",
+      "field": {
+        "required": true,
+        "rules": [],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": false
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-required-norules-value",
+      "desc": "只配必填、值为 value:通过",
+      "field": {
+        "required": true,
+        "rules": [],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": "x"
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-required-pattern-absent",
+      "desc": "必填+Pattern、没有这个键:Pattern 对没传的值放行,通过",
+      "field": {
+        "required": true,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {}
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-nested-array-invalid-element",
+      "desc": "数组里某个元素的字段不合法:失败",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1004",
+            "level": 1,
+            "message": "必须大写",
+            "pattern": "^[A-Z]+$"
+          }
+        ],
+        "in": "BODY",
+        "path": "items.sku"
+      },
+      "request": {
+        "body": {
+          "items": [
+            {
+              "sku": "A"
+            },
+            {
+              "sku": "b"
+            }
+          ]
+        }
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Pattern",
+        "code": "1004"
+      }
+    },
+    {
+      "id": "body-nested-array-absent-field",
+      "desc": "数组元素缺非必填字段:不校验",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1004",
+            "level": 1,
+            "message": "必须大写",
+            "pattern": "^[A-Z]+$"
+          }
+        ],
+        "in": "BODY",
+        "path": "items.sku"
+      },
+      "request": {
+        "body": {
+          "items": [
+            {
+              "sku": "A"
+            },
+            {}
+          ]
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-nested-array-null-field",
+      "desc": "数组元素的非必填字段为 null:不校验",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1004",
+            "level": 1,
+            "message": "必须大写",
+            "pattern": "^[A-Z]+$"
+          }
+        ],
+        "in": "BODY",
+        "path": "items.sku"
+      },
+      "request": {
+        "body": {
+          "items": [
+            {
+              "sku": null
+            }
+          ]
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-nested-parent-null",
+      "desc": "上级为 null:不级联校验下级",
+      "field": {
+        "required": true,
+        "rules": [],
+        "in": "BODY",
+        "path": "items.sku"
+      },
+      "request": {
+        "body": {
+          "items": null
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-nested-parent-absent",
+      "desc": "上级没有:不级联校验下级",
+      "field": {
+        "required": true,
+        "rules": [],
+        "in": "BODY",
+        "path": "items.sku"
+      },
+      "request": {
+        "body": {}
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-nested-array-empty",
+      "desc": "上级是空数组:没有元素可校验,通过",
+      "field": {
+        "required": true,
+        "rules": [],
+        "in": "BODY",
+        "path": "items.sku"
+      },
+      "request": {
+        "body": {
+          "items": []
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "body-nested-required-missing",
+      "desc": "必填字段在某个数组元素里缺失:失败",
+      "field": {
+        "required": true,
+        "rules": [],
+        "in": "BODY",
+        "path": "items.sku"
+      },
+      "request": {
+        "body": {
+          "items": [
+            {
+              "sku": "A"
+            },
+            {}
+          ]
+        }
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Required",
+        "code": "400"
+      }
+    },
+    {
+      "id": "body-nested-object-optional-invalid",
+      "desc": "嵌套对象里的非必填字段传了不合法的值:失败",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "BODY",
+        "path": "user.phone"
+      },
+      "request": {
+        "body": {
+          "user": {
+            "phone": "x"
+          }
+        }
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Pattern",
+        "code": "1002"
+      }
+    },
+    {
+      "id": "body-nested-object-optional-absent",
+      "desc": "嵌套对象里的非必填字段没传:不校验",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1002",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "^[0-9]+$"
+          }
+        ],
+        "in": "BODY",
+        "path": "user.phone"
+      },
+      "request": {
+        "body": {
+          "user": {}
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "query-pattern-unanchored-full",
+      "desc": "正则不带 ^$ 也按全匹配:整个值匹配,通过",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1005",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "[0-9]+"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p=123"
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "query-pattern-unanchored-partial",
+      "desc": "正则不带 ^$:只有一部分匹配(abc123)不算匹配,失败",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1005",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "[0-9]+"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p=abc123"
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Pattern",
+        "code": "1005"
+      }
+    },
+    {
+      "id": "query-pattern-unanchored-prefix",
+      "desc": "正则不带 ^$:前缀匹配(12a)不算匹配,失败",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1005",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "[0-9]+"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p=12a"
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Pattern",
+        "code": "1005"
+      }
+    },
+    {
+      "id": "body-pattern-unanchored-partial",
+      "desc": "请求体里同样按全匹配",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1005",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "[0-9]+"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": "x9"
+        }
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Pattern",
+        "code": "1005"
+      }
+    },
+    {
+      "id": "body-pattern-unanchored-full",
+      "desc": "请求体里整个值匹配,通过",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1005",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "[0-9]+"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": "99"
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    }
+  ]
+}

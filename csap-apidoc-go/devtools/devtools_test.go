@@ -461,16 +461,248 @@ func TestUIAndRoutes(t *testing.T) {
 	if rec.Code != 200 || !strings.Contains(rec.Body.String(), "/csap-ui/assets2/") {
 		t.Fatalf("page: %d", rec.Code)
 	}
-	if len(dt.Routes()) != 10 || len(dt.Patterns()) != 5 {
+	if len(dt.Routes()) != 11 || len(dt.Patterns()) != 5 {
 		t.Fatalf("routes: %v %v", dt.Routes(), dt.Patterns())
 	}
 	noUI, _ := New(doc, Options{Auth: AllowAll, DisableUI: true})
-	if len(noUI.Routes()) != 4 || len(noUI.Patterns()) != 2 {
+	if len(noUI.Routes()) != 5 || len(noUI.Patterns()) != 2 {
 		t.Fatal("routes without ui")
 	}
 	rec = httptest.NewRecorder()
 	noUI.ServeHTTP(rec, httptest.NewRequest("GET", "/devtools-ui", nil))
 	if rec.Code != 404 {
 		t.Fatalf("ui disabled: %d", rec.Code)
+	}
+}
+
+func TestSetStatus(t *testing.T) {
+	mem := strategy.NewMemory(nil)
+	doc, dt := newTools(t, mem)
+	status := func() (string, string) {
+		m := doc.Snapshot().Method(group, group+".get")
+		return m.Status, m.StatusNote
+	}
+	ok(t, dt, "POST", "/csap/yaml/setStatus", map[string]any{"className": group, "methodName": "get", "status": "DEPRECATED", "statusNote": "请改用 /v2"}, nil)
+	if s, n := status(); s != "DEPRECATED" || n != "请改用 /v2" {
+		t.Fatalf("%s %s", s, n)
+	}
+	// 只有状态的规则保存后还在(不当空规则删除),并留修改记录
+	rs, _ := mem.Load(context.Background())
+	if rs[group+".get"].Status != "DEPRECATED" {
+		t.Fatalf("%+v", rs)
+	}
+	// 再保存字段规则不丢状态
+	ok(t, dt, "POST", "/csap/yaml/addResponseParam", map[string]any{
+		"className": group, "methodName": "get",
+		"returnType": map[string]any{"appendName": "", "modelType": "T_OBJECT", "packageName": "x", "fields": []any{map[string]any{"name": "code", "dataType": "String"}}},
+	}, nil)
+	if s, _ := status(); s != "DEPRECATED" {
+		t.Fatalf("保存字段规则丢了状态: %s", s)
+	}
+	// null 清除覆盖
+	ok(t, dt, "POST", "/csap/yaml/setStatus", map[string]any{"className": group, "methodName": "get", "status": nil}, nil)
+	if s, n := status(); s != "DEFAULT" || n != "" {
+		t.Fatalf("%s %s", s, n)
+	}
+	// 非法状态
+	if rec, res := call(t, dt, "POST", "/csap/yaml/setStatus", map[string]any{"className": group, "methodName": "get", "status": "BOGUS"}); rec.Code != 200 || res.Success {
+		t.Fatalf("非法状态应失败: %s", rec.Body.String())
+	}
+}
+
+func TestFieldTemplatesAPI(t *testing.T) {
+	dir := t.TempDir()
+	rules := filepath.Join(dir, "method-field")
+	_ = os.MkdirAll(rules, 0o755)
+	_, dt := newTools(t, yaml.New(yaml.Options{Dir: rules, Poll: -1, History: "-"}))
+	var list struct {
+		Templates []struct {
+			Name   string `json:"name"`
+			Source string `json:"source"`
+			Title  string `json:"title"`
+		} `json:"templates"`
+		Writable bool `json:"writable"`
+	}
+	ok(t, dt, "GET", "/csap/yaml/fieldTemplates", nil, &list)
+	if len(list.Templates) < 14 || !list.Writable || list.Templates[0].Source != "builtin" {
+		t.Fatalf("%+v", list)
+	}
+	// 项目模板覆盖同名内置
+	ok(t, dt, "POST", "/csap/yaml/fieldTemplates", map[string]any{"name": "phone-cn", "title": "我们的手机号", "description": "手机号码"}, nil)
+	ok(t, dt, "POST", "/csap/yaml/fieldTemplates", map[string]any{"name": "order-no", "title": "订单号"}, nil)
+	ok(t, dt, "GET", "/csap/yaml/fieldTemplates", nil, &list)
+	var phone, orderNo string
+	for _, tp := range list.Templates {
+		switch tp.Name {
+		case "phone-cn":
+			phone = tp.Source + ":" + tp.Title
+		case "order-no":
+			orderNo = tp.Source
+		}
+	}
+	if phone != "project:我们的手机号" || orderNo != "project" {
+		t.Fatalf("%q %q", phone, orderNo)
+	}
+	// 删除项目模板;内置只读
+	ok(t, dt, "DELETE", "/csap/yaml/fieldTemplates/order-no", nil, nil)
+	if _, res := call(t, dt, "DELETE", "/csap/yaml/fieldTemplates/email", nil); res.Success {
+		t.Fatal("删除内置模板应失败")
+	}
+	if _, res := call(t, dt, "POST", "/csap/yaml/fieldTemplates", map[string]any{"name": "Bad Name", "title": "x"}); res.Success {
+		t.Fatal("坏名字应失败")
+	}
+	ok(t, dt, "DELETE", "/csap/yaml/fieldTemplates/phone-cn", nil, nil)
+	ok(t, dt, "GET", "/csap/yaml/fieldTemplates", nil, &list)
+	for _, tp := range list.Templates {
+		if tp.Name == "phone-cn" && tp.Source != "builtin" {
+			t.Fatal("删除项目模板后应回到内置")
+		}
+	}
+}
+
+// namedStore 让 Memory 冒充 SQL 来源(Name 以 sql: 开头),用来测规则记录页的接口。
+type namedStore struct {
+	*strategy.Memory
+	name string
+	ro   bool
+}
+
+func (n namedStore) Name() string   { return n.name }
+func (n namedStore) ReadOnly() bool { return n.ro }
+
+func TestRulesHistoryEndpoints(t *testing.T) {
+	store := namedStore{Memory: strategy.NewMemory(nil), name: "sql:csap_apidoc_[default]"}
+	_, dt := newTools(t, store)
+	var st struct {
+		Supported bool   `json:"supported"`
+		ReadOnly  bool   `json:"readOnly"`
+		ParamType string `json:"paramType"`
+	}
+	ok(t, dt, "GET", "/devtools/rules/status", nil, &st)
+	if !st.Supported || st.ReadOnly || st.ParamType != "DATABASE" {
+		t.Fatalf("%+v", st)
+	}
+	key := group + ".get"
+	for _, body := range []map[string]any{
+		{"className": group, "methodName": "get", "returnType": map[string]any{"appendName": "", "modelType": "T_OBJECT", "packageName": "x",
+			"fields": []any{map[string]any{"name": "code", "dataType": "String"}}}},
+	} {
+		ok(t, dt, "POST", "/csap/yaml/addResponseParam", body, nil)
+	}
+	ok(t, dt, "POST", "/csap/yaml/setStatus", map[string]any{"className": group, "methodName": "get", "status": "FINISH"}, nil)
+	var hist []struct {
+		ID        int64   `json:"id"`
+		RuleKey   string  `json:"ruleKey"`
+		Before    *string `json:"before"`
+		After     *string `json:"after"`
+		Version   int64   `json:"version"`
+		UpdatedBy string  `json:"updatedBy"`
+		UpdatedAt int64   `json:"updatedAt"`
+	}
+	ok(t, dt, "GET", "/devtools/rules/history?ruleKey="+key+"&limit=5", nil, &hist)
+	if len(hist) != 2 || hist[0].RuleKey != key || hist[0].Before == nil || hist[0].After == nil || hist[1].Before != nil ||
+		!strings.Contains(*hist[0].After, `"status":"FINISH"`) || hist[0].UpdatedAt < 1_000_000_000_000 {
+		t.Fatalf("%+v", hist)
+	}
+	ok(t, dt, "GET", "/devtools/rules/history?limit=1", nil, &hist)
+	if len(hist) != 1 {
+		t.Fatalf("limit: %d", len(hist))
+	}
+	// 回滚(changeId 可以是数字或数字字符串);修改人 devtools-rollback
+	var rb struct {
+		RolledBack bool  `json:"rolledBack"`
+		Version    int64 `json:"version"`
+	}
+	ok(t, dt, "POST", "/devtools/rules/rollback", map[string]any{"changeId": hist[0].ID}, &rb)
+	if !rb.RolledBack || rb.Version <= hist[0].Version {
+		t.Fatalf("%+v", rb)
+	}
+	ok(t, dt, "GET", "/devtools/rules/history?limit=1", nil, &hist)
+	if hist[0].UpdatedBy != "devtools-rollback" {
+		t.Fatalf("%+v", hist[0])
+	}
+	ok(t, dt, "POST", "/devtools/rules/rollback", map[string]any{"changeId": "1"}, nil)
+	// 错误:缺 changeId、记录不存在
+	for _, body := range []map[string]any{{}, {"changeId": "abc"}, {"changeId": 99999}} {
+		if _, res := call(t, dt, "POST", "/devtools/rules/rollback", body); res.Success || res.Code != "400" {
+			t.Fatalf("%v → %+v", body, res)
+		}
+	}
+	// 只读:回滚返回 1007,历史仍可看
+	ro := namedStore{Memory: store.Memory, name: "redis:csap:apidoc:[default]", ro: true}
+	dtRO, err := New(newDoc(t, ro), Options{Auth: BasicAuth("admin", "pw"), Store: ro})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok(t, dtRO, "GET", "/devtools/rules/status", nil, &st)
+	if !st.Supported || !st.ReadOnly || st.ParamType != "REDIS" {
+		t.Fatalf("%+v", st)
+	}
+	if _, res := call(t, dtRO, "POST", "/devtools/rules/rollback", map[string]any{"changeId": 1}); res.Code != "1007" {
+		t.Fatalf("%+v", res)
+	}
+}
+
+// YAML、内存等来源:supported=false 和提示,不报 500;MCP 页不报错,显示未启用。
+func TestRulesHistoryUnsupportedAndMCP(t *testing.T) {
+	_, dt := newTools(t, strategy.NewMemory(nil))
+	var st struct {
+		Supported bool `json:"supported"`
+	}
+	ok(t, dt, "GET", "/devtools/rules/status", nil, &st)
+	if st.Supported {
+		t.Fatal("内存来源不支持规则记录页")
+	}
+	// hint:{zh, en} 对象,Go 写法
+	var raw struct {
+		Hint map[string]string `json:"hint"`
+	}
+	ok(t, dt, "GET", "/devtools/rules/status", nil, &raw)
+	if !strings.Contains(raw.Hint["zh"], "strategy/sql") || !strings.Contains(raw.Hint["en"], "strategy/redis") || !strings.Contains(raw.Hint["zh"], "\n") ||
+		strings.Contains(raw.Hint["zh"]+raw.Hint["en"], "@EnableApidoc") || len(raw.Hint) != 2 {
+		t.Fatalf("%+v", raw.Hint)
+	}
+	for _, c := range [][3]string{{"GET", "/devtools/rules/history", ""}, {"POST", "/devtools/rules/rollback", `{"changeId":1}`}} {
+		var body any
+		if c[2] != "" {
+			_ = json.Unmarshal([]byte(c[2]), &body)
+		}
+		rec, res := call(t, dt, c[0], c[1], body)
+		if rec.Code != 200 || res.Success || res.Code != "400" || !strings.Contains(res.Message, "数据库模式") {
+			t.Fatalf("%s %s: %d %+v", c[0], c[1], rec.Code, res)
+		}
+	}
+	var mcp struct {
+		Enabled   bool   `json:"enabled"`
+		Supported bool   `json:"supported"`
+		Message   string `json:"message"`
+	}
+	ok(t, dt, "GET", "/devtools/mcp/status", nil, &mcp)
+	if mcp.Enabled || mcp.Supported || mcp.Message == "" {
+		t.Fatalf("%+v", mcp)
+	}
+	var mh map[string]any
+	ok(t, dt, "GET", "/devtools/mcp/status", nil, &mh)
+	h, _ := mh["hint"].(map[string]any)
+	if zh, _ := h["zh"].(string); !strings.Contains(zh, "1.3.0") || !strings.Contains(zh, "https://apidoc.csap.ai/guide/mcp") {
+		t.Fatalf("%v", mh)
+	}
+	if en, _ := h["en"].(string); !strings.Contains(en, "Go edition") {
+		t.Fatalf("%v", mh)
+	}
+	for _, k := range []string{"persistHint", "tokenHint", "securityNotes"} {
+		if _, has := mh[k]; has {
+			t.Fatalf("Go 不适用的字段不该返回: %s", k)
+		}
+	}
+	// 支持修改记录时不带 hint
+	_, dtSQL := newTools(t, namedStore{Memory: strategy.NewMemory(nil), name: "sql:x"})
+	var sql map[string]any
+	ok(t, dtSQL, "GET", "/devtools/rules/status", nil, &sql)
+	if _, has := sql["hint"]; has || sql["supported"] != true {
+		t.Fatalf("%v", sql)
+	}
+	if rec, res := call(t, dt, "GET", "/devtools/mcp/tools", nil); rec.Code != 200 || res.Success {
+		t.Fatalf("%d %+v", rec.Code, res)
 	}
 }

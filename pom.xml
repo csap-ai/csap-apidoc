@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>ai.csap.apidoc</groupId>
     <artifactId>csap-apidoc</artifactId>
-    <version>1.3.0</version>
+    <version>1.4.0</version>
     <packaging>pom</packaging>
 
     <name>CSAP Framework API Doc</name>
@@ -52,6 +52,7 @@
         <module>csap-apidoc-devtools</module>
         <module>csap-apidoc-runtime</module>
         <module>csap-apidoc-mcp</module>
+        <module>csap-apidoc-mock</module>
         <module>csap-apidoc-boot</module>
         <module>csap-apidoc-ui</module>
     </modules>
@@ -137,6 +138,21 @@
             <dependency>
                 <groupId>ai.csap.apidoc</groupId>
                 <artifactId>csap-apidoc-sqlite</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.csap.apidoc</groupId>
+                <artifactId>csap-apidoc-database</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.csap.apidoc</groupId>
+                <artifactId>csap-apidoc-redis</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.csap.apidoc</groupId>
+                <artifactId>csap-apidoc-migrate</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -248,17 +264,14 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>2.22.2</version>
-                    <!-- 同时运行 TestNG 与 JUnit Platform(JUnit 5 / vintage)两套测试;
-                         2.18.1 只会选 TestNG provider,JUnit 5 测试被静默跳过。 -->
+                    <!-- 只用 JUnit Platform provider:JUnit 5 / vintage 直接跑,TestNG 测试经 testng-engine
+                         (在 csap-apidoc-build 里作为测试依赖)也在同一个 provider 里跑。
+                         以前同时挂 surefire-testng,两个 provider 依次运行并写同名报告,TestNG 那一次(0 个用例)
+                         会覆盖 JUnit 的报告,surefire-reports 里的计数是 0。 -->
                     <dependencies>
                         <dependency>
                             <groupId>org.apache.maven.surefire</groupId>
                             <artifactId>surefire-junit-platform</artifactId>
-                            <version>2.22.2</version>
-                        </dependency>
-                        <dependency>
-                            <groupId>org.apache.maven.surefire</groupId>
-                            <artifactId>surefire-testng</artifactId>
                             <version>2.22.2</version>
                         </dependency>
                     </dependencies>

@@ -115,6 +115,28 @@ class OpenApiConverterServiceTest {
     }
 
     @Test
+    void statusIsExportedAsDeprecatedAndExtension() throws Exception {
+        CsapDocResponse doc = doc();
+        List<CsapDocMethod> methods = doc.getApiList().get(0).getMethodList();
+        methods.get(0).setStatus(ai.csap.apidoc.annotation.ApiStatus.DEPRECATED);
+        methods.get(0).setStatusNote("请改用 /v2/list");
+        methods.get(0).setDescription("原说明");
+        methods.get(2).setStatus(ai.csap.apidoc.annotation.ApiStatus.FINISH);
+        JsonNode paths = convert(doc).get("paths");
+        JsonNode list = paths.get("/api/user/list").get("get");
+        assertTrue(list.get("deprecated").asBoolean());
+        assertEquals("DEPRECATED", list.get("x-csap-status").asText());
+        assertEquals("原说明\n\n请改用 /v2/list", list.get("description").asText());
+        JsonNode save = paths.get("/api/user/save").get("post");
+        assertFalse(save.has("deprecated"));
+        assertEquals("FINISH", save.get("x-csap-status").asText());
+        // 开发中(DEFAULT)什么都不输出
+        JsonNode get = paths.get("/api/user/{id}").get("get");
+        assertFalse(get.has("deprecated"));
+        assertFalse(get.has("x-csap-status"));
+    }
+
+    @Test
     void nullRequiredDoesNotThrowAndIsFalse() throws Exception {
         JsonNode params = convert(doc()).get("paths").get("/api/user/list").get("get").get("parameters");
         assertEquals("name", params.get(0).get("name").asText());

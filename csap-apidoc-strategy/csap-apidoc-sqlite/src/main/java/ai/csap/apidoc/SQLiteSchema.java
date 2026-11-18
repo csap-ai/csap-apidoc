@@ -72,6 +72,8 @@ public final class SQLiteSchema {
         column("update_by", "TEXT", "'admin'");
         column("request", "TEXT", "'{}'");
         column("response", "TEXT", "'{}'");
+        // 1.4.0:接口状态备注(状态本身用上面已有的 status 列)
+        column("status_note", "TEXT", "''");
     }
 
     static final String[] DDL = {
@@ -116,9 +118,27 @@ public final class SQLiteSchema {
         if (needsMigration(connection)) {
             migrate(connection);
         }
+        addMissingColumns(connection);
         try (Statement statement = connection.createStatement()) {
             for (int i = 1; i < DDL.length; i++) {
                 statement.execute(DDL[i]);
+            }
+        }
+    }
+
+    /**
+     * 旧库缺少新版本加的列时补上(如 1.4.0 的 status_note)
+     */
+    private static void addMissingColumns(Connection connection) throws SQLException {
+        java.util.Set<String> existing = new java.util.HashSet<>();
+        for (ColumnInfo c : columns(connection)) {
+            existing.add(c.name);
+        }
+        try (Statement statement = connection.createStatement()) {
+            for (Map.Entry<String, String> e : COLUMNS.entrySet()) {
+                if (!existing.contains(e.getKey())) {
+                    statement.execute("ALTER TABLE " + quote(TABLE) + " ADD COLUMN " + quote(e.getKey()) + " " + e.getValue());
+                }
             }
         }
     }

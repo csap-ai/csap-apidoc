@@ -62,11 +62,21 @@ func operation(m *model.Method, tag, verb string) map[string]any {
 		"summary":     m.Value,
 		"tags":        []string{tag},
 	}
-	if m.Description != "" {
-		op["description"] = m.Description
+	desc := m.Description
+	if m.StatusNote != "" {
+		if desc != "" {
+			desc += "\n\n"
+		}
+		desc += m.StatusNote
+	}
+	if desc != "" {
+		op["description"] = desc
 	}
 	if m.Status == model.StatusDeprecated {
 		op["deprecated"] = true
+	}
+	if m.Status == model.StatusFinish || m.Status == model.StatusDeprecated {
+		op["x-csap-status"] = m.Status // DEFAULT(开发中)不输出
 	}
 	var params []any
 	body := map[string]any{}  // 属性名 -> schema
@@ -244,13 +254,13 @@ func primitive(dataType string) map[string]any {
 		t = t[i+1:]
 	}
 	switch t {
-	case "String", "string", "Number":
+	case "String", "string":
 		return map[string]any{"type": "string"}
 	case "Integer", "int", "int32", "Short", "Byte":
 		return map[string]any{"type": "integer", "format": "int32"}
 	case "Long", "int64":
 		return map[string]any{"type": "integer", "format": "int64"}
-	case "Double", "float64", "BigDecimal":
+	case "Double", "float64", "BigDecimal", "Number", "number":
 		return map[string]any{"type": "number", "format": "double"}
 	case "Float", "float32":
 		return map[string]any{"type": "number", "format": "float"}

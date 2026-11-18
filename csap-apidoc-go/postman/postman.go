@@ -121,7 +121,11 @@ func requestItem(m *model.Method, c *model.Controller) obj {
 	if len(m.Request) > 0 && hasBodyMethod(m) {
 		req = append(req, kv{"body", requestBody(m.Request)})
 	}
-	item := obj{{"name", m.Value}, {"request", req}}
+	name := m.Value
+	if m.Status == model.StatusDeprecated {
+		name = "[过时] " + name
+	}
+	item := obj{{"name", name}, {"request", req}}
 	if len(m.Response) > 0 {
 		item = append(item, kv{"response", responses(m, c)})
 	}

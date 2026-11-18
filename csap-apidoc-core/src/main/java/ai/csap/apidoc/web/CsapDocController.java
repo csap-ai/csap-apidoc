@@ -331,6 +331,8 @@ public class CsapDocController {
                                                         .isLeaf(Boolean.TRUE)
                                                         .method(item.getMethods().get(0).name())
                                                         .path(formatPath(apiPath(item.getApiPath())) + formatPath(ArrayUtil.isEmpty(item.getPaths()) ? "" : item.getPaths()[0]))
+                                                        .status(item.getStatus() == null ? "DEFAULT" : item.getStatus().name())
+                                                        .statusNote(item.getStatusNote())
                                                         .type(type).build())
                          .collect(Collectors.toList());
     }

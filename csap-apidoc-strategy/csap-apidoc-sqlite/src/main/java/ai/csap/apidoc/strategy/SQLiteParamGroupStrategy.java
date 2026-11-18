@@ -36,6 +36,7 @@ import com.google.common.collect.Sets;
 import ai.csap.apidoc.ApiStrategyType;
 import ai.csap.apidoc.SQLiteHandle;
 import ai.csap.apidoc.SQLiteSchema;
+import ai.csap.apidoc.annotation.ApiStatus;
 import ai.csap.apidoc.annotation.ParamType;
 import ai.csap.apidoc.autoconfigure.StrategyModel;
 import ai.csap.apidoc.core.ApidocOptional;
@@ -278,10 +279,15 @@ public class SQLiteParamGroupStrategy implements ParamGroupStrategy, SQLiteHandl
             // 获取请求和响应的JSON字符串
             String requestJson = (String) methodMap.get("request");
             String responseJson = (String) methodMap.get("response");
+            // 1.4.0 的接口状态:DEFAULT(列默认值)视为没有覆盖
+            ApiStatus status = ApiStatus.resolve((String) methodMap.get("status"));
+            String statusNote = (String) methodMap.get("status_note");
             // 创建方法属性对象并设置参数
             ParamGroupMethodProperty methodProperty = new ParamGroupMethodProperty();
             methodProperty.setRequest(parseJsonToParams(requestJson));
             methodProperty.setResponse(parseJsonToParams(responseJson));
+            methodProperty.setStatus(status == null || status == ApiStatus.DEFAULT ? null : status);
+            methodProperty.setStatusNote(statusNote == null || statusNote.isEmpty() ? null : statusNote);
             // 按类名和方法名层级存入结果Map
             handleMap.computeIfAbsent(className, k -> new HashMap<>(16))
                      .put(methodName, methodProperty);
@@ -317,7 +323,7 @@ public class SQLiteParamGroupStrategy implements ParamGroupStrategy, SQLiteHandl
                     .isNotNull(i -> {
                         try (Connection connection = getConnection(i.getPath())) {
                             SQLiteSchema.ensureSchema(connection);
-                            List<Map<String, Object>> mapList = queryList(connection, API_METHOD, Sets.newHashSet("class_name", "simple_name", "name", "request", "response"),
+                            List<Map<String, Object>> mapList = queryList(connection, API_METHOD, Sets.newHashSet("class_name", "simple_name", "name", "request", "response", "status", "status_note"),
                                     MapUtil.<String, Object>builder().build())
                                     .orElse(null);
                             HANDLE_MAP.computeIfAbsent(strategyModel.getId(), s -> new HashMap<>(16))
@@ -353,6 +359,8 @@ public class SQLiteParamGroupStrategy implements ParamGroupStrategy, SQLiteHandl
                         if (c > 0) {
                             updateByWhere(connection, API_METHOD, MapUtil.<String, Object>builder()
                                                                          .put(request ? "request" : "response", objToString(request ? property.getRequest() : property.getResponse()))
+                                                                         .put("status", property.getStatus() == null ? "DEFAULT" : property.getStatus().name())
+                                                                         .put("status_note", property.getStatusNote() == null ? "" : property.getStatusNote())
                                                                          .put("update_time", DateUtil.formatLocalDateTime(LocalDateTime.now()))
                                                                          .build(),
                                     MapUtil.<String, Object>builder("class_name", className).put("name", methodName)
@@ -364,6 +372,8 @@ public class SQLiteParamGroupStrategy implements ParamGroupStrategy, SQLiteHandl
                                                                 .put(request ? "request" : "response", objToString(request ? property.getRequest() : property.getResponse()))
                                                                 .put("class_name", className)
                                                                 .put("name", methodName)
+                                                                .put("status", property.getStatus() == null ? "DEFAULT" : property.getStatus().name())
+                                                                .put("status_note", property.getStatusNote() == null ? "" : property.getStatusNote())
                                                                 .put("simple_name", IStandardHandle.splitName(className))
                                                                 .put("create_time", DateUtil.formatLocalDateTime(LocalDateTime.now()))
                                                                 .put("update_time", DateUtil.formatLocalDateTime(LocalDateTime.now()))

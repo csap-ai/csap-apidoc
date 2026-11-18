@@ -283,7 +283,8 @@ public class Validate {
          */
         public ValidateField validators(Object value, ValidationProperties properties) {
             return validators(value, properties.getTipType(), properties.getRequiredCode(),
-                    properties.getRequiredMessage());
+                    properties.getRequiredMessage(),
+                    properties.getOptionalFieldRules() == ai.csap.validation.properties.OptionalFieldRules.SKIP);
         }
 
         /**
@@ -297,6 +298,19 @@ public class Validate {
          */
         public ValidateField validators(Object value, ValidationTipType tipType,
                                         String requiredCode, String requiredMessage) {
+            return validators(value, tipType, requiredCode, requiredMessage, false);
+        }
+
+        /**
+         * 验证当前字段。非必填字段:没传值(null)时不校验,传了值才按规则校验;skipOptional 为 true 时非必填字段一律不校验。
+         *
+         * @param skipOptional 非必填字段一律不校验(1.3.0 及以前的行为)
+         */
+        public ValidateField validators(Object value, ValidationTipType tipType,
+                                        String requiredCode, String requiredMessage, boolean skipOptional) {
+            if (!required && (skipOptional || value == null)) {
+                return this;
+            }
             List<ConstraintValidatorField> rules = getConstraintValidators();
             if (CollectionUtil.isNotEmpty(rules)) {
                 return validators(value, tipType, rules);

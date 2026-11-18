@@ -62,14 +62,56 @@ public class ExampleApplication { }
 - 适合通过 DevTools 在线调整参数、由非开发人员维护文档的场景
 - 二进制文件不便做 diff 与代码评审
 
+## DATABASE 策略(1.4.0)
+
+字段规则存进**应用自己的关系数据库**(MySQL 5.7+/8、PostgreSQL 12+、达梦 DM8、人大金仓),用应用已有的 `DataSource`,
+只依赖 JDBC,不自带驱动;多实例通过轮询版本号自动同步,保存会留下修改记录,可回滚。
+
+最小用法(示例项目默认不启用,需要自己加依赖并改 `@EnableApidoc`):
+
+1. 加依赖:`spring-boot-starter-jdbc` 和你的数据库驱动(试用可用 `com.h2database:h2`)
+2. `@EnableApidoc(value = "ai.csap.example", paramType = ApiStrategyType.DATABASE)`
+3. 配置数据源(其余 `csap.apidoc.database.*` 都有默认值),可直接参考 `src/main/resources/application-database.yml`
+
+首次使用时自动建表(表前缀默认 `csap_apidoc_`,`init-schema: false` 可关闭,建表 SQL 在 jar 的
+`META-INF/csap-apidoc/database/{mysql,postgresql,dm,kingbase,sqlite,h2}.sql`)。
+`service` 默认取 `spring.application.name`,同一套表里靠它区分不同服务;生产环境可开 `read-only: true`,只读不写。
+
+## REDIS 策略(1.4.0)
+
+字段规则存进**应用自己的 Redis**,用应用已有的 `StringRedisTemplate`(Spring Data Redis),不自带 Redis 客户端;
+保存即订阅频道通知,其他实例即时同步,订阅断开时按 `poll-interval` 轮询版本号兜底;每个接口保留最近 `history-limit` 条修改记录,可回滚。
+
+最小用法(示例项目默认不启用):
+
+1. 加依赖 `spring-boot-starter-data-redis`,配置 Redis 连接
+2. `@EnableApidoc(value = "ai.csap.example", paramType = ApiStrategyType.REDIS)`
+3. 其余 `csap.apidoc.redis.*` 都有默认值,可直接参考 `src/main/resources/application-redis.yml`
+
+注意:Redis 要开启 AOF 或 RDB,否则重启会丢规则;需要完整审计请用数据库模式;可用迁移工具随时导出成 YAML 备份。
+
+### 迁移工具
+
+把现有规则搬到数据库 / Redis,或从数据库 / Redis 导出成 YAML 目录(`csap.apidoc.migrate.*`,启动时执行并打印报告):
+
+| 参数 | 含义 |
+|---|---|
+| `from` | 来源:`yaml`、`sql_lite`、`database`、`redis` |
+| `to` | 目标:`database`、`redis`(导入) |
+| `export-to` | 导出 YAML 的目录(来源为 database / redis),文件为 `{目录}/method-field/api-method-field.yaml` |
+| `overwrite` | 目标里已有且内容不同的规则是否覆盖,默认 `false`:跳过并在报告里列出冲突 |
+| `dry-run` | 只演练,打印报告不写入 |
+
+导入的每条规则都走正常保存,修改人记为 `migrate`,可在 DevTools“规则记录”里回滚。
+
 ## 策略对比
 
-| 特性 | ANNOTATION | YAML | SQL_LITE |
-|---------|-----------|------|----------|
-| 外部文件 | 无 | YAML 文件 | `.db` 文件 |
-| 可视化配置 | 否 | DevTools / 手工编辑 | DevTools |
-| 版本管理 | 随代码 | 文本,易 diff | 二进制,不便 |
-| 参数是否改代码 | 是 | 否 | 否 |
+| 特性 | ANNOTATION | YAML | SQL_LITE | DATABASE | REDIS |
+|---------|-----------|------|----------|----------|-------|
+| 外部文件 | 无 | YAML 文件 | `.db` 文件 | 应用自己的数据库 | 应用自己的 Redis |
+| 可视化配置 | 否 | DevTools / 手工编辑 | DevTools | DevTools | DevTools |
+| 版本管理 | 随代码 | 文本,易 diff | 二进制,不便 | 修改记录 + 回滚 | 最近 N 条记录 + 回滚 |
+| 参数是否改代码 | 是 | 否 | 否 | 否 | 否 |
 
 ## 切换策略
 

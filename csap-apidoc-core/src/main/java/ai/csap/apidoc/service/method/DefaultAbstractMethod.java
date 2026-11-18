@@ -227,15 +227,15 @@ public class DefaultAbstractMethod implements FilterData {
         String description = hasRule && !StrUtil.isEmpty(paramDataValidate.getDescription())
                 ? paramDataValidate.getDescription() : (property != null ? property.description() : "");
 
-        // 添加验证规则
-        if (required) {
+        // 添加验证规则:必填的,以及非必填但有规则的(1.4.0 起传了值就校验)都登记
+        List<Validate.ConstraintValidatorField> validate = hasRule ? paramDataValidate.getValidate()
+                : getValidateFactory().getAllFieldConstraintValidator(parameter.getType(),
+                parameter.getAnnotations());
+        if (required || CollectionUtil.isNotEmpty(validate)) {
             String value = property != null ? property.value() : EMPTY;
             BaseModel baseModel = BaseModel.build().modelType(ModelType.BASE_DATA).field(parameter.getType());
-            List<Validate.ConstraintValidatorField> validate = hasRule ? paramDataValidate.getValidate()
-                    : getValidateFactory().getAllFieldConstraintValidator(parameter.getType(),
-                    parameter.getAnnotations());
             getValidateFactory().addRequestValidate(docMethod.getKey(), parameter.getType().getSimpleName(),
-                    paramName, value, baseModel, validate);
+                    paramName, value, baseModel, validate, required);
         }
 
         // 参数位置:规则里指定的优先;没有时 @PathVariable 记为 PATH,其余用方法默认位置
@@ -263,11 +263,30 @@ public class DefaultAbstractMethod implements FilterData {
                 .paramType(paramType)
                 .build();
 
+        applyRuleExtras(csapDocParameter, hasRule ? paramDataValidate : null);
         csapDocParameter.setKey(getKey(csapDocParameter));
         csapDocModel.getParameters().add(csapDocParameter);
         return csapDocModel;
     }
 
+
+    /**
+     * 字段规则里的说明、示例、Mock 带到文档参数上:说明、示例不为空时优先于注解里的;Mock 原样透传(不解释)
+     */
+    private static void applyRuleExtras(CsapDocParameter parameter, ParamGroupMethodProperty.ParamDataValidate rule) {
+        if (rule == null) {
+            return;
+        }
+        if (!StrUtil.isEmpty(rule.getDescription())) {
+            parameter.setDescription(rule.getDescription());
+        }
+        if (!StrUtil.isEmpty(rule.getExample())) {
+            parameter.setExample(rule.getExample());
+        }
+        if (rule.getMock() != null) {
+            parameter.setMock(rule.getMock());
+        }
+    }
 
     /**
      * 获取方法可用字段
@@ -424,6 +443,7 @@ public class DefaultAbstractMethod implements FilterData {
                 getValidateFactory().addExcludes(docMethod.getKey(), docParameter.getName(), types.getModelClass());
             }
             if (responseGroup != null) {
+                applyRuleExtras(docParameter, responseGroup);
                 docParameter.setRequired(responseGroup.getRequired());
             } else {
                 docParameter.setRequired(property.required());
@@ -441,6 +461,7 @@ public class DefaultAbstractMethod implements FilterData {
                 boolean required = property.required();
                 List<Validate.ConstraintValidatorField> validate = null;
                 if (requestGroup != null) {
+                    applyRuleExtras(docParameter, requestGroup);
                     required = requestGroup.getRequired();
                     if (requestGroup.getParamType() != null) {
                         docParameter.setParamType(requestGroup.getParamType());
@@ -450,12 +471,12 @@ public class DefaultAbstractMethod implements FilterData {
                     validate = getValidateFactory().getAllFieldConstraintValidator(field.getType(),
                             field.getAnnotations());
                 }
-                if (required) {
+                if (required || CollectionUtil.isNotEmpty(validate)) {
                     BaseModel baseModel = types.field(field.getType()).modelType(docModel.getModelType());
                     validateField = getValidateFactory().addRequestValidate(docMethod.getKey(), types
                                     .keyName(types.getModelClass().getSimpleName()).toStringKeyName(), docParameter.getName(),
                             docParameter.getValue(), baseModel,
-                            validate);
+                            validate, required);
                 }
                 if (Objects.nonNull(validate)) {
                     docParameter.setValidate(validate.stream().map(i -> CsapDocParameter.ValidateAttribute.builder()

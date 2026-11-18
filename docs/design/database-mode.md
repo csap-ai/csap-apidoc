@@ -1,6 +1,6 @@
 # 数据库模式与 Redis 模式(规则集中存储)方案
 
-状态:草案,待审定。计划版本:Java 1.4.0(2026-12-22);Go 已有 SQL 规则来源,同步调整表结构。
+状态:已审定(2026-11-18),实现中(数据库模式的 Java、Go 实现已完成验收;Java、Go 的 Redis 模式与迁移工具也已实现)。计划版本:Java 1.4.0(2026-12-22);Go 已有 SQL 规则来源,同步调整表结构。
 
 ## 1. 为什么要做
 
@@ -36,31 +36,41 @@ Go 版已经有 SQL 规则来源(SQLite / PostgreSQL / MySQL,带版本号、修�
 csap:
   apidoc:
     database:
-      # 不配置时使用应用自己的 DataSource;配置后使用单独的连接
-      datasource-bean: ""          # 指定 DataSource Bean 名,多数据源时用
+      datasource-bean: ""          # 指定 DataSource Bean 名,多数据源时用;空 = 唯一(或 primary)的 DataSource
+      dialect: ""                  # 空 = 按 JDBC URL 识别;可选 mysql / postgresql / dm / kingbase / sqlite / h2
       table-prefix: csap_apidoc_   # 表名前缀
-      init-schema: true            # 启动时自动建表(没有权限时关掉,用提供的 SQL 手工执行)
+      init-schema: true            # 启动时自动建表(没有建表权限时关掉,用提供的 SQL 手工执行)
       poll-interval: 5s            # 多实例同步的轮询间隔,0 表示不轮询
-      service: order-service       # 服务名,同一个库存多个服务的规则时用来区分
+      service: ""                  # 服务名;空时取 spring.application.name,再空为 default
+      read-only: false             # true:只读取规则,禁止保存
 ```
 
 - 默认直接用应用的 `DataSource`,不引入连接池,不额外开连接。
-- 只依赖 JDBC,不依赖 MyBatis / JPA,不引入数据库驱动(由应用自带)。
-- Spring Boot 2 和 3 用同一个 jar(沿用 1.2.0 的做法)。
+- 只依赖 JDBC,不依赖 MyBatis / JPA,**不带数据库驱动**(由应用自带)。
+- 模块 `csap-apidoc-database`,已包含在 `csap-apidoc-boot-starter` 中;Spring Boot 2 和 3 用同一个 jar(沿用 1.2.0 的做法)。
+- 建表 SQL 放在 jar 内 `META-INF/csap-apidoc/database/{mysql,postgresql,dm,kingbase,sqlite,h2}.sql`,官网同样提供,DBA 可以手工执行。
+- **`service` 默认值**:同一个库里按 `service` 区分各服务的规则。默认取 `spring.application.name`,没配置时为 `default`。多个服务共用一个库时必须各自不同,否则规则会互相覆盖。
+- **只读模式**(`read-only: true`):启动时只读取规则,不建表,DevTools 保存返回明确提示。用于生产环境:规则在测试环境或团队版里修改、审批后再进入生产库。
 
 ### 3.2 表结构(Java 与 Go 共用)
 
-在 Go 现有三张表的基础上加 `service` 列,支持一个库存多个服务:
+在 Go 现有三张表的基础上加 `service` 列,支持一个库存多个服务。列名**沿用 Go 现有的 `rules` / `before_rules` / `after_rules`**(原稿写的 `content` / `before` / `after` 作废),这样 Go 已有数据的迁移只需加 `service` 列,不用改列名。
 
-| 表 | 作用 | 主要字段 |
+| 表 | 作用 | 字段 |
 |---|---|---|
-| `csap_apidoc_rule` | 每个接口一行规则 | `service`、`rule_key`(类名.方法名 / 分组.接口名)、`content`(规则 JSON,与 YAML 同结构)、`version`、`updated_by`、`updated_at` |
-| `csap_apidoc_history` | 每次保存的修改记录 | `service`、`rule_key`、`before`、`after`、`version`、`updated_by`、`updated_at` |
-| `csap_apidoc_meta` | 全局版本号 | `service`、`version` |
+| `{prefix}rule` | 每个接口一行规则 | `service`、`rule_key`、`rules`(规则 JSON)、`version`、`updated_by`、`updated_at`;主键 `(service, rule_key)` |
+| `{prefix}history` | 每次保存的修改记录 | `id`(自增)、`service`、`rule_key`、`before_rules`、`after_rules`、`version`、`updated_by`、`updated_at`;索引 `(service, rule_key, id)` |
+| `{prefix}meta` | 全局版本号 | `service`(主键)、`version` |
 
-- 规则内容用 JSON 存一个接口一行,而不是像 Java SQLite 那样存整份文档,这样保存、比对、回滚都按接口进行。
-- Go 现有的表结构要升级(加 `service` 列,默认值兼容旧数据),Go 发 v0.2.0 时附迁移说明。
-- 建表 SQL 按方言放在 jar 里,并在官网提供,DBA 可以手工执行。
+`{prefix}` 默认 `csap_apidoc_`。
+
+- **规则键**:Java 为 `类全名.方法名`,Go 为 `分组.接口名`。
+- **规则内容**:`rules` 是 JSON,与 YAML 规则同一结构,一个接口一行,而不是像 Java SQLite 那样存整份文档,这样保存、比对、回滚都按接口进行。规则被清空时删除 `rule` 表中的这一行(`history` 里仍有记录)。
+- **时间**:`updated_at` 为毫秒时间戳。
+- **大文本类型**:MySQL `LONGTEXT`、PostgreSQL / 人大金仓 `TEXT`、达梦 `CLOB`。不使用 JSON 类型,以兼容 MySQL 5.7 和各类兼容库。
+- **不使用 `DEFAULT ''`**:部分数据库的 Oracle 兼容模式会把空字符串当作 NULL,`DEFAULT ''` 在各方言上行为不一致,所以表定义里不写字符串默认值,列值都由程序显式写入;`updated_by` 没有修改人时写 `unknown`,`before_rules` / `after_rules` 可空(空表示修改前没有规则 / 这次是删除)。`rule_key` 为 VARCHAR(512),`service` 为 VARCHAR(128)。
+- Go 现有的表升级(加 `service` 列,旧数据 `service` 填默认值)随 v0.2.0 提供迁移,见第 3.4 节。
+- 建表 SQL 按方言放在 jar 里,并在官网提供。
 
 ### 3.2.1 方言
 
@@ -68,13 +78,14 @@ csap:
 
 | 方言 | 版本 | 说明 |
 |---|---|---|
-| MySQL | 5.7+ / 8.x | `content` 用 `LONGTEXT`(不依赖 JSON 类型,兼容 5.7 与各类 MySQL 兼容库) |
+| MySQL / MariaDB | 5.7+ / 8.x | `rules` 用 `LONGTEXT`(不依赖 JSON 类型,兼容 5.7 与各类 MySQL 兼容库) |
 | PostgreSQL | 12+ | `TEXT` |
 | 达梦 DM8 | 8.x | `CLOB`;自增用 `IDENTITY`;`SELECT ... FOR UPDATE` 行锁 |
-| 人大金仓 KingbaseES | V8 / V9 | 默认按 PostgreSQL 兼容模式;库若初始化为 MySQL / Oracle 兼容模式,配置 `dialect` 指定 |
+| 人大金仓 KingbaseES | V8 / V9 | 默认按 PostgreSQL 兼容模式;MySQL 兼容模式的库用 `dialect: mysql` 试用;Oracle 兼容模式未验证,暂不支持 |
 | SQLite | 3.x | 单机、开发环境 |
+| H2 | 2.x | 测试环境(有建表 SQL,主要用于测试) |
 
-默认根据 JDBC URL 自动识别方言(`jdbc:dm:`、`jdbc:kingbase8:` 等),也可以用 `csap.apidoc.database.dialect` 显式指定。Go 版同样支持这些方言(Go 用 `database/sql`,驱动由使用方 import)。
+默认根据 JDBC URL 自动识别方言(`jdbc:mysql:` / `jdbc:mariadb:`、`jdbc:postgresql:`、`jdbc:dm:`、`jdbc:kingbase8:`、`jdbc:sqlite:`、`jdbc:h2:`),也可以用 `csap.apidoc.database.dialect` 显式指定。Go 版同样支持 MySQL、PostgreSQL、SQLite、达梦、人大金仓(Go 用 `database/sql`,驱动由使用方 import)。
 
 ### 3.3 运行时流程
 
@@ -85,7 +96,8 @@ csap:
 
 ### 3.4 迁移
 
-- `csap-apidoc-migrate`(命令行或启动参数):YAML 目录 / SQLite 文件 → 数据库;数据库 → YAML 目录。
+- `csap-apidoc-migrate`(命令行或启动参数):YAML 目录 / SQLite 文件 → 数据库;数据库 → YAML 目录。**迁移工具尚未完成**,完成前文档里一律写"计划中"。
+- Go v0.1.x 的旧表(没有 `service` 列)升级到新表结构:Go v0.2.0 提供迁移函数和说明。
 - 导入前检查冲突,默认不覆盖已有规则;导入本身记一条修改记录,可以回滚。
 - 旧的 `paramType = SQL_LITE` 继续可用,文档里推荐生产环境改用数据库模式。
 
@@ -104,16 +116,24 @@ csap:
       key-prefix: "csap:apidoc:"   # 键前缀
       service: order-service       # 服务名,同一个 Redis 存多个服务时区分
       history-limit: 200           # 每个接口保留的修改记录条数
+      poll-interval: 5s            # 版本号轮询兜底间隔
+      subscribe: true              # 是否订阅变更频道即时同步
+      read-only: false             # true:只读,禁止保存和回滚
 ```
 
+数据约定(键名、修改记录格式、保存用的 Lua 脚本、同步与回滚流程)**以 [redis-mode.md](redis-mode.md) 为准**,Java 与 Go 必须一致,改动前先改那份文档。要点:
+
 - **连接**:Java 使用应用已有的 `RedisConnectionFactory`(Spring Data Redis,可选依赖,Boot 2 / 3 通用),不另建连接;Go 由使用方传入实现了简单接口的客户端(主模块不引入 Redis 依赖,go-redis 的适配示例写在文档里)。
-- **数据结构**(Java 与 Go 一致):
-  - `{prefix}{service}:rules`:Hash,字段是规则键(类名.方法名 / 分组.接口名),值是规则 JSON(与数据库模式、YAML 同一结构);
-  - `{prefix}{service}:version`:全局版本号;
-  - `{prefix}{service}:history:{规则键}`:List,保存修改前后内容、修改人、时间,保留 `history-limit` 条;
-  - 保存时用 `MULTI`/`EXEC`(或 Lua 脚本)一次完成"版本号加 1、写规则、写修改记录",并 `PUBLISH` 到 `{prefix}{service}:changed`。
-- **多实例同步**:订阅变更频道即时生效,同时按间隔检查版本号兜底(订阅断开时也不会漏)。
+- **键**(服务名用 hash tag 包起来,同一服务的键落在 Redis Cluster 的同一个槽):
+  - `{prefix}{{service}}:rules`:Hash,字段是规则键(类名.方法名 / 分组.接口名),值是规则 JSON(与数据库模式、YAML 同一结构);
+  - `{prefix}{{service}}:version`:全局版本号;
+  - `{prefix}{{service}}:history:{规则键}`:List,保存修改前后内容、修改人、时间,保留 `history-limit` 条;
+  - `{prefix}{{service}}:changes`:Hash,修改记录 id → 规则键的索引,用于按 id 回滚;
+  - 频道 `{prefix}{{service}}:changed`:保存后发布新版本号。
+- 保存用一段 Lua 脚本原子完成"版本号加 1、写规则、写修改记录、更新索引、发布通知"。
+- **多实例同步**:订阅变更频道即时生效,同时按 `poll-interval` 检查版本号兜底(订阅断开时也不会漏)。
 - **修改记录与回滚**:支持,但只保留最近 `history-limit` 条;需要完整、长期的审计追溯时请用数据库模式(团队版的审计基于数据库)。
+- **只读模式**:与数据库模式相同,不能保存、不能回滚。
 - **持久化提醒**:Redis 需要开启 AOF 或 RDB 持久化,否则重启会丢规则;文档里写明,并提供"导出成 YAML"作为备份。
 - 迁移工具同样支持 YAML / SQLite / 数据库 ↔ Redis。
 
@@ -139,7 +159,7 @@ csap:
 
 | 时间 | 内容 |
 |---|---|
-| 11-25 前 | 本方案审定;统一表结构定稿(Java 与 Go 共用) |
+| 11-18 | 本方案审定;统一表结构定稿(Java 与 Go 共用) |
 | 12-12 – 12-18 | Java 数据库策略、多实例同步、修改记录与回滚、DevTools 接入 |
 | 12-18 – 12-20 | 迁移工具;Go 表结构升级(v0.2.0) |
 | 12-18 – 12-20 | 达梦、人大金仓方言与集成测试 |
@@ -152,7 +172,8 @@ csap:
 
 - 1.4.0 原计划内容较多(Mock、JSON Schema、字段库、版本管理、校验对齐),加入数据库模式和 Redis 模式后排期很紧。建议数据库模式作为 1.4.0 的首要项,"字段库与模板"如果来不及顺延到 1.5.0。
 - 达梦、人大金仓的驱动不在 Maven Central,测试和示例需要从厂商仓库获取;文档写清楚驱动的获取方式。
-- 提供"只读模式"配置:生产环境只读取数据库里的规则,禁止通过 DevTools 修改(修改走测试环境或团队版的审批)。
+- 1.4.0 在达梦、人大金仓真实库上**没有验证**(只有语句层面的测试),文档标为试用;MySQL 8、PostgreSQL 有集成测试。
+- 已提供"只读模式"配置(`read-only`,见 3.1):生产环境只读取数据库里的规则,禁止通过 DevTools 修改(修改走测试环境或团队版的审批)。
 
 ## 7. 团队版:多人协作与审计追溯(规划)
 

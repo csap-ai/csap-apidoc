@@ -132,6 +132,18 @@ public class ApidocStrategyController {
     }
 
     /**
+     * 设置接口状态(开发中 / 完成 / 过时)和备注,存进规则存储;status 为 null 清除覆盖
+     *
+     * @param model 类名、方法名、状态、备注
+     * @return 结果
+     */
+    @PostMapping("setStatus")
+    public ApidocResult<Boolean> setStatus(@RequestBody ai.csap.apidoc.devtools.model.api.StatusModel model) {
+        return ApidocResult.success(apidocDevtools.setMethodStatus(model.getClassName(), model.getMethodName(),
+                model.getStatus(), model.getStatusNote()));
+    }
+
+    /**
      * 获取方法字段验证信息
      *
      * @param className  类名

@@ -7,6 +7,7 @@ const Login = lazy(() => import('@/views/login'))
 const NotFound = lazy(() => import('@/views/404'))
 const ApiManagement = lazy(() => import('@/views/api'))
 const McpManagement = lazy(() => import('@/views/mcp'))
+const RuleHistory = lazy(() => import('@/views/rules'))
 
 export interface RouteMeta {
   title?: string
@@ -62,6 +63,10 @@ const routes: RouteObject[] = [
       {
         path: 'mcp',
         element: <McpManagement />
+      },
+      {
+        path: 'rules',
+        element: <RuleHistory />
       }
     ]
   },
@@ -77,6 +82,7 @@ export const routeMetaMap: Record<string, RouteMeta> = {
   '/404': { hidden: true },
   '/api': { title: '接口管理', icon: 'api2' },
   '/mcp': { title: 'MCP', icon: 'mcp' },
+  '/rules': { title: '规则记录', icon: 'history' },
   '*': { hidden: true }
 }
 

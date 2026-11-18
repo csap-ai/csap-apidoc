@@ -108,7 +108,11 @@ go run ./examples/nethttp-basic  # http://localhost:8081/csap-api.html、/devtoo
 | `@ApiModelProperty` 等注解 | 结构体标签 `doc:"..."` |
 | `@DocGlobalHeader`、`@DocAuth` | `Options` / `GroupInfo` / `Operation` 的 `HeaderHint`、`Auth` |
 | `method-field.yaml`(YAML 策略) | 同格式,可直接使用 |
-| SQLite 策略 | SQL 策略(SQLite / PostgreSQL / MySQL) |
+| 数据库模式(1.4.0 起) | SQL 策略(SQLite / PostgreSQL / MySQL / 达梦 / 人大金仓),与 Java 共用同一套表,用 `service` 区分,见 [docs/SQL.md](docs/SQL.md) |
+| 失败体不过滤(只过滤正常返回的对象) | 默认只裁剪 2xx;业务失败也返回 200 时用 `Options.ShouldFilterBody` / `apidoc.SuccessField`,见 [docs/FILTER-BODY.md](docs/FILTER-BODY.md) |
+| 版本管理与破坏性变更检测 | `cmd/csap-apidoc-diff`(单个静态二进制,Java / Go 服务都能比),见 [docs/DIFF.md](docs/DIFF.md) |
+| 接口状态、字段库、Mock、JSON Schema(1.4.0 起) | 同一份约定,见 [docs/STATUS.md](docs/STATUS.md)、[docs/FIELD-LIBRARY.md](docs/FIELD-LIBRARY.md)、[docs/MOCK.md](docs/MOCK.md) |
+| Redis 模式(1.4.0 起) | `strategy/redis`,键与脚本和 Java 约定一致,见 [docs/REDIS.md](docs/REDIS.md);YAML 导入 SQL / Redis 用 `strategy.Import`,见 [docs/IMPORT.md](docs/IMPORT.md) |
 | csap-validation | `validate` 包,默认关闭,另有观察模式 |
 | DevTools | 接口兼容,页面相同;新增修改记录和回滚 |
 
@@ -116,7 +120,7 @@ go run ./examples/nethttp-basic  # http://localhost:8081/csap-api.html、/devtoo
 
 ```bash
 go vet ./... && go test -race ./...
-(cd integration && go test -race ./...)  # SQL 策略集成测试,默认 SQLite;CSAP_TEST_PG_DSN / CSAP_TEST_MYSQL_DSN 加测
+(cd integration && go test -race ./...)  # SQL 策略集成测试,默认 SQLite;CSAP_TEST_PG_DSN / CSAP_TEST_MYSQL_DSN / CSAP_TEST_REDIS_ADDR 加测
 scripts/sync-ui.sh --ref origin/main     # 从 Java 仓库同步两套前端的构建产物
 ```
 

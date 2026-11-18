@@ -64,6 +64,12 @@ public class McpProperties {
     private boolean exposeGetByDefault = true;
 
     /**
+     * 过时(DEPRECATED)的接口是否按普通接口的默认规则暴露;默认 false:过时接口默认不暴露,要用在 DevTools 的 MCP 页里逐个打开。
+     * 开发中的接口不隐藏(多数接口没标状态)。
+     */
+    private boolean exposeDeprecated = false;
+
+    /**
      * 允许的浏览器来源(Origin)。请求带 Origin 头且不在此列表中时返回 403(防 DNS rebinding)。
      * 非浏览器客户端不带 Origin,不受影响。
      */
@@ -327,6 +333,14 @@ public class McpProperties {
 
     public void setMaxResultChars(int maxResultChars) {
         this.maxResultChars = maxResultChars;
+    }
+
+    public boolean isExposeDeprecated() {
+        return exposeDeprecated;
+    }
+
+    public void setExposeDeprecated(boolean exposeDeprecated) {
+        this.exposeDeprecated = exposeDeprecated;
     }
 
     public boolean isExposeGetByDefault() {

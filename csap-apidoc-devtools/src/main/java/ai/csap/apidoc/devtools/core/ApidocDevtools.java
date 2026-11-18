@@ -25,6 +25,7 @@ import ai.csap.apidoc.model.CsapDocParameter;
 import ai.csap.apidoc.model.ParamGroupMethodProperty;
 import ai.csap.apidoc.properties.CsapDocConfig;
 import ai.csap.apidoc.service.ApiDocService;
+import ai.csap.apidoc.service.ApiStatusResolver;
 import ai.csap.apidoc.service.ApidocContext;
 import ai.csap.apidoc.service.FilterData;
 import ai.csap.apidoc.util.ApidocClazzUtils;
@@ -1053,8 +1054,53 @@ public class ApidocDevtools implements FilterData {
                                                                               .methodHeaders(Lists.newArrayList())
                                                                               .build());
                      })
+                     .peek(m -> {
+                         // 有效状态(规则覆盖 > 方法注解 > 类注解):DevTools 列表里显示和修改
+                         m.setClassName(aClass.getName());
+                         Api api = AnnotatedElementUtils.findMergedAnnotation(aClass, Api.class);
+                         ApiStatusResolver.apply(m, api == null ? null : api.status(),
+                                 enableApidocConfig.filterStrategy(aClass).orElse(null));
+                     })
                      .collect(Collectors.toMap(CsapDocMethod::getName, i -> i));
 
+    }
+
+    /**
+     * 设置接口的状态覆盖(开发中 / 完成 / 过时)和备注,存进规则存储(与字段规则一起)。
+     * status 为 null 表示清除覆盖,回到注解 / 默认。
+     *
+     * @param className  类名
+     * @param methodName 方法名
+     * @param status     状态,null 清除
+     * @param note       备注,可为空
+     * @return 是否成功
+     */
+    @SneakyThrows
+    public Boolean setMethodStatus(String className, String methodName, ApiStatus status, String note) {
+        Assert.hasText(className, "类名称不能为空");
+        Assert.hasText(methodName, "方法名称不能为空");
+        Class<?> aClass = Class.forName(className);
+        StrategyModel strategyModel = enableApidocConfig.getApiPackageClass().stream()
+                                                        .filter(i -> i.getClazz().contains(aClass)).findFirst()
+                                                        .orElseThrow();
+        if (strategyModel.getParamType().equals(ApiStrategyType.ANNOTATION)) {
+            throw ExceptionUtils.mpe("当前是注解模式,没有规则存储,不能在 DevTools 里改状态:请改注解 @ApiOperation(status = ...),或换用 YAML / SQLite / 数据库 / Redis 存储");
+        }
+        Map<String, Map<String, ParamGroupMethodProperty>> handle = ApidocContext.paramStrategy(strategyModel.getParamType())
+                .handle(strategyModel, strategyModel.getParamType(), enableApidocConfig.getPath(), className);
+        ParamGroupMethodProperty property = handle.computeIfAbsent(className, k -> new HashMap<>(16))
+                                                  .computeIfAbsent(methodName, k -> new ParamGroupMethodProperty());
+        property.setStatus(status);
+        property.setStatusNote(StrUtil.isBlank(note) ? null : note.trim());
+        Map<String, Map<String, ParamGroupMethodProperty>> dataMap = MapUtil.builder(className, handle.get(className)).build();
+        ApidocContext.paramStrategy(strategyModel.getParamType()).writeAndMerge(
+                strategyModel, dataMap, strategyModel.getParamType(), className, methodName, true);
+        try {
+            ApidocContext.cmd(className, null, false);
+        } catch (RuntimeException e) {
+            log.warn("状态已保存,但重新生成 {} 的文档失败: {}", className, e.getMessage(), e);
+        }
+        return Boolean.TRUE;
     }
 
 
@@ -1154,11 +1200,17 @@ public class ApidocDevtools implements FilterData {
         return fields.stream().map(i -> {
             String keyName = name + i.getName();
             Map<String, ParamGroupMethodProperty.ParamDataValidate> paramDataValidateMap2 = new HashMap<>(1);
+            ParamGroupMethodProperty.ParamDataValidate old = paramDataValidateMap.get(keyName);
             paramDataValidateMap2.put(keyName, ParamGroupMethodProperty.ParamDataValidate.builder()
                                                                                          .include(response ? true : null)
                                                                                          .required(i.getRequired())
-                                                                                         .validate(response ? null : validate(paramDataValidateMap.get(keyName), (RequestField) i))
+                                                                                         .validate(response ? null : validate(old, (RequestField) i))
                                                                                          .paramType(response ? null : ((RequestField) i).getParamType())
+                                                                                         // 规则里原有的说明、示例、模板、Mock 不能因为保存字段而丢掉;页面传了新值才改
+                                                                                         .description(pick(i.getRuleDescription(), old == null ? null : old.getDescription()))
+                                                                                         .example(pick(i.getRuleExample(), old == null ? null : old.getExample()))
+                                                                                         .template(pick(i.getTemplate(), old == null ? null : old.getTemplate()))
+                                                                                         .mock(pickMock(i.getMock(), old == null ? null : old.getMock()))
                                                                                          .build());
             if (CollectionUtil.isNotEmpty(i.getParameters())) {
                 paramDataValidateMap2.putAll(addParam(i.getParameters(), name + i.getName() + StrUtil.DOT, paramDataValidateMap, response));
@@ -1175,6 +1227,23 @@ public class ApidocDevtools implements FilterData {
                     return existing;
                 }
         ));
+    }
+
+    /**
+     * 页面传了值就用新的:null 表示不改(保留原来的),空串表示清除
+     */
+    private static String pick(String fromPage, String old) {
+        if (fromPage == null) {
+            return old;
+        }
+        return fromPage.isEmpty() ? null : fromPage;
+    }
+
+    private static Object pickMock(Object fromPage, Object old) {
+        if (fromPage == null) {
+            return old;
+        }
+        return fromPage instanceof String && ((String) fromPage).isEmpty() ? null : fromPage;
     }
 
     /**

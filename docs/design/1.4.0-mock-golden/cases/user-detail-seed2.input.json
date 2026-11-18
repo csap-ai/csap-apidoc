@@ -1,0 +1,201 @@
+{
+  "description": "同一份文档,换种子 → 数据变化,结构不变",
+  "seed": "another-seed",
+  "response": [
+    {
+      "modelType": "OBJECT",
+      "name": "Result",
+      "parameters": [
+        {
+          "name": "success",
+          "dataType": "Boolean",
+          "description": "success"
+        },
+        {
+          "name": "code",
+          "dataType": "String",
+          "description": "code"
+        },
+        {
+          "name": "message",
+          "dataType": "String",
+          "description": "message"
+        },
+        {
+          "name": "data",
+          "dataType": "UserVO",
+          "description": "data",
+          "modelType": "OBJECT",
+          "children": {
+            "parameters": [
+              {
+                "name": "id",
+                "dataType": "Long",
+                "description": "id"
+              },
+              {
+                "name": "name",
+                "dataType": "String",
+                "description": "name"
+              },
+              {
+                "name": "email",
+                "dataType": "String",
+                "description": "email"
+              },
+              {
+                "name": "phone",
+                "dataType": "String",
+                "description": "phone"
+              },
+              {
+                "name": "avatar",
+                "dataType": "String",
+                "description": "avatar"
+              },
+              {
+                "name": "age",
+                "dataType": "Integer",
+                "description": "age"
+              },
+              {
+                "name": "status",
+                "dataType": "String",
+                "description": "status",
+                "extendDescr": [
+                  {
+                    "name": "ENABLED"
+                  },
+                  {
+                    "name": "DISABLED"
+                  },
+                  {
+                    "name": "LOCKED"
+                  }
+                ]
+              },
+              {
+                "name": "score",
+                "dataType": "Double",
+                "description": "score",
+                "validate": [
+                  {
+                    "type": "Min",
+                    "pattern": "60"
+                  },
+                  {
+                    "type": "Max",
+                    "pattern": "100"
+                  }
+                ]
+              },
+              {
+                "name": "level",
+                "dataType": "Integer",
+                "description": "level",
+                "mock": "@oneOf(1,2,3)"
+              },
+              {
+                "name": "token",
+                "dataType": "String",
+                "description": "token",
+                "mock": "@uuid"
+              },
+              {
+                "name": "nickname",
+                "dataType": "String",
+                "description": "nickname",
+                "validate": [
+                  {
+                    "type": "Length",
+                    "pattern": "3,4"
+                  }
+                ]
+              },
+              {
+                "name": "remark",
+                "dataType": "String",
+                "description": "remark",
+                "example": "hello"
+              },
+              {
+                "name": "grade",
+                "dataType": "Integer",
+                "description": "grade",
+                "defaultValue": "5"
+              },
+              {
+                "name": "birthday",
+                "dataType": "LocalDate",
+                "description": "birthday"
+              },
+              {
+                "name": "createdAt",
+                "dataType": "LocalDateTime",
+                "description": "createdAt"
+              },
+              {
+                "name": "vip",
+                "dataType": "Boolean",
+                "description": "vip"
+              },
+              {
+                "name": "password",
+                "dataType": "String",
+                "description": "password",
+                "hidden": true
+              },
+              {
+                "name": "tags",
+                "dataType": "List<String>",
+                "description": "tags",
+                "validate": [
+                  {
+                    "type": "Size",
+                    "pattern": "1,3"
+                  }
+                ]
+              },
+              {
+                "name": "attrs",
+                "dataType": "Map<String,Object>",
+                "description": "attrs"
+              },
+              {
+                "name": "orders",
+                "dataType": "List<Order>",
+                "description": "orders",
+                "modelType": "ARRAY",
+                "children": {
+                  "parameters": [
+                    {
+                      "name": "orderId",
+                      "dataType": "String",
+                      "description": "orderId"
+                    },
+                    {
+                      "name": "amount",
+                      "dataType": "BigDecimal",
+                      "description": "amount",
+                      "example": "12.5"
+                    },
+                    {
+                      "name": "paid",
+                      "dataType": "Boolean",
+                      "description": "paid"
+                    },
+                    {
+                      "name": "buyerId",
+                      "dataType": "Long",
+                      "description": "buyerId"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

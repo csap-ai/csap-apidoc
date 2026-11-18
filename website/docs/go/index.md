@@ -13,12 +13,12 @@ CSAP Apidoc 的 Go 实现,是仓库 `csap-apidoc-go/` 目录下的独立 Go 模�
 - **规则文件与 Java 通用**:YAML 规则与 Java 的 `method-field.yaml` 格式相同,Java 项目的规则文件可以直接拿来用。
 - **导出**:OpenAPI 3.1(`/csap/openapi.json`)和 Postman Collection(`/csap/openapi/postman`)。
 
-当前版本 **v0.1.1**,最低 Go 1.22,协议 Apache-2.0。源码与设计文档见 [csap-apidoc-go](https://github.com/csap-ai/csap-apidoc/tree/main/csap-apidoc-go)。
+当前版本 **v0.2.0**,最低 Go 1.22,协议 Apache-2.0。源码与设计文档见 [csap-apidoc-go](https://github.com/csap-ai/csap-apidoc/tree/main/csap-apidoc-go)。
 
 ## 安装
 
 ```bash
-go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.1
+go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.2.0
 ```
 
 根包只依赖标准库;用到 gin 适配、YAML 规则时才会编译对应的依赖。SQL 规则来源不引入任何数据库驱动,由你自己 import。
@@ -160,8 +160,33 @@ example.UserController:          # 分组(Java 的 Controller 全名)
 - 目录下所有 `.yaml/.yml` 都会加载,文件名不要求与分组对应。`yaml.FS(fsys, dir)` 可以从 `go:embed` 只读加载。
 - Go 版新增的 `hidden`(只在文档隐藏)、`example` 字段,Java 读取时会忽略。
 - 多实例部署、需要在线修改时,可以换成 SQL 规则来源 `strategy/sql`(SQLite / PostgreSQL / MySQL),保存时版本号加 1,其他实例轮询或经 Redis 通知后重新加载。
+- v0.2.0 起 SQL 规则来源的表结构与 Java 1.4.0 的[数据库模式](/guide/database-mode)统一,见下面的 [SQL 规则来源(v0.2.0)](#sql-规则来源v020)。Redis 作为规则存储见 [Redis 模式](/guide/redis-mode)(`strategy/redis`,v0.2.0);把 YAML 等来源导入 SQL / Redis 用 `strategy.Import`,见[数据库模式 - 迁移](/guide/database-mode#迁移)。
 
 规则来源按 **结构体标签 < YAML < SQL** 的顺序合并,后面的覆盖前面的。
+
+### SQL 规则来源(v0.2.0)
+
+SQL 规则来源 `strategy/sql` 改用与 Java 数据库模式相同的三张表(`csap_apidoc_rule` / `history` / `meta`,列名、建表 SQL 见[数据库模式](/guide/database-mode#建表-sql)),Go 和 Java 服务可以指向同一个库,用 `service` 列区分。
+
+```go
+s := sqlstrategy.New(sqlstrategy.Options{
+    DB:      db,
+    Dialect: sqlstrategy.MySQL, // SQLite / Postgres / MySQL / DM / Kingbase
+    Service: "order-service",   // 服务名,默认 "default",最长 128;所有读写都按它过滤
+})
+if err := s.EnsureSchema(ctx); err != nil { /* ... */ }
+```
+
+- **方言**:新增 `DM`(达梦 DM8)、`Kingbase`(人大金仓,按 PostgreSQL 兼容模式;MySQL 兼容模式的库用 `MySQL` 方言试用,Oracle 兼容模式未验证、暂不支持)。达梦、金仓目前只有语句层面的单元测试,没有连真实数据库验证,属于试用。MySQL 有集成测试。
+- `EnsureSchema` 逐表探测,不存在才建;发现 v0.1.x 的旧表时返回 `sqlstrategy.ErrLegacySchema`,**不会自动改旧表**。`Schema()` 返回建表语句,想自己执行(或交给 DBA)时用。
+- 各服务的规则、版本号、修改记录、回滚互不影响;回滚别的服务的修改记录会返回 `strategy.ErrNoChange`。
+- 通知:`Notifier`(如 Redis Pub/Sub)接口签名不变,消息不带服务名,多个服务共用一个频道时收到通知的实例多查一次本服务的版本号,结果正确。想避免多余查询,让通知实现同时实现 `ServiceNotifier`(`PublishService` / `SubscribeService`,消息带服务名),策略会优先使用它。
+
+**从 v0.1.x 升级**:旧表没有 `service` 列,`meta` 是 `id = 1` 的单行。
+
+1. 停掉所有旧版本实例,**备份数据库**;
+2. 用 `Options.Service` 指定服务名(没填是 `default`),旧数据全部归到它名下;
+3. 执行 `s.Migrate(ctx)`,可以重复执行;或者用 `s.MigrationSQL()` 取出 SQL 交给 DBA 手工执行(各方言的 SQL 见 [SQL.md](https://github.com/csap-ai/csap-apidoc/blob/main/csap-apidoc-go/docs/SQL.md))。SQLite / PostgreSQL / 金仓的 DDL 在事务里,失败整体回滚;MySQL 和达梦的 DDL 会隐式提交,中途失败要手工处理。
 
 ## 返回字段过滤
 
@@ -183,7 +208,18 @@ doc := apidoc.New(apidoc.Options{
 })
 ```
 
-- **只裁剪 2xx**:与 Java 只过滤控制器正常返回的对象一致,4xx/5xx 的错误体(参数错误、异常处理中间件写的失败体等)原样输出。业务失败也用 200 返回的项目,可以用 `ShouldFilter` 按请求或状态码进一步排除。
+- **只裁剪 2xx**:与 Java 只过滤控制器正常返回的对象一致,4xx/5xx 的错误体(参数错误、异常处理中间件写的失败体等)原样输出。业务失败也用 200 返回的项目,可以用 `ShouldFilter` 按请求或状态码进一步排除;失败信息在响应体里(`success=false`、`code≠0` 等)时,用下面 v0.2.0 的 `ShouldFilterBody`。
+- **按响应体判断(v0.2.0)**:`Options.ShouldFilterBody func(r *http.Request, status int, body []byte) bool` 在响应已缓冲、裁剪之前调用,返回 `false` 时这次响应原样输出,不用再自写缓冲响应的中间件,效果与 Java 只过滤控制器正常返回的对象一致。先调用 `ShouldFilter`(粗筛),它返回 `true` 才会调用 `ShouldFilterBody`;两者都不设置时与 v0.1.1 相同(只裁剪 2xx)。现成的判断 `apidoc.SuccessField(path, want)` 按包装里某个字段判断成功,`path` 用点号分隔:
+
+```go
+doc := apidoc.New(apidoc.Options{
+    Wrapper: &apidoc.Wrapper{Type: Result{}},
+    ShouldFilterBody: apidoc.SuccessField("success", true), // {"success":false,...} 原样输出
+})
+// 也可以:SuccessField("code", 0)、SuccessField("code", "0000")、SuccessField("result.code", 1)
+```
+
+  响应体不是 JSON 对象、没有这个字段或字段为 null 时判断不了,按"裁剪"处理,不会因为格式不符漏过滤。更复杂的判断(多个字段、白名单错误码)自己写钩子;自定义适配器在裁剪前调用 `Doc.ShouldFilterBody(r, status, body)`。
 - **规则要命中返回字段**:与 Java 1.2.0 一致,只有至少一条返回规则命中了实际的返回字段路径(沿放行的字段展开),接口才会过滤。规则路径过期、和返回类型对不上(例如返回改成了 `Page<Item>`,规则还是 `data.title`,少了 `rows` 一层)时原样输出,而不是把字段全部裁掉。改正规则路径后即按规则过滤。
 - **没声明 `Resp`**:有统一外层包装、但 `Op` 没有 `Resp(...)` 时,`data` 的类型未知,整段原样输出;外层包装上的规则照常生效。
 
@@ -209,7 +245,7 @@ v := validate.New(doc, validate.Options{
 - `Violation.Field` 是出错的字段:路径、查询、请求头、表单参数为参数名(如 `updated_at`,与 Java 一致),请求体字段为规则路径(如 `request.items.name`)。
 - 失败返回默认与 Java 的 `ApidocResult` 一致:HTTP 200,body 含 `code`、`message`、`success:false`、`language`、`time`,没有 `data`;`code`、`message` 取规则配置,信息格式按 `TipType`;`Options.Respond` 可以换成自己的格式。
 - 规则改了,下一个请求就按新规则校验。
-- **与 Java 的差别**:非必填字段上写的规则,只要请求里传了这个字段,Go 也会按规则校验;Java 1.2.0 只执行必填字段上的规则(见[参数校验](/guide/validation))。所以同一份规则在 Go 上可能更严格。两边是否对齐、以哪边为准,计划在 1.4.0 前确定。
+- **与 Java 的差别(1.4.0 起对齐)**:非必填字段上写的规则,只要请求里传了这个字段,Go 就会按规则校验。Java 1.2.0 / 1.3.0 只执行必填字段上的规则,所以同一份规则在当前版本的 Java 上更宽松;**1.4.0 起 Java 向 Go 对齐**(Java 提供开关可恢复旧行为),Go 的行为不变。见[参数校验](/guide/validation)。
 
 ## 后台管理
 
@@ -266,4 +302,4 @@ apidoc.Op("...", "get").HeaderHint("X-Trace-Id", "链路 ID", "abc", false).APIK
 - 规则来源按字段合并:后台写入 SQL 时,YAML 里已放行的字段无法通过 SQL"取消放行"。建议同一个接口的规则只放在一个可写来源里。
 - 后台管理不提供 Java 版的"新增接口方法"、`hiddenMethod`(Java 也是空实现)等依赖 Java 代码生成的功能;`/csap/yaml/writeSelect` 改为"给还没有规则的接口按当前代码生成一份完整规则"。
 - 文档页面里"在线调试"的跨域代理(Java 的 `/csap/apidoc/devtools/proxy`)尚未提供,调试同域接口不受影响。
-- SQL 规则来源在 SQLite、PostgreSQL 上做过并发与多实例测试,MySQL 只实现了方言,尚未实测。
+- SQL 规则来源:SQLite、PostgreSQL、MySQL 有集成测试(v0.1.x 的 MySQL 只实现了方言、没有实测);达梦、金仓没有连真实数据库验证,属于试用。

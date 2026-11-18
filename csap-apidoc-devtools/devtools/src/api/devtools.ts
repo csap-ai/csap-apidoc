@@ -49,6 +49,9 @@ export interface MethodModel {
   request: ParamModel[]
   response: ParamModel[]
   className?: string
+  /** 有效状态:规则存储里的覆盖 > 方法注解 > 类注解 > DEFAULT */
+  status?: 'DEFAULT' | 'FINISH' | 'DEPRECATED'
+  statusNote?: string
 }
 
 /**

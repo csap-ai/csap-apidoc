@@ -1,0 +1,83 @@
+.rules-container {
+  padding: 16px 20px;
+  background: #f0f2f5;
+  min-height: calc(100vh - 84px);
+
+  .rules-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+
+    h2 {
+      margin: 0 0 4px;
+      font-size: 20px;
+      color: #1f1f1f;
+    }
+  }
+
+  .rules-card {
+    border-radius: 8px;
+  }
+
+  .rules-toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .rules-alert {
+    margin-bottom: 12px;
+  }
+
+  .rules-code {
+    background: #1f1f1f;
+    color: #e6e6e6;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    overflow: auto;
+  }
+}
+
+.rules-diff {
+  display: flex;
+  gap: 12px;
+
+  .rules-diff-side {
+    flex: 1;
+    min-width: 0;
+
+    h4 {
+      margin: 0 0 6px;
+    }
+  }
+
+  pre {
+    margin: 0;
+    max-height: 60vh;
+    overflow: auto;
+    font-size: 12px;
+    line-height: 1.6;
+    background: #fafafa;
+    border: 1px solid #f0f0f0;
+    border-radius: 6px;
+  }
+
+  .rules-line {
+    padding: 0 8px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    min-height: 19px;
+  }
+
+  .rules-line-add {
+    background: #e6ffec;
+  }
+
+  .rules-line-del {
+    background: #ffebe9;
+  }
+}

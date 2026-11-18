@@ -142,12 +142,12 @@ type Watcher interface {      // 能感知外部变更:文件变更 / 轮询版�
 
 ### 3.5 SQL 策略（M3 已实现，`strategy/sql`）
 
-- `database/sql`，方言 `SQLite` / `Postgres` / `MySQL`（只影响占位符和建表语句）。主模块**不引入任何驱动**，由使用方自己 import。
-- 三张表（前缀默认 `csap_apidoc_`）：`rule`（规则 JSON、版本、修改人、时间）、`history`（每次保存的修改前后内容）、`meta`（全局版本号）。`EnsureSchema` 建表，`Schema()` 返回语句供自己执行。与 Java SQLite 策略的表结构不同（Java 存的是整份文档），不共用。
+- `database/sql`，方言 `SQLite` / `Postgres` / `MySQL` / `DM` / `Kingbase`（只影响占位符和建表语句）。主模块**不引入任何驱动**，由使用方自己 import。
+- 三张表（前缀默认 `csap_apidoc_`）：`rule`（`(service, rule_key)` 主键，规则 JSON、版本、修改人、时间）、`history`（每次保存的修改前后内容）、`meta`（每个服务一行的版本号）。v0.2.0 起与 Java 1.4.0 数据库模式共用同一套表，用 `Options.Service` 区分服务；`EnsureSchema` 建表，`Schema()` 返回语句，`Migrate` / `MigrationSQL` 升级 v0.1.x 旧表。详见 [SQL.md](SQL.md)。
 - `Save` 在一个事务里：全局版本号加 1（PostgreSQL / MySQL 锁住 meta 行，并发保存串行化）、写规则、写修改记录。`History(key, limit)` 查记录，`Rollback(id, by)` 恢复成该次修改前的样子，回滚本身也留记录。M4 的后台管理直接用这两个接口。
 - 多实例：每 `Poll`（默认 5 秒）查一次全局版本号，变了就重新加载；可选 `Notifier`（如 Redis Pub/Sub）保存后立即通知其他实例。基准同样是上次加载时的版本号。
 - SQLite 注意：多个连接并发写时，连接串要加 `_txlock=immediate`（事务开始就拿写锁）和 `busy_timeout`，否则会偶发 `database is locked`。
-- 实测：SQLite（纯 Go 驱动）和 PostgreSQL 16（临时容器）各跑 15 遍、开竞态检测，全部通过，包括两个实例共用一个库时的轮询同步、只靠通知的同步。**MySQL 只写了方言，没有实测**（本机没有镜像）。
+- 实测：SQLite（纯 Go 驱动）和 PostgreSQL 16（临时容器）各跑 15 遍、开竞态检测，全部通过，包括两个实例共用一个库时的轮询同步、只靠通知的同步。v0.2.0 起 MySQL 8 也用临时容器实测通过；达梦、金仓只有语句层面的单元测试，未连真实库。
 - 集成测试在独立模块 `integration/`（`cd integration && go test ./...`；设置 `CSAP_TEST_PG_DSN` / `CSAP_TEST_MYSQL_DSN` 加测），驱动依赖只在那里。
 
 Redis 通知的实现示例（go-redis v9，放在使用方代码里）：
@@ -174,14 +174,30 @@ func (n redisNotifier) Subscribe(ctx context.Context, fn func(int64)) error {
 }
 ```
 
+### 3.6 Redis 策略与规则导入（v0.2.0，`strategy/redis`、`strategy.Import`）
+
+- 数据约定与 Java 共用，写在仓库 `docs/design/redis-mode.md`：Hash 存规则、String 存版本号、List 存每个接口的修改记录、Hash 索引 id→规则键（用于按 id 回滚）、Pub/Sub 频道通知；服务名用 `{}` 包成 hash tag，集群下同一服务的键同槽。
+- 保存是一段 Lua 脚本（`save.lua`，`go:embed`，Java 内嵌同一段文本），原子完成：比较内容（相同返回 -1，不加版本号）、版本号加 1、写规则、写记录、裁剪并同步删索引、发布通知。客户端调用前再按 JSON 结构比较一次，别的语言写的文本不同、结构相同时也不会误加版本号。
+- 主模块不引入 Redis 客户端：`redis.Client` 是只有六个方法的接口，go-redis 适配器放在 `integration/goredis.go` 和 `docs/REDIS.md`。
+- 同步：订阅通知即时生效，`Poll` 轮询版本号兜底，订阅断开 1 秒后重连并补查一次。
+- `strategy.Import(ctx, src, dst, opts)` 读 `src` 全部规则，与 `dst` 比较后分为新增、相同、冲突（默认不覆盖）、覆盖；支持 dry-run；写入用 `Saver.Save`，修改人 `migrate`。
+
+### 3.7 接口状态、字段库、Mock、JSON Schema（v0.2.0）
+
+- 约定都在仓库 `docs/design/1.4.0-*.md`（Java 与 Go 一致）：`1.4.0-api-status.md`、`1.4.0-field-library.md`、`1.4.0-mock-schema.md`（含 `1.4.0-mock-golden/` 黄金样本）、`1.4.0-validation-alignment.md`（黄金用例 `docs/conformance/validation-cases.json`）。Go 的使用说明见 [STATUS.md](STATUS.md)、[FIELD-LIBRARY.md](FIELD-LIBRARY.md)、[MOCK.md](MOCK.md)。
+- 状态存在 `MethodRules.Status/StatusNote`，空规则的判定改为"没有字段规则、也没有状态"。保留键（`@` 开头）不是接口规则，规则来源加载时跳过；项目字段模板经 `strategy.RawStore` 存在 `@templates`。
+- `mock`、`jsonschema` 两个包只依赖 `model`（再加共用的 `internal/typekind`、`internal/ordered`），不依赖 HTTP；路由在 `apidoc` 包（`mock_http.go`），适配器通过 `Doc.MethodPaths()` 注册任意方法的 Mock 路由。单测直接读黄金样本目录，按 JSON 值相等比较。
+
 ## 4. 运行时流程
 
 1. **启动**：适配器收集路由，与第 3.1 节的声明合并，再按 3.2 合并规则，生成文档模型和过滤计划，原子替换 `atomic.Pointer[snapshot]`。
 2. **规则变更**：Watch 回调触发，重新生成快照，再原子替换。正在处理的请求继续用旧快照，不加锁。
-3. **多实例**：SQL 策略在保存时把版本号加 1，并发 Redis 通知（可选）；其他实例收到通知后重新加载。没有 Redis 时按配置的间隔轮询版本号（默认 5 秒）。
+3. **多实例**：SQL 策略在保存时把版本号加 1，并发 Redis 通知（可选，见 3.6 的 Redis 策略）；其他实例收到通知后重新加载。没有 Redis 时按配置的间隔轮询版本号（默认 5 秒）。
 4. **启动监听**：`go doc.Watch(ctx)`，会监听所有实现了 `strategy.Watcher` 的策略（YAML、SQL、Memory）。
 
 ## 5. 返回字段过滤（M2 已实现）
+
+
 
 ### 5.1 语义
 
@@ -313,7 +329,7 @@ csap-apidoc-go/
 |---|---|---|
 | M1 核心（**已完成** 2026-11-17） | model、tag 策略、gin 适配、`/csap/apidoc*`、文档页面、OpenAPI 导出 | 示例项目能打开 `/csap-api.html`，`/csap/apidoc` 能被 Java 版前端正常解析 |
 | M2 过滤与校验（**已完成** 2026-11-17） | 返回字段过滤（路径白名单、csap 兼容模式、外层包装）、请求参数校验（中间件、内置与自定义规则、观察模式）、基准测试 | 用 Java 的真实返回做黄金样本：79 个接口的返回字段集合与 Java 完全一致；`/csap/apidoc` 编码器对 2.5MB 的 Java 实时返回逐字节还原。性能目标 30% 未达到，实测约 50%（见 5.2） |
-| M3 配置（**已完成** 2026-11-17） | YAML 策略（读写、热加载）、SQL 策略（版本号、轮询、Redis 通知） | 改 YAML 或数据库后几秒内生效，不重启：示例项目实测改 YAML 3 秒内返回字段变化；SQL 两实例共用一个库，A 保存后 B 在轮询间隔内生效（SQLite、PostgreSQL 实测，MySQL 未实测） |
+| M3 配置（**已完成** 2026-11-17） | YAML 策略（读写、热加载）、SQL 策略（版本号、轮询、Redis 通知） | 改 YAML 或数据库后几秒内生效，不重启：示例项目实测改 YAML 3 秒内返回字段变化；SQL 两实例共用一个库，A 保存后 B 在轮询间隔内生效（M3 当时 SQLite、PostgreSQL 实测；v0.2.0 起 MySQL 8 也有集成测试） |
 | M4 管理(**已完成** 2026-11-17) | devtools 接口与前端（含必填和校验规则配置）、修改记录、回滚、鉴权;`globalHeaderHints`、`authHint` | 用 devtools 页面勾选字段后，返回结果实时变化，并能回滚(浏览器实测) |
 | M5 发布(**已完成** 2026-11-17) | net/http 适配、Postman 导出、README、CHANGELOG、CI、官网接入文档 | 总覆盖率 80%;已发布 tag `csap-apidoc-go/v0.1.0`,v0.1.1 见 CHANGELOG |
 

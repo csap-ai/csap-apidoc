@@ -7,6 +7,121 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-18
+
+Java 1.4.0 and Go v0.2.0 are released together and share the rule tables, the Redis
+data convention, the Mock / JSON Schema rules and the validation golden cases.
+
+### Changed (behavior change)
+
+- **Request validation: rules on optional fields are now enforced when a value is sent.**
+  Since 1.2.0 a field that is not required was never validated at all. Now, like the
+  Go implementation, an optional field is skipped only when it is not sent (`null` /
+  absent); when a value is sent (including an empty string `""`, an empty array or
+  object) its rules (`Pattern`, `NotEmpty`, `@Pattern`, `@Size`, ...) run. This can
+  **reject requests that used to pass**, e.g. an optional field with a `@Pattern`
+  that callers always filled in with a malformed value. To upgrade safely run
+  `csap.validation.mode=observe` first and read the violation log, or set
+  `csap.validation.optional-field-rules=skip` to restore the old behavior
+  (default `validate`). The Java and Go implementations share the golden cases in
+  `docs/conformance/validation-cases.json`; the full definition of "value sent" is in
+  `docs/design/1.4.0-validation-alignment.md`. `Pattern` matches the whole value
+  (an unanchored regex such as `[0-9]+` no longer matches `abc123`).
+- Field rules now also show their `description` and `example` in the document
+  (previously only the annotation values were used for model fields).
+
+### Added
+
+- **Database mode** (`paramType = ApiStrategyType.DATABASE`, module `csap-apidoc-database`,
+  pulled in by the starter): field rules live in the application's own relational database
+  (MySQL 5.7.7+ / 8.x, PostgreSQL 12+, DM8 and KingbaseES as a trial, SQLite, H2) through
+  its own `DataSource`; only JDBC, no driver bundled; one jar for Spring Boot 2 and 3.
+  Config `csap.apidoc.database.*` (`datasource-bean`, `dialect`, `table-prefix`,
+  `init-schema`, `poll-interval`, `service`, `read-only`). Each save bumps a global version,
+  writes the rule and a history row in one transaction; other instances poll the version
+  and regenerate the documents and field rules of the changed classes. Schema SQL per
+  dialect ships in the jar (`META-INF/csap-apidoc/database/*.sql`). The tables
+  (`{prefix}rule`, `{prefix}history`, `{prefix}meta`, with a `service` column) are shared
+  with csap-apidoc-go v0.2.0. Design: `docs/design/database-mode.md`.
+- **Redis mode** (`paramType = ApiStrategyType.REDIS`, module `csap-apidoc-redis`, Spring
+  Data Redis optional): rules in a Redis Hash, saved atomically by a Lua script that Java and
+  Go embed byte for byte; Pub/Sub plus version polling for multi-instance sync; history keeps
+  the latest `history-limit` entries. Config `csap.apidoc.redis.*`. Keys use a Cluster hash
+  tag (cluster / sentinel / auth not tested). Convention: `docs/design/redis-mode.md`.
+- **Rule migration** (module `csap-apidoc-migrate`): YAML directory / SQLite file → database
+  or Redis, and database / Redis → YAML, via `csap.apidoc.migrate.from/to/export-to/overwrite/dry-run`
+  at startup or the `RuleMigrator` API. Existing rules are not overwritten by default; every
+  imported rule is a normal save by `migrate` and can be rolled back. Project field templates
+  (`@templates`) are not migrated yet.
+- **DevTools "Rule history"** page (`/devtools-ui/rules`) for the database and Redis modes:
+  list, side-by-side diff and roll back (`devtools/rules/status|history|rollback`); read-only
+  stores refuse with 1007. Page hints are language neutral; backends may return `hint`
+  (`docs/design/devtools-hints.md`).
+- **API status (in development / stable / deprecated)**: the effective status of an
+  endpoint is rule store override > `@ApiOperation(status)` > `@Api(status)` > default.
+  It is shown (and filterable) on the document page, exported as `deprecated: true` /
+  `x-csap-status` in OpenAPI, prefixed `[过时]` in Postman, and can be changed in
+  DevTools (`POST /csap/yaml/setStatus`); the status is stored with the field rules
+  (YAML, database, Redis, SQLite) as `status` / `statusNote`. The MCP endpoint does
+  not expose deprecated endpoints by default (`csap.apidoc.mcp.expose-deprecated`) and
+  puts the status in the tool description. Format: `docs/design/1.4.0-api-status.md`.
+- **Field templates**: reusable field definitions (description, example, required,
+  validation rules) with built-in templates and project templates stored with the rule
+  store (reserved key `@templates` in database / Redis, `field-template/api-field-template.yaml`
+  for YAML / SQLite). Apply them from the DevTools field editor (copy, not linked; the
+  source template name is recorded as `template`). Format:
+  `docs/design/1.4.0-field-library.md`; API: `GET/POST/DELETE /csap/yaml/fieldTemplates`.
+- Rule model: optional `example`, `template` and `mock` (any JSON value, stored and passed
+  through to the document parameter as-is) on field rules.
+- DevTools "Rule history" page for the database and Redis modes (list, diff, roll back).
+- **Embedded Mock (`csap-apidoc-mock`, off by default).** With
+  `csap.apidoc.mock.enabled=true` the service answers `/csap/mock/{original path}`
+  (any HTTP method) with data generated from the documented return structure
+  (including the unified result wrapper). Output is reproducible: every field value
+  derives from the seed and the field path (`seed` defaults to `csap`; `random`
+  for a new seed per request; header `X-CSAP-Mock-Seed` per request). Generation
+  order: rule `mock` > `example` > `defaultValue` > enum > `Min`/`Max` > field-name
+  heuristics (`email`, `phone`, `id`, ..., switch `csap.apidoc.mock.heuristics`) >
+  type default; `Length`/`Size` and array sizes are honoured. Field rules gain an
+  optional `mock` key (literal value, or `@int(lo,hi)`, `@oneOf(a,b,c)`, `@uuid`).
+  Responses carry `X-CSAP-Mock`; `GET /csap/mock-status` lets the doc page offer a
+  one-click "Mock" environment in Try-it-out and tag mock responses. The rules are
+  shared with the Go implementation and verified against common golden samples
+  (`docs/design/1.4.0-mock-golden`). Pulled in by `csap-apidoc-boot-starter`; one
+  jar for Spring Boot 2 and 3.
+- **JSON Schema export (2020-12).** `GET /csap/schema.json` (all endpoints, `?download=true`
+  to save as a file) and `GET /csap/schema/method?key=` (one endpoint). The request is
+  split by location (`path` / `query` / `header` / `form` / `body`); field descriptions,
+  required, examples, enums and validation rules map to `description`, `required`,
+  `examples`, `enum`, `minLength` / `maxLength`, `pattern`, `minimum` / `maximum`, ...;
+  the original rules are kept losslessly in `x-csap-validate`. The doc page's export menu
+  gets a "JSON Schema" entry.
+- **JSON Schema import (off by default).** `POST /csap/schema/import` with
+  `csap.apidoc.schema.import-enabled=true`: turns the description / required / example /
+  validation of a schema (typically an exported one, edited) into field rules for fields
+  that already exist in the docs. It previews by default; `apply=true` writes through the
+  same save path as DevTools (the change history records `schema-import`). It never
+  creates fields or changes types.
+
+### Upgrade notes
+
+- **All instances sharing a database / Redis rule store must be upgraded to 1.4.0 together.**
+  An older DevTools rewrites a method's rules without the new `status`, `template`,
+  `example` and `mock` fields and would drop them.
+- SQLite databases get a `status_note` column on first start (automatic).
+
+### Changed
+
+- The "rules inside the jar cannot be saved" message (code 1007) now suggests the database
+  and Redis modes.
+
+### Documentation
+
+- New guides: database mode, Redis mode, Mock, JSON Schema, version diff / breaking-change
+  detection (`csap-apidoc-diff`, a single binary shipped with csap-apidoc-go that compares two
+  `/csap/apidoc` documents of any language), endpoint status and the field library; the
+  validation and DevTools pages describe the 1.4.0 behavior.
+
 ## [1.3.0] - 2026-11-18
 
 Verified with real MCP clients: Claude Code and opencode (DeepSeek `deepseek-flash`)

@@ -3,6 +3,7 @@ package nethttp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -248,5 +249,97 @@ func TestResponseFilterStatusAndOverrides(t *testing.T) {
 	mux = newMux(apidoc.Options{FilterEndpoints: map[string]filter.Mode{"U.get": filter.ModeOff}})
 	if got := do(mux, "GET", "/users/1", "").Body.String(); got != raw {
 		t.Fatalf("endpoint off: %s", got)
+	}
+}
+
+// 业务失败也返回 200:ShouldFilterBody 按响应体判断,失败体原样输出;与 ShouldFilter 组合时先粗筛再细判。
+func TestResponseFilterBody(t *testing.T) {
+	newMux := func(opts apidoc.Options) *http.ServeMux {
+		opts.Strategies = []strategy.Strategy{strategy.NewMemory(strategy.Rules{
+			"U.get": {Response: map[string]strategy.FieldRule{"data.id": {Include: model.Bool(true)}}},
+		})}
+		opts.Wrapper = &apidoc.Wrapper{Type: result{}}
+		doc := apidoc.New(opts)
+		mux := http.NewServeMux()
+		m := Mount(mux, doc)
+		m.Use(ResponseFilter(doc))
+		m.GET("/users/{id}", apidoc.Op("U", "get").Resp(user{}), func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			ok := r.URL.Query().Get("biz") == ""
+			_, _ = io.WriteString(w, fmt.Sprintf(`{"code":"0","message":"m","data":{"id":1,"name":"a","password":"p"},"success":%v}`, ok))
+		})
+		return mux
+	}
+	const filtered = `{"code":"0","message":"m","data":{"id":1}}`
+	const rawOK = `{"code":"0","message":"m","data":{"id":1,"name":"a","password":"p"},"success":true}`
+	const rawFail = `{"code":"0","message":"m","data":{"id":1,"name":"a","password":"p"},"success":false}`
+
+	// 未设置钩子:行为不变,200 的失败体照样裁剪
+	mux := newMux(apidoc.Options{})
+	if got := do(mux, "GET", "/users/1?biz=1", "").Body.String(); got != `{"code":"0","message":"m","data":{"id":1}}` {
+		t.Fatalf("no hook: %s", got)
+	}
+
+	mux = newMux(apidoc.Options{ShouldFilterBody: apidoc.SuccessField("success", true)})
+	if got := do(mux, "GET", "/users/1", "").Body.String(); got != filtered {
+		t.Fatalf("success body should be filtered: %s", got)
+	}
+	if got := do(mux, "GET", "/users/1?biz=1", "").Body.String(); got != rawFail {
+		t.Fatalf("business failure must pass through: %s", got)
+	}
+
+	// 自定义钩子拿到请求、状态码和响应体
+	var gotStatus int
+	var gotBody string
+	mux = newMux(apidoc.Options{ShouldFilterBody: func(r *http.Request, status int, body []byte) bool {
+		gotStatus, gotBody = status, string(body)
+		return false
+	}})
+	if got := do(mux, "GET", "/users/1", "").Body.String(); got != rawOK || gotStatus != 200 || gotBody != rawOK {
+		t.Fatalf("custom hook: %s %d %s", got, gotStatus, gotBody)
+	}
+
+	// 先 ShouldFilter 后 ShouldFilterBody:ShouldFilter 返回 false 时钩子不会被调用
+	called := false
+	mux = newMux(apidoc.Options{
+		ShouldFilter:     func(*http.Request, int) bool { return false },
+		ShouldFilterBody: func(*http.Request, int, []byte) bool { called = true; return true },
+	})
+	if got := do(mux, "GET", "/users/1", "").Body.String(); got != rawOK || called {
+		t.Fatalf("ShouldFilter false: %s called=%v", got, called)
+	}
+	// ShouldFilter 为 true、钩子为 true:裁剪
+	mux = newMux(apidoc.Options{
+		ShouldFilter:     func(*http.Request, int) bool { return true },
+		ShouldFilterBody: func(*http.Request, int, []byte) bool { return true },
+	})
+	if got := do(mux, "GET", "/users/1", "").Body.String(); got != filtered {
+		t.Fatalf("both true: %s", got)
+	}
+}
+
+// 开启 Mock 后 /csap/mock/ 任意方法可用;Schema 导入开启时才注册 POST /csap/schema/import。
+func TestMountMockAndSchemaImport(t *testing.T) {
+	mem := strategy.NewMemory(nil)
+	doc := apidoc.New(apidoc.Options{Mock: apidoc.MockOptions{Enabled: true}, Schema: apidoc.SchemaOptions{ImportEnabled: true, Store: mem},
+		Strategies: []strategy.Strategy{mem}})
+	mux := http.NewServeMux()
+	m := Mount(mux, doc)
+	m.HandleFunc("POST /api/items", apidoc.Op("demo.Item", "create").Resp(user{}), func(w http.ResponseWriter, r *http.Request) {})
+	if rec := do(mux, "POST", "/csap/mock/api/items", ""); rec.Code != 200 || rec.Header().Get("X-CSAP-Mock") != "1" {
+		t.Fatalf("%d %v", rec.Code, rec.Header())
+	}
+	if rec := do(mux, "GET", "/csap/mock-status", ""); rec.Code != 200 {
+		t.Fatalf("%d", rec.Code)
+	}
+	rec := do(mux, "POST", "/csap/schema/import", `{"key":"demo.Item.create","kind":"response","schema":{"properties":{"id":{"description":"编号"}}}}`)
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"matched":1`) {
+		t.Fatalf("%d %s", rec.Code, rec.Body.String())
+	}
+	// 默认关闭时没有这些路由
+	mux2 := http.NewServeMux()
+	Mount(mux2, apidoc.New(apidoc.Options{}))
+	if rec := do(mux2, "POST", "/csap/mock/api/items", ""); rec.Code != 404 {
+		t.Fatalf("%d", rec.Code)
 	}
 }

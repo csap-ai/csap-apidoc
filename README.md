@@ -25,8 +25,8 @@ CSAP Apidoc 在服务运行时直接从代码生成 API 文档,不需要单独�
 
 | 语言 | 状态 | 支持的框架 |
 |---|---|---|
-| **Java** | ✅ 已发布 [1.3.0](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
-| **Go** | ✅ 已发布 [v0.1.1](https://pkg.go.dev/github.com/csap-ai/csap-apidoc/csap-apidoc-go)(`go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.1`) | gin、net/http |
+| **Java** | ✅ 已发布 [1.4.0](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
+| **Go** | ✅ 已发布 [v0.2.0](https://pkg.go.dev/github.com/csap-ai/csap-apidoc/csap-apidoc-go)(`go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.2.0`) | gin、net/http |
 | **Rust** | 📋 规划中 | axum、actix-web |
 | 更多语言 | 📋 陆续支持 | 见 [路线图](docs/ROADMAP.md) |
 
@@ -35,13 +35,14 @@ CSAP Apidoc 在服务运行时直接从代码生成 API 文档,不需要单独�
 以下能力 Java 和 Go 都有(Go 的返回过滤和校验见 [Go 版](https://apidoc.csap.ai/go/));标注「Java」的目前只有 Java 版。
 
 - **运行时生成文档**:启动时从代码生成文档(Java 扫描注解,Go 读取路由和结构体标签),访问 `/csap-api.html` 查看。
-- **字段规则**:用注解(Java)、结构体标签(Go)、YAML 文件或 SQLite / SQL 描述每个接口显示哪些请求参数和返回字段;同一个模型在不同接口里可以显示不同字段。
+- **字段规则**:用注解(Java)、结构体标签(Go)、YAML 文件或 SQLite / SQL 描述每个接口显示哪些请求参数和返回字段;同一个模型在不同接口里可以显示不同字段。1.4.0 起可以把规则存进**数据库**(MySQL / PostgreSQL / 达梦 / 人大金仓,多实例同步、修改记录与回滚,Java 与 Go 共用同一套表,达梦和金仓为试用)或 **Redis**,见 [数据库模式](https://apidoc.csap.ai/guide/database-mode)、[Redis 模式](https://apidoc.csap.ai/guide/redis-mode)。
 - **在线调试**:在文档页直接发请求,支持环境切换、全局请求头、鉴权、请求历史与重放、命名快照导入导出。
 - **导出**:在文档页导出 OpenAPI 3.0、Postman v2.1、Markdown,或复制为 TypeScript 类型。
 - **DevTools**:开发环境下用可视化界面勾选字段、配置校验规则,写回 YAML。
 - **网关聚合**(Java):一个页面切换查看多个服务的文档。
 - **返回字段过滤**(Java 1.2.0 起,默认关闭;Go 配了返回规则的接口默认过滤):按接口规则只返回文档里显示的字段,支持 Jackson、fastjson、fastjson2,见 [返回字段过滤](https://apidoc.csap.ai/guide/runtime-filter)。
 - **请求参数校验**(Java 1.2.0 起,默认关闭;Go 默认关闭):关闭 / 观察 / 拦截三种模式,可按接口覆盖,见 [参数校验](https://apidoc.csap.ai/guide/validation)。
+- **Mock、JSON Schema、字段库、接口状态、版本对比**(1.4.0 起):按文档生成可复现的 Mock 数据([Mock](https://apidoc.csap.ai/guide/mock));导出 / 导入 JSON Schema([JSON Schema](https://apidoc.csap.ai/guide/json-schema));字段模板([字段库](https://apidoc.csap.ai/guide/field-library));接口过时 / 完成状态([接口状态](https://apidoc.csap.ai/guide/api-status));Go 命令行工具检测破坏性变更([版本对比](https://apidoc.csap.ai/guide/api-diff))。
 - **文档即 MCP**(Java 1.3.0 起,默认关闭):服务内嵌 `/csap/mcp`,文档里的接口自动成为 AI 可调用的工具,默认只开放 GET,支持令牌鉴权与审计,见 [MCP](https://apidoc.csap.ai/guide/mcp)。
 
 ## 快速开始(Java)
@@ -52,7 +53,7 @@ CSAP Apidoc 在服务运行时直接从代码生成 API 文档,不需要单独�
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.3.0</version>
+    <version>1.4.0</version>
 </dependency>
 ```
 
@@ -97,7 +98,7 @@ public class User {
 ## 快速开始(Go)
 
 ```bash
-go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.1
+go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.2.0
 ```
 
 ```go

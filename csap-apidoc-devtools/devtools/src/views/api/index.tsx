@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { Card, Table, Button, message, Spin, Tag, Tooltip, Input, Space, Select, Statistic, Row, Col, Empty } from 'antd'
+import { Card, Table, Button, message, Spin, Tag, Tooltip, Input, Space, Select, Statistic, Row, Col, Empty, Modal } from 'antd'
+import { setMethodStatus, type ApiStatus } from '@/api/templates'
+import { text as statusText } from './components/statusTemplateI18n'
 import { SearchOutlined, ReloadOutlined, FilterOutlined, StarOutlined, StarFilled, ApiOutlined, HomeOutlined, FolderOpenOutlined, CheckCircleOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { scannerApi, getApiDocList, type ControllerModel, type MethodModel } from '@/api/devtools'
@@ -395,6 +397,32 @@ const ApiManagement: React.FC = () => {
     }
   }, [methodList, filteredMethodList, controllerList, favoriteControllers])
 
+  // 接口状态(开发中 / 完成 / 过时):存进规则存储,与字段规则一起;过时可填备注
+  const changeStatus = async (record: MethodModel, status: ApiStatus | null, note?: string) => {
+    const className = record.className || currentController?.name
+    if (!className) return
+    await setMethodStatus({ className, methodName: record.name, status, statusNote: note })
+    message.success(statusText().statusSaved)
+    setMethodList(list => list.map(m => (m.name === record.name
+      ? { ...m, status: status || 'DEFAULT', statusNote: status === 'DEPRECATED' ? note : undefined } : m)))
+  }
+
+  const onStatusSelect = (record: MethodModel, status: ApiStatus) => {
+    const st = statusText()
+    if (status !== 'DEPRECATED') {
+      changeStatus(record, status)
+      return
+    }
+    let note = record.statusNote || ''
+    Modal.confirm({
+      title: st.statusDeprecateTitle,
+      content: <Input defaultValue={note} placeholder={st.statusNotePlaceholder} onChange={e => { note = e.target.value }} />,
+      okText: st.ok,
+      cancelText: st.cancel,
+      onOk: () => changeStatus(record, status, note)
+    })
+  }
+
   const methodColumns: ColumnsType<MethodModel> = [
     {
       title: '接口名称',
@@ -466,6 +494,25 @@ const ApiManagement: React.FC = () => {
           <span style={{ cursor: 'pointer' }}>{text || '-'}</span>
         </Tooltip>
       ),
+    },
+    {
+      title: statusText().statusTitle,
+      key: 'status',
+      width: 110,
+      align: 'center',
+      render: (_, record) => {
+        const st = statusText()
+        const value = (record.status || 'DEFAULT') as ApiStatus
+        const select = (
+          <Select size="small" style={{ width: 92 }} value={value} onChange={v => onStatusSelect(record, v as ApiStatus)}
+            options={[
+              { value: 'DEFAULT', label: st.statusDEFAULT },
+              { value: 'FINISH', label: <span style={{ color: '#52c41a' }}>{st.statusFINISH}</span> },
+              { value: 'DEPRECATED', label: <span style={{ color: '#ff4d4f' }}>{st.statusDEPRECATED}</span> }
+            ]} />
+        )
+        return record.statusNote ? <Tooltip title={record.statusNote}>{select}</Tooltip> : select
+      }
     },
     {
       title: '操作',

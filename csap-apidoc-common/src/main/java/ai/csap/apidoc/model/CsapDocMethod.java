@@ -128,6 +128,13 @@ public class CsapDocMethod {
     private ApiStatus status;
 
     /**
+     * 状态备注(来自规则存储),如替代接口、下线时间
+     *
+     * @since 1.4.0
+     */
+    private String statusNote;
+
+    /**
      * 请求参数模型列表
      * 描述接口所需的所有输入参数的结构
      * 包括路径参数、查询参数、请求体等

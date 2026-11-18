@@ -1,10 +1,13 @@
 import React, { useState, forwardRef, useImperativeHandle, useRef, useContext } from 'react'
-import { Drawer, Table, Button, Input, message, Space, Tag, Modal, Alert } from 'antd'
+import { Drawer, Table, Button, Input, message, Space, Tag, Modal, Alert, Form } from 'antd'
 import { SafetyOutlined, PlusOutlined, DeleteOutlined, ThunderboltOutlined, InfoCircleOutlined, MenuOutlined, CheckCircleOutlined, CloseCircleOutlined, BulbOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { getMethodValidateFields } from '@/api/devtools'
 import ValidateTableModal from './ValidateTableModal'
 import RegexTemplateModal from './RegexTemplateModal'
+import FieldTemplateModal from './FieldTemplateModal'
+import { listFieldTemplates, saveFieldTemplate, type FieldTemplate } from '@/api/templates'
+import { text } from './statusTemplateI18n'
 import {
   DndContext,
   closestCenter,
@@ -89,6 +92,17 @@ const FieldValidateModal = forwardRef<FieldValidateModalRef>((_props, ref) => {
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
   const [currentTestRule, setCurrentTestRule] = useState<ValidateData | null>(null)
 
+  // 字段模板:套用 = 复制,不联动;字段规则里记下模板名
+  const tt = text()
+  const [templates, setTemplates] = useState<FieldTemplate[]>([])
+  const [projectSupported, setProjectSupported] = useState(true)
+  const [tplPickerOpen, setTplPickerOpen] = useState(false)
+  const [saveAsOpen, setSaveAsOpen] = useState(false)
+  const [saveAsForm, setSaveAsForm] = useState({ name: '', title: '', category: '' })
+  const [applied, setApplied] = useState<FieldTemplate | null>(null)
+  // 规则里现有的模板名、说明、示例(用来提示“与模板不一致”)
+  const [ruleInfo, setRuleInfo] = useState<{ template?: string; description?: string; example?: string }>({})
+
   const validateTableRef = useRef<any>(null)
   const regexTemplateRef = useRef<any>(null)
 
@@ -115,14 +129,77 @@ const FieldValidateModal = forwardRef<FieldValidateModalRef>((_props, ref) => {
       }
       fieldRow.clickValidate = true
 
+      setApplied(null)
+      loadTemplates()
       await loadFieldValidates(apiData, fieldRow)
     }
   }))
+
+  const loadTemplates = async () => {
+    try {
+      const data = await listFieldTemplates()
+      setTemplates(data.templates || [])
+      setProjectSupported(!!data.projectSupported)
+    } catch {
+      // 错误提示由请求拦截器显示
+    }
+  }
+
+  const toRules = (tpl: FieldTemplate): ValidateData[] => (tpl.validate || []).map((v, i) => ({
+    descr: v.descr || v.message || tpl.title,
+    pattern: v.pattern || '',
+    code: v.code || '',
+    message: v.message || '',
+    level: i + 1,
+    type: v.type || 'Pattern'
+  }))
+
+  // 套用模板:校验规则整体替换,说明 / 示例 / 必填按模板写了的项覆盖;确定保存时才写进字段
+  const handleApplyTemplate = (tpl: FieldTemplate) => {
+    setValidates(toRules(tpl))
+    setApplied(tpl)
+    message.success(tt.tplApplied)
+  }
+
+  const handleSaveAsTemplate = async () => {
+    if (!saveAsForm.name.trim() || !saveAsForm.title.trim()) {
+      message.warning(tt.tplNeedName)
+      return
+    }
+    const tpl: FieldTemplate = {
+      name: saveAsForm.name.trim(),
+      title: saveAsForm.title.trim(),
+      category: saveAsForm.category.trim() || undefined,
+      description: applied?.description ?? ruleInfo.description ?? undefined,
+      example: applied?.example ?? ruleInfo.example ?? undefined,
+      required: typeof row?.required === 'boolean' ? row.required : undefined,
+      validate: validates.map(v => ({
+        type: typeof v.type === 'number' ? (v.type === 1 ? v.pattern : 'Pattern') : v.type,
+        pattern: v.pattern, code: v.code, message: v.message, descr: v.descr, level: v.level
+      }))
+    }
+    await saveFieldTemplate(tpl)
+    message.success(tt.tplSaved)
+    setSaveAsOpen(false)
+    setRuleInfo(r => ({ ...r, template: tpl.name }))
+    loadTemplates()
+  }
+
+  // 模板与字段当前内容是否一致(按规则:类型、正则、提示、说明、示例)
+  const sameAsTemplate = (tpl: FieldTemplate): boolean => {
+    const norm = (list: any[]) => JSON.stringify((list || []).map(v => [typeof v.type === 'number' ? 'Pattern' : v.type, v.pattern || '', v.message || '', v.code || '']))
+    if (norm(toRules(tpl)) !== norm(validates)) return false
+    if (tpl.description && tpl.description !== (ruleInfo.description ?? '')) return false
+    if (tpl.example && tpl.example !== (ruleInfo.example ?? '')) return false
+    return true
+  }
 
   const loadFieldValidates = async (apiData: any, fieldRow: any) => {
     try {
       setLoading(true)
       const data = await getMethodValidateFields(apiData.className, apiData.name, fieldRow.keyName)
+
+      setRuleInfo({ template: data.template, description: data.description, example: data.example })
 
       // 合并已有的验证规则
       const existingValidates = data.validate || []
@@ -154,6 +231,8 @@ const FieldValidateModal = forwardRef<FieldValidateModalRef>((_props, ref) => {
     setVisible(false)
     setValidates([])
     setRow(null)
+    setApplied(null)
+    setRuleInfo({})
   }
 
   const handleConfirm = () => {
@@ -171,6 +250,21 @@ const FieldValidateModal = forwardRef<FieldValidateModalRef>((_props, ref) => {
         }
         return validate
       })
+      if (applied) {
+        // 复制模板内容到字段,并记下来源模板名(之后字段可随意再改,不联动)
+        row.template = applied.name
+        if (applied.description) {
+          row.ruleDescription = applied.description
+          row.description = applied.description
+        }
+        if (applied.example) {
+          row.ruleExample = applied.example
+          row.example = applied.example
+        }
+        if (typeof applied.required === 'boolean') {
+          row.required = applied.required
+        }
+      }
     }
     message.success('验证规则已更新')
     handleClose()
@@ -543,16 +637,42 @@ const FieldValidateModal = forwardRef<FieldValidateModalRef>((_props, ref) => {
               </Tag>
             </Space>
           </div>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={handleAddValidate}
-            ghost
-            style={{ borderColor: '#fff', color: '#fff' }}
-          >
-            添加验证规则
-          </Button>
+          <Space>
+            <Button ghost style={{ borderColor: '#fff', color: '#fff' }} onClick={() => setTplPickerOpen(true)}>
+              {tt.tplApply}
+            </Button>
+            <Button ghost style={{ borderColor: '#fff', color: '#fff' }} disabled={!projectSupported}
+              title={projectSupported ? undefined : tt.tplNoProject}
+              onClick={() => setSaveAsOpen(true)}>
+              {tt.tplSaveAs}
+            </Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleAddValidate}
+              ghost
+              style={{ borderColor: '#fff', color: '#fff' }}
+            >
+              添加验证规则
+            </Button>
+          </Space>
         </div>
+
+        {(() => {
+          const name = applied?.name || ruleInfo.template
+          if (!name) return null
+          const tpl = templates.find(x => x.name === name)
+          if (!tpl) {
+            return <Alert style={{ marginBottom: 12 }} type="warning" showIcon message={`${tt.tplAppliedFrom} ${name}:${tt.tplMissing}`} />
+          }
+          if (applied) {
+            return <Alert style={{ marginBottom: 12 }} type="success" showIcon message={`${tt.tplAppliedFrom} ${tpl.title}(${tpl.name})`} />
+          }
+          return sameAsTemplate(tpl)
+            ? <Alert style={{ marginBottom: 12 }} type="info" showIcon message={`${tt.tplAppliedFrom} ${tpl.title}(${tpl.name})`} />
+            : <Alert style={{ marginBottom: 12 }} type="warning" showIcon message={`${tt.tplAppliedFrom} ${tpl.title}(${tpl.name}):${tt.tplDiffers}`}
+              action={<Button size="small" onClick={() => handleApplyTemplate(tpl)}>{tt.tplReapply}</Button>} />
+        })()}
 
         <DndContext
           sensors={sensors}
@@ -587,6 +707,23 @@ const FieldValidateModal = forwardRef<FieldValidateModalRef>((_props, ref) => {
       </Drawer>
 
       <ValidateTableModal ref={validateTableRef} onConfirm={handleValidatesSelected} />
+
+      <FieldTemplateModal open={tplPickerOpen} templates={templates} onClose={() => setTplPickerOpen(false)} onApply={handleApplyTemplate} />
+
+      <Modal open={saveAsOpen} title={tt.tplSaveTitle} onCancel={() => setSaveAsOpen(false)} onOk={handleSaveAsTemplate}
+        okText={tt.ok} cancelText={tt.cancel}>
+        <Form layout="vertical">
+          <Form.Item label={tt.tplName}>
+            <Input value={saveAsForm.name} onChange={e => setSaveAsForm({ ...saveAsForm, name: e.target.value })} />
+          </Form.Item>
+          <Form.Item label={tt.tplTitleLabel}>
+            <Input value={saveAsForm.title} onChange={e => setSaveAsForm({ ...saveAsForm, title: e.target.value })} />
+          </Form.Item>
+          <Form.Item label={tt.tplCategory}>
+            <Input value={saveAsForm.category} onChange={e => setSaveAsForm({ ...saveAsForm, category: e.target.value })} />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* 测试弹窗 */}
       <Modal

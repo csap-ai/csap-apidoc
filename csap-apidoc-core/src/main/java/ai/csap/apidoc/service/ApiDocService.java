@@ -9,6 +9,7 @@ import ai.csap.apidoc.StandardProperties;
 import ai.csap.apidoc.annotation.Api;
 import ai.csap.apidoc.annotation.ApiOperation;
 import ai.csap.apidoc.annotation.ApiResponseCode;
+import ai.csap.apidoc.annotation.ApiStatus;
 import ai.csap.apidoc.annotation.ParamType;
 import ai.csap.apidoc.autoconfigure.StrategyModel;
 import ai.csap.apidoc.config.ScannerPackageConfig;
@@ -20,10 +21,12 @@ import ai.csap.apidoc.model.CsapDocModel;
 import ai.csap.apidoc.model.CsapDocModelController;
 import ai.csap.apidoc.model.CsapDocParameter;
 import ai.csap.apidoc.model.CsapDocResponse;
+import ai.csap.apidoc.model.ParamGroupMethodProperty;
 import ai.csap.apidoc.properties.CsapDocConfig;
 import ai.csap.apidoc.scanner.DocHintsCollector;
 import ai.csap.apidoc.strategy.ApidocStrategy;
 import ai.csap.apidoc.strategy.AsyncTaskUtil;
+import ai.csap.apidoc.strategy.ParamGroupStrategy;
 import ai.csap.apidoc.util.ApidocUtils;
 import ai.csap.apidoc.util.IValidate;
 import ai.csap.apidoc.util.TypeVariableModel;
@@ -508,6 +511,7 @@ public final class ApiDocService extends AbstractApiDocService implements Filter
         if (containsPathMethod(docController, docMethod)) {
             return null;
         }
+        ApiStatusResolver.apply(docMethod, docController.getStatus(), strategyModel);
         if (Boolean.TRUE.equals(strategyModel.getIsParent())) {
             // 只要接口和方法,不处理参数,也不改动已登记的字段规则
             buildMethodDetail(docController, method, typeVariableModel, strategyModel, apiOperation, handlerMethod,

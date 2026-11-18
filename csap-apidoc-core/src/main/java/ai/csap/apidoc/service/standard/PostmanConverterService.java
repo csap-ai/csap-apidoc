@@ -158,7 +158,8 @@ public class PostmanConverterService {
      */
     private PostmanItem buildRequestItem(CsapDocMethod method, CsapDocModelController controller, String projectName) {
         PostmanItem item = new PostmanItem();
-        item.setName(method.getValue());
+        item.setName(method.getStatus() == ai.csap.apidoc.annotation.ApiStatus.DEPRECATED
+                ? "[过时] " + method.getValue() : method.getValue());
 
         PostmanRequest request = new PostmanRequest();
         if (method.getMethods() != null && !method.getMethods().isEmpty()) {

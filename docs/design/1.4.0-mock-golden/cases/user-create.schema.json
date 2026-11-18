@@ -1,0 +1,201 @@
+{
+  "operationId": "demo.UserController.create",
+  "method": "POST",
+  "path": "/api/users/{tenant}",
+  "summary": "创建用户",
+  "deprecated": false,
+  "request": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "path": {
+        "type": "object",
+        "properties": {
+          "tenant": {
+            "type": "string",
+            "description": "租户"
+          }
+        },
+        "required": [
+          "tenant"
+        ]
+      },
+      "header": {
+        "type": "object",
+        "properties": {
+          "X-Token": {
+            "type": "string",
+            "description": "X-Token"
+          }
+        }
+      },
+      "body": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "name",
+            "minLength": 2,
+            "maxLength": 20,
+            "x-csap-validate": [
+              {
+                "type": "NotEmpty",
+                "message": "姓名不能为空",
+                "code": "1001",
+                "level": 1
+              },
+              {
+                "type": "Length",
+                "pattern": "2,20",
+                "message": "姓名长度 2-20",
+                "code": "1002",
+                "level": 2
+              }
+            ],
+            "x-csap-key": "request.name"
+          },
+          "phone": {
+            "type": "string",
+            "description": "phone",
+            "pattern": "^1\\d{10}$",
+            "x-csap-validate": [
+              {
+                "type": "Pattern",
+                "pattern": "PATTERN_35",
+                "message": "手机号格式不正确",
+                "level": 1
+              },
+              {
+                "type": "Pattern",
+                "pattern": "^1\\d{10}$",
+                "level": 1
+              }
+            ],
+            "x-csap-key": "request.phone"
+          },
+          "age": {
+            "type": "integer",
+            "format": "int32",
+            "description": "age",
+            "examples": [
+              30
+            ],
+            "minimum": 0,
+            "maximum": 150,
+            "x-csap-validate": [
+              {
+                "type": "Min",
+                "pattern": "0",
+                "level": 1
+              },
+              {
+                "type": "Max",
+                "pattern": "150",
+                "level": 1
+              }
+            ]
+          },
+          "gender": {
+            "type": "string",
+            "description": "gender",
+            "enum": [
+              "MALE",
+              "FEMALE"
+            ]
+          },
+          "role": {
+            "type": "string",
+            "description": "role",
+            "default": "user",
+            "enum": [
+              "admin",
+              "user"
+            ],
+            "x-csap-validate": [
+              {
+                "type": "Enum",
+                "pattern": "admin,user",
+                "level": 1
+              }
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "tags",
+            "minItems": 1,
+            "maxItems": 5,
+            "x-csap-validate": [
+              {
+                "type": "Size",
+                "pattern": "1,5",
+                "level": 1
+              }
+            ]
+          },
+          "address": {
+            "type": "object",
+            "properties": {
+              "city": {
+                "type": "string",
+                "description": "city"
+              },
+              "zip": {
+                "type": "string",
+                "description": "zip"
+              }
+            },
+            "required": [
+              "city"
+            ],
+            "description": "address"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    "required": [
+      "path",
+      "body"
+    ]
+  },
+  "response": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "integer",
+        "format": "int32",
+        "description": "code"
+      },
+      "message": {
+        "type": "string",
+        "description": "message"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "id"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "createdAt"
+          },
+          "score": {
+            "type": "number",
+            "description": "score"
+          }
+        },
+        "description": "data"
+      }
+    }
+  }
+}

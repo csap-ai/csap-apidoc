@@ -1,6 +1,6 @@
 import LayoutHeader from './Header';
 import VaultLockBanner from '@/components/VaultLockBanner';
-import { Tree, Input, Table, message, Tooltip, Result, Button, Spin, Tag } from 'antd';
+import { Tree, Input, Table, message, Tooltip, Result, Button, Spin, Tag, Select } from 'antd';
 import { FileTextOutlined, ApiOutlined, FileSearchOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import type { DirectoryTreeProps } from 'antd/es/tree';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -19,8 +19,9 @@ import { exportToMarkdown, downloadMarkdown } from '@/utils/exportMarkdown';
 import { groupParametersByType, getNonEmptyParamTypes, getParamTypeLabel, buildRequestData, replacePathParams } from '@/utils/paramTypeUtils';
 import { ExclamationCircleFilled, ThunderboltOutlined } from '@ant-design/icons';
 import TryItOutPanel, { RequestSpec } from '@/components/TryItOutPanel';
-import { apidocMethodUrl, apidocParentUrl, apidocServiceBase } from '@/utils/apidocUrl';
+import { apidocMethodUrl, apidocParentUrl, apidocSchemaUrl, apidocServiceBase } from '@/utils/apidocUrl';
 import { hasApiDetail, EMPTY_API_DETAIL } from '@/utils/apiDetail';
+import { filterTreeByStatus, StatusFilter } from '@/utils/statusFilter';
 import {
   filterTreeByGroupVersion,
   groupVersionOptions,
@@ -85,6 +86,7 @@ const LayoutIndex = () => {
   const [totalApis, setTotalApis] = useState(0);
   const [gvOptions, setGvOptions] = useState<GroupVersionOptions>({ groups: [], versions: [] });
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
   // @DocGlobalHeader / @DocAuth hints of the endpoint currently shown,
   // keyed by method key so a stale set is never applied to another endpoint.
@@ -265,6 +267,7 @@ const LayoutIndex = () => {
       setGvOptions(groupVersionOptions(parentData, validatedList));
       setSelectedGroup(null);
       setSelectedVersion(null);
+      setStatusFilter('all');
 
       if (apiList.length > 0) {
         console.log('有效的apiList数据:', apiList);
@@ -312,7 +315,7 @@ const LayoutIndex = () => {
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
-    let ds = filterTreeByGroupVersion(finalData, selectedGroup, selectedVersion)
+    let ds = filterTreeByStatus(filterTreeByGroupVersion(finalData, selectedGroup, selectedVersion), statusFilter)
       .map((i) => {
         return Object.assign({}, i);
       })
@@ -343,7 +346,12 @@ const LayoutIndex = () => {
   const applyGroupVersion = (group: string | null, version: string | null) => {
     setSelectedGroup(group);
     setSelectedVersion(version);
-    setTreeData(filterTreeByGroupVersion(finalData, group, version));
+    setTreeData(filterTreeByStatus(filterTreeByGroupVersion(finalData, group, version), statusFilter));
+  };
+
+  const applyStatusFilter = (status: StatusFilter) => {
+    setStatusFilter(status);
+    setTreeData(filterTreeByStatus(filterTreeByGroupVersion(finalData, selectedGroup, selectedVersion), status));
   };
 
   const childrenList = (c: any[], v) => {
@@ -388,7 +396,19 @@ const LayoutIndex = () => {
   }, []);
 
   // 导出功能处理
-  const handleExport = async (format: 'openapi' | 'postman' | 'markdown') => {
+  const handleExport = async (format: 'openapi' | 'postman' | 'markdown' | 'jsonschema') => {
+    if (format === 'jsonschema') {
+      // 服务端直接生成(1.4.0),不依赖当前已加载的菜单数据
+      const a = document.createElement('a');
+      a.href = selectRefValue.current?.value
+        ? apidocSchemaUrl(selectRefValue.current.value)
+        : `${import.meta.env.VITE_API_URL}/csap/schema.json?download=true`;
+      a.download = 'csap-schema.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
     if (!finalData || finalData.length === 0) {
       message.warning(t('layout.export.noData'));
       return;
@@ -936,6 +956,19 @@ const LayoutIndex = () => {
               allowClear
               size="large"
             />
+            <Select
+              size="small"
+              style={{ width: '100%', marginTop: 8 }}
+              value={statusFilter}
+              onChange={applyStatusFilter}
+              placeholder={t('layout.status.placeholder')}
+              options={[
+                { value: 'all', label: t('layout.status.all') },
+                { value: 'DEFAULT', label: t('layout.status.default') },
+                { value: 'FINISH', label: t('layout.status.finish') },
+                { value: 'DEPRECATED', label: t('layout.status.deprecated') },
+              ]}
+            />
             {treeData.length > 0 && (
               <div className="api-stats">
                 <span>{t('layout.stats.groups', { count: treeData.length })}</span>
@@ -976,7 +1009,19 @@ const LayoutIndex = () => {
                       {nodeData.method == 'PUT' && (
                         <span className="put-color">{nodeData.method}</span>
                       )}
-                      <span>{nodeData.title}</span>
+                      <span style={nodeData.status === 'DEPRECATED' ? { textDecoration: 'line-through', opacity: 0.65 } : undefined}>
+                        {nodeData.title}
+                      </span>
+                      {(nodeData.status === 'FINISH' || nodeData.status === 'DEPRECATED') && (
+                        <Tooltip title={nodeData.statusNote || undefined}>
+                          <Tag
+                            color={nodeData.status === 'DEPRECATED' ? 'error' : 'success'}
+                            style={{ marginLeft: 6, fontSize: 10, lineHeight: '16px', padding: '0 4px' }}
+                          >
+                            {t(nodeData.status === 'DEPRECATED' ? 'layout.status.deprecated' : 'layout.status.finish')}
+                          </Tag>
+                        </Tooltip>
+                      )}
                     </div>
                   )}
                 </>

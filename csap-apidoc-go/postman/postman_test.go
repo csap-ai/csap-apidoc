@@ -357,3 +357,18 @@ func TestHelpers(t *testing.T) {
 		t.Fatal("null")
 	}
 }
+
+func TestDeprecatedNamePrefix(t *testing.T) {
+	doc := &model.Response{ApiInfo: &model.ApiInfo{Title: "t"}, ApiList: []*model.Controller{{Value: "c", Path: []string{"/c"}, MethodList: []*model.Method{
+		{Value: "旧接口", Methods: []string{"GET"}, Paths: []string{"/old"}, Status: model.StatusDeprecated},
+		{Value: "新接口", Methods: []string{"GET"}, Paths: []string{"/new"}, Status: model.StatusFinish},
+	}}}}
+	b, err := Build(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(b)
+	if !strings.Contains(s, "[过时] 旧接口") || strings.Contains(s, "[过时] 新接口") {
+		t.Fatalf("%s", s)
+	}
+}

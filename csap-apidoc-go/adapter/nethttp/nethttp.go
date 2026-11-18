@@ -45,6 +45,16 @@ func Mount(mux *http.ServeMux, doc *apidoc.Doc) *Mux {
 			mux.Handle(pat, h) // GET 模式同时匹配 HEAD
 		}
 	}
+	for _, mp := range doc.MethodPaths() { // 开启 Mock / Schema 导入时才有
+		pat := muxPath(mp.Path)
+		if mp.Method != "*" {
+			pat = mp.Method + " " + pat
+		}
+		if !seen[pat] {
+			seen[pat] = true
+			mux.Handle(pat, h)
+		}
+	}
 	return &Mux{mux: mux, doc: doc}
 }
 
@@ -215,7 +225,7 @@ func Route(r *http.Request) string {
 
 // ResponseFilter 返回字段过滤中间件:接口配置了返回规则时,按白名单裁剪 JSON 返回,
 // 代码里返回了、但规则没放行的字段不输出。没有规则的接口不受影响,也不缓冲。规则热更新后下一个请求即生效。
-// 默认只裁剪 2xx 响应,4xx/5xx 的错误体原样输出;可用 apidoc.Options.ShouldFilter 自定义,
+// 默认只裁剪 2xx 响应,4xx/5xx 的错误体原样输出;可用 apidoc.Options.ShouldFilter 自定义(再按响应体细判用 ShouldFilterBody),
 // 用 apidoc.Options.FilterEndpoints 按接口关闭。用 Mux.Use 注册(需要路由信息)。
 func ResponseFilter(doc *apidoc.Doc) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -231,7 +241,7 @@ func ResponseFilter(doc *apidoc.Doc) func(http.Handler) http.Handler {
 			bw := &bufferWriter{ResponseWriter: w, status: http.StatusOK}
 			next.ServeHTTP(bw, r)
 			mask := ep.ResponseMask
-			if !doc.ShouldFilter(r, bw.status) {
+			if !doc.ShouldFilter(r, bw.status) || !doc.ShouldFilterBody(r, bw.status, bw.buf.Bytes()) {
 				mask = nil
 			}
 			bw.flushTo(mask)

@@ -59,3 +59,31 @@ func TestBuild(t *testing.T) {
 		t.Fatalf("pattern: %v", name)
 	}
 }
+
+func TestStatusExport(t *testing.T) {
+	doc := &model.Response{ApiInfo: model.DefaultApiInfo(), ApiList: []*model.Controller{{Value: "A", MethodList: []*model.Method{
+		{Key: "A.old", Value: "旧", Methods: []string{"GET"}, ApiPath: []string{"/old"}, Status: model.StatusDeprecated, StatusNote: "请改用 /new", Description: "说明"},
+		{Key: "A.done", Value: "完成", Methods: []string{"GET"}, ApiPath: []string{"/done"}, Status: model.StatusFinish},
+		{Key: "A.dev", Value: "开发中", Methods: []string{"GET"}, ApiPath: []string{"/dev"}, Status: model.StatusDefault},
+	}}}}
+	paths := Build(doc)["paths"].(map[string]any)
+	op := func(p string) map[string]any { return paths[p].(map[string]any)["get"].(map[string]any) }
+	if o := op("/old"); o["deprecated"] != true || o["x-csap-status"] != "DEPRECATED" || o["description"] != "说明\n\n请改用 /new" {
+		t.Fatalf("old: %v", o)
+	}
+	if o := op("/done"); o["x-csap-status"] != "FINISH" || o["deprecated"] != nil {
+		t.Fatalf("done: %v", o)
+	}
+	if o := op("/dev"); o["x-csap-status"] != nil || o["deprecated"] != nil {
+		t.Fatalf("DEFAULT 不输出状态: %v", o)
+	}
+}
+
+// Number 按 number 处理(与 Java 及 Mock、JSON Schema 一致),不再当成 string。
+func TestNumberIsNumber(t *testing.T) {
+	for _, dt := range []string{"Number", "number", "java.lang.Number"} {
+		if got := primitive(dt)["type"]; got != "number" {
+			t.Errorf("%s -> %v", dt, got)
+		}
+	}
+}

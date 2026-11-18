@@ -5,18 +5,25 @@
     <parent>
         <groupId>ai.csap.apidoc</groupId>
         <artifactId>csap-apidoc-dependency</artifactId>
-        <version>1.3.0</version>
+        <version>1.4.0</version>
         <relativePath>../csap-apidoc-dependency</relativePath>
     </parent>
     <artifactId>csap-apidoc-build</artifactId>
     <name>CSAP Apidoc Build</name>
     <description>Shared build configuration of CSAP Apidoc modules.</description>
-    <version>1.3.0</version>
+    <version>1.4.0</version>
     <packaging>pom</packaging>
     <dependencies>
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- 让 TestNG 测试跑在 JUnit Platform provider 里,只有一个 provider,报告不互相覆盖 -->
+        <dependency>
+            <groupId>org.junit.support</groupId>
+            <artifactId>testng-engine</artifactId>
+            <version>1.0.5</version>
             <scope>test</scope>
         </dependency>
         <dependency>

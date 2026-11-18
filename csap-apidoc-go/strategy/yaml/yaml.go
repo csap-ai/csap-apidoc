@@ -155,6 +155,9 @@ func (s *Strategy) Load(context.Context) (strategy.Rules, error) {
 			continue
 		}
 		for group, methods := range doc {
+			if strategy.ReservedKey(group) {
+				continue // @ 开头的键不是接口规则
+			}
 			if _, seen := owner[group]; seen {
 				continue // 与 Java 一致:同名分组以先加载的文件为准
 			}
@@ -352,8 +355,10 @@ func writeAtomic(name string, data []byte) error {
 
 // method 是一个接口在 YAML 里的结构,字段顺序与 Java ParamGroupMethodProperty 一致。
 type method struct {
-	Request  map[string]*field `yaml:"request,omitempty"`
-	Response map[string]*field `yaml:"response,omitempty"`
+	Request    map[string]*field `yaml:"request,omitempty"`
+	Response   map[string]*field `yaml:"response,omitempty"`
+	Status     string            `yaml:"status,omitempty"`     // 状态覆盖,Go / Java 1.4.0 新增
+	StatusNote string            `yaml:"statusNote,omitempty"` // 状态备注
 }
 
 // field 对应 Java ParamDataValidate;hidden、example 是 Go 版新增,Java 读取时会忽略。
@@ -365,6 +370,8 @@ type field struct {
 	Hidden      *bool      `yaml:"hidden,omitempty"`
 	Example     string     `yaml:"example,omitempty"`
 	Validate    []validate `yaml:"validate,omitempty"`
+	Template    string     `yaml:"template,omitempty"` // 套用的字段模板名,只用于展示
+	Mock        any        `yaml:"mock,omitempty"`     // Mock 取值,见 docs/design/1.4.0-mock-schema.md
 }
 
 // validate 对应 Java ConstraintValidatorField 写进 YAML 的部分。
@@ -409,7 +416,7 @@ func (m method) toRules() strategy.MethodRules {
 			}
 			r := strategy.FieldRule{
 				Description: f.Description, Required: f.Required, Include: f.Include, Hidden: f.Hidden,
-				ParamType: strings.ToUpper(f.ParamType), Example: f.Example,
+				ParamType: strings.ToUpper(f.ParamType), Example: f.Example, Template: f.Template, Mock: f.Mock,
 			}
 			for _, v := range f.Validate {
 				r.Validate = append(r.Validate, strategy.ValidateRule{
@@ -420,7 +427,7 @@ func (m method) toRules() strategy.MethodRules {
 		}
 		return out
 	}
-	return strategy.MethodRules{Request: conv(m.Request), Response: conv(m.Response)}
+	return strategy.MethodRules{Request: conv(m.Request), Response: conv(m.Response), Status: m.Status, StatusNote: m.StatusNote}
 }
 
 func fromRules(r strategy.MethodRules) method {
@@ -431,7 +438,7 @@ func fromRules(r strategy.MethodRules) method {
 		out := make(map[string]*field, len(in))
 		for p, f := range in {
 			x := &field{Required: f.Required, Include: f.Include, ParamType: f.ParamType, Description: f.Description,
-				Hidden: f.Hidden, Example: f.Example}
+				Hidden: f.Hidden, Example: f.Example, Template: f.Template, Mock: f.Mock}
 			for _, v := range f.Validate {
 				x.Validate = append(x.Validate, validate{Descr: v.Descr, Level: v.Level, Type: v.Type,
 					Code: flexString(v.Code), Message: v.Message, Pattern: v.Pattern})
@@ -440,7 +447,11 @@ func fromRules(r strategy.MethodRules) method {
 		}
 		return out
 	}
-	return method{Request: conv(r.Request), Response: conv(r.Response)}
+	m := method{Request: conv(r.Request), Response: conv(r.Response), StatusNote: r.StatusNote}
+	if strategy.ValidStatus(r.Status) {
+		m.Status = r.Status
+	}
+	return m
 }
 
 // setMethod 在原文件内容里替换(或新增、删除)一个接口的规则,其余节点和注释保持不变。
@@ -458,7 +469,7 @@ func setMethod(src []byte, group, name string, m method) ([]byte, error) {
 		return nil, errors.New("文件顶层不是映射")
 	}
 	root := doc.Content[0]
-	empty := len(m.Request) == 0 && len(m.Response) == 0
+	empty := len(m.Request) == 0 && len(m.Response) == 0 && m.Status == "" && m.StatusNote == ""
 
 	gi := findKey(root, group)
 	if gi < 0 {
@@ -538,4 +549,69 @@ func sortMappingKeys(n *yamlv3.Node) {
 			}
 		}
 	}
+}
+
+// TemplateFile 是项目字段模板文件相对规则目录的位置:与 method-field 目录并列的 field-template/api-field-template.yaml。
+const TemplateFile = "field-template/api-field-template.yaml"
+
+var _ strategy.RawStore = (*Strategy)(nil)
+
+func (s *Strategy) templatePath() string {
+	return filepath.Join(filepath.Dir(filepath.Clean(s.opts.Dir)), filepath.FromSlash(TemplateFile))
+}
+
+// LoadRaw 读取项目字段模板文件(只认保留键 @templates)。文件不存在时 ok 为 false。
+// 返回的是文件原文(YAML),由字段库解析。规则目录来自 FS(只读打包)时没有项目模板。
+func (s *Strategy) LoadRaw(_ context.Context, key string) (string, bool, error) {
+	if key != "@templates" {
+		return "", false, fmt.Errorf("apidoc/yaml: 不支持的保留键 %q", key)
+	}
+	if s.opts.FS != nil || s.opts.Dir == "" {
+		return "", false, nil
+	}
+	b, err := os.ReadFile(s.templatePath())
+	if errors.Is(err, os.ErrNotExist) {
+		return "", false, nil
+	}
+	return string(b), err == nil, err
+}
+
+// SaveRaw 写项目字段模板文件(只认 @templates)。raw 是 JSON 或 YAML,统一写成 YAML;为空表示删除文件。
+// 模板文件不走版本号和修改记录(返回 0),由 Git 管理即可。规则目录来自 FS(只读打包)时返回 ErrReadOnly。
+func (s *Strategy) SaveRaw(_ context.Context, key, raw, _ string) (int64, error) {
+	if key != "@templates" {
+		return 0, fmt.Errorf("apidoc/yaml: 不支持的保留键 %q", key)
+	}
+	if s.opts.FS != nil || s.opts.Dir == "" {
+		return 0, strategy.ErrReadOnly
+	}
+	path := s.templatePath()
+	if raw == "" {
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return 0, err
+		}
+		return 0, nil
+	}
+	var v any
+	if err := yamlv3.Unmarshal([]byte(raw), &v); err != nil {
+		return 0, err
+	}
+	out, err := yamlv3.Marshal(v)
+	if err != nil {
+		return 0, err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return 0, err
+	}
+	return 0, os.WriteFile(path, out, 0o644)
+}
+
+// Render 把一个接口的规则渲染成 method-field.yaml 格式的文本(分组 → 接口 → request / response),可直接粘贴进规则文件。
+// key 为 strategy.Key(分组, 接口名)。
+func Render(key string, rules strategy.MethodRules) ([]byte, error) {
+	i := strings.LastIndex(key, ".")
+	if i <= 0 || i == len(key)-1 {
+		return nil, fmt.Errorf("apidoc/yaml: invalid key %q", key)
+	}
+	return setMethod(nil, key[:i], key[i+1:], fromRules(rules))
 }

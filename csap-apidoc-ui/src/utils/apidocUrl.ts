@@ -41,6 +41,11 @@ export function apidocMethodUrl(resourceUrl: string): string {
   return endpoint(resourceUrl, '/csap/apidoc/method');
 }
 
+/** `GET …/csap/schema.json?download=true` (JSON Schema bundle, 1.4.0) for the selected resource. */
+export function apidocSchemaUrl(resourceUrl: string): string {
+  return apidocServiceBase(resourceUrl) + '/csap/schema.json?download=true';
+}
+
 /** `GET …/csap/apidoc/parent` for the selected resource. */
 export function apidocParentUrl(resourceUrl: string): string {
   return endpoint(resourceUrl, '/csap/apidoc/parent');

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"reflect"
 	"sort"
@@ -12,6 +13,7 @@ import (
 	"sync/atomic"
 
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/filter"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/mock"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
 )
@@ -53,6 +55,16 @@ type Options struct {
 	// 与 Java 只过滤控制器正常返回的对象一致。
 	// 业务失败也用 200 返回时,可以在这里按请求或状态码进一步排除。
 	ShouldFilter func(r *http.Request, status int) bool
+	// ShouldFilterBody 按响应体细判是否裁剪,用于"业务失败也返回 HTTP 200"的接口:
+	// 响应已缓冲、裁剪之前调用,返回 false 时这次响应原样输出。nil 时不做这层判断,行为与 v0.1.1 相同。
+	// 先后顺序:先 ShouldFilter(只看请求和状态码,粗筛),返回 true 才会走到 ShouldFilterBody(再看响应体);
+	// ShouldFilter 返回 false 时不会调用它。body 是业务 handler 写出的原始字节,只读,不要修改。
+	// 常用判断见 SuccessField。
+	ShouldFilterBody func(r *http.Request, status int, body []byte) bool
+	// Mock 是 Mock 服务的配置,默认关闭。开启后 /csap/mock/{原路径} 按文档里的返回结构生成可复现的假数据。
+	Mock MockOptions
+	// Schema 是 JSON Schema 导入导出的配置。导出(/csap/schema.json、/csap/schema/method)始终开启;导入默认关闭。
+	Schema SchemaOptions
 	// TypeNames 覆盖结构体类型在文档里的显示名(相当于 Java @ApiModel 的 value),
 	// 键为 reflect.TypeOf(T{}),指针类型按其元素类型处理。优先级:TypeNames > 类型的 ApidocName() 方法 > 类型名。
 	TypeNames map[reflect.Type]string
@@ -114,6 +126,9 @@ func New(opts Options) *Doc {
 		}
 		opts.TypeNames = names
 	}
+	if opts.Mock.Enabled {
+		slog.Warn("csap-apidoc mock is ENABLED, /csap/mock/** returns synthetic data; do not enable in production")
+	}
 	return &Doc{opts: opts, groups: map[string]GroupInfo{}, dirty: true}
 }
 
@@ -140,6 +155,15 @@ func (d *Doc) ShouldFilter(r *http.Request, status int) bool {
 		return d.opts.ShouldFilter(r, status)
 	}
 	return status >= 200 && status < 300
+}
+
+// ShouldFilterBody 在 ShouldFilter 返回 true 之后调用,按响应体判断是否裁剪;
+// 没有设置 Options.ShouldFilterBody 时恒为 true。适配器的 ResponseFilter 在裁剪前调用。
+func (d *Doc) ShouldFilterBody(r *http.Request, status int, body []byte) bool {
+	if d.opts.ShouldFilterBody != nil {
+		return d.opts.ShouldFilterBody(r, status, body)
+	}
+	return true
 }
 
 // Options 返回创建时的配置(已填充默认值)。
@@ -255,6 +279,9 @@ type Snapshot struct {
 	defs        map[string]*opDef                   // 规则的键 -> 接口声明(同名取第一个),devtools 生成完整字段用
 	types       map[string]reflect.Type             // 类型全名 -> 类型,devtools 按类名取字段用
 	doc         *Doc
+
+	mockOnce   sync.Once
+	mockRouter *mock.Router
 
 	dataOnce sync.Once
 	dataJSON []byte

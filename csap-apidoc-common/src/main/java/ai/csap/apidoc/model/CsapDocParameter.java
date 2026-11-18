@@ -61,6 +61,13 @@ public class CsapDocParameter implements Cloneable {
     private String example;
 
     /**
+     * Mock 取值:任意 JSON 值(字面值或 @int(lo,hi) 等表达式字符串),来自字段规则,原样透传
+     *
+     * @since 1.4.0
+     */
+    private Object mock;
+
+    /**
      * 参数的默认值
      * 当请求中未提供此参数时使用的默认值
      */

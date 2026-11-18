@@ -41,6 +41,13 @@ public class McpAdminController {
         this.properties = properties;
     }
 
+    private static Map<String, String> hint(String zh, String en) {
+        Map<String, String> h = new LinkedHashMap<>();
+        h.put("zh", zh);
+        h.put("en", en);
+        return h;
+    }
+
     @GetMapping("status")
     public ApidocResult<Map<String, Object>> status() {
         Map<String, Object> m = new LinkedHashMap<>();
@@ -48,7 +55,15 @@ public class McpAdminController {
         m.put("enabled", s != null);
         m.put("path", properties.getPath());
         m.put("protocolVersions", McpVersions.ALL);
+        // 语言中立的前端优先显示后端给的提示(Java 写法);格式见 docs/design/devtools-hints.md
+        m.put("persistHint", hint("需要持久化请配置 csap.apidoc.mcp.config-file", "To persist the settings, set csap.apidoc.mcp.config-file"));
+        m.put("tokenHint", hint("令牌在配置 csap.apidoc.mcp.auth.tokens 中设置", "Tokens are set in csap.apidoc.mcp.auth.tokens"));
+        m.put("securityNotes", java.util.Collections.singletonList(hint(
+                "使用 Spring Security 时放行 /csap/mcp 并对其关闭 CSRF",
+                "With Spring Security, permit /csap/mcp and disable CSRF for it")));
         if (s == null) {
+            m.put("hint", hint("在配置文件中开启后重启服务:\ncsap:\n  apidoc:\n    mcp:\n      enabled: true\n      auth:\n        tokens:\n          - name: my-ide\n            value: ${CSAP_MCP_TOKEN:}",
+                    "Enable it in the configuration and restart:\ncsap:\n  apidoc:\n    mcp:\n      enabled: true\n      auth:\n        tokens:\n          - name: my-ide\n            value: ${CSAP_MCP_TOKEN:}"));
             return ApidocResult.success(m);
         }
         m.put("authMode", s.authMode().name().toLowerCase());
@@ -57,6 +72,7 @@ public class McpAdminController {
         m.put("tokenNames", s.getAuthenticator().tokenNames());
         m.put("upstreamHeaderNames", new ArrayList<>(properties.getAuth().getUpstreamHeaders().keySet()));
         m.put("exposeGetByDefault", properties.isExposeGetByDefault());
+        m.put("exposeDeprecated", properties.isExposeDeprecated());
         m.put("storeType", s.getStore().type());
         m.put("storeLocation", s.getStore().location());
         m.put("storePersistent", s.getStore().isPersistent());
@@ -92,6 +108,8 @@ public class McpAdminController {
             m.put("enabledSetting", t.getEnabledSetting());
             m.put("readOnly", t.isReadOnly());
             m.put("hidden", t.isHidden());
+            m.put("status", t.getStatus());
+            m.put("statusNote", t.getStatusNote());
             m.put("unsupportedReason", t.getUnsupportedReason());
             m.put("inputSchema", t.getInputSchema());
             out.add(m);

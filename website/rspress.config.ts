@@ -23,7 +23,7 @@ export default defineConfig({
       { text: '发布说明', link: '/changelog' },
       { text: '下载', link: '/download/' },
       {
-        text: 'v1.3.0',
+        text: 'v1.4.0',
         items: [
           { text: 'GitHub Releases', link: `${repo}/releases` },
           { text: 'Maven Central', link: 'https://central.sonatype.com/namespace/ai.csap.apidoc' },
@@ -49,6 +49,8 @@ export default defineConfig({
           items: [
             { text: '注解', link: '/guide/annotations' },
             { text: '存储策略与返回过滤', link: '/guide/storage-strategies' },
+            { text: '数据库模式', link: '/guide/database-mode' },
+            { text: 'Redis 模式', link: '/guide/redis-mode' },
             { text: '返回字段过滤', link: '/guide/runtime-filter' },
             { text: '参数校验', link: '/guide/validation' },
             { text: 'DevTools', link: '/guide/devtools' },
@@ -63,6 +65,16 @@ export default defineConfig({
             { text: '导出', link: '/guide/export' },
             { text: '网关聚合', link: '/guide/gateway-aggregation' },
             { text: '架构', link: '/guide/architecture' },
+          ],
+        },
+        {
+          text: '1.4.0 新增',
+          items: [
+            { text: 'Mock 服务', link: '/guide/mock' },
+            { text: 'JSON Schema 导入导出', link: '/guide/json-schema' },
+            { text: '版本对比与破坏性变更', link: '/guide/api-diff' },
+            { text: '接口上下线管理', link: '/guide/api-status' },
+            { text: '字段库与模板', link: '/guide/field-library' },
           ],
         },
         {

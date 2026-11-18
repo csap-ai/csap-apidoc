@@ -174,13 +174,27 @@ public interface IValidateBaseFactory extends ValidateFilter {
     default Validate.ValidateField addRequestValidate(String key, String fileKeyName, String fieldName,
                                                        String fieldRemark, BaseModel baseModel,
                                                        List<Validate.ConstraintValidatorField> list) {
+        return addRequestValidate(key, fileKeyName, fieldName, fieldRemark, baseModel, list, true);
+    }
+
+    /**
+     * 添加请求参数验证(必填或非必填)。
+     * <p>1.4.0 起非必填但有校验规则的字段也登记(required=false):没传值(null)时不校验,传了值就校验;
+     * 没有规则的非必填字段不需要登记。
+     *
+     * @param required 是否必填
+     */
+    default Validate.ValidateField addRequestValidate(String key, String fileKeyName, String fieldName,
+                                                       String fieldRemark, BaseModel baseModel,
+                                                       List<Validate.ConstraintValidatorField> list,
+                                                       boolean required) {
         List<Validate.ConstraintValidatorField> rules = list == null ? new ArrayList<>() : list;
         Validate.ValidateField validateField = baseModel.getValidateField() != null ?
                 addValidateField(fieldName, fieldRemark, baseModel.getValidateField(), rules) :
                 method(key)
                         .addValidateField(fileKeyName, baseModel)
                         .putValidateField(fieldName, fieldRemark, rules, baseModel);
-        return validateField.required(true);
+        return validateField.required(required);
     }
 
     /**
