@@ -94,7 +94,7 @@ Go 的 handler 签名都一样,看不出请求和返回用的是哪个结构体,
 - SQL:`strategy/sql`(SQLite / PostgreSQL / MySQL),保存时版本号加 1,多实例轮询(默认 5 秒)或经 Redis 通知后重新加载;表名前缀默认 `csap_apidoc_`。
   - **v0.2.0 起(Java 1.4.0 数据库模式共用的表结构,当前已发布 v0.1.1 没有)**:表加 `service` 列(`Options.Service`,默认 `default`,≤128),列名 `rules` / `before_rules` / `after_rules`;方言增加 `sqlstrategy.DM`、`sqlstrategy.Kingbase`(达梦、金仓只做了语句层面的测试,没连真实库,属于试用);`EnsureSchema` 建表,发现 v0.1.x 旧表返回 `ErrLegacySchema` 且不自动改;`Schema()` 返回建表语句;可选 `ServiceNotifier` 让通知带服务名。
   - **从 v0.1.x 升级**:停掉旧实例并备份 → 用 `Options.Service` 指定服务名(旧数据归到它名下)→ `s.Migrate(ctx)`(可重复执行),或 `s.MigrationSQL()` 交 DBA 手工执行。MySQL / 达梦 DDL 隐式提交,中途失败要手工处理。详见官网[数据库模式](https://apidoc.csap.ai/guide/database-mode)和仓库 `csap-apidoc-go/docs/SQL.md`。
-  - Redis 作为规则存储在 1.4.0 规划中,尚未实现,不要给用户写用法。
+  - Redis 作为规则存储(Redis 模式)在 Go v0.2.0 / Java 1.4.0 实现中,尚未发布,不要给用户写用法。
 
 ## 7. 返回字段过滤
 

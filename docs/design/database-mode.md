@@ -1,6 +1,6 @@
 # 数据库模式与 Redis 模式(规则集中存储)方案
 
-状态:已审定(2026-11-18),实现中(数据库模式的 Java、Go 实现已完成验收;迁移工具未完成;Redis 模式尚未开始实现)。计划版本:Java 1.4.0(2026-12-22);Go 已有 SQL 规则来源,同步调整表结构。
+状态:已审定(2026-11-18),实现中(数据库模式的 Java、Go 实现已完成验收;Redis 模式、迁移工具实现中)。计划版本:Java 1.4.0(2026-12-22);Go 已有 SQL 规则来源,同步调整表结构。
 
 ## 1. 为什么要做
 
@@ -116,16 +116,24 @@ csap:
       key-prefix: "csap:apidoc:"   # 键前缀
       service: order-service       # 服务名,同一个 Redis 存多个服务时区分
       history-limit: 200           # 每个接口保留的修改记录条数
+      poll-interval: 5s            # 版本号轮询兜底间隔
+      subscribe: true              # 是否订阅变更频道即时同步
+      read-only: false             # true:只读,禁止保存和回滚
 ```
 
+数据约定(键名、修改记录格式、保存用的 Lua 脚本、同步与回滚流程)**以 [redis-mode.md](redis-mode.md) 为准**,Java 与 Go 必须一致,改动前先改那份文档。要点:
+
 - **连接**:Java 使用应用已有的 `RedisConnectionFactory`(Spring Data Redis,可选依赖,Boot 2 / 3 通用),不另建连接;Go 由使用方传入实现了简单接口的客户端(主模块不引入 Redis 依赖,go-redis 的适配示例写在文档里)。
-- **数据结构**(Java 与 Go 一致):
-  - `{prefix}{service}:rules`:Hash,字段是规则键(类名.方法名 / 分组.接口名),值是规则 JSON(与数据库模式、YAML 同一结构);
-  - `{prefix}{service}:version`:全局版本号;
-  - `{prefix}{service}:history:{规则键}`:List,保存修改前后内容、修改人、时间,保留 `history-limit` 条;
-  - 保存时用 `MULTI`/`EXEC`(或 Lua 脚本)一次完成"版本号加 1、写规则、写修改记录",并 `PUBLISH` 到 `{prefix}{service}:changed`。
-- **多实例同步**:订阅变更频道即时生效,同时按间隔检查版本号兜底(订阅断开时也不会漏)。
+- **键**(服务名用 hash tag 包起来,同一服务的键落在 Redis Cluster 的同一个槽):
+  - `{prefix}{{service}}:rules`:Hash,字段是规则键(类名.方法名 / 分组.接口名),值是规则 JSON(与数据库模式、YAML 同一结构);
+  - `{prefix}{{service}}:version`:全局版本号;
+  - `{prefix}{{service}}:history:{规则键}`:List,保存修改前后内容、修改人、时间,保留 `history-limit` 条;
+  - `{prefix}{{service}}:changes`:Hash,修改记录 id → 规则键的索引,用于按 id 回滚;
+  - 频道 `{prefix}{{service}}:changed`:保存后发布新版本号。
+- 保存用一段 Lua 脚本原子完成"版本号加 1、写规则、写修改记录、更新索引、发布通知"。
+- **多实例同步**:订阅变更频道即时生效,同时按 `poll-interval` 检查版本号兜底(订阅断开时也不会漏)。
 - **修改记录与回滚**:支持,但只保留最近 `history-limit` 条;需要完整、长期的审计追溯时请用数据库模式(团队版的审计基于数据库)。
+- **只读模式**:与数据库模式相同,不能保存、不能回滚。
 - **持久化提醒**:Redis 需要开启 AOF 或 RDB 持久化,否则重启会丢规则;文档里写明,并提供"导出成 YAML"作为备份。
 - 迁移工具同样支持 YAML / SQLite / 数据库 ↔ Redis。
 

@@ -273,7 +273,91 @@ if err := s.Migrate(ctx); err != nil { /* ... */ }
 - 其他实例每隔 `poll-interval`（默认 5 秒）查一次版本号，变了就重新加载规则，不需要重启。轮询失败只打 WARN，继续使用内存中的规则。
 - 发现版本变化后，本实例重新加载规则，并重新生成受影响类的文档和字段规则，运行时返回字段过滤、请求校验随之更新；DevTools 关闭的生产实例会整体重新扫描一次文档。回滚同样会触发其他实例的同步。
 - `poll-interval: 0` 关闭轮询，此时其他实例要重启才会读到新规则。
-- 可选的即时通知（例如 Redis）见 [Redis 模式](#redis-模式规划中)，不是默认行为。
+- 可选的即时通知（例如 Redis）见 [Redis 模式](/guide/redis-mode)，不是默认行为。
+
+## 修改记录与回滚
+
+每次保存都会往 `{prefix}history` 写一条：接口（`rule_key`）、修改前后的内容（`before_rules` / `after_rules`）、版本号、修改人、时间。Java 与 Go 的记录格式一致。
+
+### DevTools「规则记录」页
+
+DevTools 的侧栏有「规则记录」页（`/devtools-ui/rules`），页面语言跟随浏览器，可切换中 / 英：
+
+- 列表显示时间、规则键、操作（新增 / 修改 / 删除）、版本、修改人，可按规则键筛选；
+- 点开一条可以并排查看修改前后的差异；
+- 回滚需要确认。回滚本身会生成一个新版本，修改人记为 `devtools-rollback`，其他实例随后按 `poll-interval` 同步；
+- 在 DevTools 里保存规则时，修改人记为 `devtools`；
+- 只读模式下不能回滚（接口返回 `code = 1007`）；没有使用数据库模式时，页面显示如何切换到数据库模式的说明。
+
+页面对应的接口（相对于应用的 context-path，只有开启 DevTools 时注册）：
+
+| 接口 | 作用 |
+|------|------|
+| `GET devtools/rules/status` | 当前是否是数据库模式、是否只读 |
+| `GET devtools/rules/history` | 修改记录，可按规则键筛选 |
+| `POST devtools/rules/rollback` | 回滚，请求体 `{"changeId": 记录ID}` |
+
+`history` 表只增不改，需要完整、长期的审计追溯时，由 [团队版](/roadmap) 在这套表的基础上提供（成员、审批、防篡改记录等）。
+
+## 只读模式
+
+`csap.apidoc.database.read-only=true` 时：
+
+- 只读取库里的规则，不建表、不写入；表必须已经存在（缺表时启动报错，提示执行建表 SQL）；
+- DevTools 保存和回滚都被拒绝，返回明确的中英文提示（说明处于只读状态、请在有写权限的环境修改、本实例会按 `poll-interval` 自动同步），而不是静默失败。
+
+适合生产环境：规则在测试环境（或之后团队版的审批流）里修改，生产环境只读取。轮询同步仍然有效，在别处改了规则，只读的实例也会按 `poll-interval` 加载到。
+
+## 迁移
+
+:::warning 1.4.0 实现中
+迁移工具（`csap-apidoc-migrate`）**还在实现中**，下面是已定的行为，命令、参数和输出格式等实现定稿后补充，**以实现为准**。
+:::
+
+迁移工具在以下存储之间搬运规则，规则内容是同一种 JSON 结构，不做转换：
+
+| 方向 | 用途 |
+|------|------|
+| YAML 目录 → 数据库 / Redis | 从 YAML 切换到数据库模式或 Redis 模式 |
+| SQLite 文件 → 数据库 / Redis | 同上 |
+| 数据库 / Redis → YAML 目录 | 导出成 YAML 做备份，纳入 Git 审查 |
+
+已定的行为：
+
+- **默认不覆盖**：导入前检查冲突，目标里已经有的规则默认不覆盖；
+- **可以回滚**：导入本身按一次保存记录，修改人是 `migrate`，在修改记录里能看到、能回滚；
+- 导出的 YAML 与原来 `*-method-field.yaml` 同一结构。
+
+在工具完成之前，可以保留原来的 YAML / SQLite，先在测试环境用数据库模式试用，再用 DevTools 重新勾选需要的规则。Go 旧表的升级见 [从 Go v0.1.x 的旧表升级](#从-go-v01x-的旧表升级)。
+
+原来的 `paramType = SQL_LITE` 继续可用，只是生产环境、多实例推荐改用数据库模式。
+
+## 从 Go v0.1.x 的旧表升级
+
+Go v0.1.x 的 SQL 规则来源建的表没有 `service` 列，`meta` 表是 `id = 1` 的单行。Java 数据库模式启动时发现这种旧表（`rule` 表存在但没有 `service` 列）会直接报错并提示升级，不会改动旧表；用 Go v0.2.0 升级：
+
+1. 停掉所有旧版本实例，**备份数据库**。
+2. 升级到 Go v0.2.0，用 `Options.Service` 指定服务名（没填就是 `default`），旧数据全部归到这个服务名下：
+
+```go
+s := sqlstrategy.New(sqlstrategy.Options{DB: db, Dialect: sqlstrategy.MySQL, Service: "order-service"})
+if err := s.Migrate(ctx); err != nil { /* ... */ }
+```
+
+3. 或者用 `s.MigrationSQL()` 取出迁移 SQL，由 DBA 手工执行。各方言的 SQL 见 [SQL.md](https://github.com/csap-ai/csap-apidoc/blob/main/csap-apidoc-go/docs/SQL.md)。
+
+`Migrate` 可以重复执行；SQLite、PostgreSQL、人大金仓的 DDL 在事务里，失败整体回滚，MySQL 和达梦的 DDL 会隐式提交，中途失败要按报错手工处理，所以更要先备份。
+
+也可以不迁移：给 Java 换一个新的 `table-prefix`，让它用全新的表。
+
+## 多实例同步
+
+- 全局版本号存在 `{prefix}meta` 表里，按 `service` 区分。
+- DevTools 保存时，在一个事务里完成：先更新全局版本号（取得行锁，保证并发保存串行）、写规则、写修改记录，然后立即刷新当前实例。
+- 其他实例每隔 `poll-interval`（默认 5 秒）查一次版本号，变了就重新加载规则，不需要重启。轮询失败只打 WARN，继续使用内存中的规则。
+- 发现版本变化后，本实例重新加载规则，并重新生成受影响类的文档和字段规则，运行时返回字段过滤、请求校验随之更新；DevTools 关闭的生产实例会整体重新扫描一次文档。回滚同样会触发其他实例的同步。
+- `poll-interval: 0` 关闭轮询，此时其他实例要重启才会读到新规则。
+- 可选的即时通知（例如 Redis）见 [Redis 模式](/guide/redis-mode)，不是默认行为。
 
 ## 修改记录与回滚
 
@@ -322,12 +406,13 @@ YAML 目录 / SQLite 文件与数据库之间互相导入导出的迁移工具�
 
 Go v0.2.0 的 SQL 规则来源改用上面这套表，Java 与 Go 的服务可以指向同一个库，各用各的 `service` 名；规则键不同（Java 是 `类全名.方法名`，Go 是 `分组.接口名`），规则 JSON 结构相同。API、方言和升级步骤见 [Go 版](/go/#sql-规则来源v020)。
 
-## Redis 模式（规划中）
+## Redis 模式
 
-1.4.0 计划同时提供 Redis 模式：规则存进 Redis，多实例订阅变更后即时同步，Java 与 Go 使用同一种数据结构。**目前还没有实现**，用法和配置项以发布时的文档为准。已确定的取舍：修改记录只保留最近若干条，需要完整、长期的审计追溯时请用数据库模式；Redis 需要开启持久化，否则重启会丢规则。
+没有关系数据库、或希望规则跟随已有 Redis 时，见 [Redis 模式](/guide/redis-mode)（1.4.0 实现中）。
 
 ## 相关页面
 
+- [Redis 模式](/guide/redis-mode)（1.4.0 实现中）
 - [存储策略与返回过滤](/guide/storage-strategies)：各种规则来源和字段如何进入文档
 - [DevTools](/guide/devtools)：保存规则、打包运行时能否保存
 - [配置参考](/guide/configuration)

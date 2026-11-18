@@ -160,7 +160,7 @@ example.UserController:          # 分组(Java 的 Controller 全名)
 - 目录下所有 `.yaml/.yml` 都会加载,文件名不要求与分组对应。`yaml.FS(fsys, dir)` 可以从 `go:embed` 只读加载。
 - Go 版新增的 `hidden`(只在文档隐藏)、`example` 字段,Java 读取时会忽略。
 - 多实例部署、需要在线修改时,可以换成 SQL 规则来源 `strategy/sql`(SQLite / PostgreSQL / MySQL),保存时版本号加 1,其他实例轮询或经 Redis 通知后重新加载。
-- v0.2.0 起 SQL 规则来源的表结构与 Java 1.4.0 的[数据库模式](/guide/database-mode)统一,见下面的 [SQL 规则来源(v0.2.0)](#sql-规则来源v020)。Redis 作为规则存储在 1.4.0 规划中,尚未实现。
+- v0.2.0 起 SQL 规则来源的表结构与 Java 1.4.0 的[数据库模式](/guide/database-mode)统一,见下面的 [SQL 规则来源(v0.2.0)](#sql-规则来源v020)。Redis 作为规则存储([Redis 模式](/guide/redis-mode))在 1.4.0 / Go v0.2.0 实现中,尚未发布。
 
 规则来源按 **结构体标签 < YAML < SQL** 的顺序合并,后面的覆盖前面的。
 
