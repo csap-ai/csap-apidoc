@@ -37,7 +37,7 @@ features:
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.1.1</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
@@ -45,5 +45,5 @@ features:
 
 ## 适用范围
 
-- **多语言**:Java 版已发布(Spring Boot 2.x / 3.x,见 [安装](/guide/installation));Go 版开发中,见 [Go 版](/go/);Rust 等更多语言陆续支持。各语言共用同一个文档页面和同一种规则文件。
+- **多语言**:Java 版已发布(Spring Boot 2.x / 3.x,见 [安装](/guide/installation));Go 版 v0.1.0 已发布,见 [Go 版](/go/);Rust 等更多语言陆续支持。各语言共用同一个文档页面和同一种规则文件。
 - 已发布到 [Maven Central](https://central.sonatype.com/namespace/ai.csap.apidoc),基于 [Apache-2.0](https://github.com/csap-ai/csap-apidoc/blob/main/LICENSE) 协议开源。

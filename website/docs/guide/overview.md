@@ -14,8 +14,8 @@ CSAP Apidoc 是一个多语言的运行时 API 文档框架,以 Apache-2.0 协�
 
 | 语言 | 状态 | 支持的框架 |
 | --- | --- | --- |
-| Java | 已发布,当前版本 **1.1.1**(1.1.0 是首个发布到 Maven Central 的版本,但实际需要 Java 17,建议升级到 1.1.1) | Spring Boot 2.x / 3.x |
-| Go | 开发中,见 [Go 版](/go/) | gin、net/http |
+| Java | 已发布,当前版本 **1.2.0**(1.1.0 实际需要 Java 17,请使用 1.1.1 及以上) | Spring Boot 2.x / 3.x |
+| Go | 已发布,当前版本 **v0.1.0**,见 [Go 版](/go/) | gin、net/http |
 | Rust | 规划中 | axum、actix-web |
 | 更多语言 | 陆续支持 | — |
 

@@ -25,12 +25,12 @@ CSAP Apidoc 在服务运行时直接从代码生成 API 文档,不需要单独�
 
 | 语言 | 状态 | 支持的框架 |
 |---|---|---|
-| **Java** | ✅ 已发布 [1.1.1](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
-| **Go** | 🚧 开发中([PR #13](https://github.com/csap-ai/csap-apidoc/pull/13)) | gin、net/http |
+| **Java** | ✅ 已发布 [1.2.0](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
+| **Go** | ✅ 已发布 [v0.1.0](https://pkg.go.dev/github.com/csap-ai/csap-apidoc/csap-apidoc-go)(`go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.0`) | gin、net/http |
 | **Rust** | 📋 规划中 | axum、actix-web |
 | 更多语言 | 📋 陆续支持 | 见 [路线图](docs/ROADMAP.md) |
 
-## 已有能力(Java 1.1.x)
+## 已有能力(Java)
 
 - **运行时生成文档**:启动时扫描注解,生成文档,访问 `/csap-api.html` 查看。
 - **字段规则**:用注解、YAML 文件或 SQLite 描述每个接口显示哪些请求参数和返回字段;同一个模型在不同接口里可以显示不同字段。
@@ -38,8 +38,8 @@ CSAP Apidoc 在服务运行时直接从代码生成 API 文档,不需要单独�
 - **导出**:在文档页导出 OpenAPI 3.0、Postman v2.1、Markdown,或复制为 TypeScript 类型。
 - **DevTools**:开发环境下用可视化界面勾选字段、配置校验规则,写回 YAML。
 - **网关聚合**:一个页面切换查看多个服务的文档。
-
-> 运行时的**返回字段过滤**和**请求参数校验**在 1.1.x 中只记录规则、不执行,将在 1.2.0 作为独立模块补上,见 [路线图](docs/ROADMAP.md)。
+- **返回字段过滤**(1.2.0 起,默认关闭):按接口规则只返回文档里显示的字段,支持 Jackson、fastjson、fastjson2,见 [返回字段过滤](https://apidoc.csap.ai/guide/runtime-filter)。
+- **请求参数校验**(1.2.0 起,默认关闭):关闭 / 观察 / 拦截三种模式,可按接口覆盖,见 [参数校验](https://apidoc.csap.ai/guide/validation)。
 
 ## 快速开始(Java)
 
@@ -49,7 +49,7 @@ CSAP Apidoc 在服务运行时直接从代码生成 API 文档,不需要单独�
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.1.1</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 

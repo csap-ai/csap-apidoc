@@ -1,6 +1,6 @@
 # 获取方式
 
-本页列出获取 CSAP Apidoc 的三种方式：从 Maven Central 引入依赖、从 GitHub 获取发布版本，以及从源码构建。当前版本是 **1.1.1**。1.1.0 是第一个发布到 Maven Central 的版本，但它的 jar 实际是 Java 17 字节码，需要 JDK 17 才能运行，建议升级到 1.1.1（Java 11 字节码）。
+本页列出获取 CSAP Apidoc 的三种方式：从 Maven Central 引入依赖、从 GitHub 获取发布版本，以及从源码构建。当前版本是 **1.2.0**。1.1.0 是第一个发布到 Maven Central 的版本，但它的 jar 实际是 Java 17 字节码，需要 JDK 17 才能运行，请使用 1.1.1 及以上（Java 11 字节码）。
 
 ## Maven Central
 
@@ -10,12 +10,12 @@
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.1.1</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
 ```groovy
-implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.1.1'
+implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.2.0'
 ```
 
 参数校验 starter `csap-validation-boot-starter` 是可选的，只在需要它的校验异常处理器或 `ValidationProperties` 时引入，见 [安装](/guide/installation)。
@@ -45,13 +45,13 @@ implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.1.1'
 ## GitHub
 
 - 源码仓库：[github.com/csap-ai/csap-apidoc](https://github.com/csap-ai/csap-apidoc)，`main` 是唯一的开发分支。
-- 发布页面：[GitHub Releases](https://github.com/csap-ai/csap-apidoc/releases)。每个版本对应一个 `vX.Y.Z` 标签（1.1.1 对应 `v1.1.1`），发布说明列出该版本的主要变化。
+- 发布页面：[GitHub Releases](https://github.com/csap-ai/csap-apidoc/releases)。每个版本对应一个 `vX.Y.Z` 标签（1.2.0 对应 `v1.2.0`），发布说明列出该版本的主要变化。
 - 发布页面不附带 jar 包，jar 请从 Maven Central 获取；需要源码时可以下载该标签的源码压缩包，或用 git 检出该标签。
 
 ```bash
 git clone https://github.com/csap-ai/csap-apidoc.git
 cd csap-apidoc
-git checkout v1.1.1
+git checkout v1.2.0
 ```
 
 ## 从源码构建
@@ -70,7 +70,7 @@ git checkout v1.1.1
 mvn -B clean install
 ```
 
-完成后，所有模块以根 `pom.xml` 中的版本（检出 `v1.1.1` 时为 `1.1.1`）安装到本地 Maven 仓库（`~/.m2/repository/ai/csap/apidoc/`），其他项目可以直接引用。
+完成后，所有模块以根 `pom.xml` 中的版本（检出 `v1.2.0` 时为 `1.2.0`）安装到本地 Maven 仓库（`~/.m2/repository/ai/csap/apidoc/`），其他项目可以直接引用。
 
 :::tip 关于测试
 根 `pom.xml` 中 `skipTests` 默认是 `true`，上面的命令不会运行单元测试。需要运行测试时显式打开：

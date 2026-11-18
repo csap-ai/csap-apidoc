@@ -4,7 +4,7 @@ csap-apidoc-go 的版本号独立于 Java 版,tag 格式为 `csap-apidoc-go/vX.Y
 
 ## [未发布]
 
-## [0.1.0] - 2026-12-04
+## [0.1.0] - 2026-11-17
 
 首个版本。模块路径 `github.com/csap-ai/csap-apidoc/csap-apidoc-go`,最低 Go 1.22。协议与 Java 版 1.1.x 兼容。
 

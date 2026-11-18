@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.2.0] - Unreleased
+## [1.2.0] - 2026-11-17
 
-Draft. Runtime response filtering and runtime request validation are new and
+Runtime response filtering and runtime request validation are new and
 both **off by default**; enabling either changes what clients receive, so try
 them on a few endpoints first.
 
@@ -94,6 +94,11 @@ them on a few endpoints first.
   BeanToArray or PrettyFormat (fastjson 1.x). Values written by a custom
   serializer are also filtered the old way. The output is the same either
   way.
+
+  Rules that allow every field still cost 24%-32%: nested and polymorphic
+  values are checked so that fields added by a runtime subclass are not
+  leaked. If an endpoint should return everything, leave it without rules
+  instead.
 - The DevTools page has no dark mode yet.
 - Overloaded methods with the same name share one set of rules and one
   per-endpoint setting (the key is `ClassName.methodName`), for both

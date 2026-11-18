@@ -6,20 +6,20 @@
 
 | 项目 | 要求 | 依据 |
 | --- | --- | --- |
-| JDK | 11 及以上 | 1.1.1 起所有模块编译为 Java 11 字节码，CI 在 JDK 11 / 17 / 21 上构建。1.1.0 的 jar 实际是 Java 17 字节码，需要 JDK 17，建议升级到 1.1.1 |
+| JDK | 11 及以上 | 1.1.1 起所有模块编译为 Java 11 字节码，CI 在 JDK 11 / 17 / 21 上构建。1.1.0 的 jar 实际是 Java 17 字节码，需要 JDK 17，请使用 1.1.1 及以上 |
 | Spring Boot | 2.x 或 3.x | 仓库提供 Spring Boot 2.7.18 和 3.2.0 两个示例工程 |
 | Spring Boot 3 的 JDK | 17 及以上 | Spring Boot 3 自身的要求 |
 | Web 栈 | Spring MVC（`spring-boot-starter-web`） | 文档接口和页面以 Spring MVC Controller 与静态资源方式提供 |
 
 ## 添加依赖
 
-所有构件都发布在 Maven Central，当前版本 `1.1.1`。一般项目只需要引入文档 starter。
+所有构件都发布在 Maven Central，当前版本 `1.2.0`。一般项目只需要引入文档 starter。
 
 ### Maven
 
 ```xml
 <properties>
-    <csap.apidoc.version>1.1.1</csap.apidoc.version>
+    <csap.apidoc.version>1.2.0</csap.apidoc.version>
 </properties>
 
 <dependencies>
@@ -97,7 +97,7 @@ dependencies {
 <dependency>
     <groupId>ai.csap.apidoc</groupId>
     <artifactId>csap-apidoc-annotation</artifactId>
-    <version>1.1.1</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
