@@ -7,7 +7,7 @@
 ```bash
 cd website
 npm ci
-npm run dev       # http://localhost:5173
+npm run dev       # 本地预览,地址以终端输出为准
 npm run build     # 产物在 doc_build/,构建时会检查站内死链
 ```
 
@@ -21,6 +21,7 @@ npm run build     # 产物在 doc_build/,构建时会检查站内死链
 | `docs/go/` | Go 版 |
 | `docs/download/` | 获取方式 |
 | `docs/changelog.md` | 发布说明,构建时由 `scripts/sync.mjs` 从仓库根目录的 `CHANGELOG.md` 生成,不要手改 |
+| `docs/roadmap.md` | 路线图,构建时由 `scripts/sync.mjs` 从 `docs/ROADMAP.md` 生成,不要手改 |
 | `docs/public/` | 静态资源;`CNAME` 是自定义域名 |
 | `rspress.config.ts` | 导航、侧边栏 |
 

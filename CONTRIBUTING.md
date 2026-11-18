@@ -13,9 +13,11 @@ First off, thank you for considering contributing to CSAP Framework API Doc! It'
     - [Pull Requests](#pull-requests)
   - [Development Setup](#development-setup)
     - [Prerequisites](#prerequisites)
-    - [Backend Setup](#backend-setup)
-    - [Frontend Setup (DevTools)](#frontend-setup-devtools)
-    - [Running the Example](#running-the-example)
+    - [Backend Setup (Java)](#backend-setup-java)
+    - [Frontend Setup](#frontend-setup)
+    - [Running an Example](#running-an-example)
+    - [Website](#website)
+    - [Go](#go)
   - [Style Guidelines](#style-guidelines)
     - [Java Code Style](#java-code-style)
     - [TypeScript/JavaScript Code Style](#typescriptjavascript-code-style)
@@ -144,9 +146,9 @@ Describe the tests you ran and how to reproduce them.
 
 ### Prerequisites
 
-- JDK 8 or higher
+- JDK 11 or higher (all modules compile to Java 11 bytecode; the Spring Boot 3 example needs JDK 17)
 - Maven 3.6+
-- Node.js 16+ (for frontend development)
+- Node.js 18+ (for frontend development; CI uses 18)
 - Git
 
 ### Backend Setup (Java)
@@ -188,7 +190,8 @@ If you change a frontend, rebuild it and commit the updated `static/` output in 
 ```bash
 cd example/example-spring-boot3   # or example-spring-boot2
 mvn spring-boot:run
-# then open http://localhost:8080/csap-api.html
+# then open http://localhost:8083/csap-api.html (example-spring-boot3) or
+# http://localhost:8082/csap-api.html (example-spring-boot2)
 ```
 
 ### Website
@@ -233,7 +236,7 @@ go test ./...
  * @return Postman collection JSON string
  * @throws IllegalArgumentException if apiDoc is null
  */
-public String convertToPostmanCollection(CsapDocParentResponse apiDoc) {
+public String convertToPostmanCollection(CsapDocResponse apiDoc) {
     if (apiDoc == null) {
         throw new IllegalArgumentException("API documentation cannot be null");
     }
@@ -310,18 +313,18 @@ refactor(core): simplify document scanning logic
 ### Running Tests
 
 ```bash
-# Run all tests
-mvn test
+# Run all tests (the root pom skips tests by default)
+mvn test -DskipTests=false
 
 # Run tests for specific module
 cd csap-apidoc-core
-mvn test
+mvn test -DskipTests=false
 
 # Run specific test class
-mvn test -Dtest=PostmanConverterServiceTest
+mvn test -DskipTests=false -Dtest=PostmanConverterServiceUrlTest
 
-# Run frontend tests
-cd csap-apidoc-devtools/devtools
+# Run frontend tests (docs page)
+cd csap-apidoc-ui
 npm test
 ```
 
@@ -338,7 +341,7 @@ npm test
 @Test
 public void testConvertToPostmanCollection_WithValidInput_ShouldReturnValidJson() {
     // Arrange
-    CsapDocParentResponse apiDoc = createTestApiDoc();
+    CsapDocResponse apiDoc = createTestApiDoc();
     
     // Act
     String result = postmanService.convertToPostmanCollection(apiDoc);
@@ -352,17 +355,16 @@ public void testConvertToPostmanCollection_WithValidInput_ShouldReturnValidJson(
 
 ## Documentation
 
-- Update README.md for significant changes
+- Update README.md and README.en.md together for significant changes
 - Add JSDoc/JavaDoc comments for public APIs
-- Update relevant documentation in the `/docs` folder
+- Update the website pages in `website/docs/` (and `docs/ROADMAP.md` / `CHANGELOG.md`, which the website syncs from) when behavior, configuration or paths change
 - Include code examples where appropriate
 
 ## Questions?
 
 Feel free to:
 - Open an issue for questions
-- Join our community discussions
-- Email us at support@csap.com
+- Email us at support@csap.ai
 
 ## License
 
