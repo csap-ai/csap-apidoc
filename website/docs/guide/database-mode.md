@@ -49,10 +49,10 @@ csap:
 
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
-| `datasource-bean` | 空 | 要使用的 `DataSource` Bean 名。空时使用应用的主 `DataSource`，不新建连接池 |
-| `dialect` | 空 | 空时按 JDBC URL 识别：`mysql` / `mariadb`、`postgresql`、`dm`、`kingbase8`、`sqlite`、`h2`。识别不了或需要覆盖时显式指定 |
-| `table-prefix` | `csap_apidoc_` | 三张表的名字前缀 |
-| `init-schema` | `true` | 启动时自动建表（表已存在则跳过）。账号没有建表权限时设为 `false`，由 DBA 手工执行 [建表 SQL](#建表-sql) |
+| `datasource-bean` | 空 | 要使用的 `DataSource` Bean 名。空时使用容器中唯一（或标记为 primary）的 `DataSource`，不新建连接池；有多个又没有 primary 时必须指定 |
+| `dialect` | 空 | 空时按 JDBC URL 识别（`jdbc:mysql:` / `jdbc:mariadb:`、`jdbc:postgresql:`、`jdbc:dm:`、`jdbc:kingbase8:`、`jdbc:sqlite:`、`jdbc:h2:`），识别不了再看数据库产品名。可选值：`mysql`、`postgresql`、`dm`、`kingbase`、`sqlite`、`h2`（不区分大小写，也接受 `mariadb`、`postgres`、`pg`、`dm8`、`kingbase8` 等写法） |
+| `table-prefix` | `csap_apidoc_` | 三张表的名字前缀，只能包含字母、数字和下划线 |
+| `init-schema` | `true` | 表不存在时启动自动建表（已存在不动）。账号没有建表权限时设为 `false`，由 DBA 手工执行 [建表 SQL](#建表-sql)，此时表不存在会在启动时报错并指出对应的 SQL 文件 |
 | `poll-interval` | `5s` | 多实例同步：每隔这个时间查一次全局版本号，变了就重新加载。`0` 表示不轮询 |
 | `service` | 空 | 服务名。空时用 `spring.application.name`，仍为空则是 `default`。同一个库存放多个服务的规则时，**每个服务必须不同**，否则规则互相覆盖 |
 | `read-only` | `false` | 见 [只读模式](#只读模式) |
@@ -63,7 +63,7 @@ csap:
 
 ### MySQL / MariaDB
 
-- 版本 **5.7.7 及以上**。表的主键是 `(service, rule_key)` 的复合主键，在 `utf8mb4` 下索引长度会超过 767 字节，需要 InnoDB 的大前缀索引（5.7.7 起默认支持；更早的版本建表会报 `Specified key was too long`）。
+- 版本 **5.7.7 及以上**。`rule` 表的主键是 `(service VARCHAR(128), rule_key VARCHAR(512))` 的复合主键，在 `utf8mb4` 下约 2.5KB，超过旧版本 InnoDB 767 字节的索引长度限制，需要 5.7.7 起默认的大索引前缀（上限 3072 字节）；更早的版本建表会失败。MariaDB 按 MySQL 方言处理。
 - 规则内容用 `LONGTEXT`，不用 `JSON` 类型，这样 5.7 和各类 MySQL 兼容库都能用。
 - 库字符集建议 `utf8mb4`。
 
@@ -73,15 +73,18 @@ csap:
 
 ### 达梦（DM8）
 
-- JDBC URL 以 `jdbc:dm:` 开头时自动识别。规则内容用 `CLOB`，自增主键用 `IDENTITY`，保存时用 `SELECT ... FOR UPDATE` 行锁串行化并发保存。
-- **驱动需要自行获取**：达梦的 JDBC 驱动由厂商提供，请从达梦官网或厂商的 Maven 仓库获取与你数据库版本匹配的驱动并加入应用依赖。框架不带驱动。
-- 达梦默认把空字符串当作 NULL，这也是建表语句里不使用字符串默认值（`DEFAULT ''`）的原因。
+:::warning 1.4.0 未在真实库上验证
+达梦和人大金仓的方言、建表 SQL 在 1.4.0 只有语句层面的测试，**没有连真实的达梦、金仓数据库验证**，属于试用。上线前请先在测试库上跑通建表、保存、多实例同步。MySQL 和 PostgreSQL 有集成测试。
+:::
+
+- JDBC URL 以 `jdbc:dm:` 开头时自动识别。规则内容用 `CLOB`，自增主键用 `IDENTITY`。
+- **驱动需要自行获取**：达梦的 JDBC 驱动不在 Maven Central，请从达梦官网或厂商提供的 Maven 仓库获取与你数据库版本匹配的驱动并加入应用依赖。框架不带驱动。
 
 ### 人大金仓（KingbaseES V8 / V9）
 
 - JDBC URL 以 `jdbc:kingbase8:` 开头时自动识别，默认按 **PostgreSQL 兼容模式**处理。
-- **驱动需要自行获取**：从人大金仓官网或厂商仓库下载与数据库版本匹配的 JDBC 驱动。
-- **兼容模式的选择**：库在初始化时可以选择 PostgreSQL、Oracle、MySQL 等兼容模式。库是 PostgreSQL 兼容模式时不用额外配置；初始化为 MySQL 或 Oracle 兼容模式的库，请用 `csap.apidoc.database.dialect` 显式指定与之匹配的方言，并先在测试库上确认建表和保存都正常。
+- **驱动需要自行获取**：人大金仓的 JDBC 驱动不在 Maven Central，请从金仓官网或厂商提供的 Maven 仓库获取与数据库版本匹配的驱动。
+- **兼容模式的选择**：库在初始化时可以选择 PostgreSQL、Oracle、MySQL 等兼容模式。库是 PostgreSQL 兼容模式时不用额外配置；初始化为 MySQL 兼容模式的库，请设置 `csap.apidoc.database.dialect=mysql`；Oracle 兼容模式的库可以试用 `dm`（Oracle 风格的方言），都请先在测试库上确认建表和保存正常。
 
 ### SQLite / H2
 
@@ -93,12 +96,12 @@ Oracle、SQL Server、OceanBase、openGauss / GaussDB 等不在 1.4.0 范围内�
 
 ## 建表 SQL
 
-默认 `init-schema: true`，框架启动时自动建表。如果应用的数据库账号没有建表权限，或者公司要求 DDL 由 DBA 执行：
+默认 `init-schema: true`，表不存在时框架启动时自动建表。如果应用的数据库账号没有建表权限，或者公司要求 DDL 由 DBA 执行：
 
 1. 设置 `csap.apidoc.database.init-schema=false`；
-2. 由 DBA 按方言执行下面的 SQL（表名前缀 `csap_apidoc_` 按需要替换）。
+2. 由 DBA 按方言执行下面的 SQL（表名前缀 `csap_apidoc_` 按需要替换，同时修改 `table-prefix`）。
 
-同样的文件在 jar 里：`META-INF/csap-apidoc/database/{mysql,postgresql,dm,kingbase,sqlite,h2}.sql`。**以 jar 里的文件为准**，下面是同一表结构的参考写法。
+下面的内容与 jar 里的 `META-INF/csap-apidoc/database/{mysql,postgresql,dm,kingbase,sqlite,h2}.sql` 一致，Go 版 v0.2.0 使用同样的表结构。
 
 三张表：
 
@@ -110,117 +113,171 @@ Oracle、SQL Server、OceanBase、openGauss / GaussDB 等不在 1.4.0 范围内�
 
 - `rule_key`：Java 是 `类全名.方法名`，Go 是 `分组.接口名`。
 - `rules`：规则 JSON，与 YAML 规则同一结构，一个接口一行。规则被清空时删除这一行（修改记录里仍保留）。
+- `before_rules` / `after_rules` 可空：空表示修改前没有规则 / 这次是删除。`updated_by` 没有修改人时写 `unknown`。
 - 时间列都是毫秒时间戳。
 - 大文本列：MySQL `LONGTEXT`，PostgreSQL / 人大金仓 `TEXT`，达梦 `CLOB`。
+- 表里不使用 `DEFAULT ''`：部分数据库的 Oracle 兼容模式会把空字符串当作 NULL。
 
-MySQL：
-
-```sql
-CREATE TABLE IF NOT EXISTS csap_apidoc_rule (
-  service    VARCHAR(128) NOT NULL,
-  rule_key   VARCHAR(255) NOT NULL,
-  rules      LONGTEXT     NOT NULL,
-  version    BIGINT       NOT NULL,
-  updated_by VARCHAR(128),
-  updated_at BIGINT       NOT NULL,
-  PRIMARY KEY (service, rule_key)
-) DEFAULT CHARSET = utf8mb4;
-
-CREATE TABLE IF NOT EXISTS csap_apidoc_history (
-  id           BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  service      VARCHAR(128) NOT NULL,
-  rule_key     VARCHAR(255) NOT NULL,
-  before_rules LONGTEXT,
-  after_rules  LONGTEXT,
-  version      BIGINT       NOT NULL,
-  updated_by   VARCHAR(128),
-  updated_at   BIGINT       NOT NULL,
-  KEY idx_csap_apidoc_history (service, rule_key, id)
-) DEFAULT CHARSET = utf8mb4;
-
-CREATE TABLE IF NOT EXISTS csap_apidoc_meta (
-  service VARCHAR(128) NOT NULL PRIMARY KEY,
-  version BIGINT       NOT NULL
-) DEFAULT CHARSET = utf8mb4;
-```
-
-PostgreSQL / 人大金仓（PostgreSQL 兼容模式）：
-
-```sql
-CREATE TABLE IF NOT EXISTS csap_apidoc_rule (
-  service    VARCHAR(128) NOT NULL,
-  rule_key   VARCHAR(255) NOT NULL,
-  rules      TEXT         NOT NULL,
-  version    BIGINT       NOT NULL,
-  updated_by VARCHAR(128),
-  updated_at BIGINT       NOT NULL,
-  PRIMARY KEY (service, rule_key)
-);
-
-CREATE TABLE IF NOT EXISTS csap_apidoc_history (
-  id           BIGSERIAL    PRIMARY KEY,
-  service      VARCHAR(128) NOT NULL,
-  rule_key     VARCHAR(255) NOT NULL,
-  before_rules TEXT,
-  after_rules  TEXT,
-  version      BIGINT       NOT NULL,
-  updated_by   VARCHAR(128),
-  updated_at   BIGINT       NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_csap_apidoc_history ON csap_apidoc_history (service, rule_key, id);
-
-CREATE TABLE IF NOT EXISTS csap_apidoc_meta (
-  service VARCHAR(128) PRIMARY KEY,
-  version BIGINT       NOT NULL
-);
-```
-
-达梦（DM8）：
+### MySQL
 
 ```sql
 CREATE TABLE csap_apidoc_rule (
-  service    VARCHAR(128) NOT NULL,
-  rule_key   VARCHAR(255) NOT NULL,
-  rules      CLOB         NOT NULL,
-  version    BIGINT       NOT NULL,
-  updated_by VARCHAR(128),
-  updated_at BIGINT       NOT NULL,
-  PRIMARY KEY (service, rule_key)
+    service VARCHAR(128) NOT NULL,
+    rule_key VARCHAR(512) NOT NULL,
+    rules LONGTEXT NOT NULL,
+    version BIGINT NOT NULL,
+    updated_by VARCHAR(128) NOT NULL,
+    updated_at BIGINT NOT NULL,
+    PRIMARY KEY (service, rule_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE csap_apidoc_history (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    service VARCHAR(128) NOT NULL,
+    rule_key VARCHAR(512) NOT NULL,
+    before_rules LONGTEXT,
+    after_rules LONGTEXT,
+    version BIGINT NOT NULL,
+    updated_by VARCHAR(128) NOT NULL,
+    updated_at BIGINT NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE INDEX csap_apidoc_history_key ON csap_apidoc_history (service, rule_key, id);
+
+CREATE TABLE csap_apidoc_meta (
+    service VARCHAR(128) NOT NULL PRIMARY KEY,
+    version BIGINT NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+### PostgreSQL
+
+```sql
+CREATE TABLE csap_apidoc_rule (
+    service VARCHAR(128) NOT NULL,
+    rule_key VARCHAR(512) NOT NULL,
+    rules TEXT NOT NULL,
+    version BIGINT NOT NULL,
+    updated_by VARCHAR(128) NOT NULL,
+    updated_at BIGINT NOT NULL,
+    PRIMARY KEY (service, rule_key)
 );
 
 CREATE TABLE csap_apidoc_history (
-  id           BIGINT IDENTITY(1,1) PRIMARY KEY,
-  service      VARCHAR(128) NOT NULL,
-  rule_key     VARCHAR(255) NOT NULL,
-  before_rules CLOB,
-  after_rules  CLOB,
-  version      BIGINT       NOT NULL,
-  updated_by   VARCHAR(128),
-  updated_at   BIGINT       NOT NULL
+    id BIGSERIAL PRIMARY KEY,
+    service VARCHAR(128) NOT NULL,
+    rule_key VARCHAR(512) NOT NULL,
+    before_rules TEXT,
+    after_rules TEXT,
+    version BIGINT NOT NULL,
+    updated_by VARCHAR(128) NOT NULL,
+    updated_at BIGINT NOT NULL
 );
-CREATE INDEX idx_csap_apidoc_history ON csap_apidoc_history (service, rule_key, id);
+
+CREATE INDEX csap_apidoc_history_key ON csap_apidoc_history (service, rule_key, id);
 
 CREATE TABLE csap_apidoc_meta (
-  service VARCHAR(128) PRIMARY KEY,
-  version BIGINT       NOT NULL
+    service VARCHAR(128) NOT NULL PRIMARY KEY,
+    version BIGINT NOT NULL
 );
 ```
 
-:::info
-上面的列长度和约束是参考写法，发布时会与 jar 内的文件核对。改了表名前缀时，同步修改 `table-prefix`。
-:::
+### 达梦（DM8）
+
+```sql
+CREATE TABLE csap_apidoc_rule (
+    service VARCHAR(128) NOT NULL,
+    rule_key VARCHAR(512) NOT NULL,
+    rules CLOB NOT NULL,
+    version BIGINT NOT NULL,
+    updated_by VARCHAR(128) NOT NULL,
+    updated_at BIGINT NOT NULL,
+    PRIMARY KEY (service, rule_key)
+);
+
+CREATE TABLE csap_apidoc_history (
+    id BIGINT IDENTITY(1, 1) PRIMARY KEY,
+    service VARCHAR(128) NOT NULL,
+    rule_key VARCHAR(512) NOT NULL,
+    before_rules CLOB,
+    after_rules CLOB,
+    version BIGINT NOT NULL,
+    updated_by VARCHAR(128) NOT NULL,
+    updated_at BIGINT NOT NULL
+);
+
+CREATE INDEX csap_apidoc_history_key ON csap_apidoc_history (service, rule_key, id);
+
+CREATE TABLE csap_apidoc_meta (
+    service VARCHAR(128) NOT NULL PRIMARY KEY,
+    version BIGINT NOT NULL
+);
+```
+
+### 人大金仓（KingbaseES）
+
+```sql
+CREATE TABLE csap_apidoc_rule (
+    service VARCHAR(128) NOT NULL,
+    rule_key VARCHAR(512) NOT NULL,
+    rules TEXT NOT NULL,
+    version BIGINT NOT NULL,
+    updated_by VARCHAR(128) NOT NULL,
+    updated_at BIGINT NOT NULL,
+    PRIMARY KEY (service, rule_key)
+);
+
+CREATE TABLE csap_apidoc_history (
+    id BIGSERIAL PRIMARY KEY,
+    service VARCHAR(128) NOT NULL,
+    rule_key VARCHAR(512) NOT NULL,
+    before_rules TEXT,
+    after_rules TEXT,
+    version BIGINT NOT NULL,
+    updated_by VARCHAR(128) NOT NULL,
+    updated_at BIGINT NOT NULL
+);
+
+CREATE INDEX csap_apidoc_history_key ON csap_apidoc_history (service, rule_key, id);
+
+CREATE TABLE csap_apidoc_meta (
+    service VARCHAR(128) NOT NULL PRIMARY KEY,
+    version BIGINT NOT NULL
+);
+```
+
+SQLite 和 H2 的建表 SQL 见 jar 内同名文件（`sqlite.sql`、`h2.sql`）。
+
+## 从 Go v0.1.x 的旧表升级
+
+Go v0.1.x 的 SQL 规则来源建的表没有 `service` 列，`meta` 表是 `id = 1` 的单行。Java 数据库模式启动时发现这种旧表（`rule` 表存在但没有 `service` 列）会直接报错并提示升级，不会改动旧表；用 Go v0.2.0 升级：
+
+1. 停掉所有旧版本实例，**备份数据库**。
+2. 升级到 Go v0.2.0，用 `Options.Service` 指定服务名（没填就是 `default`），旧数据全部归到这个服务名下：
+
+```go
+s := sqlstrategy.New(sqlstrategy.Options{DB: db, Dialect: sqlstrategy.MySQL, Service: "order-service"})
+if err := s.Migrate(ctx); err != nil { /* ... */ }
+```
+
+3. 或者用 `s.MigrationSQL()` 取出迁移 SQL，由 DBA 手工执行。各方言的 SQL 见 [SQL.md](https://github.com/csap-ai/csap-apidoc/blob/main/csap-apidoc-go/docs/SQL.md)。
+
+`Migrate` 可以重复执行；SQLite、PostgreSQL、人大金仓的 DDL 在事务里，失败整体回滚，MySQL 和达梦的 DDL 会隐式提交，中途失败要按报错手工处理，所以更要先备份。
+
+也可以不迁移：给 Java 换一个新的 `table-prefix`，让它用全新的表。
 
 ## 多实例同步
 
 - 全局版本号存在 `{prefix}meta` 表里，按 `service` 区分。
-- DevTools 保存时，在一个事务里完成：版本号加 1（行锁，保证并发保存串行）、写规则、写修改记录，然后立即刷新当前实例。
-- 其他实例每隔 `poll-interval`（默认 5 秒）查一次版本号，变了就重新加载规则。所以其他实例在**几秒内**生效，不需要重启。
+- DevTools 保存时，在一个事务里完成：先更新全局版本号（取得行锁，保证并发保存串行）、写规则、写修改记录，然后立即刷新当前实例。
+- 其他实例每隔 `poll-interval`（默认 5 秒）查一次版本号，变了就重新加载规则，不需要重启。轮询失败只打 WARN，继续使用内存中的规则。
+- 重新加载后重新生成文档、让页面立即看到新规则，1.4.0 提供（实现中，发布前以实际行为为准）。
 - `poll-interval: 0` 关闭轮询，此时其他实例要重启才会读到新规则。
 - 可选的即时通知（例如 Redis）见 [Redis 模式](#redis-模式规划中)，不是默认行为。
 
 ## 修改记录与回滚
 
-每次保存都会往 `{prefix}history` 写一条：接口（`rule_key`）、修改前后的内容（`before_rules` / `after_rules`）、版本号、修改人、时间。DevTools 里可以查看某个接口的修改记录并回滚到之前的内容。Java 与 Go 的记录格式一致。
+每次保存都会往 `{prefix}history` 写一条：接口（`rule_key`）、修改前后的内容（`before_rules` / `after_rules`）、版本号、修改人、时间。1.4.0 提供在 DevTools 里查看某个接口的修改记录并回滚到之前的内容（页面实现中，发布前细化）。Java 与 Go 的记录格式一致。
 
 `history` 表只增不改，需要完整、长期的审计追溯时，由 [团队版](/roadmap) 在这套表的基础上提供（成员、审批、防篡改记录等）。
 
@@ -228,10 +285,10 @@ CREATE TABLE csap_apidoc_meta (
 
 `csap.apidoc.database.read-only=true` 时：
 
-- 只读取库里的规则，不建表，不写入；
-- DevTools 保存时返回明确的提示，而不是静默失败。
+- 只读取库里的规则，不建表、不写入；表必须已经存在（缺表时启动报错，提示执行建表 SQL）；
+- DevTools 保存和回滚都被拒绝，返回明确的中英文提示（说明处于只读状态、请在有写权限的环境修改、本实例会按 `poll-interval` 自动同步），而不是静默失败。
 
-适合生产环境：规则在测试环境（或之后团队版的审批流）里修改，生产环境只读取。多实例的轮询同步仍然有效，在别处改了规则，只读的实例也会在几秒内加载到。
+适合生产环境：规则在测试环境（或之后团队版的审批流）里修改，生产环境只读取。轮询同步仍然有效，在别处改了规则，只读的实例也会按 `poll-interval` 加载到。
 
 ## 从 YAML / SQLite 迁移
 
@@ -239,22 +296,13 @@ CREATE TABLE csap_apidoc_meta (
 YAML 目录 / SQLite 文件与数据库之间互相导入导出的迁移工具（`csap-apidoc-migrate`）**尚未完成**，计划在 1.4.0 发布前提供。完成后会在这里补充用法。导入前会检查冲突、默认不覆盖已有规则，导入本身记一条修改记录、可以回滚。
 :::
 
-在工具提供之前，可以：
-
-- 保留原来的 YAML / SQLite，先在测试环境用数据库模式试用；
-- 用 DevTools 在数据库模式下重新勾选需要的规则（规则内容与 YAML 同一结构）。
+在工具提供之前，可以保留原来的 YAML / SQLite，先在测试环境用数据库模式试用，再用 DevTools 重新勾选需要的规则（规则内容与 YAML 同一结构）。Go 旧表的升级见 [从 Go v0.1.x 的旧表升级](#从-go-v01x-的旧表升级)。
 
 原来的 `paramType = SQL_LITE` 继续可用，只是生产环境、多实例推荐改用数据库模式。
 
 ## Go 版
 
-Go 版已有 SQL 规则来源 `strategy/sql`（v0.1.x）。v0.2.0 计划：
-
-- 改用上面这套表（增加 `service` 列，列名 `rules` / `before_rules` / `after_rules` 沿用 Go 现有列名），`Options.Service` 指定服务名；
-- 新增达梦、人大金仓方言；
-- 提供 v0.1.x 旧表的迁移。
-
-细节见 [Go 版](/go/#字段规则yaml与-java-兼容)。Java 与 Go 的服务可以共用同一个库，规则键不同（Java 是 `类全名.方法名`，Go 是 `分组.接口名`），互不影响。
+Go v0.2.0 的 SQL 规则来源改用上面这套表，Java 与 Go 的服务可以指向同一个库，各用各的 `service` 名；规则键不同（Java 是 `类全名.方法名`，Go 是 `分组.接口名`），规则 JSON 结构相同。API、方言和升级步骤见 [Go 版](/go/#sql-规则来源v020)。
 
 ## Redis 模式（规划中）
 

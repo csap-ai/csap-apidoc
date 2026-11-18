@@ -106,6 +106,7 @@ csap-validation-boot-starter ──▶ csap-validation-core
 | `ANNOTATION`（默认） | `AnnotationParamGroupStrategy` | 字段上 `@ApiModelProperty(groups = @Group(…))` 里与当前方法匹配的分组；方法参数上的 `@ApiProperty` |
 | `YAML` | `YamlParamGroupStrategy` | `@EnableApidoc(path = …)` 目录下的 YAML 文件，通常由 [DevTools](/guide/devtools) 维护 |
 | `SQL_LITE` | `SQLiteParamGroupStrategy` | SQLite 数据库文件 |
+| `DATABASE`（1.4.0） | `DatabaseParamGroupStrategy`（模块 `csap-apidoc-database`） | 应用自己的关系数据库，见 [数据库模式](/guide/database-mode) |
 
 注解策略里，`@Group` 的 `value` 写方法名时匹配所有同名方法，写成 `类简单名.方法名` 时只匹配该类的方法。
 

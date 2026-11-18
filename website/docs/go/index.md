@@ -160,9 +160,37 @@ example.UserController:          # 分组(Java 的 Controller 全名)
 - 目录下所有 `.yaml/.yml` 都会加载,文件名不要求与分组对应。`yaml.FS(fsys, dir)` 可以从 `go:embed` 只读加载。
 - Go 版新增的 `hidden`(只在文档隐藏)、`example` 字段,Java 读取时会忽略。
 - 多实例部署、需要在线修改时,可以换成 SQL 规则来源 `strategy/sql`(SQLite / PostgreSQL / MySQL),保存时版本号加 1,其他实例轮询或经 Redis 通知后重新加载。
-- **v0.2.0 计划**(随 Java 1.4.0 的[数据库模式](/guide/database-mode)):SQL 规则来源改用与 Java 共用的表(`csap_apidoc_rule` / `history` / `meta`,增加 `service` 列,用 `Options.Service` 指定服务名,列名沿用 `rules` / `before_rules` / `after_rules`),新增达梦、人大金仓方言,并提供 v0.1.x 旧表的迁移。当前 v0.1.1 的表结构没有 `service` 列。Redis 作为规则存储也在 1.4.0 规划中,尚未实现。
+- v0.2.0 起 SQL 规则来源的表结构与 Java 1.4.0 的[数据库模式](/guide/database-mode)统一,见下面的 [SQL 规则来源(v0.2.0)](#sql-规则来源v020)。Redis 作为规则存储在 1.4.0 规划中,尚未实现。
 
 规则来源按 **结构体标签 < YAML < SQL** 的顺序合并,后面的覆盖前面的。
+
+### SQL 规则来源(v0.2.0)
+
+:::warning 随 Go v0.2.0 发布
+本节描述 v0.2.0 的行为,当前已发布版本是 v0.1.1(表没有 `service` 列)。
+:::
+
+SQL 规则来源 `strategy/sql` 改用与 Java 数据库模式相同的三张表(`csap_apidoc_rule` / `history` / `meta`,列名、建表 SQL 见[数据库模式](/guide/database-mode#建表-sql)),Go 和 Java 服务可以指向同一个库,用 `service` 列区分。
+
+```go
+s := sqlstrategy.New(sqlstrategy.Options{
+    DB:      db,
+    Dialect: sqlstrategy.MySQL, // SQLite / Postgres / MySQL / DM / Kingbase
+    Service: "order-service",   // 服务名,默认 "default",最长 128;所有读写都按它过滤
+})
+if err := s.EnsureSchema(ctx); err != nil { /* ... */ }
+```
+
+- **方言**:新增 `DM`(达梦 DM8)、`Kingbase`(人大金仓,按 PostgreSQL 兼容模式;库初始化成 MySQL / Oracle 兼容模式时改用 `MySQL` / `DM`)。达梦、金仓目前只有语句层面的单元测试,没有连真实数据库验证,属于试用。MySQL 有集成测试。
+- `EnsureSchema` 逐表探测,不存在才建;发现 v0.1.x 的旧表时返回 `sqlstrategy.ErrLegacySchema`,**不会自动改旧表**。`Schema()` 返回建表语句,想自己执行(或交给 DBA)时用。
+- 各服务的规则、版本号、修改记录、回滚互不影响;回滚别的服务的修改记录会返回 `strategy.ErrNoChange`。
+- 通知:`Notifier`(如 Redis Pub/Sub)接口签名不变,消息不带服务名,多个服务共用一个频道时收到通知的实例多查一次本服务的版本号,结果正确。想避免多余查询,让通知实现同时实现 `ServiceNotifier`(`PublishService` / `SubscribeService`,消息带服务名),策略会优先使用它。
+
+**从 v0.1.x 升级**:旧表没有 `service` 列,`meta` 是 `id = 1` 的单行。
+
+1. 停掉所有旧版本实例,**备份数据库**;
+2. 用 `Options.Service` 指定服务名(没填是 `default`),旧数据全部归到它名下;
+3. 执行 `s.Migrate(ctx)`,可以重复执行;或者用 `s.MigrationSQL()` 取出 SQL 交给 DBA 手工执行(各方言的 SQL 见 [SQL.md](https://github.com/csap-ai/csap-apidoc/blob/main/csap-apidoc-go/docs/SQL.md))。SQLite / PostgreSQL / 金仓的 DDL 在事务里,失败整体回滚;MySQL 和达梦的 DDL 会隐式提交,中途失败要手工处理。
 
 ## 返回字段过滤
 
@@ -267,4 +295,4 @@ apidoc.Op("...", "get").HeaderHint("X-Trace-Id", "链路 ID", "abc", false).APIK
 - 规则来源按字段合并:后台写入 SQL 时,YAML 里已放行的字段无法通过 SQL"取消放行"。建议同一个接口的规则只放在一个可写来源里。
 - 后台管理不提供 Java 版的"新增接口方法"、`hiddenMethod`(Java 也是空实现)等依赖 Java 代码生成的功能;`/csap/yaml/writeSelect` 改为"给还没有规则的接口按当前代码生成一份完整规则"。
 - 文档页面里"在线调试"的跨域代理(Java 的 `/csap/apidoc/devtools/proxy`)尚未提供,调试同域接口不受影响。
-- SQL 规则来源在 SQLite、PostgreSQL 上做过并发与多实例测试,MySQL 只实现了方言,尚未实测。
+- SQL 规则来源:v0.1.1 在 SQLite、PostgreSQL 上做过并发与多实例测试,MySQL 只实现了方言,尚未实测;v0.2.0 起 MySQL 有集成测试,达梦、金仓没有连真实数据库验证。

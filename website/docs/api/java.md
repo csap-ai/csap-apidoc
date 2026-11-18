@@ -213,6 +213,7 @@ public interface GlobalCsapResponseParamProvider extends Supplier<Map<String, Li
 | `ANNOTATION` | `ai.csap.apidoc.AnnotationParamGroupStrategy` | `@ConditionalOnMissingBean` |
 | `YAML` | `ai.csap.apidoc.strategy.YamlParamGroupStrategy` | `@ConditionalOnMissingBean` |
 | `SQL_LITE` | `ai.csap.apidoc.strategy.SQLiteParamGroupStrategy` | 无条件注册 |
+| `DATABASE`（1.4.0） | `ai.csap.apidoc.database.DatabaseParamGroupStrategy`（模块 `csap-apidoc-database`） | `@EnableApidoc(paramType = DATABASE)` 时注册，见 [数据库模式](/guide/database-mode) |
 
 `ApidocContext` 按 `strategyType().getName()` 索引这些 Bean，而 `paramType` 只能取 `ApiStrategyType` 枚举里的值，所以不能新增一种「名字」。实际可行的扩展方式是**继承内置实现、覆盖个别方法，再以内置实现的类型声明 Bean**，让自动配置里的默认 Bean 因 `@ConditionalOnMissingBean` 而跳过。
 

@@ -142,7 +142,7 @@ type Watcher interface {      // 能感知外部变更:文件变更 / 轮询版�
 
 ### 3.5 SQL 策略（M3 已实现，`strategy/sql`）
 
-- `database/sql`，方言 `SQLite` / `Postgres` / `MySQL`（只影响占位符和建表语句）。v0.2.0 计划:表结构与 Java 数据库模式统一(加 `service` 列,见 `docs/design/database-mode.md`),新增达梦、人大金仓方言,提供 v0.1.x 旧表迁移。主模块**不引入任何驱动**，由使用方自己 import。
+- `database/sql`，方言 `SQLite` / `Postgres` / `MySQL`（只影响占位符和建表语句）。主模块**不引入任何驱动**，由使用方自己 import。
 - 三张表（前缀默认 `csap_apidoc_`）：`rule`（规则 JSON、版本、修改人、时间）、`history`（每次保存的修改前后内容）、`meta`（全局版本号）。`EnsureSchema` 建表，`Schema()` 返回语句供自己执行。与 Java SQLite 策略的表结构不同（Java 存的是整份文档），不共用。
 - `Save` 在一个事务里：全局版本号加 1（PostgreSQL / MySQL 锁住 meta 行，并发保存串行化）、写规则、写修改记录。`History(key, limit)` 查记录，`Rollback(id, by)` 恢复成该次修改前的样子，回滚本身也留记录。M4 的后台管理直接用这两个接口。
 - 多实例：每 `Poll`（默认 5 秒）查一次全局版本号，变了就重新加载；可选 `Notifier`（如 Redis Pub/Sub）保存后立即通知其他实例。基准同样是上次加载时的版本号。

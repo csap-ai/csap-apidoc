@@ -36,8 +36,8 @@ Go 版已经有 SQL 规则来源(SQLite / PostgreSQL / MySQL,带版本号、修�
 csap:
   apidoc:
     database:
-      datasource-bean: ""          # 指定 DataSource Bean 名,多数据源时用;空 = 应用的主 DataSource
-      dialect: ""                  # 空 = 按 JDBC URL 识别:mysql/mariadb、postgresql、dm、kingbase8、sqlite、h2
+      datasource-bean: ""          # 指定 DataSource Bean 名,多数据源时用;空 = 唯一(或 primary)的 DataSource
+      dialect: ""                  # 空 = 按 JDBC URL 识别;可选 mysql / postgresql / dm / kingbase / sqlite / h2
       table-prefix: csap_apidoc_   # 表名前缀
       init-schema: true            # 启动时自动建表(没有建表权限时关掉,用提供的 SQL 手工执行)
       poll-interval: 5s            # 多实例同步的轮询间隔,0 表示不轮询
@@ -68,7 +68,7 @@ csap:
 - **规则内容**:`rules` 是 JSON,与 YAML 规则同一结构,一个接口一行,而不是像 Java SQLite 那样存整份文档,这样保存、比对、回滚都按接口进行。规则被清空时删除 `rule` 表中的这一行(`history` 里仍有记录)。
 - **时间**:`updated_at` 为毫秒时间戳。
 - **大文本类型**:MySQL `LONGTEXT`、PostgreSQL / 人大金仓 `TEXT`、达梦 `CLOB`。不使用 JSON 类型,以兼容 MySQL 5.7 和各类兼容库。
-- **不使用 `DEFAULT ''`**:达梦(以及 Oracle 兼容模式的库)默认把空字符串当作 NULL,`DEFAULT ''` 在各方言上行为不一致,所以表定义里不写字符串默认值,列值都由程序显式写入。实现细节(例如新增规则时 `before_rules` 写什么)以代码为准。
+- **不使用 `DEFAULT ''`**:部分数据库的 Oracle 兼容模式会把空字符串当作 NULL,`DEFAULT ''` 在各方言上行为不一致,所以表定义里不写字符串默认值,列值都由程序显式写入;`updated_by` 没有修改人时写 `unknown`,`before_rules` / `after_rules` 可空(空表示修改前没有规则 / 这次是删除)。`rule_key` 为 VARCHAR(512),`service` 为 VARCHAR(128)。
 - Go 现有的表升级(加 `service` 列,旧数据 `service` 填默认值)随 v0.2.0 提供迁移,见第 3.4 节。
 - 建表 SQL 按方言放在 jar 里,并在官网提供。
 
@@ -164,6 +164,7 @@ csap:
 
 - 1.4.0 原计划内容较多(Mock、JSON Schema、字段库、版本管理、校验对齐),加入数据库模式和 Redis 模式后排期很紧。建议数据库模式作为 1.4.0 的首要项,"字段库与模板"如果来不及顺延到 1.5.0。
 - 达梦、人大金仓的驱动不在 Maven Central,测试和示例需要从厂商仓库获取;文档写清楚驱动的获取方式。
+- 1.4.0 在达梦、人大金仓真实库上**没有验证**(只有语句层面的测试),文档标为试用;MySQL 8、PostgreSQL 有集成测试。
 - 已提供"只读模式"配置(`read-only`,见 3.1):生产环境只读取数据库里的规则,禁止通过 DevTools 修改(修改走测试环境或团队版的审批)。
 
 ## 7. 团队版:多人协作与审计追溯(规划)
