@@ -71,10 +71,25 @@ func (d *Devtools) serveAPI(w http.ResponseWriter, r *http.Request) {
 		"/csap/yaml/history":                 {http.MethodGet, d.history},
 		"/csap/yaml/rollback":                {http.MethodPost, d.rollback},
 		"/csap/yaml/setStatus":               {http.MethodPost, d.setStatus},
+		"/csap/yaml/fieldTemplates":          {http.MethodGet, d.fieldTemplates},
 		"/devtools/getFields":                {http.MethodPost, d.getFields},
 		"/devtools/hiddenMethod":             {http.MethodPost, d.hiddenMethod},
 	}
-	e, ok := routes[r.URL.Path]
+	routes["/csap/yaml/fieldTemplates#POST"] = ep{http.MethodPost, d.saveFieldTemplate}
+	path := r.URL.Path
+	if path == "/csap/yaml/fieldTemplates" && r.Method == http.MethodPost {
+		path += "#POST" // 同一路径 GET 查询、POST 保存
+	}
+	if name, found := strings.CutPrefix(path, "/csap/yaml/fieldTemplates/"); found && name != "" && r.Method == http.MethodDelete {
+		data, err := d.deleteFieldTemplate(r, name)
+		if err != nil {
+			writeError(w, http.StatusOK, "500", err.Error())
+			return
+		}
+		writeOK(w, data)
+		return
+	}
+	e, ok := routes[path]
 	if !ok {
 		http.NotFound(w, r)
 		return

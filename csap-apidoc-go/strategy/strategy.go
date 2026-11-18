@@ -31,6 +31,11 @@ type FieldRule struct {
 	ParamType   string         `json:"paramType,omitempty" yaml:"paramType,omitempty"`
 	Example     string         `json:"example,omitempty" yaml:"example,omitempty"`
 	Validate    []ValidateRule `json:"validate,omitempty" yaml:"validate,omitempty"`
+	// Template 是套用字段模板时记下的模板名,只用于展示和"与模板不一致"的提示,运行时不读。
+	Template string `json:"template,omitempty" yaml:"template,omitempty"`
+	// Mock 是 Mock 响应里这个字段的取值(任意 JSON 值,字符串可以是 @int / @oneOf / @uuid 表达式),
+	// 只在 Mock 里使用,见 docs/design/1.4.0-mock-schema.md。
+	Mock any `json:"mock,omitempty" yaml:"mock,omitempty"`
 }
 
 // MethodRules 是一个接口的全部字段规则,以及可选的上下线状态(见 docs/design/1.4.0-api-status.md)。
@@ -54,6 +59,13 @@ const (
 // ValidStatus 判断是不是认识的状态值。
 func ValidStatus(s string) bool {
 	return s == StatusDefault || s == StatusFinish || s == StatusDeprecated
+}
+
+// RawStore 是能按键读写原始 JSON 的规则来源,用来存取 @templates 这类保留键(不是接口规则)。
+// 与 Save 同样走版本号、修改记录和多实例同步。raw 为空表示删除。
+type RawStore interface {
+	LoadRaw(ctx context.Context, key string) (raw string, ok bool, err error)
+	SaveRaw(ctx context.Context, key, raw, by string) (version int64, err error)
 }
 
 // ReservedKey 判断规则键是不是保留键:以 @ 开头的不是接口规则(如 @templates),各规则来源加载时跳过。
@@ -134,6 +146,12 @@ func mergeFields(dst, src map[string]FieldRule) map[string]FieldRule {
 		}
 		if r.Validate != nil {
 			cur.Validate = r.Validate
+		}
+		if r.Template != "" {
+			cur.Template = r.Template
+		}
+		if r.Mock != nil {
+			cur.Mock = r.Mock
 		}
 		dst[p] = cur
 	}

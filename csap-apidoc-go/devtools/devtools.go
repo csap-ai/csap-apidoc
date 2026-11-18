@@ -105,6 +105,7 @@ func (d *Devtools) Routes() []Route {
 	rs := []Route{
 		{http.MethodGet, "/csap/yaml/*action"},
 		{http.MethodPost, "/csap/yaml/*action"},
+		{http.MethodDelete, "/csap/yaml/*action"},
 		{http.MethodGet, "/devtools/*action"},
 		{http.MethodPost, "/devtools/*action"},
 	}

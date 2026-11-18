@@ -461,11 +461,11 @@ func TestUIAndRoutes(t *testing.T) {
 	if rec.Code != 200 || !strings.Contains(rec.Body.String(), "/csap-ui/assets2/") {
 		t.Fatalf("page: %d", rec.Code)
 	}
-	if len(dt.Routes()) != 10 || len(dt.Patterns()) != 5 {
+	if len(dt.Routes()) != 11 || len(dt.Patterns()) != 5 {
 		t.Fatalf("routes: %v %v", dt.Routes(), dt.Patterns())
 	}
 	noUI, _ := New(doc, Options{Auth: AllowAll, DisableUI: true})
-	if len(noUI.Routes()) != 4 || len(noUI.Patterns()) != 2 {
+	if len(noUI.Routes()) != 5 || len(noUI.Patterns()) != 2 {
 		t.Fatal("routes without ui")
 	}
 	rec = httptest.NewRecorder()
@@ -507,5 +507,55 @@ func TestSetStatus(t *testing.T) {
 	// 非法状态
 	if rec, res := call(t, dt, "POST", "/csap/yaml/setStatus", map[string]any{"className": group, "methodName": "get", "status": "BOGUS"}); rec.Code != 200 || res.Success {
 		t.Fatalf("非法状态应失败: %s", rec.Body.String())
+	}
+}
+
+func TestFieldTemplatesAPI(t *testing.T) {
+	dir := t.TempDir()
+	rules := filepath.Join(dir, "method-field")
+	_ = os.MkdirAll(rules, 0o755)
+	_, dt := newTools(t, yaml.New(yaml.Options{Dir: rules, Poll: -1, History: "-"}))
+	var list struct {
+		Templates []struct {
+			Name   string `json:"name"`
+			Source string `json:"source"`
+			Title  string `json:"title"`
+		} `json:"templates"`
+		Writable bool `json:"writable"`
+	}
+	ok(t, dt, "GET", "/csap/yaml/fieldTemplates", nil, &list)
+	if len(list.Templates) < 14 || !list.Writable || list.Templates[0].Source != "builtin" {
+		t.Fatalf("%+v", list)
+	}
+	// 项目模板覆盖同名内置
+	ok(t, dt, "POST", "/csap/yaml/fieldTemplates", map[string]any{"name": "phone-cn", "title": "我们的手机号", "description": "手机号码"}, nil)
+	ok(t, dt, "POST", "/csap/yaml/fieldTemplates", map[string]any{"name": "order-no", "title": "订单号"}, nil)
+	ok(t, dt, "GET", "/csap/yaml/fieldTemplates", nil, &list)
+	var phone, orderNo string
+	for _, tp := range list.Templates {
+		switch tp.Name {
+		case "phone-cn":
+			phone = tp.Source + ":" + tp.Title
+		case "order-no":
+			orderNo = tp.Source
+		}
+	}
+	if phone != "project:我们的手机号" || orderNo != "project" {
+		t.Fatalf("%q %q", phone, orderNo)
+	}
+	// 删除项目模板;内置只读
+	ok(t, dt, "DELETE", "/csap/yaml/fieldTemplates/order-no", nil, nil)
+	if _, res := call(t, dt, "DELETE", "/csap/yaml/fieldTemplates/email", nil); res.Success {
+		t.Fatal("删除内置模板应失败")
+	}
+	if _, res := call(t, dt, "POST", "/csap/yaml/fieldTemplates", map[string]any{"name": "Bad Name", "title": "x"}); res.Success {
+		t.Fatal("坏名字应失败")
+	}
+	ok(t, dt, "DELETE", "/csap/yaml/fieldTemplates/phone-cn", nil, nil)
+	ok(t, dt, "GET", "/csap/yaml/fieldTemplates", nil, &list)
+	for _, tp := range list.Templates {
+		if tp.Name == "phone-cn" && tp.Source != "builtin" {
+			t.Fatal("删除项目模板后应回到内置")
+		}
 	}
 }

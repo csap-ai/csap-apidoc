@@ -370,6 +370,8 @@ type field struct {
 	Hidden      *bool      `yaml:"hidden,omitempty"`
 	Example     string     `yaml:"example,omitempty"`
 	Validate    []validate `yaml:"validate,omitempty"`
+	Template    string     `yaml:"template,omitempty"` // 套用的字段模板名,只用于展示
+	Mock        any        `yaml:"mock,omitempty"`     // Mock 取值,见 docs/design/1.4.0-mock-schema.md
 }
 
 // validate 对应 Java ConstraintValidatorField 写进 YAML 的部分。
@@ -414,7 +416,7 @@ func (m method) toRules() strategy.MethodRules {
 			}
 			r := strategy.FieldRule{
 				Description: f.Description, Required: f.Required, Include: f.Include, Hidden: f.Hidden,
-				ParamType: strings.ToUpper(f.ParamType), Example: f.Example,
+				ParamType: strings.ToUpper(f.ParamType), Example: f.Example, Template: f.Template, Mock: f.Mock,
 			}
 			for _, v := range f.Validate {
 				r.Validate = append(r.Validate, strategy.ValidateRule{
@@ -436,7 +438,7 @@ func fromRules(r strategy.MethodRules) method {
 		out := make(map[string]*field, len(in))
 		for p, f := range in {
 			x := &field{Required: f.Required, Include: f.Include, ParamType: f.ParamType, Description: f.Description,
-				Hidden: f.Hidden, Example: f.Example}
+				Hidden: f.Hidden, Example: f.Example, Template: f.Template, Mock: f.Mock}
 			for _, v := range f.Validate {
 				x.Validate = append(x.Validate, validate{Descr: v.Descr, Level: v.Level, Type: v.Type,
 					Code: flexString(v.Code), Message: v.Message, Pattern: v.Pattern})
@@ -547,4 +549,59 @@ func sortMappingKeys(n *yamlv3.Node) {
 			}
 		}
 	}
+}
+
+// TemplateFile 是项目字段模板文件相对规则目录的位置:与 method-field 目录并列的 field-template/api-field-template.yaml。
+const TemplateFile = "field-template/api-field-template.yaml"
+
+var _ strategy.RawStore = (*Strategy)(nil)
+
+func (s *Strategy) templatePath() string {
+	return filepath.Join(filepath.Dir(filepath.Clean(s.opts.Dir)), filepath.FromSlash(TemplateFile))
+}
+
+// LoadRaw 读取项目字段模板文件(只认保留键 @templates)。文件不存在时 ok 为 false。
+// 返回的是文件原文(YAML),由字段库解析。规则目录来自 FS(只读打包)时没有项目模板。
+func (s *Strategy) LoadRaw(_ context.Context, key string) (string, bool, error) {
+	if key != "@templates" {
+		return "", false, fmt.Errorf("apidoc/yaml: 不支持的保留键 %q", key)
+	}
+	if s.opts.FS != nil || s.opts.Dir == "" {
+		return "", false, nil
+	}
+	b, err := os.ReadFile(s.templatePath())
+	if errors.Is(err, os.ErrNotExist) {
+		return "", false, nil
+	}
+	return string(b), err == nil, err
+}
+
+// SaveRaw 写项目字段模板文件(只认 @templates)。raw 是 JSON 或 YAML,统一写成 YAML;为空表示删除文件。
+// 模板文件不走版本号和修改记录(返回 0),由 Git 管理即可。规则目录来自 FS(只读打包)时返回 ErrReadOnly。
+func (s *Strategy) SaveRaw(_ context.Context, key, raw, _ string) (int64, error) {
+	if key != "@templates" {
+		return 0, fmt.Errorf("apidoc/yaml: 不支持的保留键 %q", key)
+	}
+	if s.opts.FS != nil || s.opts.Dir == "" {
+		return 0, strategy.ErrReadOnly
+	}
+	path := s.templatePath()
+	if raw == "" {
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return 0, err
+		}
+		return 0, nil
+	}
+	var v any
+	if err := yamlv3.Unmarshal([]byte(raw), &v); err != nil {
+		return 0, err
+	}
+	out, err := yamlv3.Marshal(v)
+	if err != nil {
+		return 0, err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return 0, err
+	}
+	return 0, os.WriteFile(path, out, 0o644)
 }
