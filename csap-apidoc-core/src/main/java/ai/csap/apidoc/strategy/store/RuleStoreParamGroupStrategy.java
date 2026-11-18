@@ -418,7 +418,7 @@ public abstract class RuleStoreParamGroupStrategy implements ParamGroupStrategy,
         synchronized (lock) {
             long version;
             try {
-                version = store.save(key, json, UPDATED_BY);
+                version = store.save(key, json, RuleActor.current(UPDATED_BY));
             } catch (Exception e) {
                 RuleStorageNotWritableException ex = new RuleStorageNotWritableException(
                         "保存规则到" + modeName + "存储失败(" + root(e) + ")。请检查连接和账号的写权限。"

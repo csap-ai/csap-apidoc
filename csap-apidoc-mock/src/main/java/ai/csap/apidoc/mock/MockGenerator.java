@@ -402,7 +402,7 @@ public final class MockGenerator {
         List<CsapDocParameter.ValidateAttribute> out = new ArrayList<>();
         if (p.getValidate() != null) {
             for (CsapDocParameter.ValidateAttribute v : p.getValidate()) {
-                if (v != null && v.getType() != null && type.equals(v.getType().toLowerCase(Locale.ROOT))) {
+                if (v != null && type.equals(DocTypes.validateType(v.getType()).toLowerCase(Locale.ROOT))) {
                     out.add(v);
                 }
             }

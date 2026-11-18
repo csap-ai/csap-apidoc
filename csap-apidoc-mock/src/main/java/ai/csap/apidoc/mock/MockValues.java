@@ -14,6 +14,6 @@ final class MockValues {
     }
 
     static Object of(CsapDocParameter p) {
-        return null;
+        return p.getMock();
     }
 }

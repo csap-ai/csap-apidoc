@@ -188,6 +188,34 @@ public final class DocTypes {
     }
 
     /**
+     * 校验规则的规范类型名。Java 文档里 validate.type 存的是中文描述(不能为空、不能为空字符串、正则表达式、
+     * 注解验证、自定义验证),Go 与规则文件里是 NotNull、NotEmpty、Pattern 等;这里统一成后者。
+     *
+     * @param type 文档里的类型
+     * @return 规范类型名;null 返回空串
+     */
+    public static String validateType(String type) {
+        if (type == null) {
+            return "";
+        }
+        String t = type.trim();
+        switch (t) {
+            case "不能为空":
+                return "NotNull";
+            case "不能为空字符串":
+                return "NotEmpty";
+            case "正则表达式":
+                return "Pattern";
+            case "注解验证":
+                return "Annotation";
+            case "自定义验证":
+                return "customer";
+            default:
+                return t;
+        }
+    }
+
+    /**
      * 字段的子字段;没有时返回空列表
      *
      * @param p 字段

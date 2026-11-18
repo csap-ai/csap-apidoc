@@ -415,7 +415,7 @@ public final class SchemaExporter {
             if (v == null) {
                 continue;
             }
-            String vt = v.getType() == null ? "" : v.getType().toLowerCase(Locale.ROOT);
+            String vt = DocTypes.validateType(v.getType()).toLowerCase(Locale.ROOT);
             String pat = v.getPattern() == null ? "" : v.getPattern();
             switch (vt) {
                 case "notempty":
@@ -538,7 +538,7 @@ public final class SchemaExporter {
             }
             ObjectNode e = F.objectNode();
             if (notEmpty(v.getType())) {
-                e.put("type", v.getType());
+                e.put("type", DocTypes.validateType(v.getType()));
             }
             if (notEmpty(v.getPattern())) {
                 e.put("pattern", v.getPattern());
