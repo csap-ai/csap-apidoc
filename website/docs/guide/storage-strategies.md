@@ -1,6 +1,6 @@
 # 存储策略与返回过滤
 
-本页说明字段规则的三种来源（注解、YAML、SQLite）如何配置、文件格式是什么、怎样选择，以及这些规则如何决定接口文档里出现哪些请求和返回字段。
+本页说明字段规则的来源（注解、YAML、SQLite，1.4.0 计划增加数据库模式和 Redis 模式）如何配置、文件格式是什么、怎样选择，以及这些规则如何决定接口文档里出现哪些请求和返回字段。
 
 :::info 适用范围
 注解策略、`@EnableApidoc` 和 SQLite 策略讲的是 **Java 版**。YAML 规则文件的格式两种语言通用；Go 版的规则来源(YAML、SQL)和合并顺序见 [Go 版](/go/)。
@@ -29,6 +29,8 @@ public class Application {
 | `ANNOTATION`（默认） | `@ApiModelProperty(groups = ...)` | 不能 |
 | `YAML` | classpath 下的 `*-method-field.yaml` 文件 | 能 |
 | `SQL_LITE` | classpath 下的 SQLite 数据库文件 | 能 |
+| `DATABASE`（1.4.0 计划） | 应用自己的关系数据库：MySQL / PostgreSQL / 达梦 / 人大金仓，见 [数据库模式](/guide/database-mode) | 能 |
+| `REDIS`（1.4.0 规划中） | Redis，尚未实现 | — |
 
 YAML 和 SQLite 的实现都已经包含在 `csap-apidoc-boot-starter` 中（它传递依赖 `csap-apidoc-yaml`、`csap-apidoc-sqlite`），不需要额外引入。
 
@@ -64,7 +66,7 @@ YAML 和 SQLite 的实现都已经包含在 `csap-apidoc-boot-starter` 中（它
 | 基础类型参数的说明 | 规则中的 `description` > `@ApiProperty.description` |
 | 校验规则 | YAML / SQLite：规则中的 `validate` 与字段上的 JSR-303 注解**合并**，按 `level` 升序排列；注解策略：只有 JSR-303 注解 |
 
-三种策略之间**不合并**：选了 YAML，框架就不读 `@Group`；选了注解，就不读 YAML 文件。
+各策略之间**不合并**：选了 YAML，框架就不读 `@Group`；选了注解，就不读 YAML 文件。
 
 ## 注解策略
 
@@ -281,14 +283,14 @@ DevTools 写 YAML 时，目标路径是把 classpath 根目录中的 `target/cla
 | `YAML` | 不能 | 规则文件在 jar 内。返回 `code = 1007` 的失败结果和说明，打一条 WARN |
 | `type = JSON`（导出文档） | 不能 | 同上 |
 | `SQL_LITE` | 能 | 写到 jar 外、启动目录下的 `<path>/<fileName>.db`（默认 `./csap-api-doc/apidoc.db`），重启后仍在 |
-| 数据库模式（MySQL / PostgreSQL / 达梦 / 人大金仓） | 1.4.0 计划 | 当前版本没有实现 |
-| Redis 模式 | 1.4.0 计划 | 当前版本没有实现；规则存进 Redis，多实例订阅变更即时同步 |
+| 数据库模式（MySQL / PostgreSQL / 达梦 / 人大金仓） | 1.4.0 计划，能保存 | 当前版本没有实现；规则存进应用自己的数据库，重启和重新部署后仍在，见 [数据库模式](/guide/database-mode) |
+| Redis 模式 | 1.4.0 规划中 | 当前版本没有实现，尚未开始开发，用法以发布时的文档为准 |
 
 推荐做法：
 
 - 规则主要在开发环境里维护：在 IDE 或 `mvn spring-boot:run` 中用 DevTools，YAML 文件写回 `src/main/resources`，随代码提交和打包；
 - 必须在打包后的环境里改规则时用 `SQL_LITE`，并确保启动目录可写。每个实例各有一份文件，互不同步；
-- 多实例共享规则请等 1.4.0 的数据库模式。
+- 多实例共享规则请等 1.4.0 的[数据库模式](/guide/database-mode)（计划中）。
 
 返回给 DevTools 的提示原文见 [DevTools - 打包运行时能否在 DevTools 保存](/guide/devtools#打包运行时能否在-devtools-保存)。
 
@@ -308,6 +310,18 @@ DevTools 写 YAML 时，目标路径是把 classpath 根目录中的 `target/cla
 | 接口少、实体专用，规则很少变化 | 注解：规则跟着代码走，不需要额外文件 |
 | 实体被多个接口复用，需要按接口裁剪字段；希望用 DevTools 勾选字段并在代码评审中看到改动 | YAML：文本文件，便于 diff 和合并 |
 | 希望把规则集中在单个文件里，且团队不需要逐行审阅规则改动 | SQLite：单个二进制文件，不便于 diff |
+| 多实例部署、容器部署、规则要集中管理并有修改记录和回滚，或企业只允许使用已有的 MySQL / PostgreSQL / 达梦 / 人大金仓 | 数据库模式（1.4.0 计划，见 [数据库模式](/guide/database-mode)） |
+
+各模式的特点对比（数据库模式、Redis 模式为 1.4.0 计划，Redis 尚未实现）：
+
+| | 注解 | YAML | SQLite | 数据库模式 | Redis 模式 |
+|---|---|---|---|---|---|
+| 规则存放 | 代码里 | 项目里的 YAML 文件 | 单个 `.db` 文件 | 应用的 MySQL / PostgreSQL / 达梦 / 人大金仓 | Redis |
+| DevTools 保存 | 不能 | 能（打成 jar 运行时不能） | 能 | 能 | 能 |
+| 打包 / 容器运行时保存 | — | 不能 | 能（文件在启动目录，容器里需挂卷） | 能 | 能 |
+| 多实例共享、几秒内同步 | — | 否 | 否，各实例各一份文件 | 是（轮询版本号） | 是（订阅变更） |
+| 修改记录与回滚 | — | 靠 Git | 无 | 有（完整保留） | 有（只保留最近若干条） |
+| 适合 | 字段少、规则稳定 | 规则随代码评审 | 单机、开发 | 生产、多实例、团队版 | 生产、已有 Redis |
 
 无论哪种策略，`forceReq` / `forceRep`、`ignoreReq` / `ignoreRep`、`hidden` 等写在注解上的开关都会生效，可以把"所有接口都要的字段"放在注解上，把"按接口变化的字段"放在规则里。
 
@@ -346,6 +360,7 @@ DevTools 写 YAML 时，目标路径是把 classpath 根目录中的 `target/cla
 
 ## 相关页面
 
+- [数据库模式](/guide/database-mode)：把规则存进 MySQL / PostgreSQL / 达梦 / 人大金仓（1.4.0 计划）
 - [注解使用指南](/guide/annotations)
 - [参数校验](/guide/validation)：`validate` 规则如何执行
 - [DevTools](/guide/devtools)：可视化编辑 YAML / SQLite 规则

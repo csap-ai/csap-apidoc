@@ -1,6 +1,6 @@
 # DevTools
 
-本页介绍 CSAP Apidoc 的开发工具（DevTools）：它在开发阶段提供一个网页，用来按接口勾选请求和返回字段、配置校验规则，并把结果写回 YAML 或 SQLite 规则文件。
+本页介绍 CSAP Apidoc 的开发工具（DevTools）：它在开发阶段提供一个网页，用来按接口勾选请求和返回字段、配置校验规则，并把结果写回 YAML 或 SQLite 规则文件（1.4.0 计划增加写入数据库）。
 
 :::info 适用范围
 本页的开启方式和配置是 **Java 版**的。Go 版的后台管理页面与接口和 Java 兼容(页面是同一份前端),但需要用 `devtools.New` 创建并必须配置鉴权,见 [Go 版](/go/)。
@@ -26,7 +26,7 @@ csap:
 前提：
 
 - 项目里有 `@EnableApidoc`（DevTools 的自动配置挂在文档自动配置之下）；
-- 要保存规则，`@EnableApidoc` 的 `paramType` 需要是 `ApiStrategyType.YAML` 或 `ApiStrategyType.SQL_LITE`。
+- 要保存规则，`@EnableApidoc` 的 `paramType` 需要是 `ApiStrategyType.YAML` 或 `ApiStrategyType.SQL_LITE`（1.4.0 计划增加 `DATABASE`，见 [数据库模式](/guide/database-mode)）。
 
 建议只在开发环境的配置文件里开启，例如放在 `application-dev.yml`：
 
@@ -93,7 +93,7 @@ YAML 文件写回源码目录依赖于"classpath 根目录是 `target/classes`"�
 | `paramType = YAML` | 不能 | — | — |
 | `type = JSON`（导出文档 `/csap/yaml/write`、`writeSelect`） | 不能 | — | — |
 | `paramType = SQL_LITE` | 能 | jar 外：启动目录下的 `<path>/<fileName>.db`，默认 `./csap-api-doc/apidoc.db` | 仍在，启动时读回 |
-| 数据库模式（MySQL / PostgreSQL / 达梦 / 人大金仓） | 1.4.0 计划，当前版本没有 | — | — |
+| 数据库模式（MySQL / PostgreSQL / 达梦 / 人大金仓） | 1.4.0 计划，当前版本没有 | 应用自己的数据库 | 仍在，各实例几秒内同步 |
 
 不能保存时，接口返回 HTTP 200 和失败结果（`code` 为 `1007`），DevTools 页面直接显示下面的说明，同时打一条 WARN 日志（1.2.0 及以前是 HTTP 500 + `NullPointerException`）：
 
@@ -105,7 +105,9 @@ YAML 文件写回源码目录依赖于"classpath 根目录是 `target/classes`"�
 
 - 平时在 IDE 或 `mvn spring-boot:run` 中用 DevTools 维护规则，YAML 文件写回源码目录，随代码提交、打包；
 - 必须在打包后的环境里调整规则时，用 SQLite 策略。启动目录要可写（不可写时同样返回 `1007`，说明里带上文件路径）；多个实例各有一份文件，互不同步；
-- 需要多实例共享、集中维护规则的，等 1.4.0 的数据库模式。Redis 在该方案里只用于通知各实例刷新，不存放规则。
+- 需要多实例共享、集中维护规则的，等 1.4.0 的 [数据库模式](/guide/database-mode)（计划中）。1.4.0 还计划提供 Redis 模式（规则存进 Redis，规划中，尚未实现）。
+
+数据库模式下 DevTools 侧栏有「规则记录」页（`/devtools-ui/rules`），可以查看修改记录、并排对比修改前后并回滚，见 [数据库模式 - 修改记录与回滚](/guide/database-mode#修改记录与回滚)。设置 `csap.apidoc.database.read-only=true` 后只读、不允许保存（生产环境用）。
 
 ## 后端接口
 

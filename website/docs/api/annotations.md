@@ -44,7 +44,7 @@
 | `apiPackages` | `String[]` | `{}` | 扫描 Controller 的包，始终包含子包；支持 `*`、`**`、`?` 通配符 |
 | `apiPackageClasses` | `Class<?>[]` | `{}` | 直接指定 Controller 类，只收录带 `@Api` 的类 |
 | `type` | `ApiStrategyType` | `ANNOTATION` | 文档主体的来源，一般保持默认。`YAML`、`JSON` 从 1.1.1 起会注册对应策略；`SQL_LITE` 启动即报错，提示改用 `paramType = SQL_LITE` |
-| `paramType` | `ApiStrategyType` | `ANNOTATION` | 字段规则的来源：`ANNOTATION`、`YAML`、`SQL_LITE`。`JSON` 目前没有实现。见 [存储策略](/guide/storage-strategies) |
+| `paramType` | `ApiStrategyType` | `ANNOTATION` | 字段规则的来源：`ANNOTATION`、`YAML`、`SQL_LITE`（1.4.0 计划增加 `DATABASE`，见 [数据库模式](/guide/database-mode)）。`JSON` 目前没有实现。见 [存储策略](/guide/storage-strategies) |
 | `requestType` | `String` | `"default"` | 请求参数解析器的名称，内置只有 `default` |
 | `responseType` | `String` | `"default"` | 返回参数解析器的名称，内置只有 `default` |
 | `path` | `String` | `"csap-api-doc"` | YAML / SQLite 规则文件所在的 classpath 目录；支持 `${property:default}` 占位符 |

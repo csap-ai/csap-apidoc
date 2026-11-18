@@ -35,7 +35,7 @@ The doc protocol, the rule file format and the docs page are shared across langu
 These work in both Java and Go (see the [Go guide](https://apidoc.csap.ai/go/) for Go's filtering and validation); items marked "Java" exist only in the Java version for now.
 
 - **Runtime docs**: docs are generated from code at startup (Java scans annotations, Go reads routes and struct tags); open `/csap-api.html`.
-- **Field rules**: annotations (Java), struct tags (Go), YAML files or SQLite / SQL decide which request parameters and response fields each endpoint shows; one model can show different fields in different endpoints.
+- **Field rules**: annotations (Java), struct tags (Go), YAML files or SQLite / SQL decide which request parameters and response fields each endpoint shows; one model can show different fields in different endpoints. A **database mode** is planned for 1.4.0 (rules stored in MySQL / PostgreSQL / DM / KingbaseES with multi-instance sync, change history and rollback; Java and Go share the same tables), see [Database mode](https://apidoc.csap.ai/guide/database-mode) (Chinese); a Redis mode is also planned.
 - **Try it out**: send requests from the docs page with environments, global headers, auth, request history and replay, and named snapshots you can import and export.
 - **Export**: OpenAPI 3.0, Postman v2.1 and Markdown from the docs page, or copy as TypeScript types.
 - **DevTools**: in development, pick fields and configure validation rules in a UI that writes back to YAML.

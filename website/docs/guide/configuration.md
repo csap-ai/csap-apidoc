@@ -27,7 +27,7 @@
 | `modelPackages` | `String[]` | 空 | 模型扫描包。目前只被收集，文档生成没有使用 |
 | `modelPackageClasses` | `Class<?>[]` | 空 | 直接指定模型类。目前只被收集，文档生成没有使用 |
 | `type` | `ApiStrategyType` | `ANNOTATION` | 文档主体策略，一般保持默认。1.1.1 起 `YAML`、`JSON` 会注册对应策略；`SQL_LITE` 没有实现，启动即报错并提示改用 `paramType = SQL_LITE`。见 [存储策略](/guide/storage-strategies) |
-| `paramType` | `ApiStrategyType` | `ANNOTATION` | 参数（字段规则）策略：`ANNOTATION`、`YAML`、`SQL_LITE`，决定每个接口显示哪些请求 / 返回字段，见 [存储策略](/guide/storage-strategies) |
+| `paramType` | `ApiStrategyType` | `ANNOTATION` | 参数（字段规则）策略：`ANNOTATION`、`YAML`、`SQL_LITE`（1.4.0 计划增加 `DATABASE`，配置见 [数据库模式](/guide/database-mode)），决定每个接口显示哪些请求 / 返回字段，见 [存储策略](/guide/storage-strategies) |
 | `requestType` | `String` | `"default"` | 请求参数解析器名称，对应 `IMethodRequest` Bean 的 `name()`；内置只有 `default` |
 | `responseType` | `String` | `"default"` | 返回参数解析器名称，对应 `IMethodResponse` Bean 的 `name()`；内置只有 `default` |
 | `path` | `String` | `"csap-api-doc"` | YAML / SQLite 策略文件所在的目录名。支持 `${属性名:默认值}` 占位符 |

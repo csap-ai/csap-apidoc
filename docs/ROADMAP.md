@@ -74,7 +74,7 @@
 
 ### 1.4.0 — 设计与协作基础(2026-12-22)
 
-- **数据库模式(首要项)**:字段规则可以存进业务已有的 **MySQL / PostgreSQL / 达梦(DM8)/ 人大金仓(KingbaseES)**,不再只能用 SQLite 文件。默认使用应用自己的 DataSource;多实例在几秒内同步(轮询版本号,可选 Redis 等即时通知);每次修改留记录、可回滚;提供 YAML / SQLite 与数据库互相迁移的工具。**Java 与 Go 共用同一套表**(Go 已有 SQL 来源,随 v0.2.0 升级表结构)。也可以存进 **Redis**(Java 与 Go 同一种数据结构,订阅变更即时同步;修改记录保留最近若干条,完整审计用数据库)。SQLite 保留用于单机和开发环境。方案见 [database-mode.md](https://github.com/csap-ai/csap-apidoc/blob/main/docs/design/database-mode.md)
+- **数据库模式(首要项)**:字段规则可以存进业务已有的 **MySQL / PostgreSQL / 达梦(DM8)/ 人大金仓(KingbaseES)**,不再只能用 SQLite 文件。默认使用应用自己的 DataSource;多实例在几秒内同步(轮询版本号,可选 Redis 等即时通知);每次修改留记录、可回滚;提供 YAML / SQLite 与数据库互相迁移的工具。**Java 与 Go 共用同一套表**(Go 已有 SQL 来源,随 v0.2.0 升级表结构)。也可以存进 **Redis**(Java 与 Go 同一种数据结构,订阅变更即时同步;修改记录保留最近若干条,完整审计用数据库;**规划中,尚未开始实现**)。SQLite 保留用于单机和开发环境。使用说明见官网 [数据库模式](https://apidoc.csap.ai/guide/database-mode)(实现中,方案已审定),设计见 [database-mode.md](https://github.com/csap-ai/csap-apidoc/blob/main/docs/design/database-mode.md)
 - **Mock 服务**(已有设计文档 M9.3):按文档生成模拟数据,前端可先行开发
 - **JSON Schema 导入导出**
 - **字段库与模板**:常用字段、校验规则做成模板复用(现有正则模板的扩展)

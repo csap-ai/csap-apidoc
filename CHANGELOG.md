@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- Database mode (planned for 1.4.0, in progress): added the user guide
+  (`guide/database-mode`) and finalized the shared Java / Go table schema in
+  `docs/design/database-mode.md` (`{prefix}rule`, `{prefix}history`,
+  `{prefix}meta`; columns `rules` / `before_rules` / `after_rules` keep the
+  existing Go names). The feature is not released yet; the Redis mode is
+  planned and not started.
+
 ## [1.3.0] - 2026-11-18
 
 Verified with real MCP clients: Claude Code and opencode (DeepSeek `deepseek-flash`)
