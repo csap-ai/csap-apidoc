@@ -1,6 +1,6 @@
 # 数据库模式与 Redis 模式(规则集中存储)方案
 
-状态:已审定(2026-11-18),实现中(数据库模式:Java 1.4.0、Go v0.2.0;Redis 模式尚未开始实现)。计划版本:Java 1.4.0(2026-12-22);Go 已有 SQL 规则来源,同步调整表结构。
+状态:已审定(2026-11-18),实现中(数据库模式的 Java、Go 实现已完成验收;迁移工具未完成;Redis 模式尚未开始实现)。计划版本:Java 1.4.0(2026-12-22);Go 已有 SQL 规则来源,同步调整表结构。
 
 ## 1. 为什么要做
 
@@ -81,7 +81,7 @@ csap:
 | MySQL / MariaDB | 5.7+ / 8.x | `rules` 用 `LONGTEXT`(不依赖 JSON 类型,兼容 5.7 与各类 MySQL 兼容库) |
 | PostgreSQL | 12+ | `TEXT` |
 | 达梦 DM8 | 8.x | `CLOB`;自增用 `IDENTITY`;`SELECT ... FOR UPDATE` 行锁 |
-| 人大金仓 KingbaseES | V8 / V9 | 默认按 PostgreSQL 兼容模式;库若初始化为 MySQL / Oracle 兼容模式,配置 `dialect` 指定 |
+| 人大金仓 KingbaseES | V8 / V9 | 默认按 PostgreSQL 兼容模式;MySQL 兼容模式的库用 `dialect: mysql` 试用;Oracle 兼容模式未验证,暂不支持 |
 | SQLite | 3.x | 单机、开发环境 |
 | H2 | 2.x | 测试环境(有建表 SQL,主要用于测试) |
 

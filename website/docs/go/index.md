@@ -181,7 +181,7 @@ s := sqlstrategy.New(sqlstrategy.Options{
 if err := s.EnsureSchema(ctx); err != nil { /* ... */ }
 ```
 
-- **方言**:新增 `DM`(达梦 DM8)、`Kingbase`(人大金仓,按 PostgreSQL 兼容模式;库初始化成 MySQL / Oracle 兼容模式时改用 `MySQL` / `DM`)。达梦、金仓目前只有语句层面的单元测试,没有连真实数据库验证,属于试用。MySQL 有集成测试。
+- **方言**:新增 `DM`(达梦 DM8)、`Kingbase`(人大金仓,按 PostgreSQL 兼容模式;MySQL 兼容模式的库用 `MySQL` 方言试用,Oracle 兼容模式未验证、暂不支持)。达梦、金仓目前只有语句层面的单元测试,没有连真实数据库验证,属于试用。MySQL 有集成测试。
 - `EnsureSchema` 逐表探测,不存在才建;发现 v0.1.x 的旧表时返回 `sqlstrategy.ErrLegacySchema`,**不会自动改旧表**。`Schema()` 返回建表语句,想自己执行(或交给 DBA)时用。
 - 各服务的规则、版本号、修改记录、回滚互不影响;回滚别的服务的修改记录会返回 `strategy.ErrNoChange`。
 - 通知:`Notifier`(如 Redis Pub/Sub)接口签名不变,消息不带服务名,多个服务共用一个频道时收到通知的实例多查一次本服务的版本号,结果正确。想避免多余查询,让通知实现同时实现 `ServiceNotifier`(`PublishService` / `SubscribeService`,消息带服务名),策略会优先使用它。

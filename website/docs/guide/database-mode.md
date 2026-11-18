@@ -84,7 +84,7 @@ csap:
 
 - JDBC URL 以 `jdbc:kingbase8:` 开头时自动识别，默认按 **PostgreSQL 兼容模式**处理。
 - **驱动需要自行获取**：人大金仓的 JDBC 驱动不在 Maven Central，请从金仓官网或厂商提供的 Maven 仓库获取与数据库版本匹配的驱动。
-- **兼容模式的选择**：库在初始化时可以选择 PostgreSQL、Oracle、MySQL 等兼容模式。库是 PostgreSQL 兼容模式时不用额外配置；初始化为 MySQL 兼容模式的库，请设置 `csap.apidoc.database.dialect=mysql`；Oracle 兼容模式的库可以试用 `dm`（Oracle 风格的方言），都请先在测试库上确认建表和保存正常。
+- **兼容模式的选择**：金仓库在初始化时可以选择 PostgreSQL、Oracle、MySQL 等兼容模式。库是 PostgreSQL 兼容模式时不用额外配置；初始化为 MySQL 兼容模式的库，请设置 `csap.apidoc.database.dialect=mysql` 试用，先在测试库上确认建表和保存正常；Oracle 兼容模式没有验证，暂不支持。
 
 ### SQLite / H2
 
@@ -271,13 +271,31 @@ if err := s.Migrate(ctx); err != nil { /* ... */ }
 - 全局版本号存在 `{prefix}meta` 表里，按 `service` 区分。
 - DevTools 保存时，在一个事务里完成：先更新全局版本号（取得行锁，保证并发保存串行）、写规则、写修改记录，然后立即刷新当前实例。
 - 其他实例每隔 `poll-interval`（默认 5 秒）查一次版本号，变了就重新加载规则，不需要重启。轮询失败只打 WARN，继续使用内存中的规则。
-- 重新加载后重新生成文档、让页面立即看到新规则，1.4.0 提供（实现中，发布前以实际行为为准）。
+- 发现版本变化后，本实例重新加载规则，并重新生成受影响类的文档和字段规则，运行时返回字段过滤、请求校验随之更新；DevTools 关闭的生产实例会整体重新扫描一次文档。回滚同样会触发其他实例的同步。
 - `poll-interval: 0` 关闭轮询，此时其他实例要重启才会读到新规则。
 - 可选的即时通知（例如 Redis）见 [Redis 模式](#redis-模式规划中)，不是默认行为。
 
 ## 修改记录与回滚
 
-每次保存都会往 `{prefix}history` 写一条：接口（`rule_key`）、修改前后的内容（`before_rules` / `after_rules`）、版本号、修改人、时间。1.4.0 提供在 DevTools 里查看某个接口的修改记录并回滚到之前的内容（页面实现中，发布前细化）。Java 与 Go 的记录格式一致。
+每次保存都会往 `{prefix}history` 写一条：接口（`rule_key`）、修改前后的内容（`before_rules` / `after_rules`）、版本号、修改人、时间。Java 与 Go 的记录格式一致。
+
+### DevTools「规则记录」页
+
+DevTools 的侧栏有「规则记录」页（`/devtools-ui/rules`），页面语言跟随浏览器，可切换中 / 英：
+
+- 列表显示时间、规则键、操作（新增 / 修改 / 删除）、版本、修改人，可按规则键筛选；
+- 点开一条可以并排查看修改前后的差异；
+- 回滚需要确认。回滚本身会生成一个新版本，修改人记为 `devtools-rollback`，其他实例随后按 `poll-interval` 同步；
+- 在 DevTools 里保存规则时，修改人记为 `devtools`；
+- 只读模式下不能回滚（接口返回 `code = 1007`）；没有使用数据库模式时，页面显示如何切换到数据库模式的说明。
+
+页面对应的接口（相对于应用的 context-path，只有开启 DevTools 时注册）：
+
+| 接口 | 作用 |
+|------|------|
+| `GET devtools/rules/status` | 当前是否是数据库模式、是否只读 |
+| `GET devtools/rules/history` | 修改记录，可按规则键筛选 |
+| `POST devtools/rules/rollback` | 回滚，请求体 `{"changeId": 记录ID}` |
 
 `history` 表只增不改，需要完整、长期的审计追溯时，由 [团队版](/roadmap) 在这套表的基础上提供（成员、审批、防篡改记录等）。
 

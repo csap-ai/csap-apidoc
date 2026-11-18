@@ -107,7 +107,7 @@ YAML 文件写回源码目录依赖于"classpath 根目录是 `target/classes`"�
 - 必须在打包后的环境里调整规则时，用 SQLite 策略。启动目录要可写（不可写时同样返回 `1007`，说明里带上文件路径）；多个实例各有一份文件，互不同步；
 - 需要多实例共享、集中维护规则的，等 1.4.0 的 [数据库模式](/guide/database-mode)（计划中）。1.4.0 还计划提供 Redis 模式（规则存进 Redis，规划中，尚未实现）。
 
-数据库模式下 DevTools 还会提供修改记录查看与回滚，设置 `csap.apidoc.database.read-only=true` 后只读、不允许保存（生产环境用）。
+数据库模式下 DevTools 侧栏有「规则记录」页（`/devtools-ui/rules`），可以查看修改记录、并排对比修改前后并回滚，见 [数据库模式 - 修改记录与回滚](/guide/database-mode#修改记录与回滚)。设置 `csap.apidoc.database.read-only=true` 后只读、不允许保存（生产环境用）。
 
 ## 后端接口
 
