@@ -69,7 +69,7 @@ jobs:
         run: go test -race ./...
 
   integration-db:
-    name: integration (PostgreSQL 16 + MySQL 8)
+    name: integration (PostgreSQL 16 + MySQL 8 + Redis 7)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -97,6 +97,15 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -105,9 +114,10 @@ jobs:
           go-version: stable
           cache-dependency-path: csap-apidoc-go/integration/go.sum
 
-      - name: go test (integration, SQLite + PostgreSQL + MySQL)
+      - name: go test (integration, SQLite + PostgreSQL + MySQL + Redis)
         working-directory: csap-apidoc-go/integration
         env:
           CSAP_TEST_PG_DSN: postgres://csap:csap@localhost:5432/csap?sslmode=disable
           CSAP_TEST_MYSQL_DSN: root:csap@tcp(localhost:3306)/csap?parseTime=true
+          CSAP_TEST_REDIS_ADDR: localhost:6379
         run: go test -race ./...

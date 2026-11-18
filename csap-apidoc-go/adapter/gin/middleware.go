@@ -18,7 +18,7 @@ import (
 //
 //	r.Use(ginadapter.ResponseFilter(doc))
 //
-// 默认只裁剪 2xx 响应,4xx/5xx 的错误体原样输出;可用 apidoc.Options.ShouldFilter 自定义,
+// 默认只裁剪 2xx 响应,4xx/5xx 的错误体原样输出;可用 apidoc.Options.ShouldFilter 自定义(再按响应体细判用 ShouldFilterBody),
 // 用 apidoc.Options.FilterEndpoints 按接口关闭。规则热更新后,下一个请求即按新规则过滤。
 func ResponseFilter(doc *apidoc.Doc) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -32,7 +32,7 @@ func ResponseFilter(doc *apidoc.Doc) gin.HandlerFunc {
 		c.Next()
 		c.Writer = bw.ResponseWriter
 		mask := ep.ResponseMask
-		if !doc.ShouldFilter(c.Request, bw.status) {
+		if !doc.ShouldFilter(c.Request, bw.status) || !doc.ShouldFilterBody(c.Request, bw.status, bw.buf.Bytes()) {
 			mask = nil
 		}
 		bw.flushTo(mask)

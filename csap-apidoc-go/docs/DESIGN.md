@@ -174,14 +174,24 @@ func (n redisNotifier) Subscribe(ctx context.Context, fn func(int64)) error {
 }
 ```
 
+### 3.6 Redis 策略与规则导入（v0.2.0，`strategy/redis`、`strategy.Import`）
+
+- 数据约定与 Java 共用，写在仓库 `docs/design/redis-mode.md`：Hash 存规则、String 存版本号、List 存每个接口的修改记录、Hash 索引 id→规则键（用于按 id 回滚）、Pub/Sub 频道通知；服务名用 `{}` 包成 hash tag，集群下同一服务的键同槽。
+- 保存是一段 Lua 脚本（`save.lua`，`go:embed`，Java 内嵌同一段文本），原子完成：比较内容（相同返回 -1，不加版本号）、版本号加 1、写规则、写记录、裁剪并同步删索引、发布通知。客户端调用前再按 JSON 结构比较一次，别的语言写的文本不同、结构相同时也不会误加版本号。
+- 主模块不引入 Redis 客户端：`redis.Client` 是只有六个方法的接口，go-redis 适配器放在 `integration/goredis.go` 和 `docs/REDIS.md`。
+- 同步：订阅通知即时生效，`Poll` 轮询版本号兜底，订阅断开 1 秒后重连并补查一次。
+- `strategy.Import(ctx, src, dst, opts)` 读 `src` 全部规则，与 `dst` 比较后分为新增、相同、冲突（默认不覆盖）、覆盖；支持 dry-run；写入用 `Saver.Save`，修改人 `migrate`。
+
 ## 4. 运行时流程
 
 1. **启动**：适配器收集路由，与第 3.1 节的声明合并，再按 3.2 合并规则，生成文档模型和过滤计划，原子替换 `atomic.Pointer[snapshot]`。
 2. **规则变更**：Watch 回调触发，重新生成快照，再原子替换。正在处理的请求继续用旧快照，不加锁。
-3. **多实例**：SQL 策略在保存时把版本号加 1，并发 Redis 通知（可选）；其他实例收到通知后重新加载。没有 Redis 时按配置的间隔轮询版本号（默认 5 秒）。
+3. **多实例**：SQL 策略在保存时把版本号加 1，并发 Redis 通知（可选，见 3.6 的 Redis 策略）；其他实例收到通知后重新加载。没有 Redis 时按配置的间隔轮询版本号（默认 5 秒）。
 4. **启动监听**：`go doc.Watch(ctx)`，会监听所有实现了 `strategy.Watcher` 的策略（YAML、SQL、Memory）。
 
 ## 5. 返回字段过滤（M2 已实现）
+
+
 
 ### 5.1 语义
 
