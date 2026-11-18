@@ -67,11 +67,14 @@ type Options struct {
 // Violation 是一次校验失败。
 type Violation struct {
 	Endpoint string // 接口规则的键
-	Field    string // 规则路径
-	Rule     string // 失败的规则类型:Required / NotNull / NotEmpty / Pattern / Type / Min ...
-	Code     string
-	Message  string // 已按 TipType 格式化
-	Mode     Mode
+	// Field 是出错的字段:请求体字段为规则路径(如 request.items.name);
+	// 路径、查询、请求头、表单这类单值参数为参数名(如 updated_at),与 Java 的 ValidationViolation.field 一致,
+	// 不是规则里的 "updated_at.updated_at" 写法。
+	Field   string
+	Rule    string // 失败的规则类型:Required / NotNull / NotEmpty / Pattern / Type / Min ...
+	Code    string
+	Message string // 已按 TipType 格式化
+	Mode    Mode
 }
 
 func (v *Violation) Error() string { return v.Code + " " + v.Message }
@@ -326,9 +329,17 @@ func expand(x any) []any {
 	return []any{x}
 }
 
+// violationField 返回报告用的字段名:单值参数用参数名,请求体字段用规则路径。
+func violationField(c *apidoc.FieldCheck) string {
+	if c.In != model.ParamBody && c.Name != "" {
+		return c.Name
+	}
+	return c.Field
+}
+
 func (v *Validator) checkValue(endpoint string, c *apidoc.FieldCheck, val value) *Violation {
 	fail := func(rule, code, msg string) *Violation {
-		return &Violation{Endpoint: endpoint, Field: c.Field, Rule: rule, Code: code, Message: msg}
+		return &Violation{Endpoint: endpoint, Field: violationField(c), Rule: rule, Code: code, Message: msg}
 	}
 	// 类型(对应 Java MethodArgumentTypeMismatch / fastjson DeserializerValidate:code 400,"<说明>,数据格式错误")
 	if c.DataType != "" && val.present && !typeOK(c.DataType, val.v) {
