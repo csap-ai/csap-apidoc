@@ -15,6 +15,7 @@ csap-apidoc-go 的版本号独立于 Java 版,tag 格式为 `csap-apidoc-go/vX.Y
 - `Strategy.Migrate(ctx)` 与 `Strategy.MigrationSQL()`:v0.1.x → v0.2.0 的迁移,旧数据归到 `Options.Service`。
 - `sql.ServiceNotifier`:带服务名的通知(可选,实现它就优先使用)。原 `Notifier` 接口不变。
 - **Redis 规则来源 `strategy/redis`**:与 Java 1.4.0 Redis 模式的数据约定一致(`docs/design/redis-mode.md`),Lua 保存脚本在 `strategy/redis/save.lua`。实现 Strategy / Saver / Historian / Watcher;订阅通知 + 轮询兜底;修改记录按 `HistoryLimit` 裁剪。主模块不依赖 Redis 客户端,使用方实现最小接口 `redis.Client`,go-redis v9 适配器见 [docs/REDIS.md](docs/REDIS.md)。
+- **`csap-apidoc-diff` 命令行工具(`cmd/csap-apidoc-diff`)**:比较两份 `/csap/apidoc` 文档(Java、Go 服务同一协议),输出新增 / 删除 / 修改的接口与字段(text / JSON / Markdown),按规则判定破坏性变更(删除接口、删除返回字段、请求字段可选变必填、字段类型变化、方法或路径变化、枚举取值减少等),有破坏性变更时退出码 1;`snapshot` 子命令保存稳定的基线快照;支持忽略清单和请求头。库在 `apidiff` 包。见 [docs/DIFF.md](docs/DIFF.md) 与仓库 `docs/design/1.4.0-api-diff.md`。
 - **规则导入 `strategy.Import`**:把 YAML 等来源导入 SQL / Redis,默认不覆盖已有的不同规则并返回冲突列表,支持 dry-run,修改人 `migrate`。见 [docs/IMPORT.md](docs/IMPORT.md)。
 - `Options.ShouldFilterBody func(r, status, body) bool`:按响应体判断是否裁剪,用于"业务失败也返回 HTTP 200"的接口(Java 只过滤正常返回的对象)。在 `ShouldFilter` 返回 true 之后、裁剪之前调用,返回 false 原样输出;不设置时行为不变。gin、net/http 适配器都支持,自定义适配器调用 `Doc.ShouldFilterBody`。附现成判断 `apidoc.SuccessField("success", true)`。见 [docs/FILTER-BODY.md](docs/FILTER-BODY.md)。
 
