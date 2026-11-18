@@ -245,7 +245,7 @@ v := validate.New(doc, validate.Options{
 - `Violation.Field` 是出错的字段:路径、查询、请求头、表单参数为参数名(如 `updated_at`,与 Java 一致),请求体字段为规则路径(如 `request.items.name`)。
 - 失败返回默认与 Java 的 `ApidocResult` 一致:HTTP 200,body 含 `code`、`message`、`success:false`、`language`、`time`,没有 `data`;`code`、`message` 取规则配置,信息格式按 `TipType`;`Options.Respond` 可以换成自己的格式。
 - 规则改了,下一个请求就按新规则校验。
-- **与 Java 的差别(1.4.0 起对齐)**:非必填字段上写的规则,只要请求里传了这个字段,Go 就会按规则校验。Java 1.2.0 / 1.3.0 只执行必填字段上的规则,所以同一份规则在当前版本的 Java 上更宽松;**1.4.0 起 Java 向 Go 对齐**(Java 提供开关可恢复旧行为),Go 的行为不变。见[参数校验](/guide/validation)。
+- **与 Java 的关系(1.4.0 起一致)**:非必填字段上写的规则,只要请求里传了这个字段,Go 就会按规则校验。Java 1.4.0 起行为相同(以 Go 为准;Java 提供开关可恢复旧行为);Java 1.2.0 / 1.3.0 只执行必填字段上的规则,同一份规则在旧版 Java 上更宽松。见[参数校验](/guide/validation)。
 
 ## 后台管理
 

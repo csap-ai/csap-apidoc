@@ -56,7 +56,7 @@ CSAP Apidoc 是**多语言的运行时 API 文档框架**:服务启动时从代�
 | 规则修改生效 | 手工改 YAML 需重启;DevTools 修改即时生效 | `doc.Watch` 监听,文件改了自动重新加载 |
 | 返回过滤 | `csap.apidoc.runtime.filter.*`,默认关闭;按 `mode: path / csap / off` | `Options.FilterMode`(`ModePath` 默认 / `ModeCsap` / `ModeOff`)、`FilterEndpoints`、`ShouldFilter`,只裁剪 2xx |
 | 校验 | `csap.validation.mode`,需引入 `csap-validation-boot-starter` | `validate.New(doc, Options{Mode})` + 适配器的 `RequestValidator` 中间件 |
-| 非必填字段上的规则 | **不执行**:只有 `required: true` 的字段才登记并执行规则 | **执行**:请求里传了这个字段就按规则校验,没传才跳过 |
+| 非必填字段上的规则 | **1.4.0 起执行**(与 Go 相同);1.3.0 及以前只执行 `required: true` 字段上的规则,`csap.validation.optional-field-rules=skip` 可恢复旧行为 | **执行**:请求里传了这个字段就按规则校验,没传才跳过 |
 | 模型显示名 | `@ApiModel(value)` | `Options.TypeNames` 或类型实现 `ApidocName()` |
 | 内置正则 | `PATTERN_00`～`PATTERN_44` | 同一份名字,Go 版已修正 Java 里写错的几条 |
 | DevTools | `csap.apidoc.devtool.enabled=true` | `devtools.New(doc, Options{Auth: ...})` 并挂载,`Auth` 必填 |

@@ -118,7 +118,7 @@ v := validate.New(doc, validate.Options{
 
 - 规则类型:`NotNull`、`NotEmpty`、`Pattern`(与 Java 相同),以及 Go 新增的 `NotBlank`、`Min`、`Max`、`Length` / `Size`、`Enum`;`validate.Register` 注册自定义规则。`pattern` 可以写内置名 `PATTERN_1`～`PATTERN_44`。
 - 其他 `Options`:`TipType`(默认 `TIP_1`)、`MaxBodyBytes`(默认 1MB)、`RequiredCode` / `RequiredMessage`(必填无规则时,默认 `"400"` / `不能为空`)、`OnViolation`(默认 slog Warn)、`Respond`(自定义拦截时的返回,默认与 Java 一致:HTTP 200 + `ApidocResult`)。
-- **与 Java 的差别**:非必填字段上写的规则,只要请求里传了这个字段 Go 也会校验;Java 只执行必填字段上的规则。同一份规则在 Go 上更严格;已定 1.4.0 起 Java 向 Go 对齐(以 Go 为准)。
+- **与 Java 的关系**:非必填字段上写的规则,只要请求里传了这个字段 Go 就会校验。Java 1.4.0 起行为相同(以 Go 为准,两边共用 71 条黄金用例);Java 1.3.0 及以前只执行必填字段上的规则,同一份规则在 Go 上更严格。
 - 规则改了,下一个请求就按新规则校验。
 
 ## 9. DevTools 后台

@@ -71,7 +71,7 @@ http://localhost:<端口><context-path>/devtools-ui
 
 对请求字段，可以添加 `NotNull`、`NotEmpty`、`Pattern` 三类规则，填写 `code`、`message`、`level`，`Pattern` 可以从 [内置正则](/guide/validation#内置正则) 中选取。已保存的规则通过 `/csap/yaml/getMethodValidateFields` 读回。
 
-注意：只有勾选为必填的字段，其校验规则才会在运行时执行，见 [参数校验](/guide/validation#只有必填字段的规则会执行)。
+注意：1.4.0 起，未勾选必填的字段，其校验规则在请求传了该字段时也会执行；1.3.0 及以前只执行必填字段的规则。见 [参数校验](/guide/validation#必填与非必填字段的规则)。
 
 ### 写回文件
 
