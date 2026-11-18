@@ -25,7 +25,7 @@ const (
 	// DM 是达梦 DM8。占位符 ?,大文本 CLOB,自增 IDENTITY。驱动由使用方 import(如 gitee.com/chunanyong/dm)。
 	DM
 	// Kingbase 是人大金仓,按 PostgreSQL 兼容模式处理(占位符 $n,BIGSERIAL)。
-	// 库若初始化成 MySQL / Oracle 兼容模式,请改用 MySQL / DM 方言。
+	// MySQL 兼容模式的库可用 MySQL 方言试用;Oracle 兼容模式未验证,暂不支持。
 	Kingbase
 )
 

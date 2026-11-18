@@ -18,7 +18,7 @@
 | `Postgres` | `TEXT` | `BIGSERIAL PRIMARY KEY` | 占位符 `$n` |
 | `MySQL` | `LONGTEXT` | `BIGINT AUTO_INCREMENT PRIMARY KEY` | 表选项 `ENGINE=InnoDB DEFAULT CHARSET=utf8mb4` |
 | `DM`(达梦 DM8) | `CLOB` | `BIGINT IDENTITY(1, 1) PRIMARY KEY` | |
-| `Kingbase`(人大金仓) | `TEXT` | `BIGSERIAL PRIMARY KEY` | 按 PostgreSQL 兼容模式;库初始化成 MySQL / Oracle 兼容模式时改用 `MySQL` / `DM` 方言 |
+| `Kingbase`(人大金仓) | `TEXT` | `BIGSERIAL PRIMARY KEY` | 按 PostgreSQL 兼容模式支持;MySQL 兼容模式的库可用 `MySQL` 方言试用;Oracle 兼容模式未验证,暂不支持 |
 
 没有用 `DEFAULT ''`:达梦和 Oracle 兼容模式会把空串当成 NULL。`updated_by` 为空时写 `unknown`。
 

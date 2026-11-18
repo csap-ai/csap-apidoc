@@ -313,7 +313,7 @@ csap-apidoc-go/
 |---|---|---|
 | M1 核心（**已完成** 2026-11-17） | model、tag 策略、gin 适配、`/csap/apidoc*`、文档页面、OpenAPI 导出 | 示例项目能打开 `/csap-api.html`，`/csap/apidoc` 能被 Java 版前端正常解析 |
 | M2 过滤与校验（**已完成** 2026-11-17） | 返回字段过滤（路径白名单、csap 兼容模式、外层包装）、请求参数校验（中间件、内置与自定义规则、观察模式）、基准测试 | 用 Java 的真实返回做黄金样本：79 个接口的返回字段集合与 Java 完全一致；`/csap/apidoc` 编码器对 2.5MB 的 Java 实时返回逐字节还原。性能目标 30% 未达到，实测约 50%（见 5.2） |
-| M3 配置（**已完成** 2026-11-17） | YAML 策略（读写、热加载）、SQL 策略（版本号、轮询、Redis 通知） | 改 YAML 或数据库后几秒内生效，不重启：示例项目实测改 YAML 3 秒内返回字段变化；SQL 两实例共用一个库，A 保存后 B 在轮询间隔内生效（SQLite、PostgreSQL 实测，MySQL 未实测） |
+| M3 配置（**已完成** 2026-11-17） | YAML 策略（读写、热加载）、SQL 策略（版本号、轮询、Redis 通知） | 改 YAML 或数据库后几秒内生效，不重启：示例项目实测改 YAML 3 秒内返回字段变化；SQL 两实例共用一个库，A 保存后 B 在轮询间隔内生效（M3 当时 SQLite、PostgreSQL 实测；v0.2.0 起 MySQL 8 也有集成测试） |
 | M4 管理(**已完成** 2026-11-17) | devtools 接口与前端（含必填和校验规则配置）、修改记录、回滚、鉴权;`globalHeaderHints`、`authHint` | 用 devtools 页面勾选字段后，返回结果实时变化，并能回滚(浏览器实测) |
 | M5 发布(**已完成** 2026-11-17) | net/http 适配、Postman 导出、README、CHANGELOG、CI、官网接入文档 | 总覆盖率 80%;已发布 tag `csap-apidoc-go/v0.1.0`,v0.1.1 见 CHANGELOG |
 
