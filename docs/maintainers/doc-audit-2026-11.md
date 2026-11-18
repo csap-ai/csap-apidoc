@@ -95,10 +95,56 @@
 | E17 | `DESIGN.md:302` | "目前是单个 go.mod" | 另有 `integration/go.mod` | 补充 | 措辞 | 已修 |
 | E18 | `DESIGN.md:314` | M5"待打 tag" | v0.1.0、v0.1.1 已发布 | 改 | 过时 | 已修 |
 
+### F. 注解、扩展点、存储策略、返回过滤(第二批,另一路核对,注解属性表 24 个全部与源码一致)
+
+| # | 页面:行号 | 问题 | 改法 | 严重程度 | 状态 |
+|---|---|---|---|---|---|
+| F1 | `guide/annotations.md:133` | `@RequestMapping` 没写 `method` 时列"POST、DELETE、GET 三种";代码(`ApiDocService.java:603-605`)是 GET、POST、PUT、DELETE 四种 | 改 | 错误 | 已修 |
+| F2 | `api/annotations.md:3` | 首句"1.1.1 全部注解" | 改 1.2.0(1.2.0 没改注解,内容有效) | 过时 | 已修 |
+| F3 | `api/java.md:5-16` | 总览缺 1.2.0 新增的 `ApiMethodHandle`、`ViolationRecorder`、`ApidocRulesRefreshedEvent` | 补三行并链接到校验页 | 缺失 | 已修 |
+| F4 | `api/java.md:16` | "这些类型都在 csap-apidoc-core 中";`IMethodRequest`、`ApiMethodHandle` 等在 common | 改口径 | 措辞 | 已修 |
+| F5 | `skills/.../yaml-rules.md:7-10`、`guide/storage-strategies.md:96-101` | 没说 YAML 文件必须以 `-method-field.yaml` 结尾、只认 `.yaml`(`.yml` 不读取) | 补 | 缺失 | 已修 |
+| F6 | `guide/runtime-filter.md:3-15` | 没说只支持 Servlet 栈(`RuntimeFilterAutoConfiguration` 带 `@ConditionalOnWebApplication(SERVLET)`) | 补 | 缺失 | 已修 |
+| F7 | `api/annotations.md:212-236`、`guide/annotations.md:348-388` | `@DocGlobalHeader` / `@DocAuth` 不继承、包级只读本包 `package-info.java`(`DocHintsCollector`) | 两页各补一句 | 缺失 | 已修 |
+| F8 | `skills/.../SKILL.md` 第 3 节 | 没提 `@DocGlobalHeader`、`@DocAuth`、`@ApiResponseCode`、`@EnumValue/@EnumMessage` | 补一行 | 缺失 | 已修 |
+| F9 | `api/annotations.md:109` | 基础类型参数 `required`"YAML / SQLite 策略下以规则中的为准";代码(`DefaultAbstractMethod.java:224,232`):文档显示取规则与 `@ApiProperty` 的"或",运行时校验登记只看规则 | 按代码改写 | 措辞 | 已修,**待裁定**取"或"是否有意 |
+| F10 | `skills/.../yaml-rules.md:61-78` | "上级字段也要写 `include: true`";`storage-strategies.md` 的同类示例没写 `data`(因为 `ApidocResult.data` 是 `forceRep`) | 写清两种情形 | 措辞 | 已修,统一口径待裁定 |
+| F11 | `api/annotations.md:258` | `@DataTypeValidate` 由"boot-starter 中的异常处理器"读取;类实际在 `csap-validation-core` | 改 | 措辞 | 已修 |
+| F12 | `guide/runtime-filter.md:108` | 放行全部字段"多 25%～35%";CHANGELOG 是 24%～32% | 统一 | 措辞 | 已修 |
+
+### G. GitHub 上读者会看到的文档(第二批)
+
+| # | 文件:行号 | 文档怎么写 | 实际 | 改法 | 严重程度 | 状态 |
+|---|---|---|---|---|---|---|
+| G1 | `SECURITY.md` 支持版本表 | 只有 1.1.x ✅ | 当前 1.2.0,"安全修复以最新次版本线发布" | 加 1.2.x ✅,1.1.x 改 ❌(已被取代) | 过时 | 已修,**支持策略待裁定** |
+| G2 | `.github/ISSUE_TEMPLATE/bug_report.md:32`、`question.md:40` | 版本示例 `1.1.0` | 1.1.0 是 Java 17 字节码,不应再引导用户用 | 改 `1.2.0` | 过时 | 已修 |
+| G3 | `CHANGELOG.md` "Upcoming Features"(v2.0 / v3.0 / v4.0) | 计划里的"环境管理、请求历史、暗黑模式、i18n、TypeScript 生成"早已发布;版本规划与路线图(1.3.0 / 1.4.0 / 团队版)矛盾 | 官网"发布说明"页由它同步生成,会直接展示 | 换成指向路线图的一段 | 过时 | 已修 |
+| G4 | `CHANGELOG.md` "Migration Guides" 只有"Installing 1.1.0" | 1.2.0 是最新 | 改为"Upgrading to 1.2.0"(校验 enforce、过滤默认关闭、别用 1.1.0) | 过时 | 已修(历史版本条目 `[1.2.0]`～`[1.0.0]` 未改) |
+| G5 | `docs/maintainers/PUBLISHING.md` 发布清单 | 引用不存在的 `docs/guides/QUICK_START.md`、`docs/index.md`;例子版本 1.1.0 | 版本号分布在 `website/docs/**`、`rspress.config.ts`、`SKILL.md`、`ROADMAP.md`、`example/*/pom.xml` | 清单改为真实位置 | 过时 | 已修 |
+| G6 | `docs/design/1.2.0-plan.md` 标题"2026-12-04 发布" | 已于 2026-11-17 发布 | 标题去日期,加"已完成"说明 | 过时 | 已修 |
+| G7 | `docs/design/environment-auth-headers.md` 状态 "APPROVED — ready for M1" | 已在 1.1.1 实现 | 状态改 IMPLEMENTED,指向官网在线调试页 | 过时 | 已修 |
+| G8 | `docs/design/m93-mock-server.md` | 状态"DESIGN — not yet implemented" | 路线图里是 1.4.0,未实现,准确 | 不改 | — | — |
+| G9 | `CODE_OF_CONDUCT.md`、`.github/pull_request_template.md`、`.gitee/*.zh-CN.md`、`ISSUE_TEMPLATE/feature_request.md` | 核对事实与链接 | 无问题 | — | — | — |
+| G10 | GitHub 仓库描述(`gh repo view`) | "Runtime API documentation for Spring Boot: annotation / YAML / SQLite field rules, response field filtering, request validation and in-browser try-it-out." | README 定位是"多语言的运行时 API 文档框架",Go v0.1.1 已发布;描述只写 Spring Boot,topics 没有 `go` / `golang` | 建议描述改为多语言口径,topics 增加 `go`、`golang`、`gin` | 过时 | **待主会话裁定**(只读,未改) |
+| G11 | GitHub Release `v1.2.0` 发布说明 | 正文是英文 CHANGELOG 摘录,事实(坐标、Go 与其同时发布 v0.1.0、已知问题表)与代码一致;末尾写"Go: released together as csap-apidoc-go/v0.1.0" | 事实无误;Go 现在是 v0.1.1 | 可不改。如要改,加一句"Go 后续补丁见 csap-apidoc-go/v0.1.1" | 措辞 | **待主会话裁定**(只读,未改) |
+| G12 | GitHub Release `csap-apidoc-go/v0.1.1` | 中文发布说明,内容与 `csap-apidoc-go/CHANGELOG.md` 一致,安装命令正确 | 无问题 | — | — | — |
+
+### H. 官网导航与链接
+
+- 侧边栏、顶部导航:`guide/*` 17 页、`api/*` 3 页、`go/`、`download/`、路线图、发布说明全部已挂,无漏挂;`npm run build` 的死链检查通过。
+- 侧边栏标签"存储策略与返回过滤"与该页 H1 一致(该页内含"返回字段过滤"一节,另有独立的"返回字段过滤"页,不冲突)。
+- 使用文档按读者操作顺序(快速开始 → 安装 → 基础使用 → 配置)走查:依赖坐标、`@EnableApidoc`、注解属性(`@Api`、`@ApiOperation`、`@ApiProperty`、`@ApiModel`、`@ApiModelProperty` 的 `forceReq` / `forceRep` / `required` / `example`)均存在,片段可照抄;已改的是 Gradle 版本号和 starter 内容说明。
+
 ## 三、待主会话裁定
 
 1. **非必填字段上的校验规则,Go 与 Java 行为不同**(`csap-apidoc-go/validate/validate.go:352-358` 与 `website/docs/guide/validation.md` "只有必填字段的规则会执行")。Go 在非必填字段传了值时也按规则校验;Java 1.2.0 只在 `required: true` 时登记并执行。同一份 YAML 在两边结果不同,Go 更严格。`DESIGN.md` 已把它写成"有意为之",本次只在 DESIGN 里如实记录,**官网 Go 页和 Go 的 `CHANGELOG.md` "与 Java 版的差别"清单没有改**:需要裁定这是有意保留的差别(那就补进这两处),还是要在代码里对齐 Java。
-2. **`/devtools/hiddenMethod` 目前什么也不做**(`ApidocDevtools.java:1221` 直接返回 `true`)。文档已如实写成"没有实际作用",但如果这是未完成的功能而不是有意保留,可能要在 1.3.0 里处理或从文档中去掉该接口。
+2. **`AdvancedController` 示例演示的是文档标明"不生效"的方法级 `@ApiProperty` / `@ApiPropertys`**(`example/*/controller/AdvancedController.java`,类注释写"正确用法";`DefaultAbstractMethod.java:196-198` 的 javadoc 也写支持方法级,但 `:217` 只读参数级)。文档按实际行为写,警告保留;方法级到底是 bug 还是已弃用,需裁定后统一示例或代码。
+3. **示例 `ExampleApplication` 的配置与注释不符**(`paramType = YAML` 但注释写"annotation strategy";boot3 只扫描 `ProductController`,`UserController` 的 `@DocGlobalHeader` / `@DocAuth` 演示不可见;`src/main/resources` 下没有规则文件,全仓库 main 代码没有 `@Group`)。是有意还是遗留,需裁定后改示例代码。
+4. **基础类型参数的必填口径**:文档显示取规则与 `@ApiProperty.required` 的"或",运行时校验登记只看规则(`DefaultAbstractMethod.java:224,232`)。取"或"是否有意?
+5. **YAML 里上级字段 `include: true` 的统一写法**(见 F10)。
+6. **`SECURITY.md` 的支持版本策略**:只支持最新次版本线(1.2.x)是否符合预期。
+7. **GitHub 仓库描述 / topics、v1.2.0 发布说明**(见 G10、G11),只读,未改。
+8. **`/devtools/hiddenMethod` 目前什么也不做**(`ApidocDevtools.java:1221` 直接返回 `true`)。文档已如实写成"没有实际作用",但如果这是未完成的功能而不是有意保留,可能要在 1.3.0 里处理或从文档中去掉该接口。
 
 ## 四、顺带发现,未处理(超出"只改文档"的范围)
 
