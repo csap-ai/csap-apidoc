@@ -86,7 +86,7 @@ csap:
 
 - 用户管理 `/api/users`: 列表(分页)、详情、创建、更新、删除、`PATCH /{id}/status`
 - 产品管理 `/api/products`: 列表、详情、创建、更新、删除、库存更新、批量删除
-- 高级用法 `/api/advanced`: `@ApiProperty` / `@ApiPropertys` 补充方法参数文档
+- 高级用法 `/api/advanced`: 在参数上标注 `@ApiProperty` 补充参数文档(方法级写法已弃用)
 - 枚举(`@EnumValue` / `@EnumMessage`)、日期时间、JSR-303 参数校验
 
 boot3 额外包含 `/auth/login`、`/auth/whoami`(JWT,见 [SECURITY.md](./example-spring-boot3/SECURITY.md))、

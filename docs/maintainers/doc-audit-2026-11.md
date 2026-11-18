@@ -152,7 +152,7 @@
 | 1. Go / Java 非必填字段校验不一致 | 讨论中,倾向 Java 向 Go 对齐(非必填但传了值也校验,`Pattern` 本就对 null 放行),属行为变更,只能放 1.3.0 之后并先用 `observe`;未定方向 | 官网 Go 页已写明差别;对齐方向列入 1.4.0 前确定(见路线图) |
 | 2. `/devtools/hiddenMethod` 没作用 | 文档备注"目前没用" | 已写在 `api/rest.md`、`guide/devtools.md` |
 | 3. `AdvancedController` 演示方法级 `@ApiProperty` | 方法级写法按弃用处理,1.3.0 中示例改为参数级 | 文档保持"方法级不生效" |
-| 4. 示例配置与注释不符、示例里没有 `@Group` | 用户倾向**直接去掉 `@Group` 注解**(不再使用) | **未改文档**:`@Group` 目前仍在代码里并且是注解策略下"按接口选字段"的主要写法(`guide/annotations.md`、`storage-strategies.md`、`api/annotations.md`、SKILL 都有介绍),必须代码先删除或标记弃用,文档才能同步;影响面见下 |
+| 4. 示例配置与注释不符、示例里没有 `@Group` | 用户裁定:1.3.0 标为弃用,2.0 删除 | 已在 1.3.0 加 `@Deprecated` 与官网弃用提示;路线图新增"2.0(不兼容变更)" |
 | 5. 基础类型参数必填 | 用户:**以实际配置(规则)为准**,即规则里的 `required` 优先 | 1.3.0 已改:规则里有这个参数时以规则的 `required` 为准,没有规则才用注解;文档显示与运行时校验登记一致(`DefaultAbstractMethod.methodBasicParams`),官网与 CHANGELOG 已同步 |
 | 6. YAML 上级字段 `include: true` | 已向用户解释(返回规则里,`data` 这样的外层字段本身要被选中,下级字段才会输出;`ApidocResult.data` 已是 `forceRep` 所以不用写) | 已按两种情形写在 `yaml-rules.md` |
 | 7. `SECURITY.md` 只支持最新次版本线 | 同意 | 已改 |

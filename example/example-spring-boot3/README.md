@@ -94,7 +94,7 @@ public class UserController {
 |---|---|---|
 | `UserController` | `/api/users` | 列表、详情、创建、更新、删除、`PATCH /{id}/status` |
 | `ProductController` | `/api/products` | `listProducts`、`getProduct/{id}`、`createProduct`、`updateProduct/{id}`、`deleteProduct/{id}`、`updateStock/{id}/stock`、`DELETE /batch` |
-| `AdvancedController` | `/api/advanced` | `@ApiProperty` / `@ApiPropertys` 的用法 |
+| `AdvancedController` | `/api/advanced` | 在参数上标注 `@ApiProperty` 的用法 |
 | `AuthController` | `/auth` | `POST /login`、`GET /whoami`(JWT,见 [SECURITY.md](./SECURITY.md)) |
 | `UserCrudController` | `/api/user-crud` | 继承泛型基类 `BaseCrudController<User, Long>`,演示继承方法的泛型解析 |
 | `GenericTestController` | `/api/generic-test` | 泛型请求体(`BaseRequest<T>` 子类)的字段解析 |

@@ -96,7 +96,7 @@ public class UserController {
 |---|---|---|
 | `UserController` | `/api/users` | 列表、详情、创建、更新、删除、`PATCH /{id}/status` |
 | `ProductController` | `/api/products` | `listProducts`、`getProduct/{id}`、`createProduct`、`updateProduct/{id}`、`deleteProduct/{id}`、`updateStock/{id}/stock`、`DELETE /batch` |
-| `AdvancedController` | `/api/advanced` | `@ApiProperty` / `@ApiPropertys` 的用法 |
+| `AdvancedController` | `/api/advanced` | 在参数上标注 `@ApiProperty` 的用法 |
 
 ## 目录结构
 
