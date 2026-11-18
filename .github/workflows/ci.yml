@@ -35,6 +35,11 @@ jobs:
     - name: Build examples
       if: matrix.java != '11'
       run: mvn -B package -DskipTests --file example/pom.xml
+
+    # 支持范围下限:Spring Boot 2.3 / Spring 5.2 上跑 MCP 与返回字段过滤的端到端测试
+    - name: Spring Boot 2.3 compatibility tests
+      if: matrix.java == '11'
+      run: mvn -B test --file example/compat-spring-boot23/pom.xml
       
     - name: Generate test coverage report
       if: matrix.java == '17'

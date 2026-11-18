@@ -15,6 +15,8 @@
 - [example-spring-boot2 说明](./example-spring-boot2/README.md)
 - [example-spring-boot3 说明](./example-spring-boot3/README.md)
 
+另有 `compat-spring-boot23`:只有测试,在支持范围下限 Spring Boot 2.3 / Spring 5.2 上跑 MCP 与返回字段过滤的端到端测试(复用 example-spring-boot2 的测试源码),`mvn -f example/compat-spring-boot23/pom.xml test`。
+
 ## 快速运行
 
 在仓库根目录先安装本地构建产物,再进入示例目录运行:
