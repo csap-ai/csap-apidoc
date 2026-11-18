@@ -36,7 +36,7 @@
 
 ```groovy
 dependencies {
-    implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.1.1'
+    implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.2.0'
 }
 ```
 
@@ -44,7 +44,7 @@ dependencies {
 
 ```kotlin
 dependencies {
-    implementation("ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.1.1")
+    implementation("ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.2.0")
 }
 ```
 
@@ -65,10 +65,11 @@ dependencies {
 | SQLite 策略 | `ai.csap.apidoc:csap-apidoc-sqlite` | 把字段规则存到 SQLite 文件 |
 | 标准处理 | `ai.csap.apidoc:csap-apidoc-standard` | YAML / SQLite 策略共用的文件读写（由策略模块引入） |
 | DevTools | `ai.csap.apidoc:csap-apidoc-devtools` | 开发阶段的可视化管理界面；默认不启用 |
+| 运行时过滤 | `ai.csap.apidoc:csap-apidoc-runtime` | 返回字段过滤（1.2.0 起），默认关闭，见 [返回字段过滤](/guide/runtime-filter) |
 
 ### 校验 starter（可选）
 
-`ai.csap.apidoc.boot:csap-validation-boot-starter` 是可选的，只在需要下面这些功能时引入：
+`ai.csap.apidoc.boot:csap-validation-boot-starter` 是可选的。需要运行时参数校验（1.2.0 起），或者下面这些功能时引入：
 
 ```xml
 <dependency>
@@ -81,10 +82,10 @@ dependencies {
 - 注册全局异常处理 `ValidateExceptionHandler`（见下方提示）。
 - 注册 `ValidationProperties`，读取 `csap.validation.*` 配置。
 - 注册 `IValidateFactory`。不引入时，文档 starter 会使用一个内置的默认实现，文档照常生成（1.1.0 中缺少它会空指针，这是 1.1.0 要求两个 starter 同时引入的原因，1.1.1 已修复）。
-- 设置 `csap.validation.enabled=true` 后注册 `ValidateIntercept`。注意 1.1.x 中没有组件调用它，运行时参数校验不会执行，见 [参数校验](/guide/validation)。
+- `csap.validation.mode` 不是 `off`（或者 `endpoints` 里有接口不是 `off`，或者设置了旧开关 `csap.validation.enabled=true`）时，注册运行时校验组件 `ValidateIntercept`、`ValidationExecutor` 等，开始校验请求参数（1.2.0 起，默认关闭）。1.1.x 中没有组件调用 `ValidateIntercept`，不会校验。见 [参数校验](/guide/validation)。
 
 :::warning 全局异常处理
-`csap-validation-boot-starter` 会注册一个 `@ControllerAdvice`（`ValidateExceptionHandler`，`@Order(1)`），处理 `BindException`、`MethodArgumentNotValidException`、`MethodArgumentTypeMismatchException`、`ConstraintViolationException` 和框架自己的 `ValidateException`，并以 HTTP 200 返回 `ApidocResult` 格式的 JSON。
+`csap-validation-boot-starter` 会注册一个 `@ControllerAdvice`（`ValidateExceptionHandler`，`@Order(1)`），处理 `BindException`、`MethodArgumentNotValidException`、`MethodArgumentTypeMismatchException`、`ConstraintViolationException` 和框架自己的 `ValidateException`，并默认以 HTTP 200 返回 `ApidocResult` 格式的 JSON（状态码可用 `csap.validation.http-status` 修改）。
 
 如果你的项目已经有统一的异常处理，请确认它们的优先级和返回格式符合预期。这个 Bean 带有 `@ConditionalOnMissingBean`，你可以自己声明一个 `ValidateExceptionHandler` 类型的 Bean 来替换它。
 :::

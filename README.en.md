@@ -99,12 +99,13 @@ Full documentation (currently in Chinese) lives at **<https://apidoc.csap.ai>**.
 
 | Coordinates | Purpose |
 |---|---|
-| `ai.csap.apidoc.boot:csap-apidoc-boot-starter` | Spring Boot starter: core, docs page, YAML/SQLite strategies, DevTools |
-| `ai.csap.apidoc.boot:csap-validation-boot-starter` | Validation starter, optional: add it only if you need its validation exception handler or `ValidationProperties` |
+| `ai.csap.apidoc.boot:csap-apidoc-boot-starter` | Spring Boot starter: core, docs page, YAML/SQLite strategies, DevTools, response field filtering |
+| `ai.csap.apidoc.boot:csap-validation-boot-starter` | Validation starter, optional: add it if you need runtime request validation, its validation exception handler or `ValidationProperties` |
 | `ai.csap.apidoc:csap-apidoc-annotation` | Annotations |
 | `ai.csap.apidoc:csap-apidoc-core` | Scanning and doc generation |
 | `ai.csap.apidoc:csap-apidoc-ui` | Docs page |
 | `ai.csap.apidoc:csap-apidoc-devtools` | DevTools |
+| `ai.csap.apidoc:csap-apidoc-runtime` | Response field filtering (since 1.2.0) |
 | `ai.csap.apidoc:csap-apidoc-yaml` / `csap-apidoc-sqlite` / `csap-apidoc-standard` | Rule storage strategies |
 | `ai.csap.apidoc:csap-validation-core` | Validation engine |
 
