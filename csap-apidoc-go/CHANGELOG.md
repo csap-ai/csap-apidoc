@@ -29,7 +29,7 @@ csap-apidoc-go 的版本号独立于 Java 版,tag 格式为 `csap-apidoc-go/vX.Y
 - **内嵌前端**:文档页面 `/csap-api.html` 与后台管理页面 `/devtools-ui` 直接使用 Java 仓库 main 上的构建产物(文档页 1.1.1);静态资源放在 `/csap-ui/` 前缀下,避免与业务的 `/assets/` 冲突。`scripts/sync-ui.sh --ref <提交>` 同步新版前端。
 - **在线调试建议**:`globalHeaderHints`、`authHint`(对应 Java 1.1.0 的 `@DocGlobalHeader`、`@DocAuth`),支持全局、分组、接口三级。
 - **返回字段过滤**:路径白名单模式(默认)和完整复刻 Java 行为的 csap 兼容模式;在 JSON 字节流上裁剪,不依赖编码器。
-- **请求参数校验**:关闭 / 观察 / 拦截三种模式,可按接口覆盖;Java 的 `NotNull`、`NotEmpty`、`Pattern` 加上 `NotBlank`、`Min`、`Max`、`Length`、`Enum` 和自定义规则;44 条内置正则 `PATTERN_1`～`PATTERN_44`(另有 `PATTERN_00`、`PATTERN_01` 两个规则类型占位;修正了 Java 1.0.x 里写错的十余条),Java 写法的 `\uXXXX` 自动转换;失败返回格式与 Java 一致。
+- **请求参数校验**:关闭 / 观察 / 拦截三种模式,可按接口覆盖;Java 的 `NotNull`、`NotEmpty`、`Pattern` 加上 `NotBlank`、`Min`、`Max`、`Length`、`Enum` 和自定义规则;46 条内置正则(修正了 Java 1.0.x 里写错的十余条),Java 写法的 `\uXXXX` 自动转换;失败返回格式与 Java 一致。
 - **规则来源**:YAML(与 Java `method-field.yaml` 同格式,热加载,写回时保留注释和其他接口)、SQL(SQLite / PostgreSQL / MySQL,版本号、轮询与可选通知实现多实例同步)、内存;按 标签 < YAML < SQL 合并。
 - **后台管理**(`devtools` 包):与 Java DevTools 前端兼容的 `/csap/yaml/*`、`/devtools/*` 接口;保存后立即生效;必须配置鉴权(`BasicAuth`、`Token`、`AllowLocal` 等);修改记录与回滚(`/csap/yaml/history`、`/csap/yaml/rollback`),YAML、SQL、内存三种来源都支持。
 - **框架适配**:gin(`adapter/gin`)、标准库 net/http 的 Go 1.22 ServeMux(`adapter/nethttp`),各自提供文档挂载、后台挂载、返回过滤和请求校验中间件。
