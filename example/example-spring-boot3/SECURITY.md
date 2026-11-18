@@ -104,16 +104,18 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8083/api/users | jq
 ## 公开端点（即便启用 JWT 也不需要 token）
 
 ```
-/csap/apidoc/**          # 文档元数据（暴露给 csap-apidoc-ui）
-/api-doc, /api-doc/**    # 预留路径（框架实际的数据接口是 /csap/apidoc 与 /csap/openapi.json）
-/csap-api.html           # 嵌入式文档查看器 HTML
-/csap-api-devtools.html  # devtools 控制台 HTML
-/devtools-ui/**          # 后端开发者用的 devtools 控制台前端
-/api/devtools/**         # 预留路径（devtools 实际接口位于 /devtools/** 与 /csap/yaml/**，启用 JWT 后需自行放行或带 token）
-/auth/**                 # 登录端点本身
-/actuator/health
-/error, /static/**, /assets/**, /favicon.ico
+/csap/apidoc, /csap/apidoc/**            # 文档数据（含试运行代理 /csap/apidoc/devtools/proxy，默认关闭）
+/csap/openapi.json, /csap/openapi/**     # OpenAPI / Postman 导出
+/csap-api.html, /assets/**               # 文档页面及其静态资源
+/csap-api-devtools.html, /assets2/**     # DevTools 页面及其静态资源
+/devtools-ui, /devtools-ui/**            # DevTools 页面路由
+/devtools/**, /csap/yaml/**              # DevTools 后端接口（仅开发环境开启 DevTools）
+/csap/mcp                                # 内嵌 MCP 端点（token 模式由 MCP 自己校验令牌）
+/auth/**                                 # 登录端点本身
+/actuator/health, /error, /favicon.ico
 ```
+
+DevTools 接口能修改字段规则，只应在开发环境开启（`csap.apidoc.devtool.enabled`）；如果启用 JWT 的环境也开着 DevTools，请从 `PUBLIC_PATHS` 去掉 DevTools 几行，改为需要登录。
 
 凡未列入上表的接口（`/api/users`、`/api/products`、`/actuator/*` 等）都需要 JWT。
 

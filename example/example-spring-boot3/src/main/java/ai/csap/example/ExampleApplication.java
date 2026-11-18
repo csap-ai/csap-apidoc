@@ -2,7 +2,6 @@ package ai.csap.example;
 
 import ai.csap.apidoc.ApiStrategyType;
 import ai.csap.apidoc.boot.autoconfigure.EnableApidoc;
-import ai.csap.example.controller.ProductController;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -20,9 +19,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  */
 @SpringBootApplication
 @EnableApidoc(
-//        value = "ai.csap.example",
-        apiPackageClasses = {ProductController.class},
-        paramType = ApiStrategyType.YAML  // Use annotation strategy
+        value = "ai.csap.example",          // 扫描 ai.csap.example 下的全部 Controller
+        paramType = ApiStrategyType.YAML    // 字段规则用 YAML 文件(csap-api-doc/ 目录)
 )
 public class ExampleApplication {
     public static void main(String[] args) {

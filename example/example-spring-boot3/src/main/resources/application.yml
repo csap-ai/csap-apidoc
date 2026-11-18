@@ -69,12 +69,13 @@ csap:
   #
   # Default OFF — when off, every endpoint is public, exactly as before.
   # Switch on to demo the "configure a Bearer token in csap-apidoc-ui →
-  # Try it out → 200" flow. See docs/SECURITY.md.
+  # Try it out → 200" flow. See SECURITY.md.
   #
   # Public endpoints when enabled (no token required):
-  #   /csap-apidoc/**, /csap-api.html, /csap-api-devtools.html,
-  #   /devtools-ui/**, /api/devtools/**, /auth/**, /actuator/health,
-  #   /error, /static/**, /favicon.ico
+  #   /csap/apidoc/**, /csap/openapi.json, /csap/openapi/**, /csap-api.html,
+  #   DevTools (/csap-api-devtools.html, /devtools-ui/**, /devtools/**, /csap/yaml/**),
+  #   /csap/mcp (MCP checks its own token), /auth/**, /actuator/health,
+  #   /error, static assets. Full list: SecurityConfig.PUBLIC_PATHS
   # Everything else (notably /api/users, /api/products) requires a JWT.
   # ─────────────────────────────────────────────────────────────────────
   example:

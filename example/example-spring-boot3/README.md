@@ -49,8 +49,8 @@ mvn spring-boot:run        # 或 ./run.sh(先打包再运行)
 ```java
 @SpringBootApplication
 @EnableApidoc(
-        apiPackageClasses = {ProductController.class},   // 直接列出要文档化的 Controller 类;也可改用 value = "ai.csap.example" 按包扫描
-        paramType = ApiStrategyType.YAML)
+        value = "ai.csap.example",          // 扫描 ai.csap.example 下的全部 Controller
+        paramType = ApiStrategyType.YAML)   // 也可用 apiPackageClasses = {...} 只列出指定的 Controller 类
 public class ExampleApplication { }
 ```
 
@@ -122,7 +122,7 @@ example-spring-boot3/
 └── pom.xml
 ```
 
-`api-test.http` 与 `test-api.sh` 里的 `BASE_URL` 默认是 `http://localhost:8080`,按需改成 8083。
+`api-test.http` 与 `test-api.sh` 默认请求 `http://localhost:8083`;`test-api.sh` 可用环境变量 `BASE_URL` 覆盖。`application-sqlite.yml`、`application-yaml.yml`、`application-gateway.yml` 是配置样例,端口沿用 8083,不切换存储策略(见 [STRATEGIES.md](./STRATEGIES.md))。
 
 ## 调试
 

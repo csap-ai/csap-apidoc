@@ -52,7 +52,7 @@ example-spring-boot2/
 
 ## 测试与脚本
 
-- `api-test.http`、`test-api.sh`: 覆盖主要接口。脚本里的 `BASE_URL` 默认是 `http://localhost:8080`,请按实际端口(8082)修改
+- `api-test.http`、`test-api.sh`: 覆盖主要接口。默认请求 `http://localhost:8082`,`test-api.sh` 可用环境变量 `BASE_URL` 覆盖
 - `src/test/`: 参数校验测试与 Jackson / Fastjson / Fastjson2 下的字段过滤 E2E 测试
 - `run.sh`: 检查 Maven、打包后执行 `mvn spring-boot:run`
 

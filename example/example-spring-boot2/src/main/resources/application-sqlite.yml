@@ -1,8 +1,6 @@
-# SQLite Strategy Example Configuration
-# Activate with: --spring.profiles.active=sqlite
-
-server:
-  port: 8080
+# SQLite 策略配合使用的配置样例,启用:--spring.profiles.active=sqlite
+# 注意:profile 不会切换存储策略,策略只由启动类上的 @EnableApidoc(paramType = ...) 决定,见 STRATEGIES.md。
+# 端口沿用 application.yml 的 8082。
 
 spring:
   application:

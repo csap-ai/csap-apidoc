@@ -1,9 +1,8 @@
 # Gateway Configuration Example
 # This configuration demonstrates how to aggregate multiple microservice API documentations
 # in an API Gateway scenario
-
-server:
-  port: 8080
+# 只是网关聚合配置的样例:示例工程没有引入 Spring Cloud Gateway,spring.cloud.gateway 一段不会生效;
+# 端口沿用 application.yml。
 
 spring:
   application:

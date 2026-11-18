@@ -118,7 +118,7 @@ example-spring-boot2/
 └── pom.xml
 ```
 
-`api-test.http` 与 `test-api.sh` 里的 `BASE_URL` 默认是 `http://localhost:8080`,按需改成 8082。
+`api-test.http` 与 `test-api.sh` 默认请求 `http://localhost:8082`;`test-api.sh` 可用环境变量 `BASE_URL` 覆盖。`application-sqlite.yml`、`application-yaml.yml`、`application-gateway.yml` 是配置样例,端口沿用 8082,不切换存储策略(见 [STRATEGIES.md](./STRATEGIES.md))。
 
 ## 调试
 
