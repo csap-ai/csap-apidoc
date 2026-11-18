@@ -109,6 +109,7 @@ go run ./examples/nethttp-basic  # http://localhost:8081/csap-api.html、/devtoo
 | `@DocGlobalHeader`、`@DocAuth` | `Options` / `GroupInfo` / `Operation` 的 `HeaderHint`、`Auth` |
 | `method-field.yaml`(YAML 策略) | 同格式,可直接使用 |
 | 数据库模式(1.4.0 起) | SQL 策略(SQLite / PostgreSQL / MySQL / 达梦 / 人大金仓),与 Java 共用同一套表,用 `service` 区分,见 [docs/SQL.md](docs/SQL.md) |
+| Redis 模式(1.4.0 起) | `strategy/redis`,键与脚本和 Java 约定一致,见 [docs/REDIS.md](docs/REDIS.md);YAML 导入 SQL / Redis 用 `strategy.Import`,见 [docs/IMPORT.md](docs/IMPORT.md) |
 | csap-validation | `validate` 包,默认关闭,另有观察模式 |
 | DevTools | 接口兼容,页面相同;新增修改记录和回滚 |
 
@@ -116,7 +117,7 @@ go run ./examples/nethttp-basic  # http://localhost:8081/csap-api.html、/devtoo
 
 ```bash
 go vet ./... && go test -race ./...
-(cd integration && go test -race ./...)  # SQL 策略集成测试,默认 SQLite;CSAP_TEST_PG_DSN / CSAP_TEST_MYSQL_DSN 加测
+(cd integration && go test -race ./...)  # SQL 策略集成测试,默认 SQLite;CSAP_TEST_PG_DSN / CSAP_TEST_MYSQL_DSN / CSAP_TEST_REDIS_ADDR 加测
 scripts/sync-ui.sh --ref origin/main     # 从 Java 仓库同步两套前端的构建产物
 ```
 
