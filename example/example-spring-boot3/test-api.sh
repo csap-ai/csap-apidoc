@@ -64,7 +64,7 @@ echo ""
 # Test 6: Get API documentation
 echo "📋 Test 6: Get API documentation metadata"
 curl -s -X GET "${BASE_URL}/csap/apidoc" \
-  -H "Accept: application/json" | jq '.apiList | length' | xargs echo "Total controllers:"
+  -H "Accept: application/json" | jq '.data.apiList | length' | xargs echo "Total controllers:"
 echo ""
 
 echo "========================================="
