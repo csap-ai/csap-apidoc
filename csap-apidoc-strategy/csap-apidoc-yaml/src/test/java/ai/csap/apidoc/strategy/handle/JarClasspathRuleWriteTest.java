@@ -80,7 +80,7 @@ class JarClasspathRuleWriteTest {
         assertTrue(msg.contains("SQL_LITE") && msg.contains("./csap-api-doc/apidoc.db"), msg);
         assertTrue(msg.contains("1.4.0") && msg.contains("MySQL / PostgreSQL / 达梦 / 人大金仓"), msg);
         assertTrue(msg.contains("当前版本尚未提供"), msg);
-        assertTrue(msg.contains("Redis 不是规则存储"), msg);
+        assertTrue(msg.contains("Redis 模式"), msg);
         assertTrue(msg.contains("Running from a packaged jar"), msg);
     }
 

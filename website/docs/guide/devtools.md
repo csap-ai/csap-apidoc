@@ -98,7 +98,7 @@ YAML 文件写回源码目录依赖于"classpath 根目录是 `target/classes`"�
 不能保存时，接口返回 HTTP 200 和失败结果（`code` 为 `1007`），DevTools 页面直接显示下面的说明，同时打一条 WARN 日志（1.2.0 及以前是 HTTP 500 + `NullPointerException`）：
 
 ```text
-当前以打包后的 jar 运行(classpath 根目录不可用),YAML 规则文件位于 jar 内,DevTools 无法保存。可以:1) 在源码目录运行(IDE 或 mvn spring-boot:run),规则写回 src/main/resources 下的规则文件;2) 改用 SQLite 策略 @EnableApidoc(paramType = ApiStrategyType.SQL_LITE),打包运行时规则保存在 jar 外、启动目录下的 SQLite 文件(默认 ./csap-api-doc/apidoc.db),重启后仍在;3) 1.4.0 起可使用数据库模式(MySQL / PostgreSQL / 达梦 / 人大金仓),当前版本尚未提供。Redis 不是规则存储,只在数据库模式下用于多实例通知。 | Running from a packaged jar ...（同样内容的英文）
+当前以打包后的 jar 运行(classpath 根目录不可用),YAML 规则文件位于 jar 内,DevTools 无法保存。可以:1) 在源码目录运行(IDE 或 mvn spring-boot:run),规则写回 src/main/resources 下的规则文件;2) 改用 SQLite 策略 @EnableApidoc(paramType = ApiStrategyType.SQL_LITE),打包运行时规则保存在 jar 外、启动目录下的 SQLite 文件(默认 ./csap-api-doc/apidoc.db),重启后仍在;3) 1.4.0 起可使用数据库模式(MySQL / PostgreSQL / 达梦 / 人大金仓)或 Redis 模式,当前版本尚未提供。 | Running from a packaged jar ...（同样内容的英文）
 ```
 
 推荐做法：

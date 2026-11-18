@@ -282,8 +282,7 @@ DevTools 写 YAML 时，目标路径是把 classpath 根目录中的 `target/cla
 | `type = JSON`（导出文档） | 不能 | 同上 |
 | `SQL_LITE` | 能 | 写到 jar 外、启动目录下的 `<path>/<fileName>.db`（默认 `./csap-api-doc/apidoc.db`），重启后仍在 |
 | 数据库模式（MySQL / PostgreSQL / 达梦 / 人大金仓） | 1.4.0 计划 | 当前版本没有实现 |
-
-Redis 不是规则存储：在 1.4.0 的数据库模式方案里，它只用于通知多个实例刷新规则。
+| Redis 模式 | 1.4.0 计划 | 当前版本没有实现；规则存进 Redis，多实例订阅变更即时同步 |
 
 推荐做法：
 
