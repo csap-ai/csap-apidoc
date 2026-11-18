@@ -24,7 +24,7 @@ import ai.csap.apidoc.strategy.RuleHistoryProvider;
 import ai.csap.apidoc.util.RuleStorageNotWritableException;
 
 /**
- * 规则修改记录与回滚(只在 {@code paramType = ApiStrategyType.DATABASE} 时可用)。
+ * 规则修改记录与回滚(只在 {@code paramType} 为 {@code DATABASE} 或 {@code REDIS} 时可用)。
  *
  * <p>其他存储模式下接口返回失败结果和说明,不报 500。回滚在只读模式下返回 {@code code = 1007}。
  * 回滚成功后,策略会重新加载规则并重新生成受影响类的文档和字段规则。
@@ -44,9 +44,10 @@ public class ApidocRuleHistoryController {
     /**
      * 其他存储模式的提示
      */
-    static final String NOT_SUPPORTED = "修改记录与回滚只在数据库模式下可用:@EnableApidoc(paramType = ApiStrategyType.DATABASE)。"
-            + " | Change history and rollback are only available in the database mode: "
-            + "@EnableApidoc(paramType = ApiStrategyType.DATABASE).";
+    static final String NOT_SUPPORTED = "修改记录与回滚只在数据库模式或 Redis 模式下可用:"
+            + "@EnableApidoc(paramType = ApiStrategyType.DATABASE) 或 ApiStrategyType.REDIS。"
+            + " | Change history and rollback are only available in the database or Redis mode: "
+            + "@EnableApidoc(paramType = ApiStrategyType.DATABASE) or ApiStrategyType.REDIS.";
 
     private final EnableApidocConfig enableApidocConfig;
 
@@ -54,22 +55,37 @@ public class ApidocRuleHistoryController {
         this.enableApidocConfig = enableApidocConfig;
     }
 
-    private boolean databaseMode() {
+    private static boolean externalStore(ApiStrategyType t) {
+        return t == ApiStrategyType.DATABASE || t == ApiStrategyType.REDIS;
+    }
+
+    /**
+     * 当前使用的外部规则存储类型(数据库 / Redis),不是这两种时返回 null
+     */
+    private ApiStrategyType storeType() {
         if (enableApidocConfig == null) {
-            return false;
+            return null;
         }
-        if (enableApidocConfig.getParamType() == ApiStrategyType.DATABASE) {
-            return true;
+        if (externalStore(enableApidocConfig.getParamType())) {
+            return enableApidocConfig.getParamType();
         }
         List<StrategyModel> list = enableApidocConfig.getApiPackageClass();
-        return list != null && list.stream().anyMatch(m -> m.getParamType() == ApiStrategyType.DATABASE);
+        if (list != null) {
+            for (StrategyModel m : list) {
+                if (externalStore(m.getParamType())) {
+                    return m.getParamType();
+                }
+            }
+        }
+        return null;
     }
 
     private RuleHistoryProvider provider() {
-        if (!databaseMode()) {
+        ApiStrategyType type = storeType();
+        if (type == null) {
             return null;
         }
-        ParamGroupStrategy strategy = ApidocContext.paramStrategy(ApiStrategyType.DATABASE);
+        ParamGroupStrategy strategy = ApidocContext.paramStrategy(type);
         return strategy instanceof RuleHistoryProvider ? (RuleHistoryProvider) strategy : null;
     }
 

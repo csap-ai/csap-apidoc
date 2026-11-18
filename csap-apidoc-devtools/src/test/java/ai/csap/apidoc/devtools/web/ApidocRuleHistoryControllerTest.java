@@ -45,15 +45,19 @@ import ai.csap.apidoc.util.RuleStorageNotWritableException;
 class ApidocRuleHistoryControllerTest {
 
     private RuleHistoryProvider provider;
+    private RuleHistoryProvider redisProvider;
 
     @BeforeEach
     void setUp() {
         ParamGroupStrategy strategy = mock(ParamGroupStrategy.class, withSettings().extraInterfaces(RuleHistoryProvider.class));
         provider = (RuleHistoryProvider) strategy;
         when(strategy.strategyType()).thenReturn(ApiStrategyType.DATABASE);
+        ParamGroupStrategy redis = mock(ParamGroupStrategy.class, withSettings().extraInterfaces(RuleHistoryProvider.class));
+        redisProvider = (RuleHistoryProvider) redis;
+        when(redis.strategyType()).thenReturn(ApiStrategyType.REDIS);
         ApplicationContext ctx = mock(ApplicationContext.class);
         when(ctx.getBeansOfType(ApidocStrategy.class)).thenReturn(Collections.emptyMap());
-        when(ctx.getBeansOfType(ParamGroupStrategy.class)).thenReturn(Map.of("db", strategy));
+        when(ctx.getBeansOfType(ParamGroupStrategy.class)).thenReturn(Map.of("db", strategy, "redis", redis));
         when(ctx.getBeansOfType(IMethodRequest.class)).thenReturn(Collections.emptyMap());
         when(ctx.getBeansOfType(IMethodResponse.class)).thenReturn(Collections.emptyMap());
         CsapDocConfig docConfig = new CsapDocConfig();
@@ -82,6 +86,20 @@ class ApidocRuleHistoryControllerTest {
                 .andExpect(jsonPath("$.data[0].version").value(3))
                 .andExpect(jsonPath("$.data[0].updatedBy").value("devtools"))
                 .andExpect(jsonPath("$.data[0].updatedAt").value(1_700_000_000_000L));
+    }
+
+    @Test
+    void redisModeUsesTheRedisStrategy() throws Exception {
+        when(redisProvider.history(isNull(), anyInt())).thenReturn(List.of(
+                new RuleChange(1, "a.B.m", null, "{}", 1, "devtools", 1_700_000_000_000L)));
+        MockMvc mvc = mvc(ApiStrategyType.REDIS);
+        mvc.perform(get("/devtools/rules/status")).andExpect(jsonPath("$.data.supported").value(true))
+           .andExpect(jsonPath("$.data.paramType").value("redis"));
+        mvc.perform(get("/devtools/rules/history")).andExpect(jsonPath("$.data[0].ruleKey").value("a.B.m"));
+        when(redisProvider.rollback(eq(1L), eq("devtools-rollback"))).thenReturn(2L);
+        mvc.perform(post("/devtools/rules/rollback").contentType(MediaType.APPLICATION_JSON).content("{\"changeId\":1}"))
+           .andExpect(jsonPath("$.data.version").value(2));
+        verify(redisProvider).rollback(1L, "devtools-rollback");
     }
 
     @Test

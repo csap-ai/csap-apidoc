@@ -2,12 +2,12 @@ export type Lang = 'zh' | 'en'
 
 const zh = {
   title: '规则记录',
-  subtitle: '数据库模式下每次保存规则都会留下记录,可以查看修改前后的差异,并回滚到修改之前',
+  subtitle: '数据库 / Redis 模式下每次保存规则都会留下记录,可以查看修改前后的差异,并回滚到修改之前',
   refresh: '刷新',
-  unsupported: '当前不是数据库模式',
-  unsupportedTip: '修改记录与回滚只在数据库模式下可用,请把启动类上的 @EnableApidoc 改为:',
+  unsupported: '当前不是数据库 / Redis 模式',
+  unsupportedTip: '修改记录与回滚只在数据库模式或 Redis 模式下可用,请把启动类上的 @EnableApidoc 改为(二选一):',
   readOnly: '只读模式',
-  readOnlyTip: '当前实例是只读模式(csap.apidoc.database.read-only=true),可以查看记录,不能回滚。',
+  readOnlyTip: '当前实例是只读模式(read-only=true),可以查看记录,不能回滚。',
   filterPlaceholder: '按规则键筛选,如 com.example.UserController.add',
   search: '查询',
   time: '时间',
@@ -39,12 +39,12 @@ const zh = {
 
 const en: typeof zh = {
   title: 'Rule history',
-  subtitle: 'In the database mode every save leaves a record. Review what changed and roll an endpoint back to its earlier rules.',
+  subtitle: 'In the database / Redis mode every save leaves a record. Review what changed and roll an endpoint back to its earlier rules.',
   refresh: 'Refresh',
-  unsupported: 'Not in database mode',
-  unsupportedTip: 'Change history and rollback are only available in the database mode. Change @EnableApidoc to:',
+  unsupported: 'Not in database / Redis mode',
+  unsupportedTip: 'Change history and rollback are only available in the database or Redis mode. Change @EnableApidoc to (either):',
   readOnly: 'Read-only',
-  readOnlyTip: 'This instance is read-only (csap.apidoc.database.read-only=true): you can browse the history but not roll back.',
+  readOnlyTip: 'This instance is read-only (read-only=true): you can browse the history but not roll back.',
   filterPlaceholder: 'Filter by rule key, e.g. com.example.UserController.add',
   search: 'Search',
   time: 'Time',

@@ -149,7 +149,7 @@ const RuleHistory: React.FC = () => {
           <Alert type="info" showIcon message={t.unsupported} description={
             <div>
               <p>{t.unsupportedTip}</p>
-              <pre className="rules-code">{'@EnableApidoc(paramType = ApiStrategyType.DATABASE)'}</pre>
+              <pre className="rules-code">{'@EnableApidoc(paramType = ApiStrategyType.DATABASE)\n@EnableApidoc(paramType = ApiStrategyType.REDIS)'}</pre>
             </div>
           } />
         </Card>

@@ -1,4 +1,4 @@
-package ai.csap.apidoc.database;
+package ai.csap.apidoc.strategy.store;
 
 import java.io.IOException;
 import java.util.TreeMap;
@@ -18,7 +18,7 @@ import ai.csap.apidoc.model.ParamGroupMethodProperty;
  * @author ycf
  * @since 1.4.0
  */
-final class RuleJson {
+public final class RuleJson {
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .setSerializationInclusion(JsonInclude.Include.NON_NULL)
@@ -40,7 +40,7 @@ final class RuleJson {
         public abstract java.util.List<ai.csap.validation.factory.Validate.ConstraintValidatorField> getValidate();
     }
 
-    static String write(ParamGroupMethodProperty property) {
+    public static String write(ParamGroupMethodProperty property) {
         try {
             return MAPPER.writeValueAsString(property);
         } catch (IOException e) {
@@ -48,7 +48,7 @@ final class RuleJson {
         }
     }
 
-    static ParamGroupMethodProperty read(String json) throws IOException {
+    public static ParamGroupMethodProperty read(String json) throws IOException {
         ParamGroupMethodProperty p = MAPPER.readValue(json, ParamGroupMethodProperty.class);
         if (p == null) {
             p = new ParamGroupMethodProperty();
@@ -62,10 +62,29 @@ final class RuleJson {
         return p;
     }
 
+    private static final ObjectMapper TREE = new ObjectMapper();
+
+    /**
+     * 比较两份规则 JSON 是否相同:先比字符串,再按 JSON 结构比较(忽略空白和键顺序,别的语言写入的格式可能不同)。
+     */
+    public static boolean sameJson(String a, String b) {
+        if (java.util.Objects.equals(a, b)) {
+            return true;
+        }
+        if (a == null || b == null) {
+            return false;
+        }
+        try {
+            return TREE.readTree(a).equals(TREE.readTree(b));
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
     /**
      * 深拷贝(经 JSON 往返;注解校验器不在其中)
      */
-    static ParamGroupMethodProperty copy(ParamGroupMethodProperty source) {
+    public static ParamGroupMethodProperty copy(ParamGroupMethodProperty source) {
         try {
             return read(write(source));
         } catch (IOException e) {
@@ -73,7 +92,7 @@ final class RuleJson {
         }
     }
 
-    static boolean isEmpty(ParamGroupMethodProperty p) {
+    public static boolean isEmpty(ParamGroupMethodProperty p) {
         return p == null
                 || ((p.getRequest() == null || p.getRequest().isEmpty())
                 && (p.getResponse() == null || p.getResponse().isEmpty()));
