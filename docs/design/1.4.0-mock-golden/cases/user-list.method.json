@@ -1,0 +1,51 @@
+{
+  "key": "demo.UserController.list",
+  "value": "用户列表",
+  "methods": [
+    "GET"
+  ],
+  "apiPath": [
+    "/api/users"
+  ],
+  "paths": [
+    "/"
+  ],
+  "status": "DEPRECATED",
+  "request": [
+    {
+      "modelType": "OBJECT",
+      "name": "Q",
+      "parameters": [
+        {
+          "name": "page",
+          "dataType": "Integer",
+          "description": "page",
+          "defaultValue": "1"
+        },
+        {
+          "name": "keyword",
+          "dataType": "String",
+          "description": "keyword"
+        }
+      ]
+    }
+  ],
+  "response": [
+    {
+      "modelType": "ARRAY",
+      "name": "UserVO",
+      "parameters": [
+        {
+          "name": "id",
+          "dataType": "Long",
+          "description": "id"
+        },
+        {
+          "name": "name",
+          "dataType": "String",
+          "description": "name"
+        }
+      ]
+    }
+  ]
+}

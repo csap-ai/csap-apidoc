@@ -1,0 +1,94 @@
+{
+  "description": "ARRAY 返回 + arraySize=3 + maxDepth=3,超深对象为 null",
+  "seed": "csap",
+  "arraySize": 3,
+  "maxDepth": 3,
+  "response": [
+    {
+      "modelType": "ARRAY",
+      "name": "Item",
+      "parameters": [
+        {
+          "name": "id",
+          "dataType": "Integer",
+          "description": "id"
+        },
+        {
+          "name": "deep",
+          "dataType": "Node",
+          "description": "deep",
+          "modelType": "OBJECT",
+          "children": {
+            "parameters": [
+              {
+                "name": "level4",
+                "dataType": "Node",
+                "description": "level4",
+                "modelType": "OBJECT",
+                "children": {
+                  "parameters": [
+                    {
+                      "name": "level3",
+                      "dataType": "Node",
+                      "description": "level3",
+                      "modelType": "OBJECT",
+                      "children": {
+                        "parameters": [
+                          {
+                            "name": "level2",
+                            "dataType": "Node",
+                            "description": "level2",
+                            "modelType": "OBJECT",
+                            "children": {
+                              "parameters": [
+                                {
+                                  "name": "level1",
+                                  "dataType": "Node",
+                                  "description": "level1",
+                                  "modelType": "OBJECT",
+                                  "children": {
+                                    "parameters": [
+                                      {
+                                        "name": "leaf",
+                                        "dataType": "String",
+                                        "description": "leaf"
+                                      }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "name": "n",
+                                  "dataType": "Integer",
+                                  "description": "n"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": "n",
+                            "dataType": "Integer",
+                            "description": "n"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "name": "n",
+                      "dataType": "Integer",
+                      "description": "n"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "n",
+                "dataType": "Integer",
+                "description": "n"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

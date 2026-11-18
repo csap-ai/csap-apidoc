@@ -1,0 +1,202 @@
+{
+  "key": "demo.UserController.create",
+  "value": "创建用户",
+  "methods": [
+    "POST"
+  ],
+  "apiPath": [
+    "/api/users"
+  ],
+  "paths": [
+    "/{tenant}"
+  ],
+  "status": "DEFAULT",
+  "request": [
+    {
+      "modelType": "BASE_DATA",
+      "name": "String",
+      "parameters": [
+        {
+          "name": "tenant",
+          "dataType": "String",
+          "description": "租户",
+          "paramType": "PATH",
+          "required": true
+        },
+        {
+          "name": "X-Token",
+          "dataType": "String",
+          "description": "X-Token",
+          "paramType": "HEADER"
+        }
+      ]
+    },
+    {
+      "modelType": "OBJECT",
+      "name": "UserCreateReq",
+      "parameters": [
+        {
+          "name": "name",
+          "dataType": "String",
+          "description": "name",
+          "required": true,
+          "keyName": "request.name",
+          "validate": [
+            {
+              "type": "NotEmpty",
+              "message": "姓名不能为空",
+              "code": "1001",
+              "level": 1
+            },
+            {
+              "type": "Length",
+              "pattern": "2,20",
+              "message": "姓名长度 2-20",
+              "code": "1002",
+              "level": 2
+            }
+          ]
+        },
+        {
+          "name": "phone",
+          "dataType": "String",
+          "description": "phone",
+          "keyName": "request.phone",
+          "validate": [
+            {
+              "type": "Pattern",
+              "pattern": "PATTERN_35",
+              "message": "手机号格式不正确"
+            },
+            {
+              "type": "Pattern",
+              "pattern": "^1\\d{10}$"
+            }
+          ]
+        },
+        {
+          "name": "age",
+          "dataType": "Integer",
+          "description": "age",
+          "validate": [
+            {
+              "type": "Min",
+              "pattern": "0"
+            },
+            {
+              "type": "Max",
+              "pattern": "150"
+            }
+          ],
+          "example": "30"
+        },
+        {
+          "name": "gender",
+          "dataType": "String",
+          "description": "gender",
+          "extendDescr": [
+            {
+              "name": "MALE"
+            },
+            {
+              "name": "FEMALE"
+            }
+          ]
+        },
+        {
+          "name": "role",
+          "dataType": "String",
+          "description": "role",
+          "validate": [
+            {
+              "type": "Enum",
+              "pattern": "admin,user"
+            }
+          ],
+          "defaultValue": "user"
+        },
+        {
+          "name": "tags",
+          "dataType": "List<String>",
+          "description": "tags",
+          "validate": [
+            {
+              "type": "Size",
+              "pattern": "1,5"
+            }
+          ]
+        },
+        {
+          "name": "address",
+          "dataType": "AddressVO",
+          "description": "address",
+          "modelType": "OBJECT",
+          "children": {
+            "parameters": [
+              {
+                "name": "city",
+                "dataType": "String",
+                "description": "city",
+                "required": true
+              },
+              {
+                "name": "zip",
+                "dataType": "String",
+                "description": "zip"
+              }
+            ]
+          }
+        },
+        {
+          "name": "secret",
+          "dataType": "String",
+          "description": "secret",
+          "hidden": true
+        }
+      ]
+    }
+  ],
+  "response": [
+    {
+      "modelType": "OBJECT",
+      "name": "Result",
+      "parameters": [
+        {
+          "name": "code",
+          "dataType": "Integer",
+          "description": "code"
+        },
+        {
+          "name": "message",
+          "dataType": "String",
+          "description": "message"
+        },
+        {
+          "name": "data",
+          "dataType": "UserVO",
+          "description": "data",
+          "modelType": "OBJECT",
+          "children": {
+            "parameters": [
+              {
+                "name": "id",
+                "dataType": "Long",
+                "description": "id"
+              },
+              {
+                "name": "createdAt",
+                "dataType": "LocalDateTime",
+                "description": "createdAt"
+              },
+              {
+                "name": "score",
+                "dataType": "BigDecimal",
+                "description": "score"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
