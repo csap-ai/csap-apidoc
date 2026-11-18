@@ -52,6 +52,7 @@ export default defineConfig({
             { text: '返回字段过滤', link: '/guide/runtime-filter' },
             { text: '参数校验', link: '/guide/validation' },
             { text: 'DevTools', link: '/guide/devtools' },
+            { text: 'MCP(AI 调用接口)', link: '/guide/mcp' },
           ],
         },
         {

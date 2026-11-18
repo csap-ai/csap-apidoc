@@ -52,6 +52,8 @@ http://localhost:<端口><context-path>/devtools-ui
 
 ## 能做什么
 
+1.3.0 起左侧多了 **MCP** 页面:勾选哪些接口作为 MCP 工具暴露给 AI、改写工具名和说明、切换鉴权方式、查看调用审计日志,详见 [MCP](/guide/mcp)。MCP 未开启时页面只显示开启方法。
+
 ### 浏览接口和字段
 
 页面列出被 `@EnableApidoc` 扫描到的 Controller 和方法。选中方法后，DevTools 根据方法的参数类型和返回类型（包括 `ApidocResult<User>` 这类泛型）列出实体的所有字段，嵌套对象逐层展开。

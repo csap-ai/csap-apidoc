@@ -161,6 +161,35 @@ public class DemoApplication {
 | `csap.apidoc.runtime.filter.engine` | `FilterEngine` | `auto` | `auto` 按接口实际使用的消息转换器选择；`jackson`、`fastjson`、`fastjson2` 只过滤用该库输出的响应 |
 | `csap.apidoc.runtime.filter.endpoints` | `Map<String, FilterMode>` | 空 | 按接口覆盖模式，键为 Controller 全限定类名 + `.` + 方法名（YAML 中写成 `"[com.example.UserController.get]"`），值为 `off`、`path`、`csap`。同名重载方法共用一个键 |
 
+## csap.apidoc.mcp
+
+对应 `ai.csap.apidoc.mcp.autoconfigure.McpProperties`(1.3.0 起,模块 `csap-apidoc-mcp`,starter 已引入)。内嵌 MCP 端点,默认关闭。用法见 [MCP](/guide/mcp)。
+
+| 配置项 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `csap.apidoc.mcp.enabled` | `boolean` | `false` | 是否开启 MCP 端点;关闭时端点不注册(404) |
+| `csap.apidoc.mcp.path` | `String` | `/csap/mcp` | 端点路径 |
+| `csap.apidoc.mcp.base-url` | `String` | 空 | 工具调用的回环地址,默认 `http://127.0.0.1:{端口}{context-path}{servlet-path}`;HTTPS 或端口不能直连时配置 |
+| `csap.apidoc.mcp.call-timeout` | `Duration` | `30s` | 单次工具调用超时 |
+| `csap.apidoc.mcp.max-result-chars` | `int` | `50000` | 工具结果文本最大长度,超出截断 |
+| `csap.apidoc.mcp.expose-get-by-default` | `boolean` | `true` | 没有单独设置的 GET 接口是否暴露;写操作始终需要逐个打开 |
+| `csap.apidoc.mcp.allowed-origins` | `List<String>` | 空 | 允许的浏览器来源;请求带 `Origin` 且不在列表中返回 403 |
+| `csap.apidoc.mcp.instructions` | `String` | 空 | 发给 AI 的服务说明,默认用文档标题和描述 |
+| `csap.apidoc.mcp.store` | `Store` | `auto` | 暴露范围等设置的存储:`auto`(`SQL_LITE` 字段规则存 SQLite,其余存 `{path}/mcp.yaml`)、`yaml`、`sqlite`、`memory` |
+| `csap.apidoc.mcp.config-file` | `String` | 空 | 设置文件的显式路径(`.yaml` / `.db`);打包运行时需要持久化 DevTools 修改时配置 |
+| `csap.apidoc.mcp.auth.mode` | `AuthMode` | `token` | `token`:需要 `Authorization: Bearer` 令牌;`passthrough`:不校验,转发请求头由接口自己鉴权。规则文件中的设置优先 |
+| `csap.apidoc.mcp.auth.tokens[n].name` | `String` | 空 | 令牌名称,出现在审计日志中 |
+| `csap.apidoc.mcp.auth.tokens[n].value` | `String` | 空 | 令牌值,建议 `${环境变量}`;token 模式下一个都没有时所有请求 401 |
+| `csap.apidoc.mcp.auth.forward-headers` | `List<String>` | `[Authorization, Cookie]` | 转发给接口的请求头(token 模式不转发 `Authorization`) |
+| `csap.apidoc.mcp.auth.upstream-headers` | `Map<String,String>` | 空 | 每次工具调用附加的请求头,例如服务账号凭据 |
+| `csap.apidoc.mcp.audit.enabled` | `boolean` | `true` | 是否记录审计日志 |
+| `csap.apidoc.mcp.audit.capacity` | `int` | `500` | 内存中保留的条数 |
+| `csap.apidoc.mcp.audit.persist` | `boolean` | `false` | 是否同时写入 SQLite |
+| `csap.apidoc.mcp.audit.sqlite-file` | `String` | `csap-mcp-audit.db` | 审计 SQLite 文件,相对路径相对工作目录 |
+| `csap.apidoc.mcp.audit.max-rows` | `int` | `10000` | SQLite 中最多保留的条数 |
+| `csap.apidoc.mcp.audit.max-summary-chars` | `int` | `512` | 参数 / 结果摘要的最大长度 |
+| `csap.apidoc.mcp.audit.mask-fields` | `List<String>` | 空 | 在内置敏感字段(password、token、secret 等)之外追加打码的字段名 |
+
 ## csap.validation
 
 对应 `ai.csap.validation.properties.ValidationProperties`，需要引入（可选的）`csap-validation-boot-starter`。1.2.0 起运行时校验真正执行，默认关闭。详见 [参数校验](/guide/validation)。
@@ -275,6 +304,17 @@ csap:
         endpoints:
           "[com.example.demo.controller.OrderController.detail]": off
 
+    # 内嵌 MCP 端点（1.3.0 起，默认关闭）
+    mcp:
+      enabled: false
+      auth:
+        mode: token           # token / passthrough
+        tokens:
+          - name: my-ide
+            value: ${CSAP_MCP_TOKEN:}
+      audit:
+        persist: false
+
   # 参数校验（需要引入可选的 csap-validation-boot-starter）
   validation:
     mode: observe             # off（默认）/ observe / enforce
@@ -292,5 +332,6 @@ csap:
 - [存储策略](/guide/storage-strategies)
 - [参数校验](/guide/validation)
 - [返回字段过滤](/guide/runtime-filter)
+- [MCP](/guide/mcp)
 - [DevTools](/guide/devtools)
 - [网关聚合](/guide/gateway-aggregation)

@@ -20,6 +20,18 @@ csap:
       enabled: true
       cache: true
     # ─────────────────────────────────────────────────────────────────────
+    # 内嵌 MCP 端点(1.3.0 起,默认关闭):AI 客户端通过 POST /csap/mcp 调用文档里的接口。
+    # 打开后在 /devtools-ui/mcp 管理暴露范围(默认只暴露 GET)和查看审计日志。
+    # 令牌请放在环境变量里;见 https://apidoc.csap.ai/guide/mcp
+    # ─────────────────────────────────────────────────────────────────────
+    # mcp:
+    #   enabled: true
+    #   auth:
+    #     mode: token
+    #     tokens:
+    #       - name: my-ide
+    #         value: ${CSAP_MCP_TOKEN:}
+    # ─────────────────────────────────────────────────────────────────────
     # OPTIONAL: csap-apidoc-devtools reverse-proxy endpoint (CORS bypass).
     #
     # Default OFF. Uncomment to enable POST /csap/apidoc/devtools/proxy so

@@ -11,6 +11,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Embedded MCP endpoint (`csap-apidoc-mcp`, off by default).** With
+  `csap.apidoc.mcp.enabled=true` the service exposes `POST /csap/mcp`
+  (MCP Streamable HTTP, JSON responses). Every documented endpoint becomes an
+  MCP tool: name, description and input JSON Schema (path / query / header
+  parameters and `body`) come from the docs; parameter locations follow the
+  Spring MVC mapping. Supports MCP `2026-07-28` (stateless, `server/discover`,
+  header validation) and the `initialize`-based `2025-11-25`, `2025-06-18`,
+  `2025-03-26`. Pulled in by `csap-apidoc-boot-starter`; one jar for Spring
+  Boot 2 and 3, no Servlet API or MCP SDK dependency.
+- `tools/call` is forwarded to the endpoint as a loopback HTTP request, so all
+  servlet filters (Spring Security etc.) apply and response field filtering
+  (1.2.0) applies too. Non-2xx responses come back as `isError: true`.
+- Only GET endpoints are exposed by default; write operations, tool names and
+  descriptions are configured per endpoint and saved to the rule store
+  (`{path}/mcp.yaml`, or the `mcp_setting` / `mcp_tool` tables for SQLite).
+- Auth: `token` mode (`Authorization: Bearer`, tokens from configuration,
+  fail-closed when none is set) or `passthrough` (forward caller headers to the
+  endpoint). `Origin` validation.
+- Audit log of tool calls and rejected requests (caller, tool, request,
+  argument / result summaries with passwords, tokens etc. masked, status,
+  duration): in-memory ring buffer, optionally persisted to SQLite.
+- **DevTools "MCP" page** (Chinese / English): choose exposed endpoints,
+  rename tools, edit descriptions, switch auth mode, browse the audit log,
+  copy client configuration for Claude Code / Cursor.
+- `csap-apidoc` agent skill: how to query and debug endpoints through MCP.
 - **Stale field-rule check at startup (WARN only).** After the docs are
   generated, `YAML` and `SQL_LITE` field rules are compared with the current
   code: rules for a method that no longer exists (e.g. after a rename) are
@@ -20,6 +45,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   method, not repeated when the result is unchanged; the check only reads the
   already-loaded rules and changes neither the docs nor filtering. Disable
   with `csap.apidoc.rule-check.enabled=false`.
+
+### Fixed
+
+- DevTools frontend could not be built from source (`autoprefixer` missing
+  from `package.json`); the bundled DevTools page is now rebuilt from source.
 
 ## [1.2.0] - 2026-11-17
 
