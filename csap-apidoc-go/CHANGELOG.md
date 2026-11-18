@@ -2,7 +2,7 @@
 
 csap-apidoc-go 的版本号独立于 Java 版,tag 格式为 `csap-apidoc-go/vX.Y.Z`。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [0.2.0] - 未发布 (Unreleased)
+## [0.2.0] - 2026-11-18
 
 ### 变更(不兼容)
 
@@ -24,7 +24,7 @@ csap-apidoc-go 的版本号独立于 Java 版,tag 格式为 `csap-apidoc-go/vX.Y
 - **JSON Schema**:`GET /csap/schema.json`、`GET /csap/schema/method?key=` 始终开启(2020-12,请求按位置分区,校验映射成标准关键字并无损保留在 `x-csap-validate`);`POST /csap/schema/import` 默认关闭(`Options.Schema.ImportEnabled`),只更新文档里已有字段的说明 / 必填 / 示例 / 校验,默认预览,`apply` 修改人 `schema-import`。见 [docs/MOCK.md](docs/MOCK.md)。
 - `Doc.MethodPaths()`:供适配器注册 Mock(任意方法)和 Schema 导入(POST)路由;gin、net/http 适配器已接入,自定义适配器需要照着注册。
 - 请求参数校验:接入 Java / Go 共用的黄金用例(`docs/conformance/validation-cases.json`,66 条)。Pattern 一直是整串匹配(与 Java `matches()` 一致),没有行为变化,新增断言防止回退。
-- **DevTools 规则记录页接口**:`GET /devtools/rules/status`、`GET /devtools/rules/history`(可按规则键筛选,limit 1~1000)、`POST /devtools/rules/rollback {"changeId"}`,请求/响应与 Java `ApidocRuleHistoryController` 一致;只在规则来源是 SQL 或 Redis 时可用,YAML 等返回 `supported=false` 和提示,只读时回滚返回 1007,回滚修改人 `devtools-rollback`。`GET /devtools/mcp/status` 返回 `enabled=false`,内置的 MCP 页显示未启用而不是报错。
+- **DevTools 规则记录页接口**:`GET /devtools/rules/status`、`GET /devtools/rules/history`(可按规则键筛选,limit 1~1000)、`POST /devtools/rules/rollback {"changeId"}`,请求/响应与 Java `ApidocRuleHistoryController` 一致;只在规则来源是 SQL 或 Redis 时可用,YAML 等返回 `supported=false` 和提示,只读时回滚返回 1007,回滚修改人 `devtools-rollback`。`GET /devtools/mcp/status` 返回 `enabled=false`,内置的 MCP 页显示未启用而不是报错。两个状态接口按 `docs/design/devtools-hints.md` 返回 Go 写法的 `hint`(`{zh, en}`):规则记录页在 `supported=false` 时说明如何改用 `strategy/sql` / `strategy/redis`,MCP 页说明 Go 版暂不提供 MCP、Java 1.3.0 起提供。
 - **规则导入 `strategy.Import`**:把 YAML 等来源导入 SQL / Redis,默认不覆盖已有的不同规则并返回冲突列表,支持 dry-run,修改人 `migrate`。见 [docs/IMPORT.md](docs/IMPORT.md)。
 - `Options.ShouldFilterBody func(r, status, body) bool`:按响应体判断是否裁剪,用于"业务失败也返回 HTTP 200"的接口(Java 只过滤正常返回的对象)。在 `ShouldFilter` 返回 true 之后、裁剪之前调用,返回 false 原样输出;不设置时行为不变。gin、net/http 适配器都支持,自定义适配器调用 `Doc.ShouldFilterBody`。附现成判断 `apidoc.SuccessField("success", true)`。见 [docs/FILTER-BODY.md](docs/FILTER-BODY.md)。
 

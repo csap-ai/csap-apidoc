@@ -48,14 +48,48 @@ func (d *Devtools) historian() strategy.Historian {
 	return h
 }
 
-// rulesStatus 对应 GET /devtools/rules/status:{supported, readOnly, paramType}。
+// hint 是页面显示的后端提示:{zh, en} 对象(按页面语言取),允许换行,前端等宽显示。格式见仓库 docs/design/devtools-hints.md。
+type hint struct {
+	ZH string `json:"zh"`
+	EN string `json:"en"`
+}
+
+// rulesHint 是规则来源不支持修改记录时的提示(Go 写法)。
+var rulesHint = hint{
+	ZH: "修改记录与回滚只在规则存放在数据库或 Redis 时可用。把规则来源换成 strategy/sql 或 strategy/redis:\n\n" +
+		"  s := sqlstrategy.New(sqlstrategy.Options{DB: db, Dialect: sqlstrategy.MySQL, Service: \"my-service\"})\n" +
+		"  _ = s.EnsureSchema(ctx)\n" +
+		"  doc := apidoc.New(apidoc.Options{Strategies: []strategy.Strategy{s}})\n\n" +
+		"或 redisstrategy.New(redisstrategy.Options{Client: ..., Service: \"my-service\"})。\n" +
+		"已有 YAML 规则可以用 strategy.Import 一次性导入。详见 " + docsSite + "/go/",
+	EN: "Change history and rollback are only available when rules are stored in a database or Redis. Switch the rule source to strategy/sql or strategy/redis:\n\n" +
+		"  s := sqlstrategy.New(sqlstrategy.Options{DB: db, Dialect: sqlstrategy.MySQL, Service: \"my-service\"})\n" +
+		"  _ = s.EnsureSchema(ctx)\n" +
+		"  doc := apidoc.New(apidoc.Options{Strategies: []strategy.Strategy{s}})\n\n" +
+		"or redisstrategy.New(redisstrategy.Options{Client: ..., Service: \"my-service\"}).\n" +
+		"Existing YAML rules can be imported once with strategy.Import. See " + docsSite + "/go/",
+}
+
+// mcpHint 是 MCP 页的提示:Go 版暂不提供 MCP。
+var mcpHint = hint{
+	ZH: "Go 版暂不提供 MCP 服务。Java 版从 1.3.0 起提供(csap.apidoc.mcp.enabled=true),说明见 " + docsSite + "/guide/mcp",
+	EN: "The Go edition does not provide an MCP server yet. The Java edition has had it since 1.3.0 (csap.apidoc.mcp.enabled=true); see " + docsSite + "/guide/mcp",
+}
+
+const docsSite = "https://apidoc.csap.ai"
+
+// rulesStatus 对应 GET /devtools/rules/status:{supported, readOnly, paramType},不支持时多一个 hint。
 func (d *Devtools) rulesStatus(_ http.ResponseWriter, _ *http.Request) (any, error) {
 	t, _ := d.storeType()
 	ro := false
 	if r, ok := d.opts.Store.(interface{ ReadOnly() bool }); ok {
 		ro = r.ReadOnly()
 	}
-	return map[string]any{"supported": d.historian() != nil, "readOnly": ro, "paramType": t}, nil
+	out := map[string]any{"supported": d.historian() != nil, "readOnly": ro, "paramType": t}
+	if d.historian() == nil {
+		out["hint"] = rulesHint
+	}
+	return out, nil
 }
 
 // ruleChangeView 对应 Java RuleChange:before / after 是规则 JSON 文本(没有时为 null),时间为毫秒时间戳。
@@ -150,7 +184,8 @@ func (d *Devtools) rulesRollback(_ http.ResponseWriter, r *http.Request) (any, e
 
 // mcpStatus 对应 GET /devtools/mcp/status:Go 版没有 MCP,返回 enabled=false 和说明,MCP 页显示"未启用"而不是报错。
 func (d *Devtools) mcpStatus(_ http.ResponseWriter, _ *http.Request) (any, error) {
-	return map[string]any{"enabled": false, "supported": false, "message": notSupportedMCP}, nil
+	// persistHint、tokenHint、securityNotes 在 Go 不适用(没有 MCP),不返回
+	return map[string]any{"enabled": false, "supported": false, "message": notSupportedMCP, "hint": mcpHint}, nil
 }
 
 // mcpUnsupported 是 MCP 页其他接口(tools、audit、auth)的统一回复。
