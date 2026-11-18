@@ -97,8 +97,8 @@ func (b *builder) method(info GroupInfo, op *Operation, httpMethod, rawPath, nam
 		m.ParamTypes = []string{model.ParamDefault}
 	}
 	var mask *filter.Node
-	if len(mr.Response) > 0 && (op.resp != nil || b.wrapper(op) != nil) {
-		if b.doc.opts.FilterMode == filter.ModeCsap {
+	if mode := b.doc.filterMode(strategy.Key(info.Name, name)); mode != filter.ModeOff && len(mr.Response) > 0 && (op.resp != nil || b.wrapper(op) != nil) {
+		if mode == filter.ModeCsap {
 			mask = b.csapMask(op, mr)
 		} else {
 			mask = filter.Compile(mc.outPaths, mc.mapPaths)

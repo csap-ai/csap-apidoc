@@ -45,6 +45,14 @@ type Options struct {
 	// FilterMode 是返回字段过滤的模式,默认 filter.ModePath(路径白名单)。
 	// 从 Java 迁移、要求返回与 Java 逐字节一致时用 filter.ModeCsap。
 	FilterMode filter.Mode
+	// FilterEndpoints 按接口(规则的键 group.name)覆盖 FilterMode,值为 filter.ModePath / ModeCsap / ModeOff。
+	// 对应 Java csap.apidoc.runtime.filter.endpoints。
+	FilterEndpoints map[string]filter.Mode
+	// ShouldFilter 决定一次响应是否按规则裁剪,在业务 handler 写完响应后调用,status 是最终的状态码。
+	// nil 时只裁剪 2xx 响应:4xx/5xx 的错误体(参数错误、异常处理器写的失败体等)原样输出,
+	// 与 Java 只过滤控制器正常返回的对象一致。
+	// 业务失败也用 200 返回时,可以在这里按请求或状态码进一步排除。
+	ShouldFilter func(r *http.Request, status int) bool
 	// TypeNames 覆盖结构体类型在文档里的显示名(相当于 Java @ApiModel 的 value),
 	// 键为 reflect.TypeOf(T{}),指针类型按其元素类型处理。优先级:TypeNames > 类型的 ApidocName() 方法 > 类型名。
 	TypeNames map[reflect.Type]string
@@ -115,6 +123,23 @@ func New(opts Options) *Doc {
 //	func (Page[T]) ApidocName() string { return "分页返回信息" }
 type ModelNamer interface {
 	ApidocName() string
+}
+
+// filterMode 返回接口(规则的键)生效的返回过滤模式。
+func (d *Doc) filterMode(ruleKey string) filter.Mode {
+	if m, ok := d.opts.FilterEndpoints[ruleKey]; ok {
+		return m
+	}
+	return d.opts.FilterMode
+}
+
+// ShouldFilter 判断这次响应是否要按规则裁剪:Options.ShouldFilter 不为 nil 时由它决定,
+// 否则只裁剪 2xx。适配器的 ResponseFilter 在写出响应前调用。
+func (d *Doc) ShouldFilter(r *http.Request, status int) bool {
+	if d.opts.ShouldFilter != nil {
+		return d.opts.ShouldFilter(r, status)
+	}
+	return status >= 200 && status < 300
 }
 
 // Options 返回创建时的配置(已填充默认值)。
@@ -243,7 +268,7 @@ type Endpoint struct {
 	Rules  strategy.MethodRules
 	// Doc 是该接口的文档(请求参数树用于校验)。
 	Doc *model.Method
-	// ResponseMask 是返回字段过滤掩码,nil 表示不过滤(该接口没有返回规则)。
+	// ResponseMask 是返回字段过滤掩码,nil 表示不过滤(该接口没有返回规则,或过滤模式为 off)。
 	ResponseMask *filter.Node
 	// Checks 是请求参数校验项(必填、校验规则、单值参数的类型)。
 	Checks []FieldCheck

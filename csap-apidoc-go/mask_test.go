@@ -2,6 +2,7 @@ package apidoc
 
 import (
 	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/filter"
@@ -147,5 +148,41 @@ func TestNoRulesNoMask(t *testing.T) {
 	d.Register("GET", "/m", Op("G", "list").Resp(matchPage{}), "")
 	if d.Snapshot().Endpoint("GET", "/m").ResponseMask != nil {
 		t.Fatal("endpoint without response rules must not be filtered")
+	}
+}
+
+func TestFilterModeOffAndEndpointOverride(t *testing.T) {
+	newDoc := func(o Options) *Doc {
+		o.Wrapper = &Wrapper{Type: apiResult{}}
+		o.Strategies = []strategy.Strategy{strategy.NewMemory(rules)}
+		d := New(o)
+		d.Register("GET", "/m", Op("G", "list").Resp(matchPage{}), "")
+		return d
+	}
+	if newDoc(Options{FilterMode: filter.ModeOff}).Snapshot().Endpoint("GET", "/m").ResponseMask != nil {
+		t.Fatal("global off must not filter")
+	}
+	d := newDoc(Options{FilterEndpoints: map[string]filter.Mode{"G.list": filter.ModeOff}})
+	if d.Snapshot().Endpoint("GET", "/m").ResponseMask != nil {
+		t.Fatal("endpoint off must not filter")
+	}
+	d = newDoc(Options{FilterMode: filter.ModeOff, FilterEndpoints: map[string]filter.Mode{"G.list": filter.ModeCsap}})
+	_, csapMask := maskFor(t, filter.ModeCsap)
+	ep := d.Snapshot().Endpoint("GET", "/m")
+	if ep.ResponseMask == nil || render(t, ep.ResponseMask, sample) != render(t, csapMask, sample) {
+		t.Fatal("endpoint override to csap should filter like csap mode")
+	}
+}
+
+func TestShouldFilterDefault(t *testing.T) {
+	d := New(Options{})
+	for status, want := range map[int]bool{200: true, 201: true, 204: true, 299: true, 301: false, 400: false, 404: false, 500: false} {
+		if got := d.ShouldFilter(nil, status); got != want {
+			t.Errorf("status %d: got %v", status, got)
+		}
+	}
+	d = New(Options{ShouldFilter: func(_ *http.Request, status int) bool { return status == 400 }})
+	if d.ShouldFilter(nil, 200) || !d.ShouldFilter(nil, 400) {
+		t.Fatal("custom ShouldFilter not used")
 	}
 }

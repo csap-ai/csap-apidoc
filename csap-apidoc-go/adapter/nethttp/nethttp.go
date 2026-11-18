@@ -215,7 +215,8 @@ func Route(r *http.Request) string {
 
 // ResponseFilter 返回字段过滤中间件:接口配置了返回规则时,按白名单裁剪 JSON 返回,
 // 代码里返回了、但规则没放行的字段不输出。没有规则的接口不受影响,也不缓冲。规则热更新后下一个请求即生效。
-// 用 Mux.Use 注册(需要路由信息)。
+// 默认只裁剪 2xx 响应,4xx/5xx 的错误体原样输出;可用 apidoc.Options.ShouldFilter 自定义,
+// 用 apidoc.Options.FilterEndpoints 按接口关闭。用 Mux.Use 注册(需要路由信息)。
 func ResponseFilter(doc *apidoc.Doc) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -229,7 +230,11 @@ func ResponseFilter(doc *apidoc.Doc) func(http.Handler) http.Handler {
 			}
 			bw := &bufferWriter{ResponseWriter: w, status: http.StatusOK}
 			next.ServeHTTP(bw, r)
-			bw.flushTo(ep.ResponseMask)
+			mask := ep.ResponseMask
+			if !doc.ShouldFilter(r, bw.status) {
+				mask = nil
+			}
+			bw.flushTo(mask)
 		})
 	}
 }
@@ -272,17 +277,20 @@ func (w *bufferWriter) Flush() {}
 // Unwrap 供 http.ResponseController 使用。
 func (w *bufferWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
+// flushTo 写出缓冲的响应,mask 为 nil 时原样写出。
 func (w *bufferWriter) flushTo(mask *filter.Node) {
 	out := w.buf.Bytes()
-	ct, _, _ := mime.ParseMediaType(w.Header().Get("Content-Type"))
-	if ct == "" && len(out) > 0 {
-		ct, _, _ = mime.ParseMediaType(http.DetectContentType(out))
-	}
-	if ct == "application/json" || strings.HasSuffix(ct, "+json") || (ct == "text/plain" && looksJSON(out)) {
-		if pruned, err := filter.Prune(out, mask); err == nil {
-			out = pruned
-		} else {
-			slog.Warn("apidoc: response is not valid JSON, not filtered", "err", err)
+	if mask != nil {
+		ct, _, _ := mime.ParseMediaType(w.Header().Get("Content-Type"))
+		if ct == "" && len(out) > 0 {
+			ct, _, _ = mime.ParseMediaType(http.DetectContentType(out))
+		}
+		if ct == "application/json" || strings.HasSuffix(ct, "+json") || (ct == "text/plain" && looksJSON(out)) {
+			if pruned, err := filter.Prune(out, mask); err == nil {
+				out = pruned
+			} else {
+				slog.Warn("apidoc: response is not valid JSON, not filtered", "err", err)
+			}
 		}
 	}
 	w.Header().Del("Content-Length")
