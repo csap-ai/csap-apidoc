@@ -1,0 +1,4 @@
+# Auto Configure
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  ai.csap.apidoc.mcp.autoconfigure.McpAutoConfiguration,\
+  ai.csap.apidoc.mcp.autoconfigure.McpDevtoolsAutoConfiguration

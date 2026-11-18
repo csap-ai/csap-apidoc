@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>ai.csap.apidoc</groupId>
+        <artifactId>csap-apidoc-build</artifactId>
+        <version>1.2.0</version>
+        <relativePath>../csap-apidoc-build</relativePath>
+    </parent>
+
+    <artifactId>csap-apidoc-mcp</artifactId>
+    <name>CSAP Apidoc MCP</name>
+    <description>Embedded MCP (Model Context Protocol) endpoint for CSAP Apidoc: turns documented endpoints into MCP tools (Spring Boot 2 and 3).</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>ai.csap.apidoc</groupId>
+            <artifactId>csap-apidoc-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <!-- 只用 spring-webmvc 的抽象,不引用 javax / jakarta Servlet 类;由使用方的 spring-boot-starter-web 提供 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <!-- 规则文件:YAML(csap-apidoc-yaml 已带)/ SQLite(csap-apidoc-sqlite 已带),缺失时自动降级为内存 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-yaml</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

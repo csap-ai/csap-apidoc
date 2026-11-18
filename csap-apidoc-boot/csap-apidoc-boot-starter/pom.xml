@@ -43,6 +43,12 @@
             <artifactId>csap-apidoc-runtime</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 内嵌 MCP 端点 /csap/mcp,默认关闭(csap.apidoc.mcp.enabled) -->
+        <dependency>
+            <groupId>ai.csap.apidoc</groupId>
+            <artifactId>csap-apidoc-mcp</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
 </project>
