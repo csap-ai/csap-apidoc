@@ -17,7 +17,7 @@ GitHub Actions workflow run: `Release to Maven Central` →
 1. Cut a release PR that bumps `<version>` in the parent `pom.xml` (and
    whatever `CHANGELOG.md` / `README.md` references), merge to `main`.
 2. Go to **Actions → Release to Maven Central → Run workflow**.
-3. Type the version (e.g. `1.1.0`), leave `dry_run=false`, click **Run**.
+3. Type the version (e.g. `1.2.0`), leave `dry_run=false`, click **Run**.
 4. 5–15 minutes later the bundle is live on
    [central.sonatype.com](https://central.sonatype.com/artifact/ai.csap.apidoc/csap-apidoc)
    and (within ~30 min, sometimes longer) on
@@ -183,7 +183,9 @@ happen, fix the offending Javadoc comment and re-run.
 ```
 - [ ] `pom.xml` version bumped to X.Y.Z (no -SNAPSHOT)
 - [ ] `CHANGELOG.md` has an `## [X.Y.Z] - YYYY-MM-DD` section
-- [ ] `README.md` / `README.en.md` / `docs/guides/QUICK_START.md` / `docs/index.md` reference X.Y.Z
+- [ ] `README.md` / `README.en.md` reference X.Y.Z
+- [ ] `website/docs/**` (quick-start, installation, download, overview, faq, ...), the version label in `website/rspress.config.ts`, `skills/csap-apidoc/SKILL.md` and `docs/ROADMAP.md` reference X.Y.Z
+- [ ] `example/*/pom.xml` `csap.apidoc.version` is X.Y.Z
 - [ ] CI green (ci.yml + docs.yml)
 - [ ] Dry-run of Release workflow succeeded
 - [ ] Tagged v X.Y.Z (workflow does this automatically on success)
