@@ -107,7 +107,8 @@ public final class RuleConsistencyChecker {
         Set<String> reported = new HashSet<>();
         for (StrategyModel model : models) {
             if (model.getParamType() != ApiStrategyType.YAML && model.getParamType() != ApiStrategyType.SQL_LITE
-                    && model.getParamType() != ApiStrategyType.DATABASE) {
+                    && model.getParamType() != ApiStrategyType.DATABASE
+                    && model.getParamType() != ApiStrategyType.REDIS) {
                 continue;
             }
             Map<String, Map<String, ParamGroupMethodProperty>> loaded;

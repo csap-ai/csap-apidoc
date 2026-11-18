@@ -1,6 +1,5 @@
 package ai.csap.apidoc.database;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -18,9 +17,9 @@ import java.util.regex.Pattern;
 
 import javax.sql.DataSource;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import ai.csap.apidoc.model.RuleChange;
+import ai.csap.apidoc.strategy.store.RuleJson;
+import ai.csap.apidoc.strategy.store.RuleStore;
 
 /**
  * 规则表的 JDBC 读写,与 csap-apidoc-go 的 SQL 规则来源共用同一套表:
@@ -36,7 +35,7 @@ import ai.csap.apidoc.model.RuleChange;
  * @author ycf
  * @since 1.4.0
  */
-public class DatabaseRuleStore {
+public class DatabaseRuleStore implements RuleStore {
 
     private static final Pattern PREFIX = Pattern.compile("[A-Za-z0-9_]*");
 
@@ -64,10 +63,25 @@ public class DatabaseRuleStore {
         this.metaTable = this.prefix + "meta";
     }
 
+    @Override
+    public String describe() {
+        return "dialect=" + dialect + " service=" + service + " tablePrefix=" + prefix;
+    }
+
+    @Override
+    public void init(boolean createIfMissing, boolean readOnly) throws SQLException {
+        if (readOnly) {
+            checkSchema();
+        } else {
+            ensureSchema(createIfMissing);
+        }
+    }
+
     public DatabaseDialect dialect() {
         return dialect;
     }
 
+    @Override
     public String service() {
         return service;
     }
@@ -245,6 +259,7 @@ public class DatabaseRuleStore {
     /**
      * 本服务的全局版本号,没有记录时为 0。
      */
+    @Override
     public long version() throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
             Long v = readVersion(conn);
@@ -255,6 +270,7 @@ public class DatabaseRuleStore {
     /**
      * 读取本服务的全部规则。先读版本号再读规则:两者之间若有修改,记下的版本偏旧,下次检查会再加载一次,不会漏。
      */
+    @Override
     public Snapshot load() throws SQLException {
         try (Connection conn = dataSource.getConnection()) {
             Long v = readVersion(conn);
@@ -268,7 +284,7 @@ public class DatabaseRuleStore {
                     }
                 }
             }
-            return new Snapshot(v == null ? 0L : v, rules);
+            return new RuleStore.Snapshot(v == null ? 0L : v, rules);
         }
     }
 
@@ -280,6 +296,7 @@ public class DatabaseRuleStore {
      * @param updatedBy 修改人
      * @return 新版本号;内容与库里相同、没有修改时返回 -1
      */
+    @Override
     public long save(String ruleKey, String rulesJson, String updatedBy) throws SQLException {
         String by = updatedBy == null || updatedBy.isEmpty() ? "unknown" : updatedBy;
         try (Connection conn = dataSource.getConnection()) {
@@ -300,7 +317,7 @@ public class DatabaseRuleStore {
                         }
                     }
                 }
-                if (sameJson(before, rulesJson)) {
+                if (RuleJson.sameJson(before, rulesJson)) {
                     conn.rollback();
                     return -1L;
                 }
@@ -362,25 +379,6 @@ public class DatabaseRuleStore {
         }
     }
 
-    private static final ObjectMapper TREE = new ObjectMapper();
-
-    /**
-     * 比较两份规则 JSON 是否相同:先比字符串,再按 JSON 结构比较(忽略空白和键顺序,别的语言写入的格式可能不同)。
-     */
-    static boolean sameJson(String a, String b) {
-        if (Objects.equals(a, b)) {
-            return true;
-        }
-        if (a == null || b == null) {
-            return false;
-        }
-        try {
-            return TREE.readTree(a).equals(TREE.readTree(b));
-        } catch (IOException e) {
-            return false;
-        }
-    }
-
     /**
      * 先 UPDATE 加版本号:MySQL / PostgreSQL / 达梦 / 金仓会锁住该行,并发保存因此串行化。
      */
@@ -412,6 +410,7 @@ public class DatabaseRuleStore {
      * @param ruleKey 规则键,null 或空字符串表示全部
      * @param limit   条数,小于等于 0 时为 100
      */
+    @Override
     public List<RuleChange> history(String ruleKey, int limit) throws SQLException {
         boolean all = ruleKey == null || ruleKey.isEmpty();
         String sql = "SELECT id, rule_key, before_rules, after_rules, version, updated_by, updated_at FROM " + historyTable
@@ -439,6 +438,7 @@ public class DatabaseRuleStore {
      * @return 新版本号;已经是修改前的内容时返回 -1
      * @throws IllegalArgumentException 修改记录不存在(或不属于本服务)
      */
+    @Override
     public long rollback(long changeId, String updatedBy) throws SQLException {
         String key;
         String before;
@@ -455,29 +455,5 @@ public class DatabaseRuleStore {
             }
         }
         return save(key, before, updatedBy);
-    }
-
-    /**
-     * 一次加载的结果
-     */
-    public static final class Snapshot {
-        private final long version;
-        private final Map<String, String> rules;
-
-        Snapshot(long version, Map<String, String> rules) {
-            this.version = version;
-            this.rules = Collections.unmodifiableMap(rules);
-        }
-
-        public long version() {
-            return version;
-        }
-
-        /**
-         * 规则键 → 规则 JSON
-         */
-        public Map<String, String> rules() {
-            return rules;
-        }
     }
 }

@@ -38,6 +38,7 @@ import ai.csap.apidoc.autoconfigure.StrategyModel;
 import ai.csap.apidoc.model.CsapDocMethod;
 import ai.csap.apidoc.model.ParamGroupMethodProperty;
 import ai.csap.apidoc.model.RuleChange;
+import ai.csap.apidoc.strategy.store.RuleJson;
 import ai.csap.apidoc.util.RuleStorageNotWritableException;
 import ai.csap.validation.factory.IValidateFactory;
 import ai.csap.validation.factory.Validate;

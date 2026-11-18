@@ -1,0 +1,3 @@
+# Auto Configure
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  ai.csap.apidoc.migrate.autoconfigure.MigrateAutoConfiguration

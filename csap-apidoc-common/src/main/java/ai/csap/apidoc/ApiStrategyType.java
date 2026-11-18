@@ -29,6 +29,12 @@ public enum ApiStrategyType implements ApidocStrategyName {
      * @since 1.4.0
      */
     DATABASE("database", ""),
+    /**
+     * Redis 模式:规则存在应用自己的 Redis 里,只用于 paramType
+     *
+     * @since 1.4.0
+     */
+    REDIS("redis", ""),
 
     //yaml文件
     YAML("yaml", ".yaml");

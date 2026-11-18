@@ -18,6 +18,8 @@
         <module>csap-apidoc-yaml</module>
         <module>csap-apidoc-sqlite</module>
         <module>csap-apidoc-database</module>
+        <module>csap-apidoc-redis</module>
+        <module>csap-apidoc-migrate</module>
     </modules>
     <dependencies>
         <!-- https://mvnrepository.com/artifact/org.testng/testng -->

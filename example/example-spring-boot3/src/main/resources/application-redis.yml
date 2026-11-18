@@ -1,0 +1,29 @@
+# Redis 模式(paramType = ApiStrategyType.REDIS)的配置样例。
+# 注意:profile 不会切换存储策略,需要把启动类上的 @EnableApidoc 改成 paramType = ApiStrategyType.REDIS,
+# 并加上 spring-boot-starter-data-redis 依赖,见 STRATEGIES.md。
+
+spring:
+  application:
+    name: csap-apidoc-example-redis
+  data:
+    redis:                      # Spring Boot 2 请用 spring.redis.host / port
+      host: 127.0.0.1
+      port: 6379
+      # password: ${REDIS_PASSWORD}
+
+csap:
+  apidoc:
+    devtool:
+      enabled: true
+    redis:
+      key-prefix: "csap:apidoc:"        # 键形如 csap:apidoc:{服务名}:rules
+      # service: csap-apidoc-example    # 为空用 spring.application.name,再空用 default
+      history-limit: 200                # 每个接口保留的修改记录条数
+      poll-interval: 5s                 # 订阅断开时的兜底:轮询版本号,0 不轮询
+      subscribe: true                   # 订阅频道,别的实例保存后即时同步
+      read-only: false                  # 生产环境只读时设为 true
+
+# 从 YAML / SQLite 迁移到 Redis(先 dry-run 看报告,默认不覆盖已有规则),完成后去掉这些参数:
+#   --csap.apidoc.migrate.from=yaml --csap.apidoc.migrate.to=redis --csap.apidoc.migrate.dry-run=true
+# 把 Redis 里的规则导出成 YAML 目录(备份或退回 YAML 模式):
+#   --csap.apidoc.migrate.from=redis --csap.apidoc.migrate.export-to=./exported-rules
