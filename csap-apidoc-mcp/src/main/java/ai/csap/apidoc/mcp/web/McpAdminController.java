@@ -57,6 +57,7 @@ public class McpAdminController {
         m.put("tokenNames", s.getAuthenticator().tokenNames());
         m.put("upstreamHeaderNames", new ArrayList<>(properties.getAuth().getUpstreamHeaders().keySet()));
         m.put("exposeGetByDefault", properties.isExposeGetByDefault());
+        m.put("exposeDeprecated", properties.isExposeDeprecated());
         m.put("storeType", s.getStore().type());
         m.put("storeLocation", s.getStore().location());
         m.put("storePersistent", s.getStore().isPersistent());
@@ -92,6 +93,8 @@ public class McpAdminController {
             m.put("enabledSetting", t.getEnabledSetting());
             m.put("readOnly", t.isReadOnly());
             m.put("hidden", t.isHidden());
+            m.put("status", t.getStatus());
+            m.put("statusNote", t.getStatusNote());
             m.put("unsupportedReason", t.getUnsupportedReason());
             m.put("inputSchema", t.getInputSchema());
             out.add(m);

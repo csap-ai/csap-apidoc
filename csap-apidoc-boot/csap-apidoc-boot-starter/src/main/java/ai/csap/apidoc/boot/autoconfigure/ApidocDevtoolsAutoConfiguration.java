@@ -10,6 +10,7 @@ import ai.csap.apidoc.autoconfigure.EnableApidocConfig;
 import ai.csap.apidoc.devtools.ApidocRuleHistoryController;
 import ai.csap.apidoc.devtools.ApidocStrategyController;
 import ai.csap.apidoc.devtools.DevtoolsController;
+import ai.csap.apidoc.devtools.FieldTemplateController;
 import ai.csap.apidoc.devtools.DevtoolsStartupBanner;
 import ai.csap.apidoc.devtools.DevtoolsViewController;
 import ai.csap.apidoc.devtools.core.ApidocDevtools;
@@ -44,6 +45,11 @@ public class ApidocDevtoolsAutoConfiguration {
     @Bean
     public ApidocRuleHistoryController apidocRuleHistoryController(ObjectProvider<EnableApidocConfig> enableApidocConfig) {
         return new ApidocRuleHistoryController(enableApidocConfig.getIfAvailable());
+    }
+
+    @Bean
+    public FieldTemplateController fieldTemplateController(ObjectProvider<EnableApidocConfig> enableApidocConfig) {
+        return new FieldTemplateController(enableApidocConfig.getIfAvailable());
     }
 
     @Bean

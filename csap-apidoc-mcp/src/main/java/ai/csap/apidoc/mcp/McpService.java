@@ -107,7 +107,7 @@ public class McpService implements McpToolHandler {
             }
             HandlerIndex index = handlers == null ? null : handlers.get();
             ToolCatalog built = index == null ? ToolCatalog.empty()
-                    : ToolCatalog.build(doc, index, settings, properties.isExposeGetByDefault());
+                    : ToolCatalog.build(doc, index, settings, properties.isExposeGetByDefault(), properties.isExposeDeprecated());
             catalog = built;
             catalogKey = key;
             return built;

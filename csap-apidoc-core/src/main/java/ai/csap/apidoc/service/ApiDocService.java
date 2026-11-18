@@ -511,7 +511,7 @@ public final class ApiDocService extends AbstractApiDocService implements Filter
         if (containsPathMethod(docController, docMethod)) {
             return null;
         }
-        applyEffectiveStatus(docMethod, docController, strategyModel);
+        ApiStatusResolver.apply(docMethod, docController.getStatus(), strategyModel);
         if (Boolean.TRUE.equals(strategyModel.getIsParent())) {
             // 只要接口和方法,不处理参数,也不改动已登记的字段规则
             buildMethodDetail(docController, method, typeVariableModel, strategyModel, apiOperation, handlerMethod,
@@ -533,34 +533,6 @@ public final class ApiDocService extends AbstractApiDocService implements Filter
         docMethod.setKey(ruleKey);
         ResponseRuleIndex.commit(ruleKey, stagingKey);
         return docMethod;
-    }
-
-    /**
-     * 有效状态:规则存储里的覆盖 > 方法注解(不是 DEFAULT 时)> 类注解(不是 DEFAULT 时)> DEFAULT。
-     * 注解里的 DEFAULT 无法和“没标”区分,视为没标。备注来自规则存储。
-     */
-    private static void applyEffectiveStatus(CsapDocMethod docMethod, CsapDocModelController docController,
-                                             StrategyModel strategyModel) {
-        ApiStatus status = null;
-        String note = null;
-        try {
-            ParamGroupStrategy strategy = ApidocContext.paramStrategy(strategyModel.getParamType());
-            ParamGroupMethodProperty rule = strategy == null ? null : strategy.yamlMethodProperty(strategyModel, docMethod);
-            if (rule != null) {
-                status = rule.getStatus();
-                note = rule.getStatusNote();
-            }
-        } catch (RuntimeException e) {
-            log.debug("read status rule failed for {}: {}", docMethod.getKey(), e.getMessage());
-        }
-        if (status == null && docMethod.getStatus() != null && docMethod.getStatus() != ApiStatus.DEFAULT) {
-            status = docMethod.getStatus();
-        }
-        if (status == null && docController.getStatus() != null && docController.getStatus() != ApiStatus.DEFAULT) {
-            status = docController.getStatus();
-        }
-        docMethod.setStatus(status == null ? ApiStatus.DEFAULT : status);
-        docMethod.setStatusNote(note == null || note.isEmpty() ? null : note);
     }
 
     /**

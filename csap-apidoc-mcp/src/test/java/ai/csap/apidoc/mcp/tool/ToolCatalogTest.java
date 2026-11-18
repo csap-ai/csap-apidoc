@@ -137,6 +137,37 @@ class ToolCatalogTest {
     }
 
     @Test
+    void deprecatedToolsAreNotExposedByDefaultAndStatusIsInTheDescription() {
+        CsapDocResponse d = doc();
+        CsapDocMethod get = d.getApiList().get(0).getMethodList().get(0);
+        get.setStatus(ai.csap.apidoc.annotation.ApiStatus.DEPRECATED);
+        get.setStatusNote("请改用 search");
+        CsapDocMethod search = d.getApiList().get(0).getMethodList().get(1);
+        search.setStatus(ai.csap.apidoc.annotation.ApiStatus.FINISH);
+
+        ToolCatalog cat = ToolCatalog.build(d, index, McpSettings.empty(), true);
+        // 过时的默认不暴露;完成的、没标状态(开发中)的照常
+        assertEquals(Arrays.asList("Item_search"), new ArrayList<>(cat.getExposed().keySet()));
+        McpTool dep = cat.byMethodKey(ItemController.class.getName() + ".get");
+        assertFalse(dep.isExposed());
+        assertFalse(dep.isExposedByDefault());
+        assertEquals("DEPRECATED", dep.getStatus());
+        assertTrue(dep.getDescription().startsWith("[过时] "), dep.getDescription());
+        assertTrue(dep.getDescription().contains("请改用 search"), dep.getDescription());
+        assertTrue(cat.getExposed().get("Item_search").getDescription().startsWith("[完成] "));
+
+        // expose-deprecated=true:按普通接口的默认规则
+        assertEquals(Arrays.asList("Item_get", "Item_search"),
+                new ArrayList<>(ToolCatalog.build(d, index, McpSettings.empty(), true, true).getExposed().keySet()));
+        // 在设置里逐个打开也可以
+        McpSettings s = McpSettings.empty();
+        s.getTools().put(ItemController.class.getName() + ".get", new ToolSetting(true, null, null));
+        assertTrue(ToolCatalog.build(d, index, s, true).getExposed().containsKey("Item_get"));
+        // 没标状态:不加前缀
+        assertFalse(cat.byMethodKey(ItemController.class.getName() + ".delete").getDescription().startsWith("["));
+    }
+
+    @Test
     void settingsOverrideExposureAndNames() {
         McpSettings s = McpSettings.empty();
         String k = ItemController.class.getName() + ".";

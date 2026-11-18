@@ -458,6 +458,33 @@ abstract class AbstractDatabaseRuleTest {
     }
 
     @Test
+    void projectFieldTemplatesLiveUnderTheReservedKeyAndSyncLikeRules() throws Exception {
+        String p = newPrefix();
+        DatabaseParamGroupStrategy a = strategy(store(p, "svc"), false, Duration.ZERO);
+        DatabaseParamGroupStrategy b = strategy(store(p, "svc"), false, Duration.ZERO);
+        assertNull(b.templatesJson());
+        save(a, "add", property("name", "姓名"));
+        String json = "{\"version\":1,\"templates\":[{\"name\":\"order-no\",\"title\":\"订单号\"}]}";
+        a.saveTemplatesJson(json, "devtools");
+        // 保留键不是接口规则:不出现在规则里,也不会被当成类
+        assertEquals(java.util.Set.of(CLASS_NAME), a.getHandle(model(), docMethod("add")).keySet());
+        assertEquals(json, a.templatesJson());
+        // 另一个实例按版本号同步,拿到模板,规则里同样没有保留键
+        assertTrue(b.pollOnce());
+        assertEquals(json, b.templatesJson());
+        assertEquals(java.util.Set.of(CLASS_NAME), b.getHandle(model(), docMethod("add")).keySet());
+        // 走正常保存:有修改记录,可以删除
+        assertEquals("devtools", a.history("@templates", 5).get(0).getUpdatedBy());
+        a.saveTemplatesJson(null, "devtools");
+        assertNull(a.templatesJson());
+        assertTrue(b.pollOnce());
+        assertNull(b.templatesJson());
+        // 只读不能保存
+        DatabaseParamGroupStrategy ro = strategy(store(p, "svc"), true, Duration.ZERO);
+        assertThrows(RuleStorageNotWritableException.class, () -> ro.saveTemplatesJson(json, "x"));
+    }
+
+    @Test
     void readOnlyModeReadsButRefusesToSave() throws Exception {
         String p = newPrefix();
         DatabaseParamGroupStrategy writer = strategy(store(p, "svc"), false, Duration.ZERO);

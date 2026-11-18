@@ -140,6 +140,23 @@ public class Field<T extends Field<T>> extends BaseFieldParam implements Cloneab
      */
     private String appendName;
 
+    /**
+     * 写进规则的说明(套用字段模板时设置)。null 表示不改规则里原有的,空串表示清除。
+     */
+    private String ruleDescription;
+    /**
+     * 写进规则的示例。null 不改,空串清除。
+     */
+    private String ruleExample;
+    /**
+     * 套用的字段模板名(只记录来源)。null 不改,空串清除。
+     */
+    private String template;
+    /**
+     * Mock 取值(任意 JSON 值,原样存取)。null 不改,空串清除。
+     */
+    private Object mock;
+
     @Override
     public String getPackageName() {
         if (StrUtil.isEmpty(packageName)) {

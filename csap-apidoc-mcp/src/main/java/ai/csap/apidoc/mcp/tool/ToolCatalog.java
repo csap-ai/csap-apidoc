@@ -117,6 +117,16 @@ public final class ToolCatalog {
      */
     public static ToolCatalog build(CsapDocResponse doc, HandlerIndex handlers, McpSettings settings,
                                     boolean exposeGetByDefault) {
+        return build(doc, handlers, settings, exposeGetByDefault, false);
+    }
+
+    /**
+     * 构建目录
+     *
+     * @param exposeDeprecated 过时接口是否按普通接口的默认规则暴露;false 时过时接口默认不暴露(仍可在设置里逐个打开)
+     */
+    public static ToolCatalog build(CsapDocResponse doc, HandlerIndex handlers, McpSettings settings,
+                                    boolean exposeGetByDefault, boolean exposeDeprecated) {
         List<McpTool> tools = new ArrayList<>();
         Set<String> seenKeys = new HashSet<>();
         if (doc != null && doc.getApiList() != null) {
@@ -133,13 +143,31 @@ public final class ToolCatalog {
             }
         }
         tools.sort(Comparator.comparing(McpTool::getMethodKey));
-        applySettings(tools, settings == null ? McpSettings.empty() : settings, exposeGetByDefault);
+        applySettings(tools, settings == null ? McpSettings.empty() : settings, exposeGetByDefault, exposeDeprecated);
         return new ToolCatalog(tools);
     }
 
     // ------------------------------------------------------------------ settings / names
 
     static void applySettings(List<McpTool> tools, McpSettings settings, boolean exposeGetByDefault) {
+        applySettings(tools, settings, exposeGetByDefault, false);
+    }
+
+    /**
+     * 状态前缀:过时 / 完成加在工具说明前,让 AI 知道该不该用;开发中(DEFAULT)不加
+     */
+    static String statusPrefix(McpTool t) {
+        if ("DEPRECATED".equals(t.getStatus())) {
+            return "[过时] ";
+        }
+        if ("FINISH".equals(t.getStatus())) {
+            return "[完成] ";
+        }
+        return "";
+    }
+
+    static void applySettings(List<McpTool> tools, McpSettings settings, boolean exposeGetByDefault,
+                              boolean exposeDeprecated) {
         Set<String> used = new HashSet<>();
         Map<McpTool, String> chosen = new HashMap<>();
         // 先给合法、不重名的改写名占位
@@ -160,8 +188,17 @@ public final class ToolCatalog {
             ToolSetting s = settings.tool(t.getMethodKey());
             String desc = s == null || s.getDescription() == null || s.getDescription().trim().isEmpty() ? null
                     : s.getDescription().trim();
-            t.setDescription(desc != null ? desc : t.getDefaultDescription());
-            boolean byDefault = t.isReadOnly() && exposeGetByDefault;
+            String text = desc != null ? desc : t.getDefaultDescription();
+            String prefix = statusPrefix(t);
+            if (!prefix.isEmpty() && !text.startsWith(prefix)) {
+                text = prefix + text;
+            }
+            if (t.getStatusNote() != null && !t.getStatusNote().isEmpty() && t.isDeprecated()) {
+                text = text + "\n(过时说明: " + t.getStatusNote() + ")";
+            }
+            t.setDescription(text);
+            // 过时的接口默认不暴露(要用必须在设置里逐个打开);开发中不隐藏:多数接口没标状态,按它隐藏等于全隐藏
+            boolean byDefault = t.isReadOnly() && exposeGetByDefault && (exposeDeprecated || !t.isDeprecated());
             t.setExposedByDefault(byDefault);
             Boolean enabled = s == null ? null : s.getEnabled();
             t.setEnabledSetting(enabled);
@@ -214,6 +251,8 @@ public final class ToolCatalog {
         t.setMethodName(m.getName());
         t.setHidden(Boolean.TRUE.equals(m.getHidden()) || Boolean.TRUE.equals(c.getHidden()));
         t.setTitle(m.getValue());
+        t.setStatus(m.getStatus() == null ? "DEFAULT" : m.getStatus().name());
+        t.setStatusNote(m.getStatusNote());
         String simpleName = m.getSimpleName() != null ? m.getSimpleName() : c.getSimpleName();
         t.setDefaultName(defaultName(simpleName, m.getName()));
 

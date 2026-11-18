@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -96,7 +97,18 @@ class BasicParamRequiredTest {
         CsapDocParameter p = run("annotated", rule(false));
         assertFalse(p.getRequired());
         verify(validateFactory, never()).addRequestValidate(anyString(), anyString(), anyString(), anyString(),
-                any(), anyList());
+                any(), anyList(), anyBoolean());
+    }
+
+    @Test
+    void optionalParamWithRulesIsRegisteredAsOptional() throws Exception {
+        ParamGroupMethodProperty.ParamDataValidate rule = rule(false);
+        rule.getValidate().add(new Validate.ConstraintValidatorField().setDescr("正则"));
+        CsapDocParameter p = run("plain", rule);
+        assertFalse(p.getRequired());
+        // 1.4.0:非必填但有规则也登记(required=false),运行时没传值不校验、传了值就校验
+        verify(validateFactory).addRequestValidate(eq("k.plain"), eq("String"), eq("id"), anyString(), any(),
+                same(rule.getValidate()), eq(false));
     }
 
     @Test
@@ -106,7 +118,7 @@ class BasicParamRequiredTest {
         CsapDocParameter p = run("plain", rule);
         assertTrue(p.getRequired());
         verify(validateFactory).addRequestValidate(eq("k.plain"), eq("String"), eq("id"), anyString(), any(),
-                same(validators));
+                same(validators), eq(true));
     }
 
     @Test
@@ -114,7 +126,7 @@ class BasicParamRequiredTest {
         CsapDocParameter p = run("annotated", null);
         assertTrue(p.getRequired());
         verify(validateFactory).addRequestValidate(eq("k.annotated"), eq("String"), eq("id"), eq("编号"), any(),
-                any());
+                any(), eq(true));
     }
 
     @Test
@@ -123,6 +135,6 @@ class BasicParamRequiredTest {
         assertFalse(p.getRequired());
         assertEquals(ParamType.PATH, p.getParamType());
         verify(validateFactory, never()).addRequestValidate(anyString(), anyString(), anyString(), anyString(),
-                any(), any());
+                any(), any(), anyBoolean());
     }
 }

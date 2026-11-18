@@ -60,6 +60,15 @@ public abstract class RuleStoreParamGroupStrategy implements ParamGroupStrategy,
     private static final Logger LOG = LoggerFactory.getLogger(RuleStoreParamGroupStrategy.class);
 
     /**
+     * 保留键前缀:以 @ 开头的规则键不是接口规则
+     */
+    public static final String RESERVED_PREFIX = "@";
+    /**
+     * 项目字段模板的保留键
+     */
+    public static final String TEMPLATES_KEY = "@templates";
+
+    /**
      * 保存规则时记录的修改人
      */
     static final String UPDATED_BY = "devtools";
@@ -80,6 +89,10 @@ public abstract class RuleStoreParamGroupStrategy implements ParamGroupStrategy,
     private volatile AutoCloseable subscription;
     private volatile Map<String, Map<String, ParamGroupMethodProperty>> rules = new ConcurrentHashMap<>(16);
     private volatile long loadedVersion = Long.MIN_VALUE;
+    /**
+     * 项目字段模板(保留键 @templates 的内容),没有时为 null
+     */
+    private volatile String templatesJson;
     private ScheduledExecutorService poller;
     private volatile boolean pollFailing;
     private volatile Consumer<Set<String>> reloadListener;
@@ -253,8 +266,16 @@ public abstract class RuleStoreParamGroupStrategy implements ParamGroupStrategy,
     private Set<String> loadInto(RuleStore s) throws Exception {
         RuleStore.Snapshot snapshot = s.load();
         Map<String, Map<String, ParamGroupMethodProperty>> fresh = new ConcurrentHashMap<>(16);
+        String templates = null;
         for (Map.Entry<String, String> e : snapshot.rules().entrySet()) {
             String key = e.getKey();
+            if (key.startsWith(RESERVED_PREFIX)) {
+                // 以 @ 开头的键不是接口规则(类名、分组名都不会以 @ 开头);@templates 是项目字段模板
+                if (TEMPLATES_KEY.equals(key)) {
+                    templates = e.getValue();
+                }
+                continue;
+            }
             int dot = key.lastIndexOf('.');
             if (dot <= 0 || dot == key.length() - 1) {
                 LOG.warn("csap-apidoc: 规则键格式不对,应为 类全名.方法名,已忽略: {}", key);
@@ -269,6 +290,7 @@ public abstract class RuleStoreParamGroupStrategy implements ParamGroupStrategy,
         }
         Set<String> changed = diff(this.rules, fresh);
         this.rules = fresh;
+        this.templatesJson = templates;
         this.loadedVersion = snapshot.version();
         return changed;
     }
@@ -461,6 +483,44 @@ public abstract class RuleStoreParamGroupStrategy implements ParamGroupStrategy,
             r = r.getCause();
         }
         return r.getClass().getSimpleName() + ": " + r.getMessage();
+    }
+
+    // ------------------------------------------------------------------ 项目字段模板
+
+    /**
+     * 项目字段模板文件的 JSON({"version":1,"templates":[...]}),没有时为 null
+     */
+    public String templatesJson() {
+        ensureInitialized();
+        return templatesJson;
+    }
+
+    /**
+     * 保存项目字段模板(走正常保存:版本号、修改记录、订阅 / 轮询同步)
+     *
+     * @param json      模板文件 JSON,null 表示删除
+     * @param updatedBy 修改人
+     */
+    public void saveTemplatesJson(String json, String updatedBy) {
+        if (readOnly) {
+            throw new RuleStorageNotWritableException(modeName + "处于只读状态(" + propertyPrefix + ".read-only=true),不能保存字段模板。"
+                    + " | The " + modeName + " rule store is read-only; field templates cannot be saved.");
+        }
+        ensureInitialized();
+        synchronized (lock) {
+            try {
+                long v = store.save(TEMPLATES_KEY, json, updatedBy);
+                if (v >= 0 && loadedVersion + 1 == v) {
+                    loadedVersion = v;
+                }
+                if (v >= 0) {
+                    templatesJson = json;
+                }
+            } catch (Exception e) {
+                throw new RuleStorageNotWritableException("保存字段模板到" + modeName + "存储失败(" + root(e) + ")。"
+                        + " | Failed to save field templates (" + root(e) + ").", e);
+            }
+        }
     }
 
     // ------------------------------------------------------------------ 修改记录 / 回滚

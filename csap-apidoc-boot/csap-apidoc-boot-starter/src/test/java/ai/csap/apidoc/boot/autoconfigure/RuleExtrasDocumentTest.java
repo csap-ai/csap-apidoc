@@ -95,4 +95,52 @@ class RuleExtrasDocumentTest {
                     assertThat(method("save").getStatus()).isEqualTo(ApiStatus.DEPRECATED);
                 });
     }
+
+    @Test
+    void devtoolsSetsAndClearsTheStatusInTheRuleStore() {
+        new WebApplicationContextRunner()
+                .withConfiguration(AutoConfigurations.of(ApidocAutoConfiguration.class, DatabaseAutoConfiguration.class,
+                        ApidocDevtoolsAutoConfiguration.class))
+                .withUserConfiguration(App.class)
+                .withPropertyValues("csap.apidoc.database.poll-interval=0", "csap.apidoc.devtool.enabled=true")
+                .run(ctx -> {
+                    assertThat(ctx).hasNotFailed();
+                    ai.csap.apidoc.devtools.core.ApidocDevtools devtools = ctx.getBean(ai.csap.apidoc.devtools.core.ApidocDevtools.class);
+                    DatabaseParamGroupStrategy s = ctx.getBean(DatabaseParamGroupStrategy.class);
+                    String cls = DbE2eController.class.getName();
+                    ApidocContext.cmd(true, false);
+
+                    devtools.setMethodStatus(cls, "query", ApiStatus.DEPRECATED, "请改用 /v2");
+                    assertThat(s.store().load().rules().get(cls + ".query")).contains("\"status\":\"DEPRECATED\"");
+                    assertThat(method("query").getStatus()).isEqualTo(ApiStatus.DEPRECATED);
+                    assertThat(method("query").getStatusNote()).isEqualTo("请改用 /v2");
+                    // DevTools 的接口列表里也是有效状态
+                    assertThat(devtools.getAllMethod(cls).get("query").getStatus()).isEqualTo(ApiStatus.DEPRECATED);
+                    assertThat(devtools.getAllMethod(cls).get("save").getStatus()).isEqualTo(ApiStatus.FINISH);
+                    // 修改记录:状态变更也留记录
+                    assertThat(s.history(cls + ".query", 10)).hasSize(1);
+
+                    // 清除覆盖:没有字段规则、没有状态 = 空规则,行被删除
+                    devtools.setMethodStatus(cls, "query", null, null);
+                    assertThat(s.store().load().rules()).doesNotContainKey(cls + ".query");
+                    assertThat(method("query").getStatus()).isEqualTo(ApiStatus.DEFAULT);
+                });
+    }
+
+    @Test
+    void readOnlyStoreRefusesToChangeTheStatus() {
+        new WebApplicationContextRunner()
+                .withConfiguration(AutoConfigurations.of(ApidocAutoConfiguration.class, DatabaseAutoConfiguration.class,
+                        ApidocDevtoolsAutoConfiguration.class))
+                .withUserConfiguration(App.class)
+                .withPropertyValues("csap.apidoc.database.poll-interval=0", "csap.apidoc.devtool.enabled=true",
+                        "csap.apidoc.database.read-only=true", "csap.apidoc.database.init-schema=true")
+                .run(ctx -> {
+                    // 只读模式不建表,启动后第一次用到数据库就报明确的错
+                    ai.csap.apidoc.devtools.core.ApidocDevtools devtools = ctx.getBean(ai.csap.apidoc.devtools.core.ApidocDevtools.class);
+                    org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                            devtools.setMethodStatus(DbE2eController.class.getName(), "query", ApiStatus.FINISH, null))
+                            .isInstanceOf(RuntimeException.class);
+                });
+    }
 }

@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (behavior change)
+
+- **Request validation: rules on optional fields are now enforced when a value is sent.**
+  Since 1.2.0 a field that is not required was never validated at all. Now, like the
+  Go implementation, an optional field is skipped only when it is not sent (`null` /
+  absent); when a value is sent (including an empty string `""`, an empty array or
+  object) its rules (`Pattern`, `NotEmpty`, `@Pattern`, `@Size`, ...) run. This can
+  **reject requests that used to pass**, e.g. an optional field with a `@Pattern`
+  that callers always filled in with a malformed value. To upgrade safely run
+  `csap.validation.mode=observe` first and read the violation log, or set
+  `csap.validation.optional-field-rules=skip` to restore the old behavior
+  (default `validate`). The Java and Go implementations share the golden cases in
+  `docs/conformance/validation-cases.json`; the full definition of "value sent" is in
+  `docs/design/1.4.0-validation-alignment.md`. `Pattern` matches the whole value
+  (an unanchored regex such as `[0-9]+` no longer matches `abc123`).
+- Field rules now also show their `description` and `example` in the document
+  (previously only the annotation values were used for model fields).
+
+### Added
+
+- **API status (in development / stable / deprecated)**: the effective status of an
+  endpoint is rule store override > `@ApiOperation(status)` > `@Api(status)` > default.
+  It is shown (and filterable) on the document page, exported as `deprecated: true` /
+  `x-csap-status` in OpenAPI, prefixed `[过时]` in Postman, and can be changed in
+  DevTools (`POST /csap/yaml/setStatus`); the status is stored with the field rules
+  (YAML, database, Redis, SQLite) as `status` / `statusNote`. The MCP endpoint does
+  not expose deprecated endpoints by default (`csap.apidoc.mcp.expose-deprecated`) and
+  puts the status in the tool description. Format: `docs/design/1.4.0-api-status.md`.
+- **Field templates**: reusable field definitions (description, example, required,
+  validation rules) with built-in templates and project templates stored with the rule
+  store (reserved key `@templates` in database / Redis, `field-template/api-field-template.yaml`
+  for YAML / SQLite). Apply them from the DevTools field editor (copy, not linked; the
+  source template name is recorded as `template`). Format:
+  `docs/design/1.4.0-field-library.md`; API: `GET/POST/DELETE /csap/yaml/fieldTemplates`.
+- Rule model: optional `example`, `template` and `mock` (any JSON value, stored and passed
+  through to the document parameter as-is) on field rules.
+- DevTools "Rule history" page for the database and Redis modes (list, diff, roll back).
+
+### Upgrade notes
+
+- **All instances sharing a database / Redis rule store must be upgraded to 1.4.0 together.**
+  An older DevTools rewrites a method's rules without the new `status`, `template`,
+  `example` and `mock` fields and would drop them.
+- SQLite databases get a `status_note` column on first start (automatic).
+
 ### Documentation
 
 - Database mode (planned for 1.4.0, in progress): added the user guide

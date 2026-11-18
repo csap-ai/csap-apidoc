@@ -56,6 +56,14 @@ public class ValidationProperties {
     private Map<String, ValidationMode> endpoints = new LinkedHashMap<>();
 
     /**
+     * 非必填字段上的规则:validate(默认)没传值(null)时不校验、传了值就校验,与 Go 版一致;
+     * skip 恢复 1.3.0 及以前的行为,非必填字段一律不校验。
+     *
+     * @since 1.4.0
+     */
+    private OptionalFieldRules optionalFieldRules = OptionalFieldRules.VALIDATE;
+
+    /**
      * 验证提示的类型
      */
     private ValidationTipType tipType = ValidationTipType.TIP_1;

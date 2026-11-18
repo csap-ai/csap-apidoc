@@ -1636,6 +1636,136 @@
       "expect": {
         "ok": true
       }
+    },
+    {
+      "id": "query-pattern-unanchored-full",
+      "desc": "正则不带 ^$ 也按全匹配:整个值匹配,通过",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1005",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "[0-9]+"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p=123"
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "query-pattern-unanchored-partial",
+      "desc": "正则不带 ^$:只有一部分匹配(abc123)不算匹配,失败",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1005",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "[0-9]+"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p=abc123"
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Pattern",
+        "code": "1005"
+      }
+    },
+    {
+      "id": "query-pattern-unanchored-prefix",
+      "desc": "正则不带 ^$:前缀匹配(12a)不算匹配,失败",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1005",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "[0-9]+"
+          }
+        ],
+        "in": "QUERY",
+        "name": "p"
+      },
+      "request": {
+        "query": "p=12a"
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Pattern",
+        "code": "1005"
+      }
+    },
+    {
+      "id": "body-pattern-unanchored-partial",
+      "desc": "请求体里同样按全匹配",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1005",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "[0-9]+"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": "x9"
+        }
+      },
+      "expect": {
+        "ok": false,
+        "rule": "Pattern",
+        "code": "1005"
+      }
+    },
+    {
+      "id": "body-pattern-unanchored-full",
+      "desc": "请求体里整个值匹配,通过",
+      "field": {
+        "required": false,
+        "rules": [
+          {
+            "type": "Pattern",
+            "code": "1005",
+            "level": 1,
+            "message": "必须是数字",
+            "pattern": "[0-9]+"
+          }
+        ],
+        "in": "BODY",
+        "path": "name"
+      },
+      "request": {
+        "body": {
+          "name": "99"
+        }
+      },
+      "expect": {
+        "ok": true
+      }
     }
   ]
 }

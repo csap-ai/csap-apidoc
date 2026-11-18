@@ -17,6 +17,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
+import ai.csap.apidoc.annotation.ApiStatus;
 import ai.csap.apidoc.annotation.ParamType;
 import ai.csap.apidoc.model.CsapDocMethod;
 import ai.csap.apidoc.model.CsapDocMethodHeaders;
@@ -262,12 +263,31 @@ public class OpenApiConverterService {
     }
 
     /**
+     * 接口状态:过时 → deprecated: true;非"开发中"的状态输出 x-csap-status;有备注时追加到说明末尾
+     */
+    private void applyStatus(Operation operation, CsapDocMethod method) {
+        ApiStatus status = method.getStatus();
+        if (status == null || status == ApiStatus.DEFAULT) {
+            return;
+        }
+        if (status == ApiStatus.DEPRECATED) {
+            operation.setDeprecated(Boolean.TRUE);
+        }
+        operation.setCsapStatus(status.name());
+        if (notEmpty(method.getStatusNote())) {
+            String d = operation.getDescription();
+            operation.setDescription((d == null || d.isEmpty() ? "" : d + "\n\n") + method.getStatusNote());
+        }
+    }
+
+    /**
      * 构建操作
      */
     private Operation buildOperation(CsapDocMethod method, CsapDocModelController controller, String path, RequestMethod requestMethod) {
         Operation operation = new Operation();
         operation.setSummary(notEmpty(method.getValue()) ? method.getValue() : method.getName());
         operation.setDescription(emptyToNull(method.getDescription()));
+        applyStatus(operation, method);
         String tagName = tagName(controller);
         if (tagName != null) {
             operation.setTags(Collections.singletonList(tagName));
@@ -789,6 +809,25 @@ public class OpenApiConverterService {
         private List<Parameter> parameters;
         private RequestBody requestBody;
         private Map<String, Response> responses;
+        private Boolean deprecated;
+        private String csapStatus;
+
+        public Boolean getDeprecated() {
+            return deprecated;
+        }
+
+        public void setDeprecated(Boolean deprecated) {
+            this.deprecated = deprecated;
+        }
+
+        @com.fasterxml.jackson.annotation.JsonProperty("x-csap-status")
+        public String getCsapStatus() {
+            return csapStatus;
+        }
+
+        public void setCsapStatus(String csapStatus) {
+            this.csapStatus = csapStatus;
+        }
 
         // Getters and Setters
         public String getSummary() {

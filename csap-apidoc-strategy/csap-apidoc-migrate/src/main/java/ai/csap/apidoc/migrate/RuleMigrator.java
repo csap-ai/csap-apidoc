@@ -62,6 +62,9 @@ public final class RuleMigrator {
         Map<String, Map<String, ParamGroupMethodProperty>> out = new TreeMap<>();
         for (Map.Entry<String, String> e : store.load().rules().entrySet()) {
             String key = e.getKey();
+            if (key.startsWith("@")) {
+                continue; // 保留键(如 @templates 字段模板)不是接口规则
+            }
             int dot = key.lastIndexOf('.');
             if (dot <= 0 || dot == key.length() - 1) {
                 LOG.warn("csap-apidoc: 规则键格式不对,应为 类全名.方法名,已忽略: {}", key);

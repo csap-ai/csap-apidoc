@@ -29,6 +29,11 @@ public class McpTool {
     private boolean exposedByDefault;
     private Boolean enabledSetting;
     private boolean hidden;
+    /**
+     * 接口状态:DEFAULT(开发中)/ FINISH(完成)/ DEPRECATED(过时)
+     */
+    private String status = "DEFAULT";
+    private String statusNote;
     private String unsupportedReason;
 
     public boolean isReadOnly() {
@@ -153,6 +158,26 @@ public class McpTool {
 
     public void setEnabledSetting(Boolean enabledSetting) {
         this.enabledSetting = enabledSetting;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getStatusNote() {
+        return statusNote;
+    }
+
+    public void setStatusNote(String statusNote) {
+        this.statusNote = statusNote;
+    }
+
+    public boolean isDeprecated() {
+        return "DEPRECATED".equals(status);
     }
 
     public boolean isHidden() {

@@ -34,5 +34,14 @@ public class CsapDocMethodModel {
 
     private String path;
 
+    /**
+     * 接口有效状态:DEFAULT(开发中)/ FINISH(完成)/ DEPRECATED(过时);文档页显示并可按状态筛选
+     */
+    private String status;
+
+    /**
+     * 状态备注(替代接口、下线时间等)
+     */
+    private String statusNote;
 
 }
