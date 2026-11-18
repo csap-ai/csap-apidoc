@@ -2,7 +2,7 @@
 
 本页介绍 `csap-apidoc` 技能:安装后,Claude Code 等支持 Agent Skills 的 AI 编码助手就知道如何给项目接入 CSAP Apidoc、写注解和 YAML 规则、排查"文档里看不到字段"。
 
-技能源文件在仓库的 [`skills/csap-apidoc/`](https://github.com/csap-ai/csap-apidoc/tree/main/skills/csap-apidoc),随版本一起维护。当前版本对应 Java 1.1.x。
+技能源文件在仓库的 [`skills/csap-apidoc/`](https://github.com/csap-ai/csap-apidoc/tree/main/skills/csap-apidoc),随版本一起维护。当前版本对应 Java 1.2.x。
 
 ## 安装
 
@@ -32,7 +32,7 @@ cp -R /tmp/csap-apidoc/skills/csap-apidoc ~/.claude/skills/
 - 字段"默认不显示"的规则,以及 `forceReq` / `forceRep`、`@Group`、YAML 三种选择字段的方式
 - YAML 规则文件的位置、字段键写法和完整示例
 - 文档数据接口(`/csap/apidoc` 等)和 DevTools 的用法
-- 1.1.x 的已知限制,避免助手对用户做出不成立的承诺
+- 返回字段过滤、运行时参数校验（1.2.0 起，默认关闭）的开启方式和注意事项,避免助手对用户做出不成立的承诺
 - 接入后的检查步骤
 
 ## 计划

@@ -12,13 +12,14 @@
 | `csap-apidoc-common` | 文档模型（`ai.csap.apidoc.model`）、`ApidocResult`、策略类型枚举、工具类 | annotation |
 | `csap-validation-core` | 参数校验框架，`IValidateFactory` 等 | annotation、common |
 | `csap-apidoc-ui` | 文档页面 `csap-api.html` 的静态资源（React 构建产物），没有 Java 代码 | 无 |
-| `csap-apidoc-core` | 扫描引擎、`ApidocContext`、`CsapDocController`、各类 Provider、Postman 转换 | annotation、common、validation-core、ui |
+| `csap-apidoc-core` | 扫描引擎、`ApidocContext`、`CsapDocController`、各类 Provider、Postman / OpenAPI 转换 | annotation、common、validation-core、ui |
 | `csap-apidoc-standard` | 文件型策略共用的 `StandardProperties`、`IStandardHandle` | core |
 | `csap-apidoc-yaml` | YAML / JSON 文档策略和参数策略 | common、core、standard |
 | `csap-apidoc-sqlite` | SQLite 文档策略和参数策略 | core、standard |
 | `csap-apidoc-devtools` | DevTools 接口、DevTools 页面、可选的转发代理 | core、standard |
-| `csap-apidoc-boot-starter` | 自动配置、`@EnableApidoc` | core、yaml、sqlite、annotation、devtools |
-| `csap-validation-boot-starter` | 校验自动配置（可选），提供 `IValidateFactory` Bean、`ValidationProperties`、`ValidateExceptionHandler` | validation-core |
+| `csap-apidoc-runtime` | 返回字段过滤（1.2.0 起），按文档规则裁剪接口实际返回的 JSON | core |
+| `csap-apidoc-boot-starter` | 自动配置、`@EnableApidoc` | core、yaml、sqlite、annotation、devtools、runtime |
+| `csap-validation-boot-starter` | 校验自动配置（可选），提供 `IValidateFactory` Bean、`ValidationProperties`、`ValidateExceptionHandler`，以及 1.2.0 起的运行时校验组件 | validation-core |
 
 另外还有三个只含 POM 配置的模块：`csap-apidoc-dependency`（BOM，统一依赖版本）、`csap-apidoc-build`（共享构建配置，各模块的父 POM）、`csap-apidoc-parent`（给使用方继承的父 POM）。
 
@@ -34,7 +35,7 @@ csap-apidoc-boot-starter ──┬─▶ csap-apidoc-devtools ──┬─▶ cs
 csap-validation-boot-starter ──▶ csap-validation-core
 ```
 
-业务项目一般只引入 `csap-apidoc-boot-starter`；需要校验异常处理器或 `ValidationProperties` 时再加 `csap-validation-boot-starter`，见[安装](/guide/installation)。没有 `IValidateFactory` Bean 时，文档 starter 内部使用一个默认实现（1.1.1 起；1.1.0 中会空指针）。
+业务项目一般只引入 `csap-apidoc-boot-starter`；需要运行时参数校验、校验异常处理器或 `ValidationProperties` 时再加 `csap-validation-boot-starter`，见[安装](/guide/installation)。`csap-apidoc-runtime` 依赖 core，由 starter 引入，图中未画出。没有 `IValidateFactory` Bean 时，文档 starter 内部使用一个默认实现（1.1.1 起；1.1.0 中会空指针）。
 
 ## 启动流程
 
@@ -110,7 +111,7 @@ csap-validation-boot-starter ──▶ csap-validation-core
 - **返回参数**：策略返回的规则里 `include` 为 `true`，或者字段标注了 `forceRep = true`，字段才会出现。必填同样优先取策略里的。
 - **方法上的简单参数**（如 `@RequestParam Long id`）：必填取「策略规则」与「`@ApiProperty(required)`」的或；描述优先取策略里的，其次是 `@ApiProperty` 的。
 
-同一份规则在生成文档时也会登记到 `IValidateFactory`。但 1.1.x 中没有组件在请求处理时使用这些登记结果：运行时的参数校验和返回字段过滤都不执行（计划 1.2.0 提供）。参见[参数校验](/guide/validation)、[存储策略](/guide/storage-strategies)。
+同一份规则在生成文档时也会登记到 `IValidateFactory`。1.2.0 起，运行时可以用这些规则校验请求参数（`csap.validation.mode`，默认关闭），也可以按返回字段规则裁剪接口实际返回的 JSON（`csap.apidoc.runtime.filter.enabled`，默认关闭）；1.1.x 中没有组件使用这些登记结果。参见[参数校验](/guide/validation)、[返回字段过滤](/guide/runtime-filter)。
 
 ## 缓存与刷新
 
