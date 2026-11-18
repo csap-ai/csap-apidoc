@@ -1,0 +1,18 @@
+{
+  "description": "字符串字段带 Size/Length 校验:启发式、类型默认值得到的字符串按范围补齐(x)或截断;example 不裁剪",
+  "seed": "csap",
+  "response": [
+    {
+      "modelType": "OBJECT",
+      "name": "Result",
+      "parameters": [
+        {"name": "short", "dataType": "String", "validate": [{"type": "Size", "pattern": "12,20"}]},
+        {"name": "cut", "dataType": "String", "validate": [{"type": "Size", "pattern": "0,3"}]},
+        {"name": "exact", "dataType": "String", "validate": [{"type": "Size", "pattern": "8"}]},
+        {"name": "both", "dataType": "String", "validate": [{"type": "Length", "pattern": "7,"}, {"type": "Size", "pattern": "0,9"}]},
+        {"name": "email", "dataType": "String", "validate": [{"type": "Size", "pattern": "0,10"}]},
+        {"name": "withExample", "dataType": "String", "example": "keep-this-long-example", "validate": [{"type": "Size", "pattern": "0,4"}]}
+      ]
+    }
+  ]
+}

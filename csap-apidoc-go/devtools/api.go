@@ -72,6 +72,12 @@ func (d *Devtools) serveAPI(w http.ResponseWriter, r *http.Request) {
 		"/csap/yaml/rollback":                {http.MethodPost, d.rollback},
 		"/csap/yaml/setStatus":               {http.MethodPost, d.setStatus},
 		"/csap/yaml/fieldTemplates":          {http.MethodGet, d.fieldTemplates},
+		"/devtools/rules/status":             {http.MethodGet, d.rulesStatus},
+		"/devtools/rules/history":            {http.MethodGet, d.rulesHistory},
+		"/devtools/rules/rollback":           {http.MethodPost, d.rulesRollback},
+		"/devtools/mcp/status":               {http.MethodGet, d.mcpStatus},
+		"/devtools/mcp/tools":                {http.MethodGet, d.mcpUnsupported},
+		"/devtools/mcp/audit":                {http.MethodGet, d.mcpUnsupported},
 		"/devtools/getFields":                {http.MethodPost, d.getFields},
 		"/devtools/hiddenMethod":             {http.MethodPost, d.hiddenMethod},
 	}
@@ -113,6 +119,11 @@ func (d *Devtools) serveAPI(w http.ResponseWriter, r *http.Request) {
 		var pe paramError
 		if errors.As(err, &pe) {
 			badRequest(w, r, pe.Error())
+			return
+		}
+		var ae apiError
+		if errors.As(err, &ae) {
+			writeError(w, http.StatusOK, ae.code, ae.msg)
 			return
 		}
 		writeError(w, http.StatusOK, "500", err.Error())

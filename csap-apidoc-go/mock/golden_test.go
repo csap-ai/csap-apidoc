@@ -18,6 +18,7 @@ type goldenInput struct {
 	Seed      string         `json:"seed"`
 	ArraySize *int           `json:"arraySize"`
 	MaxDepth  int            `json:"maxDepth"`
+	Heuristic *bool          `json:"heuristics"` // 缺省 true
 	Response  []*model.Model `json:"response"`
 }
 
@@ -39,8 +40,8 @@ func TestGoldenCases(t *testing.T) {
 	if len(files) == 0 {
 		t.Skip("没有黄金样本 " + goldenDir + ",跳过")
 	}
-	if len(files) < 4 {
-		t.Fatalf("黄金样本应不少于 4 个,实际 %d", len(files))
+	if len(files) < 6 {
+		t.Fatalf("黄金样本应不少于 6 个,实际 %d", len(files))
 	}
 	for _, f := range files {
 		name := strings.TrimSuffix(filepath.Base(f), ".input.json")
@@ -61,7 +62,7 @@ func TestGoldenCases(t *testing.T) {
 			if err := json.Unmarshal(expRaw, &want); err != nil {
 				t.Fatal(err)
 			}
-			got, ok := Generate(&model.Method{Response: in.Response}, Options{Seed: in.Seed, ArraySize: in.ArraySize, MaxDepth: in.MaxDepth})
+			got, ok := Generate(&model.Method{Response: in.Response}, Options{Seed: in.Seed, ArraySize: in.ArraySize, MaxDepth: in.MaxDepth, DisableHeuristics: in.Heuristic != nil && !*in.Heuristic})
 			if !ok {
 				t.Fatal("没有返回模型")
 			}

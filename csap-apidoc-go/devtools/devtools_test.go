@@ -559,3 +559,120 @@ func TestFieldTemplatesAPI(t *testing.T) {
 		}
 	}
 }
+
+// namedStore 让 Memory 冒充 SQL 来源(Name 以 sql: 开头),用来测规则记录页的接口。
+type namedStore struct {
+	*strategy.Memory
+	name string
+	ro   bool
+}
+
+func (n namedStore) Name() string   { return n.name }
+func (n namedStore) ReadOnly() bool { return n.ro }
+
+func TestRulesHistoryEndpoints(t *testing.T) {
+	store := namedStore{Memory: strategy.NewMemory(nil), name: "sql:csap_apidoc_[default]"}
+	_, dt := newTools(t, store)
+	var st struct {
+		Supported bool   `json:"supported"`
+		ReadOnly  bool   `json:"readOnly"`
+		ParamType string `json:"paramType"`
+	}
+	ok(t, dt, "GET", "/devtools/rules/status", nil, &st)
+	if !st.Supported || st.ReadOnly || st.ParamType != "DATABASE" {
+		t.Fatalf("%+v", st)
+	}
+	key := group + ".get"
+	for _, body := range []map[string]any{
+		{"className": group, "methodName": "get", "returnType": map[string]any{"appendName": "", "modelType": "T_OBJECT", "packageName": "x",
+			"fields": []any{map[string]any{"name": "code", "dataType": "String"}}}},
+	} {
+		ok(t, dt, "POST", "/csap/yaml/addResponseParam", body, nil)
+	}
+	ok(t, dt, "POST", "/csap/yaml/setStatus", map[string]any{"className": group, "methodName": "get", "status": "FINISH"}, nil)
+	var hist []struct {
+		ID        int64   `json:"id"`
+		RuleKey   string  `json:"ruleKey"`
+		Before    *string `json:"before"`
+		After     *string `json:"after"`
+		Version   int64   `json:"version"`
+		UpdatedBy string  `json:"updatedBy"`
+		UpdatedAt int64   `json:"updatedAt"`
+	}
+	ok(t, dt, "GET", "/devtools/rules/history?ruleKey="+key+"&limit=5", nil, &hist)
+	if len(hist) != 2 || hist[0].RuleKey != key || hist[0].Before == nil || hist[0].After == nil || hist[1].Before != nil ||
+		!strings.Contains(*hist[0].After, `"status":"FINISH"`) || hist[0].UpdatedAt < 1_000_000_000_000 {
+		t.Fatalf("%+v", hist)
+	}
+	ok(t, dt, "GET", "/devtools/rules/history?limit=1", nil, &hist)
+	if len(hist) != 1 {
+		t.Fatalf("limit: %d", len(hist))
+	}
+	// 回滚(changeId 可以是数字或数字字符串);修改人 devtools-rollback
+	var rb struct {
+		RolledBack bool  `json:"rolledBack"`
+		Version    int64 `json:"version"`
+	}
+	ok(t, dt, "POST", "/devtools/rules/rollback", map[string]any{"changeId": hist[0].ID}, &rb)
+	if !rb.RolledBack || rb.Version <= hist[0].Version {
+		t.Fatalf("%+v", rb)
+	}
+	ok(t, dt, "GET", "/devtools/rules/history?limit=1", nil, &hist)
+	if hist[0].UpdatedBy != "devtools-rollback" {
+		t.Fatalf("%+v", hist[0])
+	}
+	ok(t, dt, "POST", "/devtools/rules/rollback", map[string]any{"changeId": "1"}, nil)
+	// 错误:缺 changeId、记录不存在
+	for _, body := range []map[string]any{{}, {"changeId": "abc"}, {"changeId": 99999}} {
+		if _, res := call(t, dt, "POST", "/devtools/rules/rollback", body); res.Success || res.Code != "400" {
+			t.Fatalf("%v → %+v", body, res)
+		}
+	}
+	// 只读:回滚返回 1007,历史仍可看
+	ro := namedStore{Memory: store.Memory, name: "redis:csap:apidoc:[default]", ro: true}
+	dtRO, err := New(newDoc(t, ro), Options{Auth: BasicAuth("admin", "pw"), Store: ro})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ok(t, dtRO, "GET", "/devtools/rules/status", nil, &st)
+	if !st.Supported || !st.ReadOnly || st.ParamType != "REDIS" {
+		t.Fatalf("%+v", st)
+	}
+	if _, res := call(t, dtRO, "POST", "/devtools/rules/rollback", map[string]any{"changeId": 1}); res.Code != "1007" {
+		t.Fatalf("%+v", res)
+	}
+}
+
+// YAML、内存等来源:supported=false 和提示,不报 500;MCP 页不报错,显示未启用。
+func TestRulesHistoryUnsupportedAndMCP(t *testing.T) {
+	_, dt := newTools(t, strategy.NewMemory(nil))
+	var st struct {
+		Supported bool `json:"supported"`
+	}
+	ok(t, dt, "GET", "/devtools/rules/status", nil, &st)
+	if st.Supported {
+		t.Fatal("内存来源不支持规则记录页")
+	}
+	for _, c := range [][3]string{{"GET", "/devtools/rules/history", ""}, {"POST", "/devtools/rules/rollback", `{"changeId":1}`}} {
+		var body any
+		if c[2] != "" {
+			_ = json.Unmarshal([]byte(c[2]), &body)
+		}
+		rec, res := call(t, dt, c[0], c[1], body)
+		if rec.Code != 200 || res.Success || res.Code != "400" || !strings.Contains(res.Message, "数据库模式") {
+			t.Fatalf("%s %s: %d %+v", c[0], c[1], rec.Code, res)
+		}
+	}
+	var mcp struct {
+		Enabled   bool   `json:"enabled"`
+		Supported bool   `json:"supported"`
+		Message   string `json:"message"`
+	}
+	ok(t, dt, "GET", "/devtools/mcp/status", nil, &mcp)
+	if mcp.Enabled || mcp.Supported || mcp.Message == "" {
+		t.Fatalf("%+v", mcp)
+	}
+	if rec, res := call(t, dt, "GET", "/devtools/mcp/tools", nil); rec.Code != 200 || res.Success {
+		t.Fatalf("%d %+v", rec.Code, res)
+	}
+}

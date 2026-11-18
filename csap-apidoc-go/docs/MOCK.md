@@ -22,7 +22,7 @@ doc := apidoc.New(apidoc.Options{
 - 入口是 `/csap/mock` + 原接口路径:`POST /api/users/{id}` 的 Mock 是 `POST /csap/mock/api/users/42`。任意 HTTP 方法。关闭时路由不注册,一律 404;访问控制沿用 `Options.DocAuth`。启用时打一行 WARN 日志。
 - 不校验请求、不调用业务代码。接口匹配:占位符 `{x}` 各匹配一个非空段;多个都匹配时字面段多的优先、占位符少的优先、key 小的优先;路径对、方法不对 → 405 + `Allow`;不存在 → 404,body 为 `{"code":"MOCK_NOT_FOUND",...}`。隐藏的接口 404,DEPRECATED 照常。
 - 响应:200,头 `X-CSAP-Mock: 1`、`X-CSAP-Mock-Operation`、`X-CSAP-Mock-Seed`;body 就是文档里的返回结构(含统一包装)。没有返回模型 → 200 + 空 body。单次请求可用请求头 `X-CSAP-Mock-Seed` 或查询参数 `_csap_mock_seed` 换种子(请求头优先)。
-- 取值优先级:规则里的 `mock` → `example` → `defaultValue` → 枚举(`Enum` 校验或 `extendDescr`)→ `Min`/`Max` → 字段名启发式 → 类型默认值。`Length` 校验会补齐或截断启发式、类型默认值得到的字符串;`Size` / `Length` 影响数组长度。`Pattern` 不参与生成,需要符合正则的值请写 `example` 或 `mock`。
+- 取值优先级:规则里的 `mock` → `example` → `defaultValue` → 枚举(`Enum` 校验或 `extendDescr`)→ `Min`/`Max` → 字段名启发式 → 类型默认值。`Length` 和 `Size` 校验会补齐(用 x)或截断启发式、类型默认值得到的字符串;它们和 `NotEmpty` 也影响数组长度。`Pattern` 不参与生成,需要符合正则的值请写 `example` 或 `mock`。
 - 随机数由 `splitmix64(fnv1a64(种子 + "\n" + 路径))` 派生,与生成顺序无关,Java 与 Go 输出一致。
 - `/csap/mock-status`(GET,开启时才有):`{"enabled":true,"prefix":"/csap/mock","seed":"csap"}`,文档页用它探测。
 

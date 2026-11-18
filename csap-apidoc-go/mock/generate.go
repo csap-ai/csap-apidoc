@@ -419,10 +419,10 @@ func clock(r uint64) string {
 	return fmt.Sprintf("%02d:%02d:%02d", secs/3600, secs%3600/60, secs%60)
 }
 
-// fitString 按字段上的 Length 校验补齐或截断字符串(按字符,不是字节):不足最小长度用 x 在末尾补齐,超过最大长度从末尾截断。
+// fitString 按字段上的 Length 和 Size 校验(先 Length 后 Size,与参考实现一致)补齐或截断字符串(按字符,不是字节):不足最小长度用 x 在末尾补齐,超过最大长度从末尾截断。
 // 只作用于第 6、7 步得到的字符串;mock、example、defaultValue、枚举得到的值不裁剪。
 func fitString(s string, p *model.Parameter) string {
-	for _, v := range typekind.Validates(p, "length") {
+	for _, v := range append(typekind.Validates(p, "length"), typekind.Validates(p, "size")...) {
 		lo, hi, ok := typekind.ParseRange(v.Pattern)
 		if !ok {
 			continue
