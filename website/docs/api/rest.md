@@ -2,6 +2,10 @@
 
 本页列出 CSAP Apidoc 在应用里注册的全部 HTTP 接口：路径、参数、返回结构和用途。字段名以 `ai.csap.apidoc.model`、`ai.csap.apidoc.response` 包里的类为准。
 
+:::info 适用范围
+本页的路径、参数和返回结构对 Java 版和 Go 版基本一致(Go 版同样提供 `/csap/apidoc*`、`/csap/openapi.json`、`/csap/openapi/postman`、`/csap/yaml/*`、`/devtools/*`),字段名以 Java 的 `ai.csap.apidoc.model` 类为准。DevTools 转发代理(`/csap/apidoc/devtools/proxy`)和网关聚合 `resources` 目前只有 **Java 版**。Go 版见 [Go 版](/go/)。
+:::
+
 ## 总览
 
 | 方法 | 路径 | 用途 | 注册条件 |

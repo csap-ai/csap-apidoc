@@ -174,3 +174,27 @@
 3. `SECURITY.md`:只支持 1.2.x,1.1.x 标为已被取代,保持本次修改。
 4. GitHub 仓库描述与 topics:改为多语言口径,topics 增加 `go`、`golang`、`gin`(已在仓库设置中修改)。
 5. F9、F10 按本次写法保留;v1.2.0 发布说明按第 8 项补了 Go 的说明。
+
+## 多语言口径修正(分支 `docs/skill-multilang`)
+
+背景:产品定位是"多语言的运行时 API 文档框架"(Java、Go,后续语言陆续加入),但技能和部分页面仍写成"为 Java Spring Boot 项目"。本次按"共通 + 分语言"重写,Java 指南不硬改成双语言,只在每页开头注明适用范围。
+
+| 位置 | 改动 |
+|---|---|
+| `skills/csap-apidoc/SKILL.md` | 重写。description 改为覆盖 Java(Spring Boot 2/3,`ai.csap.apidoc`)和 Go(gin、net/http,`github.com/csap-ai/csap-apidoc/csap-apidoc-go`),触发词加 `csap-apidoc-go`、`apidoc.Op`、`apidoc.New`、结构体标签;正文为"先判断项目语言 → 共通概念 → 两种语言差别表 → 不要承诺的事"。MCP 内容不在本分支(在 1.3.0 分支) |
+| `skills/csap-apidoc/references/java.md`(新) | 原 SKILL 的 Java 内容:依赖、`@EnableApidoc`、注解、字段不显示的排查、DevTools、过滤与校验开关 |
+| `skills/csap-apidoc/references/go.md`(新) | Go:`go get`、`apidoc.New` / `Options`、gin 与 net/http 挂载、`apidoc.Op` 链式方法、结构体标签、规则来源、返回过滤(`FilterMode` / `FilterEndpoints` / `ShouldFilter`)、校验、devtools 鉴权、其他 Options。代码片段已按当前 API 编译通过 |
+| `skills/csap-apidoc/references/yaml-rules.md` | 改为两种语言共用的格式说明,位置、文件名、生效方式分语言对比(Java 必须 `-method-field.yaml`,Go 加载所有 `.yaml` / `.yml` 且自动监听) |
+| `website/docs/guide/ai-skill.md` | 改为 Java + Go 说法,安装方式不变,"技能里有什么"分共通 / Java / Go |
+| `website/docs/index.md` | 特性文案去掉"Controller 注解"专指;"一分钟接入"分 Java、Go 两段 |
+| `website/docs/guide/overview.md` | 能力、适合哪些项目、校验与"本站指南以 Java 版为准"的说明改清楚,指向 Go 页 |
+| `README.md`、`README.en.md` | "已有能力(Java)"改为通用并标注 Java 独有项(网关聚合);新增"快速开始(Go)";模块表标注(Java);技能说明改为 Java 和 Go |
+| 站点 16 页(`guide/quick-start`、`installation`、`configuration`、`basic-usage`、`annotations`、`architecture`、`storage-strategies`、`runtime-filter`、`validation`、`devtools`、`export`、`testing`、`gateway-aggregation`、`faq`,`api/annotations`、`java`、`rest`) | 页首加"适用范围"提示:说明本页是 Java 版还是两种语言通用,并指向 [Go 版](/go/);校验页、过滤页写清两种语言的对应功能和差别 |
+
+### 拿不准的地方
+
+1. Go 页和技能里写了"非必填字段:Java 不执行,Go 传了值就执行,1.4.0 前确定方向",随裁定结果更新(技能差别表、`guide/validation.md` 提示框、`go/index.md`、`csap-apidoc-go/CHANGELOG.md`)。
+2. `yaml-rules.md` 里 Go 的 YAML 键写法(请求体前缀 `request`、返回 `data.` 前缀)取自官网 Go 页和示例规则,未逐条用代码验证 Go 对 json 名 / 字段名的取键规则。
+3. 技能里"Go 配了返回规则的接口默认就会过滤"来自 `FilterMode` 默认 `ModePath`,没有单独开关;如果以后加开关需同步。
+4. `gateway-aggregation.md` 写了"聚合入口目前用 Java 版":Go 的 `model` 里有 `Resources` 字段,但 `Options` 没有配置项,所以 Go 暂不能当聚合入口。
+5. 页首提示里的"Go 版"链接统一指向 `/go/`(不带锚点),避免锚点名变化造成死链。

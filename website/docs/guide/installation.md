@@ -2,6 +2,10 @@
 
 本页说明 CSAP Apidoc 的完整安装方式：Maven / Gradle 坐标、每个模块的作用和是否需要单独引入、Spring Boot 2 与 3 的差别，以及如何让 DevTools 只在开发环境启用。
 
+:::info 适用范围
+本页讲的是 **Java 版**(Spring Boot 2.x / 3.x)。Go 版(gin、net/http)的接入、结构体标签、过滤和校验见 [Go 版](/go/)；两种语言共用文档页面和 YAML 规则文件格式。
+:::
+
 ## 环境要求
 
 | 项目 | 要求 | 依据 |

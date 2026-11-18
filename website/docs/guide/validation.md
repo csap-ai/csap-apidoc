@@ -2,6 +2,10 @@
 
 本页介绍 `csap-validation-boot-starter` 的运行时请求参数校验（1.2.0）：怎么开启、三种模式、配置项、规则写法、失败时的返回格式，以及目前的限制。
 
+:::info 适用范围
+本页讲的是 **Java 版**的运行时参数校验。Go 版有对应功能(`validate` 包和 `RequestValidator` 中间件,默认关闭),见 [Go 版](/go/)。两者有一处行为差别:非必填字段上的规则,Java 不执行,Go 在请求传了该字段时会执行,两边是否对齐计划在 1.4.0 前确定。
+:::
+
 :::tip 1.2.0 之前
 1.1.x 会登记校验规则，但请求处理时没有组件执行它们，开启 `csap.validation.enabled` 也不会拦截任何请求；并且在 Spring Boot 2 应用中引入这个 starter 会因为缺少 `jakarta.validation` 类而启动失败。1.2.0 补上了执行环节，同时支持 Spring Boot 2（`javax.validation`）和 Spring Boot 3（`jakarta.validation`）。
 :::
