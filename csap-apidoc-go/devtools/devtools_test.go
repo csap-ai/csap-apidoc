@@ -653,6 +653,15 @@ func TestRulesHistoryUnsupportedAndMCP(t *testing.T) {
 	if st.Supported {
 		t.Fatal("内存来源不支持规则记录页")
 	}
+	// hint:{zh, en} 对象,Go 写法
+	var raw struct {
+		Hint map[string]string `json:"hint"`
+	}
+	ok(t, dt, "GET", "/devtools/rules/status", nil, &raw)
+	if !strings.Contains(raw.Hint["zh"], "strategy/sql") || !strings.Contains(raw.Hint["en"], "strategy/redis") || !strings.Contains(raw.Hint["zh"], "\n") ||
+		strings.Contains(raw.Hint["zh"]+raw.Hint["en"], "@EnableApidoc") || len(raw.Hint) != 2 {
+		t.Fatalf("%+v", raw.Hint)
+	}
 	for _, c := range [][3]string{{"GET", "/devtools/rules/history", ""}, {"POST", "/devtools/rules/rollback", `{"changeId":1}`}} {
 		var body any
 		if c[2] != "" {
@@ -671,6 +680,27 @@ func TestRulesHistoryUnsupportedAndMCP(t *testing.T) {
 	ok(t, dt, "GET", "/devtools/mcp/status", nil, &mcp)
 	if mcp.Enabled || mcp.Supported || mcp.Message == "" {
 		t.Fatalf("%+v", mcp)
+	}
+	var mh map[string]any
+	ok(t, dt, "GET", "/devtools/mcp/status", nil, &mh)
+	h, _ := mh["hint"].(map[string]any)
+	if zh, _ := h["zh"].(string); !strings.Contains(zh, "1.3.0") || !strings.Contains(zh, "https://apidoc.csap.ai/guide/mcp") {
+		t.Fatalf("%v", mh)
+	}
+	if en, _ := h["en"].(string); !strings.Contains(en, "Go edition") {
+		t.Fatalf("%v", mh)
+	}
+	for _, k := range []string{"persistHint", "tokenHint", "securityNotes"} {
+		if _, has := mh[k]; has {
+			t.Fatalf("Go 不适用的字段不该返回: %s", k)
+		}
+	}
+	// 支持修改记录时不带 hint
+	_, dtSQL := newTools(t, namedStore{Memory: strategy.NewMemory(nil), name: "sql:x"})
+	var sql map[string]any
+	ok(t, dtSQL, "GET", "/devtools/rules/status", nil, &sql)
+	if _, has := sql["hint"]; has || sql["supported"] != true {
+		t.Fatalf("%v", sql)
 	}
 	if rec, res := call(t, dt, "GET", "/devtools/mcp/tools", nil); rec.Code != 200 || res.Success {
 		t.Fatalf("%d %+v", rec.Code, res)
