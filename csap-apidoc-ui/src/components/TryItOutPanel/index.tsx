@@ -63,6 +63,7 @@ import {
   TryItOutHistoryEntry,
   tryItOutHistoryStore,
 } from '@/stores/tryItOutHistory';
+import { isMockResponse } from '@/services/mockStatus';
 import { TryItOutSnapshot } from '@/stores/tryItOutSnapshots';
 import TryItOutHistoryDrawer from '@/components/TryItOutHistoryDrawer';
 import TryItOutSnapshotsDrawer, {
@@ -595,6 +596,11 @@ const TryItOutPanel: React.FC<Props> = ({
           <Tag color={statusColor(result.status)} className="tryout__status-tag">
             {result.status} {result.statusText || ''}
           </Tag>
+          {isMockResponse(result.headers) && (
+            <Tooltip title={t('tryout.mock.tooltip')}>
+              <Tag color="purple">{t('tryout.mock.badge')}</Tag>
+            </Tooltip>
+          )}
           <span className="tryout__muted">{result.latencyMs} ms</span>
           <span className="tryout__muted">·</span>
           <span className="tryout__muted">{formatBytes(result.byteLength)}</span>

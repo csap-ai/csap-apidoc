@@ -64,6 +64,12 @@
             <artifactId>csap-apidoc-mcp</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 内嵌 Mock 端点 /csap/mock/**,默认关闭(csap.apidoc.mock.enabled) -->
+        <dependency>
+            <groupId>ai.csap.apidoc</groupId>
+            <artifactId>csap-apidoc-mock</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- test:Redis 模式的迁移端到端测试用 -->
         <dependency>
             <groupId>org.springframework.data</groupId>

@@ -44,6 +44,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rule model: optional `example`, `template` and `mock` (any JSON value, stored and passed
   through to the document parameter as-is) on field rules.
 - DevTools "Rule history" page for the database and Redis modes (list, diff, roll back).
+- **Embedded Mock (`csap-apidoc-mock`, off by default).** With
+  `csap.apidoc.mock.enabled=true` the service answers `/csap/mock/{original path}`
+  (any HTTP method) with data generated from the documented return structure
+  (including the unified result wrapper). Output is reproducible: every field value
+  derives from the seed and the field path (`seed` defaults to `csap`; `random`
+  for a new seed per request; header `X-CSAP-Mock-Seed` per request). Generation
+  order: rule `mock` > `example` > `defaultValue` > enum > `Min`/`Max` > field-name
+  heuristics (`email`, `phone`, `id`, ..., switch `csap.apidoc.mock.heuristics`) >
+  type default; `Length`/`Size` and array sizes are honoured. Field rules gain an
+  optional `mock` key (literal value, or `@int(lo,hi)`, `@oneOf(a,b,c)`, `@uuid`).
+  Responses carry `X-CSAP-Mock`; `GET /csap/mock-status` lets the doc page offer a
+  one-click "Mock" environment in Try-it-out and tag mock responses. The rules are
+  shared with the Go implementation and verified against common golden samples
+  (`docs/design/1.4.0-mock-golden`). Pulled in by `csap-apidoc-boot-starter`; one
+  jar for Spring Boot 2 and 3.
+- **JSON Schema export (2020-12).** `GET /csap/schema.json` (all endpoints, `?download=true`
+  to save as a file) and `GET /csap/schema/method?key=` (one endpoint). The request is
+  split by location (`path` / `query` / `header` / `form` / `body`); field descriptions,
+  required, examples, enums and validation rules map to `description`, `required`,
+  `examples`, `enum`, `minLength` / `maxLength`, `pattern`, `minimum` / `maximum`, ...;
+  the original rules are kept losslessly in `x-csap-validate`. The doc page's export menu
+  gets a "JSON Schema" entry.
+- **JSON Schema import (off by default).** `POST /csap/schema/import` with
+  `csap.apidoc.schema.import-enabled=true`: turns the description / required / example /
+  validation of a schema (typically an exported one, edited) into field rules for fields
+  that already exist in the docs. It previews by default; `apply=true` writes through the
+  same save path as DevTools (the change history records `schema-import`). It never
+  creates fields or changes types.
 
 ### Upgrade notes
 

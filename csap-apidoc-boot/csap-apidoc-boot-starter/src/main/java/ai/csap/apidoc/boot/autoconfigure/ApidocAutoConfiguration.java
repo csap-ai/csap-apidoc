@@ -218,6 +218,29 @@ public class ApidocAutoConfiguration {
                 new PostmanConverterService());
     }
 
+    /**
+     * JSON Schema 导出端点(/csap/schema.json、/csap/schema/method),只读,始终开启
+     */
+    @Bean
+    @ConditionalOnBean(ApidocStrategy.class)
+    @ConditionalOnMissingBean
+    public ai.csap.apidoc.web.CsapSchemaController csapSchemaController() {
+        return new ai.csap.apidoc.web.CsapSchemaController();
+    }
+
+    /**
+     * JSON Schema 导入端点(会写字段规则),默认关闭:csap.apidoc.schema.import-enabled=true
+     */
+    @Bean
+    @ConditionalOnBean(ApidocStrategy.class)
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(prefix = "csap.apidoc.schema",
+            name = "import-enabled", havingValue = "true")
+    public ai.csap.apidoc.web.CsapSchemaImportController csapSchemaImportController(
+            ObjectProvider<EnableApidocConfig> enableApidocConfig) {
+        return new ai.csap.apidoc.web.CsapSchemaImportController(new ai.csap.apidoc.service.schema.SchemaImportService(
+                () -> ApidocContext.cmd(false, false), enableApidocConfig::getIfAvailable));
+    }
+
     @Bean
     public ApidocContext apidocContext(CsapResourcesProvider resourcesProvider,
                                        ScannerPackageConfig scannerPackageConfig,

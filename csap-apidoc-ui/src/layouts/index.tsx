@@ -19,7 +19,7 @@ import { exportToMarkdown, downloadMarkdown } from '@/utils/exportMarkdown';
 import { groupParametersByType, getNonEmptyParamTypes, getParamTypeLabel, buildRequestData, replacePathParams } from '@/utils/paramTypeUtils';
 import { ExclamationCircleFilled, ThunderboltOutlined } from '@ant-design/icons';
 import TryItOutPanel, { RequestSpec } from '@/components/TryItOutPanel';
-import { apidocMethodUrl, apidocParentUrl, apidocServiceBase } from '@/utils/apidocUrl';
+import { apidocMethodUrl, apidocParentUrl, apidocSchemaUrl, apidocServiceBase } from '@/utils/apidocUrl';
 import { hasApiDetail, EMPTY_API_DETAIL } from '@/utils/apiDetail';
 import { filterTreeByStatus, StatusFilter } from '@/utils/statusFilter';
 import {
@@ -396,7 +396,19 @@ const LayoutIndex = () => {
   }, []);
 
   // 导出功能处理
-  const handleExport = async (format: 'openapi' | 'postman' | 'markdown') => {
+  const handleExport = async (format: 'openapi' | 'postman' | 'markdown' | 'jsonschema') => {
+    if (format === 'jsonschema') {
+      // 服务端直接生成(1.4.0),不依赖当前已加载的菜单数据
+      const a = document.createElement('a');
+      a.href = selectRefValue.current?.value
+        ? apidocSchemaUrl(selectRefValue.current.value)
+        : `${import.meta.env.VITE_API_URL}/csap/schema.json?download=true`;
+      a.download = 'csap-schema.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
     if (!finalData || finalData.length === 0) {
       message.warning(t('layout.export.noData'));
       return;

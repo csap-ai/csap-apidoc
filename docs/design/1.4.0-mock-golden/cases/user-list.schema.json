@@ -1,0 +1,46 @@
+{
+  "operationId": "demo.UserController.list",
+  "method": "GET",
+  "path": "/api/users",
+  "summary": "用户列表",
+  "deprecated": true,
+  "request": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "format": "int32",
+            "description": "page",
+            "default": 1
+          },
+          "keyword": {
+            "type": "string",
+            "description": "keyword"
+          }
+        }
+      }
+    }
+  },
+  "response": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "id"
+        },
+        "name": {
+          "type": "string",
+          "description": "name"
+        }
+      }
+    }
+  }
+}

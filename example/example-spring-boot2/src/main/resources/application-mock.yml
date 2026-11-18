@@ -1,0 +1,24 @@
+# Mock 与 JSON Schema 导入的演示:java -jar ... --spring.profiles.active=mock
+#   curl 'http://localhost:8080/csap/mock/<原接口路径>'          # 按文档返回结构生成的模拟数据,同一种子结果相同
+#   curl -H 'X-CSAP-Mock-Seed: demo' 'http://localhost:8080/csap/mock/<原接口路径>'
+#   curl http://localhost:8080/csap/schema.json                  # 全部接口的 JSON Schema(始终开启)
+# 文档页"在线调试"的环境下拉里会多出一项 Mock。生产环境不要开启 Mock。
+
+csap:
+  apidoc:
+    mock:
+      enabled: true          # 默认 false;开启时启动日志会有一行 WARN
+      seed: csap             # random = 每次请求随机;请求头 X-CSAP-Mock-Seed 可单次覆盖
+      array-size: 2
+      max-depth: 6
+      heuristics: true       # 按字段名生成 email、手机、id 等;关闭后只按类型生成
+    schema:
+      import-enabled: true   # POST /csap/schema/import(会写字段规则,默认关闭;apply=false 只预览)
+    devtool:
+      enabled: true
+
+# 字段规则里可以给返回字段指定 Mock 值(method-field.yaml):
+#   data.level:
+#     mock: "@oneOf(1,2,3)"     # 另有 @int(lo,hi)、@uuid;字面值(数字、布尔、对象、数组)原样输出
+#   data.name:
+#     example: Tom              # example 也会优先于按类型生成
