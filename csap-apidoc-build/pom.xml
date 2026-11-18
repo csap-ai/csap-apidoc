@@ -19,6 +19,13 @@
             <artifactId>testng</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- 让 TestNG 测试跑在 JUnit Platform provider 里,只有一个 provider,报告不互相覆盖 -->
+        <dependency>
+            <groupId>org.junit.support</groupId>
+            <artifactId>testng-engine</artifactId>
+            <version>1.0.5</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
