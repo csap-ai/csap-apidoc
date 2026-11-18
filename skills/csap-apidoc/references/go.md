@@ -1,13 +1,13 @@
 # Go 版(gin、net/http)
 
-当前版本 v0.1.1,最低 Go 1.22。本文件只适用于 Go 项目;Java 项目见 [java.md](java.md)。共用的 YAML 规则格式见 [yaml-rules.md](yaml-rules.md)。Go 版是仓库 `csap-apidoc-go/` 下的独立 Go 模块,不走 Maven Central。完整说明以官网 <https://apidoc.csap.ai/go/> 和仓库里的 `csap-apidoc-go/examples/`(`gin-basic`、`nethttp-basic`)为准。
+当前版本 v0.2.0,最低 Go 1.22。本文件只适用于 Go 项目;Java 项目见 [java.md](java.md)。共用的 YAML 规则格式见 [yaml-rules.md](yaml-rules.md)。Go 版是仓库 `csap-apidoc-go/` 下的独立 Go 模块,不走 Maven Central。完整说明以官网 <https://apidoc.csap.ai/go/> 和仓库里的 `csap-apidoc-go/examples/`(`gin-basic`、`nethttp-basic`)为准。
 
 动手前先看项目现状:`go.mod` 里有没有 `github.com/csap-ai/csap-apidoc/csap-apidoc-go`、有没有 `apidoc.New`。
 
 ## 1. 安装
 
 ```bash
-go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.1
+go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.2.0
 ```
 
 根包只依赖标准库;用到 gin 适配、YAML 规则时才会编译对应依赖。SQL 规则来源不引入任何数据库驱动,由项目自己 import。tag 格式是 `csap-apidoc-go/vX.Y.Z`,与 Java 的版本号互相独立。
@@ -92,9 +92,9 @@ Go 的 handler 签名都一样,看不出请求和返回用的是哪个结构体,
 
 - YAML:`yaml.Dir(目录)` 读写,`yaml.FS(fsys, 目录)` 从 `go:embed` 只读加载;目录下所有 `.yaml` / `.yml` 都加载,文件名不限;格式见 [yaml-rules.md](yaml-rules.md)。`doc.Watch(ctx)` 监听文件变化,改了自动生效。
 - SQL:`strategy/sql`(SQLite / PostgreSQL / MySQL),保存时版本号加 1,多实例轮询(默认 5 秒)或经 Redis 通知后重新加载;表名前缀默认 `csap_apidoc_`。
-  - **v0.2.0 起(Java 1.4.0 数据库模式共用的表结构,当前已发布 v0.1.1 没有)**:表加 `service` 列(`Options.Service`,默认 `default`,≤128),列名 `rules` / `before_rules` / `after_rules`;方言增加 `sqlstrategy.DM`、`sqlstrategy.Kingbase`(达梦、金仓只做了语句层面的测试,没连真实库,属于试用);`EnsureSchema` 建表,发现 v0.1.x 旧表返回 `ErrLegacySchema` 且不自动改;`Schema()` 返回建表语句;可选 `ServiceNotifier` 让通知带服务名。
+  - **v0.2.0 起(与 Java 1.4.0 数据库模式共用的表结构;v0.1.x 没有)**:表加 `service` 列(`Options.Service`,默认 `default`,≤128),列名 `rules` / `before_rules` / `after_rules`;方言增加 `sqlstrategy.DM`、`sqlstrategy.Kingbase`(达梦、金仓只做了语句层面的测试,没连真实库,属于试用);`EnsureSchema` 建表,发现 v0.1.x 旧表返回 `ErrLegacySchema` 且不自动改;`Schema()` 返回建表语句;可选 `ServiceNotifier` 让通知带服务名。
   - **从 v0.1.x 升级**:停掉旧实例并备份 → 用 `Options.Service` 指定服务名(旧数据归到它名下)→ `s.Migrate(ctx)`(可重复执行),或 `s.MigrationSQL()` 交 DBA 手工执行。MySQL / 达梦 DDL 隐式提交,中途失败要手工处理。详见官网[数据库模式](https://apidoc.csap.ai/guide/database-mode)和仓库 `csap-apidoc-go/docs/SQL.md`。
-  - Redis 规则来源(v0.2.0,当前已发布 v0.1.1 没有):`strategy/redis`,`redisstrategy.New(Options{Client, KeyPrefix(默认 csap:apidoc:), Service(默认 default), HistoryLimit(默认 200), Poll(默认 5s)})`,放进 `Options.Strategies`,配合 `doc.Watch(ctx)`;主模块不依赖 Redis 客户端,使用方实现最小 `Client` 接口(`Eval/Get/HGet/HGetAll/LRange/Subscribe`),go-redis v9 适配器见官网 Redis 模式页。YAML 等来源导入 SQL / Redis 用 `strategy.Import(ctx, src, dst, ImportOptions{Overwrite, DryRun})`,默认不覆盖,修改人 `migrate`。
+  - Redis 规则来源(v0.2.0 起,v0.1.x 没有):`strategy/redis`,`redisstrategy.New(Options{Client, KeyPrefix(默认 csap:apidoc:), Service(默认 default), HistoryLimit(默认 200), Poll(默认 5s)})`,放进 `Options.Strategies`,配合 `doc.Watch(ctx)`;主模块不依赖 Redis 客户端,使用方实现最小 `Client` 接口(`Eval/Get/HGet/HGetAll/LRange/Subscribe`),go-redis v9 适配器见官网 Redis 模式页。YAML 等来源导入 SQL / Redis 用 `strategy.Import(ctx, src, dst, ImportOptions{Overwrite, DryRun})`,默认不覆盖,修改人 `migrate`。
 
 ## 7. 返回字段过滤
 
@@ -103,7 +103,7 @@ Go 的 handler 签名都一样,看不出请求和返回用的是哪个结构体,
 - `FilterMode`:`filter.ModePath`(默认,路径白名单)、`filter.ModeCsap`(复刻 Java 按类型过滤的行为,从 Java 迁移且要求逐字节一致时用)、`filter.ModeOff`。
 - `FilterEndpoints map[string]filter.Mode`:按接口覆盖,键是规则的键 `分组.接口名`(对应 Java 的 `csap.apidoc.runtime.filter.endpoints`)。
 - `ShouldFilter func(r *http.Request, status int) bool`:自定义哪些响应要裁剪,默认只裁剪 2xx(4xx/5xx 错误体原样输出,与 Java 一致);业务失败也用 200 返回的项目可以用它排除。
-- `ShouldFilterBody func(r *http.Request, status int, body []byte) bool`(**v0.2.0 起**,v0.1.1 没有):按响应体判断是否裁剪,在 `ShouldFilter` 返回 true 之后调用,返回 false 原样输出。现成的 `apidoc.SuccessField("success", true)` / `SuccessField("code", 0)` 按包装字段判断成功;失败体(业务失败也返回 200)不裁剪,与 Java 一致。
+- `ShouldFilterBody func(r *http.Request, status int, body []byte) bool`(**v0.2.0 起**,v0.1.x 没有):按响应体判断是否裁剪,在 `ShouldFilter` 返回 true 之后调用,返回 false 原样输出。现成的 `apidoc.SuccessField("success", true)` / `SuccessField("code", 0)` 按包装字段判断成功;失败体(业务失败也返回 200)不裁剪,与 Java 一致。
 
 行为要点:规则路径要**命中实际返回字段**才过滤,命不中(例如返回类型改了而规则还是旧路径)时原样输出;外层有包装但 `Op` 没写 `Resp` 时,`data` 整段原样输出;流式输出(SSE 等)的接口不要配置返回规则。
 

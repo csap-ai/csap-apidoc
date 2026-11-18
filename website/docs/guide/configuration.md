@@ -1,6 +1,6 @@
 # 配置参考
 
-本页列出 CSAP Apidoc 1.3.0 中全部真实存在的配置：`@EnableApidoc` 注解属性，以及 `application.yml` 中 `csap.apidoc`、`csap.apidoc.devtools.proxy`、`csap.apidoc.runtime.filter`、`csap.validation` 四组配置项。配置项名称使用 Spring Boot 的 kebab-case 写法。
+本页列出 CSAP Apidoc 1.4.0 中全部真实存在的配置：`@EnableApidoc` 注解属性，以及 `application.yml` 中 `csap.apidoc`、`csap.apidoc.devtools.proxy`、`csap.apidoc.runtime.filter`、`csap.validation` 四组配置项。配置项名称使用 Spring Boot 的 kebab-case 写法。
 
 :::info 适用范围
 本页的配置项都是 **Java 版**(Spring Boot 2.x / 3.x)的配置。Go 版用 `apidoc.Options` 配置(gin、net/http)的接入、结构体标签、过滤和校验见 [Go 版](/go/)；两种语言共用文档页面和 YAML 规则文件格式。
@@ -27,7 +27,7 @@
 | `modelPackages` | `String[]` | 空 | 模型扫描包。目前只被收集，文档生成没有使用 |
 | `modelPackageClasses` | `Class<?>[]` | 空 | 直接指定模型类。目前只被收集，文档生成没有使用 |
 | `type` | `ApiStrategyType` | `ANNOTATION` | 文档主体策略，一般保持默认。1.1.1 起 `YAML`、`JSON` 会注册对应策略；`SQL_LITE` 没有实现，启动即报错并提示改用 `paramType = SQL_LITE`。见 [存储策略](/guide/storage-strategies) |
-| `paramType` | `ApiStrategyType` | `ANNOTATION` | 参数（字段规则）策略：`ANNOTATION`、`YAML`、`SQL_LITE`（1.4.0 计划增加 `DATABASE`，配置见 [数据库模式](/guide/database-mode)），决定每个接口显示哪些请求 / 返回字段，见 [存储策略](/guide/storage-strategies) |
+| `paramType` | `ApiStrategyType` | `ANNOTATION` | 参数（字段规则）策略：`ANNOTATION`、`YAML`、`SQL_LITE`（1.4.0 起还有 `DATABASE`、`REDIS`，配置见 [数据库模式](/guide/database-mode)、[Redis 模式](/guide/redis-mode)），决定每个接口显示哪些请求 / 返回字段，见 [存储策略](/guide/storage-strategies) |
 | `requestType` | `String` | `"default"` | 请求参数解析器名称，对应 `IMethodRequest` Bean 的 `name()`；内置只有 `default` |
 | `responseType` | `String` | `"default"` | 返回参数解析器名称，对应 `IMethodResponse` Bean 的 `name()`；内置只有 `default` |
 | `path` | `String` | `"csap-api-doc"` | YAML / SQLite 策略文件所在的目录名。支持 `${属性名:默认值}` 占位符 |

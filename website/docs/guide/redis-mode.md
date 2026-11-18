@@ -1,7 +1,7 @@
 # Redis 模式
 
-:::warning 1.4.0 计划
-Redis 模式计划随 **Java 1.4.0（2026-12-22）** 和 **Go v0.2.0** 发布，**当前已发布的版本（Java 1.3.0、Go v0.1.1）没有**。本页按已实现的代码编写，发布时再核对一遍。数据约定见 [redis-mode.md](https://github.com/csap-ai/csap-apidoc/blob/main/docs/design/redis-mode.md)。
+:::tip 1.4.0 新增
+Redis 模式从 **Java 1.4.0、Go v0.2.0** 起提供。数据约定见 [redis-mode.md](https://github.com/csap-ai/csap-apidoc/blob/main/docs/design/redis-mode.md)。Redis Cluster、哨兵、密码和 TLS 没有实测，见下文。
 :::
 
 Redis 模式把字段规则存进 Redis，而不是 YAML 文件、SQLite 文件或关系数据库。规则的内容、字段键、`validate` 写法与 [存储策略](/guide/storage-strategies) 中的 YAML 完全相同。Java 与 Go 使用同一种数据结构。

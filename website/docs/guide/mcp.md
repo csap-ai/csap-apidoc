@@ -112,7 +112,7 @@ DevTools MCP 页面的"接入"标签会按当前服务地址生成上面的配�
 | `YAML`、`ANNOTATION`、`JSON` | `src/main/resources/{path}/mcp.yaml`(`path` 默认 `csap-api-doc`) |
 | `SQL_LITE` | 同一个 SQLite 库的 `mcp_setting`、`mcp_tool` 表 |
 
-1.4.0 的数据库模式计划也支持把 MCP 设置存进同一个库(规划中,具体表和配置以发布时为准)。
+`DATABASE` / `REDIS` 模式下,MCP 设置目前仍存 `{path}/mcp.yaml`,不存进数据库或 Redis。
 
 ```yaml
 # csap-api-doc/mcp.yaml

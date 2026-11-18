@@ -4,8 +4,9 @@
 
 | Version | Supported |
 | ------- | --------- |
-| 1.3.x   | ✅ |
-| 1.2.x   | ❌ (superseded by 1.3.x / 已被 1.3.x 取代) |
+| 1.4.x   | ✅ |
+| 1.3.x   | ❌ (superseded by 1.4.x / 已被 1.4.x 取代) |
+| 1.2.x   | ❌ (superseded / 已被取代) |
 | 1.1.x   | ❌ (superseded / 已被取代) |
 | < 1.1   | ❌ (never published to Maven Central / 未发布到 Maven Central) |
 
@@ -41,7 +42,7 @@ Please include / 请尽量包含:
   **DevTools 只用于开发环境**:它会读写规则文件,并提供类结构查询接口。生产环境保持 `csap.apidoc.devtool.enabled` 关闭(默认关闭)。
 - **The docs endpoints are public by default.** `/csap-api.html` and `/csap/apidoc*` have no authentication of their own. If your API structure is sensitive, protect these paths with your application's security (for example Spring Security) or do not expose them outside your network.
   **文档接口默认对外开放**:`/csap-api.html`、`/csap/apidoc*` 本身不做鉴权。如果接口结构属于敏感信息,请用应用自身的安全机制(如 Spring Security)保护这些路径,或不对外网开放。
-- **Database mode (planned for 1.4.0).** Rules and change history will live in your own database, using your application's `DataSource`; give the account only the access it needs (table creation can be done by a DBA with `init-schema=false`), and set `csap.apidoc.database.read-only=true` in production so rules cannot be changed through DevTools.
-  **数据库模式(1.4.0 计划)**:规则和修改记录存在你自己的数据库里,使用应用的 `DataSource`;数据库账号只给必要的权限(建表可由 DBA 手工执行,配 `init-schema=false`);生产环境建议开启 `csap.apidoc.database.read-only=true`,禁止通过 DevTools 修改规则。
+- **Database mode (since 1.4.0).** Rules and change history will live in your own database, using your application's `DataSource`; give the account only the access it needs (table creation can be done by a DBA with `init-schema=false`), and set `csap.apidoc.database.read-only=true` in production so rules cannot be changed through DevTools.
+  **数据库模式(1.4.0 起)**:规则和修改记录存在你自己的数据库里,使用应用的 `DataSource`;数据库账号只给必要的权限(建表可由 DBA 手工执行,配 `init-schema=false`);生产环境建议开启 `csap.apidoc.database.read-only=true`,禁止通过 DevTools 修改规则。
 - **Try-it-out secrets stay in the browser.** Environments, headers and credentials used by the docs page are stored in the browser's local storage; the optional vault encrypts them with a passphrase. Do not use production credentials on shared machines.
   **在线调试的凭据保存在浏览器本地**:可选的保险库会用口令加密。不要在公用电脑上使用生产环境凭据。

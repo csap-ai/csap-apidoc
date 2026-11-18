@@ -1,7 +1,7 @@
-# JSON Schema 导入导出（1.4.0 计划）
+# JSON Schema 导入导出
 
-:::warning 1.4.0 计划，以 1.4.0 实现为准
-JSON Schema 导出和导入计划随 **Java 1.4.0（2026-12-22）** 发布，Go 同步实现，**当前已发布的版本没有**。本页按已审定的约定编写（设计见仓库 `docs/design/1.4.0-mock-schema.md`），具体行为以 1.4.0 实现为准。
+:::tip 1.4.0 新增
+JSON Schema 导出和导入从 **Java 1.4.0、Go v0.2.0** 起提供。设计见仓库 `docs/design/1.4.0-mock-schema.md`。
 :::
 
 ## 它解决什么问题
@@ -27,7 +27,7 @@ JSON Schema 导出和导入计划随 **Java 1.4.0（2026-12-22）** 发布，Go 
 
 - **默认只预览**（`apply` 缺省 `false`）：返回会生成的规则、可直接粘贴进规则文件的 YAML、匹配数量，以及 `unmatched`（Schema 里有、文档里没有的字段）和 `skipped`（不支持的关键字）；
 - `apply: true` 才写入，走 DevTools 保存的同一条路径（有修改记录、版本号，受只读模式约束）；
-- 导入端点**默认关闭**，需要 `csap.apidoc.schema.import-enabled=true`，因为导入的校验会在运行时生效；
+- 导入端点**默认关闭**，需要 `csap.apidoc.schema.import-enabled=true`（Go 是 `apidoc.Options{Schema: apidoc.SchemaOptions{ImportEnabled: true, Store: ...}}`），因为导入的校验会在运行时生效；Go 的 `Store` 为 nil 时只能预览；
 - 边界：只更新**文档里已经存在**的字段的说明、必填、示例、校验，不创建接口和字段，不改字段类型；
 - 必填只会写成 `true`，不会因为 Schema 没列出就改成 `false`；
 - 不提供"导入整个合集"的入口，批量请逐个接口预览确认，或用[迁移工具](/guide/database-mode#迁移)走 Git 审查。

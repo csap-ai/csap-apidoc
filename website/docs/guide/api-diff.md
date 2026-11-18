@@ -1,7 +1,7 @@
-# 版本对比与破坏性变更检测（1.4.0 计划）
+# 版本对比与破坏性变更检测
 
-:::warning 1.4.0 计划，以 1.4.0 实现为准
-命令行工具 `csap-apidoc-diff` 随 **Go v0.2.0** 实现（设计见仓库 `docs/design/1.4.0-api-diff.md`、`csap-apidoc-go/docs/DIFF.md`），计划随 1.4.0 发布，**当前已发布的版本没有**。工具读取 `/csap/apidoc` 的统一协议，Java 和 Go 服务的文档都能比较。具体行为以发布版为准。
+:::tip 1.4.0 新增
+命令行工具 `csap-apidoc-diff` 随 **Go v0.2.0** 提供（在 `csap-apidoc-go` 模块的 `cmd/csap-apidoc-diff` 下）。它读取 `/csap/apidoc` 的统一协议，Java 和 Go 服务的文档都能比较。设计见仓库 `docs/design/1.4.0-api-diff.md`、`csap-apidoc-go/docs/DIFF.md`。
 :::
 
 ## 它解决什么问题
