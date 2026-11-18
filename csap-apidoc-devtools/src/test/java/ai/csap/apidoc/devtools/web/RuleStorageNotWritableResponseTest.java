@@ -42,6 +42,6 @@ class RuleStorageNotWritableResponseTest {
                 .andExpect(jsonPath("$.code").value("1007"))
                 .andExpect(jsonPath("$.success").value(false))
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
-        assertThat(body).contains("YAML 规则文件位于 jar 内", "SQL_LITE", "1.4.0", "当前版本尚未提供", "Redis 模式");
+        assertThat(body).contains("YAML 规则文件位于 jar 内", "SQL_LITE", "1.4.0", "ApiStrategyType.DATABASE", "Redis 模式");
     }
 }

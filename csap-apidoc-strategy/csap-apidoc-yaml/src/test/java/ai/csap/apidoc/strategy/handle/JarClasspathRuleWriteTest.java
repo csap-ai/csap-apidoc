@@ -1,6 +1,7 @@
 package ai.csap.apidoc.strategy.handle;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -79,7 +80,8 @@ class JarClasspathRuleWriteTest {
         assertTrue(msg.contains("在源码目录运行"), msg);
         assertTrue(msg.contains("SQL_LITE") && msg.contains("./csap-api-doc/apidoc.db"), msg);
         assertTrue(msg.contains("1.4.0") && msg.contains("MySQL / PostgreSQL / 达梦 / 人大金仓"), msg);
-        assertTrue(msg.contains("当前版本尚未提供"), msg);
+        assertTrue(msg.contains("ApiStrategyType.DATABASE"), msg);
+        assertFalse(msg.contains("尚未提供"), msg);
         assertTrue(msg.contains("Redis 模式"), msg);
         assertTrue(msg.contains("Running from a packaged jar"), msg);
     }

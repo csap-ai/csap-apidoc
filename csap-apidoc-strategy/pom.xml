@@ -17,6 +17,7 @@
         <module>csap-apidoc-standard</module>
         <module>csap-apidoc-yaml</module>
         <module>csap-apidoc-sqlite</module>
+        <module>csap-apidoc-database</module>
     </modules>
     <dependencies>
         <!-- https://mvnrepository.com/artifact/org.testng/testng -->

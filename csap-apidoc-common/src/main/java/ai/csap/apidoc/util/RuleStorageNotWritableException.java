@@ -20,7 +20,8 @@ public class RuleStorageNotWritableException extends ValidateException {
             + "1) 在源码目录运行(IDE 或 mvn spring-boot:run),规则写回 src/main/resources 下的规则文件;"
             + "2) 改用 SQLite 策略 @EnableApidoc(paramType = ApiStrategyType.SQL_LITE),"
             + "打包运行时规则保存在 jar 外、启动目录下的 SQLite 文件(默认 ./csap-api-doc/apidoc.db),重启后仍在;"
-            + "3) 1.4.0 起可使用数据库模式(MySQL / PostgreSQL / 达梦 / 人大金仓)或 Redis 模式,当前版本尚未提供。";
+            + "3) 1.4.0 起可使用数据库模式 @EnableApidoc(paramType = ApiStrategyType.DATABASE),"
+            + "规则存进应用自己的关系数据库(MySQL / PostgreSQL / 达梦 / 人大金仓),多实例自动同步;Redis 模式随 1.4.0 提供。";
 
     /**
      * 打包运行时 DevTools 能保存规则的做法(英文)
@@ -30,7 +31,9 @@ public class RuleStorageNotWritableException extends ValidateException {
             + "2) switch to the SQLite strategy @EnableApidoc(paramType = ApiStrategyType.SQL_LITE): "
             + "when running from a jar, rules are stored in a SQLite file outside the jar under the working directory "
             + "(default ./csap-api-doc/apidoc.db) and survive restarts; "
-            + "3) the database mode (MySQL / PostgreSQL / DM / KingbaseES) and the Redis mode are planned for 1.4.0 and not available yet.";
+            + "3) since 1.4.0 the database mode @EnableApidoc(paramType = ApiStrategyType.DATABASE) keeps rules in your own "
+            + "relational database (MySQL / PostgreSQL / DM / KingbaseES) and syncs instances automatically; "
+            + "the Redis mode is also provided with 1.4.0.";
 
     public RuleStorageNotWritableException(String message) {
         super(ApidocResultEnum.RULE_STORAGE_NOT_WRITABLE.getCode(), message);

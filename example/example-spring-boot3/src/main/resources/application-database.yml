@@ -1,0 +1,29 @@
+# 数据库模式(paramType = ApiStrategyType.DATABASE)的配置样例。
+# 注意:profile 不会切换存储策略,需要把启动类上的 @EnableApidoc 改成 paramType = ApiStrategyType.DATABASE,
+# 并加上 spring-boot-starter-jdbc 和数据库驱动依赖,见 STRATEGIES.md。
+
+spring:
+  application:
+    name: csap-apidoc-example-database
+  datasource:
+    # 试用:H2 文件库(需要 com.h2database:h2 依赖)。生产请换成自己的 MySQL / PostgreSQL / 达梦 / 人大金仓
+    url: jdbc:h2:file:./csap-api-doc/example-rules;AUTO_SERVER=TRUE
+    username: sa
+    password:
+    # MySQL 示例:
+    # url: jdbc:mysql://127.0.0.1:3306/app?useUnicode=true&characterEncoding=utf8
+    # username: app
+    # password: ${DB_PASSWORD}
+
+csap:
+  apidoc:
+    devtool:
+      enabled: true
+    database:
+      # datasource-bean: dataSource     # 有多个 DataSource 时指定
+      # dialect:                        # 为空按 JDBC URL 识别:mysql / postgresql / dm / kingbase / sqlite / h2
+      table-prefix: csap_apidoc_
+      init-schema: true                 # 表不存在时自动建表
+      poll-interval: 5s                 # 多实例同步:轮询版本号的间隔,0 不轮询
+      # service: csap-apidoc-example    # 为空用 spring.application.name,再空用 default
+      read-only: false                  # 生产环境只读时设为 true

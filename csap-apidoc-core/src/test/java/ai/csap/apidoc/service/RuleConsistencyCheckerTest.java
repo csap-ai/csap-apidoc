@@ -94,6 +94,12 @@ class RuleConsistencyCheckerTest {
         // YAML 以外、SQLite 以外的来源不检查
         model.setParamType(ApiStrategyType.ANNOTATION);
         assertTrue(RuleConsistencyChecker.check(Collections.singletonList(model), doc, m -> rules).isEmpty());
+
+        // 数据库模式同样检查
+        model.setParamType(ApiStrategyType.DATABASE);
+        List<String> db = RuleConsistencyChecker.check(Collections.singletonList(model), doc, m -> rules);
+        assertEquals(2, db.size(), String.join("\n", db));
+        assertTrue(db.get(0).contains("规则来源 database: csap-api-doc"), db.get(0));
     }
 
     @Test

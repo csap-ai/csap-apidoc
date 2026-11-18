@@ -163,7 +163,8 @@ public class ApidocImportBeanDefinitionRegistrar implements ImportBeanDefinition
                 throw new IllegalStateException(String.format(
                         "@EnableApidoc(type = ApiStrategyType.%s) 暂不支持:没有可用的 %s 文档策略。"
                                 + "type 目前只支持 ANNOTATION、YAML、JSON;"
-                                + "如需把参数配置存到 SQLite,请使用 paramType = ApiStrategyType.SQL_LITE。",
+                                + "如需把参数配置存到 SQLite 或关系数据库,请使用 paramType = ApiStrategyType.SQL_LITE 或 ApiStrategyType.DATABASE"
+                                + "(DATABASE 只能用于 paramType)。",
                         type.name(), type.name()));
         }
     }

@@ -29,6 +29,11 @@
         </dependency>
         <dependency>
             <groupId>ai.csap.apidoc</groupId>
+            <artifactId>csap-apidoc-database</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.csap.apidoc</groupId>
             <artifactId>csap-apidoc-annotation</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -48,6 +53,13 @@
             <groupId>ai.csap.apidoc</groupId>
             <artifactId>csap-apidoc-mcp</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <!-- test:数据库模式的端到端测试用 -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>2.2.224</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
