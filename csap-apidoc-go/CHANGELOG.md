@@ -2,7 +2,25 @@
 
 csap-apidoc-go 的版本号独立于 Java 版,tag 格式为 `csap-apidoc-go/vX.Y.Z`。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [未发布]
+## [0.2.0] - 未发布 (Unreleased)
+
+### 变更(不兼容)
+
+- **SQL 规则来源的表结构与 Java 1.4.0 数据库模式统一**:三张表都加了 `service` 列(`rule` 主键改为 `(service, rule_key)`,`history` 索引改为 `(service, rule_key, id)`,`meta` 由 `id=1` 单行改为每个服务一行);`updated_by` 去掉 `DEFAULT ''`,为空时写 `unknown`;大文本 MySQL 改用 `LONGTEXT`(原 `MEDIUMTEXT`)。旧表(v0.1.x)不能直接用:`EnsureSchema` 发现旧表会返回 `sql.ErrLegacySchema`,不会自动改动。升级步骤见下方"升级"和 [docs/SQL.md](docs/SQL.md)。
+
+### 新增
+
+- `sql.Options.Service`:服务名,默认 `default`,所有读写按它过滤;同一个库可以存多个服务(包括 Java 服务)的规则。
+- 方言 `sql.DM`(达梦 DM8)和 `sql.Kingbase`(人大金仓,按 PostgreSQL 兼容模式)。
+- `Strategy.Migrate(ctx)` 与 `Strategy.MigrationSQL()`:v0.1.x → v0.2.0 的迁移,旧数据归到 `Options.Service`。
+- `sql.ServiceNotifier`:带服务名的通知(可选,实现它就优先使用)。原 `Notifier` 接口不变。
+
+### 升级
+
+1. 停掉所有 v0.1.x 实例,备份数据库。
+2. 在一次性的迁移程序或启动代码里调用 `sqlstrategy.New(Options{..., Service: "你的服务名"}).Migrate(ctx)`,或者执行 `MigrationSQL()` 输出的语句(各方言的完整语句见 docs/SQL.md)。旧数据归到你指定的服务名。
+3. 升级到 v0.2.0。没有迁移时 `EnsureSchema` 会提示先迁移。
+4. 如果之前依赖 `Name()`:现在形如 `sql:csap_apidoc_[default]`。
 
 ## [0.1.1] - 2026-11-17
 

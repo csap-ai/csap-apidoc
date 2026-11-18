@@ -142,12 +142,12 @@ type Watcher interface {      // 能感知外部变更:文件变更 / 轮询版�
 
 ### 3.5 SQL 策略（M3 已实现，`strategy/sql`）
 
-- `database/sql`，方言 `SQLite` / `Postgres` / `MySQL`（只影响占位符和建表语句）。主模块**不引入任何驱动**，由使用方自己 import。
-- 三张表（前缀默认 `csap_apidoc_`）：`rule`（规则 JSON、版本、修改人、时间）、`history`（每次保存的修改前后内容）、`meta`（全局版本号）。`EnsureSchema` 建表，`Schema()` 返回语句供自己执行。与 Java SQLite 策略的表结构不同（Java 存的是整份文档），不共用。
+- `database/sql`，方言 `SQLite` / `Postgres` / `MySQL` / `DM` / `Kingbase`（只影响占位符和建表语句）。主模块**不引入任何驱动**，由使用方自己 import。
+- 三张表（前缀默认 `csap_apidoc_`）：`rule`（`(service, rule_key)` 主键，规则 JSON、版本、修改人、时间）、`history`（每次保存的修改前后内容）、`meta`（每个服务一行的版本号）。v0.2.0 起与 Java 1.4.0 数据库模式共用同一套表，用 `Options.Service` 区分服务；`EnsureSchema` 建表，`Schema()` 返回语句，`Migrate` / `MigrationSQL` 升级 v0.1.x 旧表。详见 [SQL.md](SQL.md)。
 - `Save` 在一个事务里：全局版本号加 1（PostgreSQL / MySQL 锁住 meta 行，并发保存串行化）、写规则、写修改记录。`History(key, limit)` 查记录，`Rollback(id, by)` 恢复成该次修改前的样子，回滚本身也留记录。M4 的后台管理直接用这两个接口。
 - 多实例：每 `Poll`（默认 5 秒）查一次全局版本号，变了就重新加载；可选 `Notifier`（如 Redis Pub/Sub）保存后立即通知其他实例。基准同样是上次加载时的版本号。
 - SQLite 注意：多个连接并发写时，连接串要加 `_txlock=immediate`（事务开始就拿写锁）和 `busy_timeout`，否则会偶发 `database is locked`。
-- 实测：SQLite（纯 Go 驱动）和 PostgreSQL 16（临时容器）各跑 15 遍、开竞态检测，全部通过，包括两个实例共用一个库时的轮询同步、只靠通知的同步。**MySQL 只写了方言，没有实测**（本机没有镜像）。
+- 实测：SQLite（纯 Go 驱动）和 PostgreSQL 16（临时容器）各跑 15 遍、开竞态检测，全部通过，包括两个实例共用一个库时的轮询同步、只靠通知的同步。v0.2.0 起 MySQL 8 也用临时容器实测通过；达梦、金仓只有语句层面的单元测试，未连真实库。
 - 集成测试在独立模块 `integration/`（`cd integration && go test ./...`；设置 `CSAP_TEST_PG_DSN` / `CSAP_TEST_MYSQL_DSN` 加测），驱动依赖只在那里。
 
 Redis 通知的实现示例（go-redis v9，放在使用方代码里）：
