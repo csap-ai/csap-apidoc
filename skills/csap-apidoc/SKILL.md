@@ -28,7 +28,7 @@ CSAP Apidoc 是**多语言的运行时 API 文档框架**:服务启动时从代�
 ## 共通概念
 
 - **运行时生成文档**:启动时扫描代码(Java 扫注解,Go 读路由、结构体和标签)生成文档,访问 `/csap-api.html` 查看,页面内可以直接调试接口(环境、全局请求头、鉴权、历史、快照)。
-- **字段规则**:同一个模型在不同接口里可以显示不同字段,所以字段默认不会出现在每个接口里,要被"选中"。选中的来源:代码里的标记(Java 的 `forceReq` / `forceRep`,Go 的 `doc_force`)、YAML 规则文件、SQL / SQLite(Java 的 SQLite;Go 的 SQLite / PostgreSQL / MySQL)。Java 另有注解策略下的 `@Group`。
+- **字段规则**:同一个模型在不同接口里可以显示不同字段,所以字段默认不会出现在每个接口里,要被"选中"。选中的来源:代码里的标记(Java 的 `forceReq` / `forceRep`,Go 的 `doc_force`)、YAML 规则文件、SQL / SQLite(Java 的 SQLite;Go 的 SQLite / PostgreSQL / MySQL)。Java 另有注解策略下的 `@Group`(1.3.0 起弃用,2.0 删除,新代码不要用,改用 YAML / SQLite 规则)。
 - **返回字段过滤**:让接口实际返回的 JSON 只含文档里显示的字段。Java 1.2.0 起可用,**默认关闭**(`csap.apidoc.runtime.filter.enabled`);Go 需要注册 `ResponseFilter` 中间件,注册后配了返回规则的接口才会过滤(默认路径白名单模式,`apidoc.Options.FilterMode` 可改)。
 - **请求参数校验**:按规则校验必填、正则、长度等。Java 1.2.0 起可用,**默认关闭**(`csap.validation.mode`);Go 的 `validate.Options.Mode` 默认也是 `Off`。都有 `observe`(只记录不拦截)和 `enforce`(拦截)两种开启方式,建议先观察。
 - **DevTools**:开发阶段的后台页面 `/devtools-ui`,勾选字段、配置校验规则并写回规则文件。**两种语言默认都不开启,不要在生产环境开启**;Go 必须配置鉴权才能创建。
@@ -51,7 +51,7 @@ CSAP Apidoc 是**多语言的运行时 API 文档框架**:服务启动时从代�
 |---|---|---|
 | 声明接口 | `@Api` + `@ApiOperation` + Spring 映射注解 | 注册路由时用 `apidoc.Op(分组, 接口名)...` 声明请求 / 返回结构体 |
 | 描述字段 | `@ApiModelProperty` | 结构体标签 `doc`、`doc_desc`、`doc_example`、`doc_required`、`doc_force` 等 |
-| 字段"选中" | `forceReq` / `forceRep`、`@Group`、YAML、SQLite | `doc_force`、YAML、SQL(没有 `@Group`) |
+| 字段"选中" | `forceReq` / `forceRep`、YAML、SQLite(`@Group` 1.3.0 起弃用) | `doc_force`、YAML、SQL(没有 `@Group`) |
 | 规则文件命名 | 文件名必须以 `-method-field.yaml` 结尾,`.yml` 不读取 | 目录下所有 `.yaml` / `.yml` 都加载,文件名不限 |
 | 规则修改生效 | 手工改 YAML 需重启;DevTools 修改即时生效 | `doc.Watch` 监听,文件改了自动重新加载 |
 | 返回过滤 | `csap.apidoc.runtime.filter.*`,默认关闭;按 `mode: path / csap / off` | `Options.FilterMode`(`ModePath` 默认 / `ModeCsap` / `ModeOff`)、`FilterEndpoints`、`ShouldFilter`,只裁剪 2xx |
