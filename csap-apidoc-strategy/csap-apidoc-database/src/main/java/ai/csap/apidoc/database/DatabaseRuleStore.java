@@ -20,6 +20,8 @@ import javax.sql.DataSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import ai.csap.apidoc.model.RuleChange;
+
 /**
  * 规则表的 JDBC 读写,与 csap-apidoc-go 的 SQL 规则来源共用同一套表:
  *

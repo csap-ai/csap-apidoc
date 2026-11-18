@@ -3,9 +3,12 @@ package ai.csap.apidoc.database.autoconfigure;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Locale;
+import java.util.Set;
 
 import javax.sql.DataSource;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -14,6 +17,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 
+import ai.csap.apidoc.service.ApidocContext;
 import ai.csap.apidoc.database.DatabaseDialect;
 import ai.csap.apidoc.database.DatabaseParamGroupStrategy;
 import ai.csap.apidoc.database.DatabaseRuleStore;
@@ -36,6 +40,8 @@ import org.hibernate.validator.internal.metadata.core.ConstraintHelper;
 @EnableConfigurationProperties(DatabaseProperties.class)
 public class DatabaseAutoConfiguration {
 
+    private static final Logger LOG = LoggerFactory.getLogger(DatabaseAutoConfiguration.class);
+
     @Bean
     @ConditionalOnMissingBean
     public DatabaseParamGroupStrategy databaseParamGroupStrategy(DatabaseProperties properties,
@@ -47,9 +53,36 @@ public class DatabaseAutoConfiguration {
         if (factory == null) {
             factory = new DefaultValidateFactoryImpl(ConstraintHelper.forAllBuiltinConstraints(), new ValidationProperties());
         }
-        return new DatabaseParamGroupStrategy(factory,
+        DatabaseParamGroupStrategy strategy = new DatabaseParamGroupStrategy(factory,
                 () -> createStore(properties, dataSources, beanFactory, environment),
                 properties.isInitSchema(), properties.isReadOnly(), properties.getPollInterval());
+        // 别的实例保存(或本实例回滚)后重新加载了规则:按新规则重新生成受影响类的文档和字段规则
+        strategy.setReloadListener(DatabaseAutoConfiguration::refreshDocuments);
+        return strategy;
+    }
+
+    /**
+     * 规则变化后重新生成文档和字段规则(运行时过滤 / 校验靠规则刷新事件重建缓存)。
+     * DevTools 开启时与 DevTools 保存后的做法一致:按类刷新(flush 必须为 false,否则会把该类再追加一份);
+     * DevTools 关闭(生产环境)时按类刷新不生效,改为整体重新扫描。
+     */
+    static void refreshDocuments(Set<String> classNames) {
+        try {
+            if (Boolean.TRUE.equals(ApidocContext.isDevEnabled())) {
+                for (String className : classNames) {
+                    try {
+                        ApidocContext.cmd(className, null, false);
+                    } catch (RuntimeException e) {
+                        LOG.warn("csap-apidoc: 规则已同步,但重新生成 {} 的文档失败: {}", className, e.getMessage());
+                    }
+                }
+            } else {
+                ApidocContext.cmd(true, false);
+            }
+            LOG.info("csap-apidoc: 数据库规则已变化,已重新生成 {} 个类的文档和字段规则", classNames.size());
+        } catch (RuntimeException e) {
+            LOG.warn("csap-apidoc: 规则已同步,但重新生成文档失败: {}", e.getMessage());
+        }
     }
 
     static DatabaseRuleStore createStore(DatabaseProperties properties, ObjectProvider<DataSource> dataSources,

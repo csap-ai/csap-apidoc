@@ -10,6 +10,9 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.function.Consumer;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -30,7 +33,9 @@ import ai.csap.apidoc.core.ApidocOptional;
 import ai.csap.apidoc.core.ApidocStrategyName;
 import ai.csap.apidoc.model.CsapDocMethod;
 import ai.csap.apidoc.model.ParamGroupMethodProperty;
+import ai.csap.apidoc.model.RuleChange;
 import ai.csap.apidoc.strategy.ParamGroupStrategy;
+import ai.csap.apidoc.strategy.RuleHistoryProvider;
 import ai.csap.apidoc.util.ApidocUtils;
 import ai.csap.apidoc.util.RuleStorageNotWritableException;
 import ai.csap.validation.factory.IValidateFactory;
@@ -51,7 +56,7 @@ import cn.hutool.core.collection.CollectionUtil;
  * @author ycf
  * @since 1.4.0
  */
-public class DatabaseParamGroupStrategy implements ParamGroupStrategy, AutoCloseable {
+public class DatabaseParamGroupStrategy implements ParamGroupStrategy, RuleHistoryProvider, AutoCloseable {
 
     private static final Logger LOG = LoggerFactory.getLogger(DatabaseParamGroupStrategy.class);
 
@@ -74,7 +79,7 @@ public class DatabaseParamGroupStrategy implements ParamGroupStrategy, AutoClose
     private volatile long loadedVersion = Long.MIN_VALUE;
     private ScheduledExecutorService poller;
     private volatile boolean pollFailing;
-    private volatile Runnable reloadListener;
+    private volatile Consumer<Set<String>> reloadListener;
 
     /**
      * @param validateFactory 注解校验器工厂,可为 null
@@ -107,6 +112,7 @@ public class DatabaseParamGroupStrategy implements ParamGroupStrategy, AutoClose
         return this;
     }
 
+    @Override
     public boolean isReadOnly() {
         return readOnly;
     }
@@ -127,9 +133,10 @@ public class DatabaseParamGroupStrategy implements ParamGroupStrategy, AutoClose
     }
 
     /**
-     * 重新加载后的回调(轮询发现别的实例修改了规则、或手动 {@link #reload()} 时调用)
+     * 重新加载后的回调,参数是规则有变化(新增、删除、修改)的类名;没有变化时不调用。
+     * 轮询发现别的实例修改了规则、回滚、手动 {@link #reload()} 时触发,用来重新生成这些类的文档和字段规则。
      */
-    public void setReloadListener(Runnable reloadListener) {
+    public void setReloadListener(Consumer<Set<String>> reloadListener) {
         this.reloadListener = reloadListener;
     }
 
@@ -214,24 +221,25 @@ public class DatabaseParamGroupStrategy implements ParamGroupStrategy, AutoClose
      */
     public void reload() {
         ensureInitialized();
+        Set<String> changed;
         synchronized (lock) {
             try {
-                loadInto(store);
+                changed = loadInto(store);
             } catch (SQLException e) {
                 throw new IllegalStateException("重新加载规则失败: " + e.getMessage(), e);
             }
         }
-        Runnable l = reloadListener;
-        if (l != null) {
+        Consumer<Set<String>> l = reloadListener;
+        if (l != null && !changed.isEmpty()) {
             try {
-                l.run();
+                l.accept(changed);
             } catch (RuntimeException e) {
                 LOG.warn("csap-apidoc: reload 回调失败: {}", e.toString());
             }
         }
     }
 
-    private void loadInto(DatabaseRuleStore s) throws SQLException {
+    private Set<String> loadInto(DatabaseRuleStore s) throws SQLException {
         DatabaseRuleStore.Snapshot snapshot = s.load();
         Map<String, Map<String, ParamGroupMethodProperty>> fresh = new ConcurrentHashMap<>(16);
         for (Map.Entry<String, String> e : snapshot.rules().entrySet()) {
@@ -248,8 +256,35 @@ public class DatabaseParamGroupStrategy implements ParamGroupStrategy, AutoClose
                 LOG.warn("csap-apidoc: 规则 {} 的 JSON 无法解析,已忽略: {}", key, ex.getMessage());
             }
         }
+        Set<String> changed = diff(this.rules, fresh);
         this.rules = fresh;
         this.loadedVersion = snapshot.version();
+        return changed;
+    }
+
+    /**
+     * 新旧规则里有差异(新增、删除、修改)的类名
+     */
+    private static Set<String> diff(Map<String, Map<String, ParamGroupMethodProperty>> before,
+                                    Map<String, Map<String, ParamGroupMethodProperty>> after) {
+        Set<String> changed = new TreeSet<>();
+        Set<String> classes = new java.util.HashSet<>(before.keySet());
+        classes.addAll(after.keySet());
+        for (String cls : classes) {
+            Map<String, ParamGroupMethodProperty> b = before.getOrDefault(cls, java.util.Collections.emptyMap());
+            Map<String, ParamGroupMethodProperty> a = after.getOrDefault(cls, java.util.Collections.emptyMap());
+            Set<String> methods = new java.util.HashSet<>(b.keySet());
+            methods.addAll(a.keySet());
+            for (String m : methods) {
+                ParamGroupMethodProperty x = b.get(m);
+                ParamGroupMethodProperty y = a.get(m);
+                if (x == null || y == null || !RuleJson.write(x).equals(RuleJson.write(y))) {
+                    changed.add(cls);
+                    break;
+                }
+            }
+        }
+        return changed;
     }
 
     private static int countMethods(Map<String, Map<String, ParamGroupMethodProperty>> map) {
@@ -418,6 +453,7 @@ public class DatabaseParamGroupStrategy implements ParamGroupStrategy, AutoClose
     /**
      * 修改记录,最新的在前
      */
+    @Override
     public List<RuleChange> history(String ruleKey, int limit) {
         try {
             return store().history(ruleKey, limit);
@@ -431,6 +467,7 @@ public class DatabaseParamGroupStrategy implements ParamGroupStrategy, AutoClose
      *
      * @return 新版本号;已经是那个内容时返回 -1
      */
+    @Override
     public long rollback(long changeId, String updatedBy) {
         if (readOnly) {
             throw new RuleStorageNotWritableException("数据库模式处于只读状态,不能回滚规则。"

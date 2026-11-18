@@ -37,6 +37,7 @@ import ai.csap.apidoc.annotation.ParamType;
 import ai.csap.apidoc.autoconfigure.StrategyModel;
 import ai.csap.apidoc.model.CsapDocMethod;
 import ai.csap.apidoc.model.ParamGroupMethodProperty;
+import ai.csap.apidoc.model.RuleChange;
 import ai.csap.apidoc.util.RuleStorageNotWritableException;
 import ai.csap.validation.factory.IValidateFactory;
 import ai.csap.validation.factory.Validate;
@@ -399,7 +400,11 @@ abstract class AbstractDatabaseRuleTest {
         DatabaseParamGroupStrategy a = strategy(store(p, "svc"), false, Duration.ZERO);
         DatabaseParamGroupStrategy b = strategy(store(p, "svc"), false, Duration.ofMillis(100));
         AtomicInteger reloads = new AtomicInteger();
-        b.setReloadListener(reloads::incrementAndGet);
+        java.util.List<Set<String>> seen = new java.util.concurrent.CopyOnWriteArrayList<>();
+        b.setReloadListener(changed -> {
+            seen.add(changed);
+            reloads.incrementAndGet();
+        });
         b.getHandle(model(), docMethod("add"));
         save(a, "add", property("name", "姓名"));
         long deadline = System.currentTimeMillis() + 20_000;
@@ -408,10 +413,47 @@ abstract class AbstractDatabaseRuleTest {
         }
         assertNotNull(b.paramDataValidate(model(), "name", docMethod("add"), true), "后台轮询应已同步");
         assertTrue(reloads.get() >= 1);
+        assertEquals(Set.of(CLASS_NAME), seen.get(0));
         assertTrue(Thread.getAllStackTraces().keySet().stream()
                          .anyMatch(t -> t.getName().equals("csap-apidoc-database-poller") && t.isDaemon()));
         b.close();
         a.close();
+    }
+
+    @Test
+    void reloadReportsChangedClassesOnly() throws Exception {
+        String p = newPrefix();
+        DatabaseRuleStore other = store(p, "svc");
+        DatabaseParamGroupStrategy b = strategy(store(p, "svc"), false, Duration.ZERO);
+        List<Set<String>> seen = new ArrayList<>();
+        b.setReloadListener(seen::add);
+        b.getHandle(model(), docMethod("add"));
+
+        other.save("a.One.m", RuleJson.write(property("x", "第一版")), "o");
+        other.save("a.Two.m", RuleJson.write(property("x", "第一版")), "o");
+        assertTrue(b.pollOnce());
+        assertEquals(Set.of("a.One", "a.Two"), seen.get(0));
+
+        // 只改一个类
+        other.save("a.One.m", RuleJson.write(property("x", "第二版")), "o");
+        assertTrue(b.pollOnce());
+        assertEquals(Set.of("a.One"), seen.get(1));
+        // 删除
+        other.save("a.Two.m", null, "o");
+        assertTrue(b.pollOnce());
+        assertEquals(Set.of("a.Two"), seen.get(2));
+        // 回滚也会通知
+        long id = other.history("a.One.m", 1).get(0).getId();
+        b.rollback(id, "devtools-rollback");
+        assertEquals(Set.of("a.One"), seen.get(3));
+        assertEquals("第一版", b.paramDataValidate(model(), "x", docMethodOf("a.One", "m"), true).getDescription());
+    }
+
+    static CsapDocMethod docMethodOf(String cls, String method) {
+        CsapDocMethod m = new CsapDocMethod();
+        m.setClassName(cls);
+        m.setName(method);
+        return m;
     }
 
     @Test

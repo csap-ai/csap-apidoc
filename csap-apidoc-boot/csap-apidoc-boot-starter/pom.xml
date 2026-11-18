@@ -54,7 +54,12 @@
             <artifactId>csap-apidoc-mcp</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <!-- test:数据库模式的端到端测试用 -->
+        <!-- test:数据库模式的端到端测试用(按规则重新生成文档需要 Web 环境) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>

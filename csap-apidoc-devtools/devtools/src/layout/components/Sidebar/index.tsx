@@ -1,5 +1,5 @@
 import { Menu, MenuProps } from 'antd'
-import { ApiOutlined, RobotOutlined } from '@ant-design/icons'
+import { ApiOutlined, HistoryOutlined, RobotOutlined } from '@ant-design/icons'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { RouteObject } from 'react-router-dom'
 import { useAppStore, useSettingsStore } from '@/store'
@@ -27,7 +27,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     const iconMap: Record<string, React.ReactNode> = {
       'api': <ApiOutlined style={{ fontSize: '16px' }} />,
       'api2': <ApiOutlined style={{ fontSize: '16px' }} />,
-      'mcp': <RobotOutlined style={{ fontSize: '16px' }} />
+      'mcp': <RobotOutlined style={{ fontSize: '16px' }} />,
+      'history': <HistoryOutlined style={{ fontSize: '16px' }} />
     }
 
     return iconMap[iconName] || <ApiOutlined style={{ fontSize: '16px' }} />

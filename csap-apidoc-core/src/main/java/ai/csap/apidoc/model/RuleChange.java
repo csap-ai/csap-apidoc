@@ -1,4 +1,4 @@
-package ai.csap.apidoc.database;
+package ai.csap.apidoc.model;
 
 /**
  * 一条规则修改记录。
