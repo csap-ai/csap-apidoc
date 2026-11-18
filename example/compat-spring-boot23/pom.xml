@@ -28,6 +28,8 @@
         <boot2.test.dir>${project.basedir}/../example-spring-boot2/src/test</boot2.test.dir>
         <maven.deploy.skip>true</maven.deploy.skip>
         <maven.install.skip>true</maven.install.skip>
+        <!-- Boot 2.3 管理的 Lombok 1.18.12 不支持 JDK 21(javac JCImport 字段变化),只覆盖 Lombok,其余依赖仍按 Boot 2.3 -->
+        <lombok.version>1.18.34</lombok.version>
     </properties>
 
     <dependencies>
