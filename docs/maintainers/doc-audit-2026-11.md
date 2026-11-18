@@ -149,9 +149,9 @@
 
 | 项 | 结论 | 文档状态 |
 |---|---|---|
-| 1. Go / Java 非必填字段校验不一致 | 讨论中,倾向 Java 向 Go 对齐(非必填但传了值也校验,`Pattern` 本就对 null 放行),属行为变更,只能放 1.3.0 之后并先用 `observe`;未定方向 | 未改;定后再补官网 Go 页、Go CHANGELOG 或校验页 |
+| 1. Go / Java 非必填字段校验不一致 | 讨论中,倾向 Java 向 Go 对齐(非必填但传了值也校验,`Pattern` 本就对 null 放行),属行为变更,只能放 1.3.0 之后并先用 `observe`;未定方向 | 官网 Go 页已写明差别;对齐方向列入 1.4.0 前确定(见路线图) |
 | 2. `/devtools/hiddenMethod` 没作用 | 文档备注"目前没用" | 已写在 `api/rest.md`、`guide/devtools.md` |
-| 3. `AdvancedController` 演示方法级 `@ApiProperty` | 待定,与 4 一起看 | 文档保持"方法级不生效" |
+| 3. `AdvancedController` 演示方法级 `@ApiProperty` | 方法级写法按弃用处理,1.3.0 中示例改为参数级 | 文档保持"方法级不生效" |
 | 4. 示例配置与注释不符、示例里没有 `@Group` | 用户倾向**直接去掉 `@Group` 注解**(不再使用) | **未改文档**:`@Group` 目前仍在代码里并且是注解策略下"按接口选字段"的主要写法(`guide/annotations.md`、`storage-strategies.md`、`api/annotations.md`、SKILL 都有介绍),必须代码先删除或标记弃用,文档才能同步;影响面见下 |
 | 5. 基础类型参数必填 | 用户:**以实际配置(规则)为准**,即规则里的 `required` 优先 | 代码现为"规则与 `@ApiProperty` 取或",文档按代码写;改代码后文档改回"以规则为准" |
 | 6. YAML 上级字段 `include: true` | 已向用户解释(返回规则里,`data` 这样的外层字段本身要被选中,下级字段才会输出;`ApidocResult.data` 已是 `forceRep` 所以不用写) | 已按两种情形写在 `yaml-rules.md` |
@@ -167,10 +167,10 @@
 - `.github/workflows/docs.yml` 的 `paths` 只监听 `website/**` 和 `CHANGELOG.md`,没有 `docs/ROADMAP.md`;路线图页由 `sync.mjs` 从它生成,改了路线图不会触发站点发布。
 - `csap-apidoc-devtools/devtools` 前端没有 `test` 脚本(CONTRIBUTING 已改为指向 `csap-apidoc-ui`)。
 
-## 四、裁定结果(2026-11-18)
+## 五、主会话执行记录(2026-11-18)
 
 1. 非必填字段的校验差别:暂不改代码,在官网 Go 页写明差别;是否对齐、以哪边为准,1.4.0 前确定。
 2. 方法级 `@ApiProperty` / `@ApiPropertys`:按已弃用处理。1.3.0 中示例改为参数级写法,`DefaultAbstractMethod` 的 javadoc 同步改正。
 3. `SECURITY.md`:只支持 1.2.x,1.1.x 标为已被取代,保持本次修改。
 4. GitHub 仓库描述与 topics:改为多语言口径,topics 增加 `go`、`golang`、`gin`(已在仓库设置中修改)。
-5. F9、F10 按本次写法保留;v1.2.0 发布说明不改。
+5. F9、F10 按本次写法保留;v1.2.0 发布说明按第 8 项补了 Go 的说明。
