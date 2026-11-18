@@ -45,6 +45,9 @@ type Options struct {
 	// FilterMode 是返回字段过滤的模式,默认 filter.ModePath(路径白名单)。
 	// 从 Java 迁移、要求返回与 Java 逐字节一致时用 filter.ModeCsap。
 	FilterMode filter.Mode
+	// TypeNames 覆盖结构体类型在文档里的显示名(相当于 Java @ApiModel 的 value),
+	// 键为 reflect.TypeOf(T{}),指针类型按其元素类型处理。优先级:TypeNames > 类型的 ApidocName() 方法 > 类型名。
+	TypeNames map[reflect.Type]string
 	// HeaderHints、Auth 是全局的"在线调试"建议(对应 Java 包上的 @DocGlobalHeader / @DocAuth),
 	// 分组(GroupInfo)和接口(Operation.HeaderHint / Auth)可以覆盖。
 	HeaderHints []model.GlobalHeaderHint
@@ -94,7 +97,24 @@ func New(opts Options) *Doc {
 		opts.UIPrefix = "/csap-ui"
 	}
 	opts.UIPrefix = "/" + strings.Trim(opts.UIPrefix, "/")
+	if len(opts.TypeNames) > 0 {
+		names := make(map[reflect.Type]string, len(opts.TypeNames))
+		for t, n := range opts.TypeNames {
+			if t = deref(t); t != nil {
+				names[t] = n
+			}
+		}
+		opts.TypeNames = names
+	}
 	return &Doc{opts: opts, groups: map[string]GroupInfo{}, dirty: true}
+}
+
+// ModelNamer 是可选接口:结构体类型实现它(值或指针接收者均可)时,ApidocName 的返回值作为文档里的显示名,
+// 相当于 Java @ApiModel 的 value。会在零值上调用,不要依赖字段内容。
+//
+//	func (Page[T]) ApidocName() string { return "分页返回信息" }
+type ModelNamer interface {
+	ApidocName() string
 }
 
 // Options 返回创建时的配置(已填充默认值)。

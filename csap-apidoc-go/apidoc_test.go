@@ -289,6 +289,58 @@ func TestDisplayName(t *testing.T) {
 	}
 }
 
+type namedPage[T any] struct {
+	Rows []T `json:"rows"`
+}
+
+func (namedPage[T]) ApidocName() string { return "分页返回信息" }
+
+type namedItem struct {
+	ID int64 `json:"id"`
+}
+
+func (*namedItem) ApidocName() string { return "条目" } // 指针接收者也生效
+
+type plainItem struct {
+	ID int64 `json:"id"`
+}
+
+func TestModelDisplayNameOverride(t *testing.T) {
+	d := New(Options{
+		Wrapper:   &Wrapper{Type: result{}},
+		TypeNames: map[reflect.Type]string{reflect.TypeOf(&plainItem{}): "普通条目", reflect.TypeOf(result{}): "统一返回"},
+	})
+	d.Register("GET", "/a", Op("G", "a").Resp(namedPage[namedItem]{}), "")
+	d.Register("GET", "/b", Op("G", "b").Resp([]plainItem{}), "")
+	snap := d.Snapshot()
+	a := snap.Method("G", "G.a").Response[0]
+	if a.Value == nil || *a.Value != "统一返回" {
+		t.Fatalf("wrapper name from TypeNames: %v", a.Value)
+	}
+	data := findParam(a.Parameters, "data")
+	if v := data.Children.Value; v == nil || *v != "分页返回信息" {
+		t.Fatalf("ApidocName (value receiver): %v", v)
+	}
+	if data.DataType != "namedPage<namedItem>" {
+		t.Fatalf("dataType must keep the type name: %s", data.DataType)
+	}
+	rows := findParam(data.Children.Parameters, "rows")
+	if v := rows.Children.Value; v == nil || *v != "条目" {
+		t.Fatalf("ApidocName (pointer receiver): %v", v)
+	}
+	b := snap.Method("G", "G.b").Response[0]
+	data = findParam(b.Parameters, "data")
+	if v := data.Children.Value; v == nil || *v != "普通条目" {
+		t.Fatalf("TypeNames with pointer key: %v", v)
+	}
+	// 没有覆盖时仍是类型名
+	d = New(Options{})
+	d.Register("GET", "/c", Op("G", "c").Resp(plainItem{}), "")
+	if v := d.Snapshot().Method("G", "G.c").Response[0].Value; v == nil || *v != "plainItem" {
+		t.Fatalf("default name: %v", v)
+	}
+}
+
 func get(t *testing.T, h http.Handler, url string) *httptest.ResponseRecorder {
 	t.Helper()
 	rec := httptest.NewRecorder()
