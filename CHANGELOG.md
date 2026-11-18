@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-18
+
+Java 1.4.0 and Go v0.2.0 are released together and share the rule tables, the Redis
+data convention, the Mock / JSON Schema rules and the validation golden cases.
+
 ### Changed (behavior change)
 
 - **Request validation: rules on optional fields are now enforced when a value is sent.**
@@ -27,6 +32,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Database mode** (`paramType = ApiStrategyType.DATABASE`, module `csap-apidoc-database`,
+  pulled in by the starter): field rules live in the application's own relational database
+  (MySQL 5.7.7+ / 8.x, PostgreSQL 12+, DM8 and KingbaseES as a trial, SQLite, H2) through
+  its own `DataSource`; only JDBC, no driver bundled; one jar for Spring Boot 2 and 3.
+  Config `csap.apidoc.database.*` (`datasource-bean`, `dialect`, `table-prefix`,
+  `init-schema`, `poll-interval`, `service`, `read-only`). Each save bumps a global version,
+  writes the rule and a history row in one transaction; other instances poll the version
+  and regenerate the documents and field rules of the changed classes. Schema SQL per
+  dialect ships in the jar (`META-INF/csap-apidoc/database/*.sql`). The tables
+  (`{prefix}rule`, `{prefix}history`, `{prefix}meta`, with a `service` column) are shared
+  with csap-apidoc-go v0.2.0. Design: `docs/design/database-mode.md`.
+- **Redis mode** (`paramType = ApiStrategyType.REDIS`, module `csap-apidoc-redis`, Spring
+  Data Redis optional): rules in a Redis Hash, saved atomically by a Lua script that Java and
+  Go embed byte for byte; Pub/Sub plus version polling for multi-instance sync; history keeps
+  the latest `history-limit` entries. Config `csap.apidoc.redis.*`. Keys use a Cluster hash
+  tag (cluster / sentinel / auth not tested). Convention: `docs/design/redis-mode.md`.
+- **Rule migration** (module `csap-apidoc-migrate`): YAML directory / SQLite file → database
+  or Redis, and database / Redis → YAML, via `csap.apidoc.migrate.from/to/export-to/overwrite/dry-run`
+  at startup or the `RuleMigrator` API. Existing rules are not overwritten by default; every
+  imported rule is a normal save by `migrate` and can be rolled back. Project field templates
+  (`@templates`) are not migrated yet.
+- **DevTools "Rule history"** page (`/devtools-ui/rules`) for the database and Redis modes:
+  list, side-by-side diff and roll back (`devtools/rules/status|history|rollback`); read-only
+  stores refuse with 1007. Page hints are language neutral; backends may return `hint`
+  (`docs/design/devtools-hints.md`).
 - **API status (in development / stable / deprecated)**: the effective status of an
   endpoint is rule store override > `@ApiOperation(status)` > `@Api(status)` > default.
   It is shown (and filterable) on the document page, exported as `deprecated: true` /
@@ -80,20 +110,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `example` and `mock` fields and would drop them.
 - SQLite databases get a `status_note` column on first start (automatic).
 
+### Changed
+
+- The "rules inside the jar cannot be saved" message (code 1007) now suggests the database
+  and Redis modes.
+
 ### Documentation
 
-- 1.4.0 preview: skeleton pages for Mock, JSON Schema, version diff / breaking-change
-  detection, endpoint status and the field library; validation alignment announced
-  (non-required fields with a value are validated, following Go).
-- Database mode (planned for 1.4.0, in progress): added the user guide
-  (`guide/database-mode`) and finalized the shared Java / Go table schema in
-  `docs/design/database-mode.md` (`{prefix}rule`, `{prefix}history`,
-  `{prefix}meta`; columns `rules` / `before_rules` / `after_rules` keep the
-  existing Go names). The feature is not released yet; the Redis mode is
-  in progress.
-- Redis mode and the migration tool (YAML / SQLite <-> database / Redis): added the
-  user guide (`guide/redis-mode`) and the shared Java / Go data convention
-  (`docs/design/redis-mode.md`); both are still being implemented for 1.4.0.
+- New guides: database mode, Redis mode, Mock, JSON Schema, version diff / breaking-change
+  detection (`csap-apidoc-diff`, a single binary shipped with csap-apidoc-go that compares two
+  `/csap/apidoc` documents of any language), endpoint status and the field library; the
+  validation and DevTools pages describe the 1.4.0 behavior.
 
 ## [1.3.0] - 2026-11-18
 
