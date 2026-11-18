@@ -68,8 +68,8 @@ jobs:
         working-directory: csap-apidoc-go/integration
         run: go test -race ./...
 
-  integration-postgres:
-    name: integration (PostgreSQL 16)
+  integration-db:
+    name: integration (PostgreSQL 16 + MySQL 8)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -85,6 +85,18 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: csap
+          MYSQL_DATABASE: csap
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -uroot -pcsap"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     steps:
       - uses: actions/checkout@v4
 
@@ -93,8 +105,9 @@ jobs:
           go-version: stable
           cache-dependency-path: csap-apidoc-go/integration/go.sum
 
-      - name: go test (integration, SQLite + PostgreSQL)
+      - name: go test (integration, SQLite + PostgreSQL + MySQL)
         working-directory: csap-apidoc-go/integration
         env:
           CSAP_TEST_PG_DSN: postgres://csap:csap@localhost:5432/csap?sslmode=disable
+          CSAP_TEST_MYSQL_DSN: root:csap@tcp(localhost:3306)/csap?parseTime=true
         run: go test -race ./...

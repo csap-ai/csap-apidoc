@@ -59,7 +59,7 @@ func cases(t *testing.T) []dbCase {
 func prefix(t *testing.T, db *sql.DB) string {
 	p := fmt.Sprintf("csap_it_%d_", time.Now().UnixNano()%1_000_000_000)
 	t.Cleanup(func() {
-		for _, tbl := range []string{"rule", "history", "meta"} {
+		for _, tbl := range []string{"rule", "history", "meta", "rule_v2", "meta_v2"} {
 			_, _ = db.Exec("DROP TABLE IF EXISTS " + p + tbl)
 		}
 		db.Close()

@@ -108,7 +108,7 @@ go run ./examples/nethttp-basic  # http://localhost:8081/csap-api.html、/devtoo
 | `@ApiModelProperty` 等注解 | 结构体标签 `doc:"..."` |
 | `@DocGlobalHeader`、`@DocAuth` | `Options` / `GroupInfo` / `Operation` 的 `HeaderHint`、`Auth` |
 | `method-field.yaml`(YAML 策略) | 同格式,可直接使用 |
-| SQLite 策略 | SQL 策略(SQLite / PostgreSQL / MySQL) |
+| 数据库模式(1.4.0 起) | SQL 策略(SQLite / PostgreSQL / MySQL / 达梦 / 人大金仓),与 Java 共用同一套表,用 `service` 区分,见 [docs/SQL.md](docs/SQL.md) |
 | csap-validation | `validate` 包,默认关闭,另有观察模式 |
 | DevTools | 接口兼容,页面相同;新增修改记录和回滚 |
 
