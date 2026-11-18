@@ -22,6 +22,7 @@ public enum ApidocResultEnum {
     result_1("1002", "添加失败"),
     result_2("1003", "删除失败"),
     result_3("1004", "修改失败"),
+    RULE_STORAGE_NOT_WRITABLE("1007", "规则存储不可写"),
     DATA_VALIDATE_ERROT("400", "数据格式错误");
     /**
      * 结果码

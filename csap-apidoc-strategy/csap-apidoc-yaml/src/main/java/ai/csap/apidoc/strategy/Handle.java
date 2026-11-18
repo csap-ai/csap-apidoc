@@ -233,9 +233,8 @@ public interface Handle<H, R> extends IStandardHandle {
         if (strategyType == null) {
             strategyType = ApiStrategyType.YAML;
         }
-        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        String resourcePath = Objects.requireNonNull(Objects.requireNonNull(classLoader.getResource("")))
-                .getPath() + path;
+        // 打包运行(jar)时 classpath 不可写:返回说明清楚的错误(DevTools 显示),而不是 NPE
+        String resourcePath = writableClasspathRoot(strategyType) + path;
         StringBuilder pathName = new StringBuilder(URLDecoder.decode(resourcePath, StandardCharsets.UTF_8));
         if (LOG.isDebugEnabled()) {
             LOG.debug("write doc path is:{},strategyType:{},prefixName:{}", pathNameFilter(pathName.toString()), strategyType.getSuffix(), prefixName);

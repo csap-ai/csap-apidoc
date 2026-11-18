@@ -78,11 +78,34 @@ http://localhost:<端口><context-path>/devtools-ui
 保存后：
 
 - YAML 策略：写入 `src/main/resources/<path>/method-field/` 下的 YAML 文件（文件名规则见 [存储策略 - YAML 策略](/guide/storage-strategies#yaml-策略)）；
-- SQLite 策略：写入 `<path>/<fileName>.db` 的 `api_method` 表。1.1.1 起数据库文件不存在时会在第一次写入时自动创建。
+- SQLite 策略：写入 `<path>/<fileName>.db` 的 `api_method` 表。1.1.1 起数据库文件不存在时会在第一次写入时自动创建。以打包后的 jar 运行时写到 jar 外的文件，见下文。
 
 同时会更新内存中的规则缓存。开启 DevTools 时，按 Controller 或单个接口查询文档的接口（`/csap/apidoc/{className}`、`/csap/apidoc/method`）会重新解析对应的 Controller，因此保存后重新打开该接口的文档即可看到变化，不需要重启。
 
 YAML 文件写回源码目录依赖于"classpath 根目录是 `target/classes`"这一约定，请在 IDE 或 `mvn spring-boot:run` 中使用 DevTools。写出的文件建议和代码一起提交。
+
+### 打包运行时能否在 DevTools 保存
+
+用 `java -jar` 运行打包后的应用时，classpath 在 jar 里，不能写入。下表是用 Spring Boot 3 示例打出 fat jar 后实测的结果（1.3.0）：
+
+| 策略 | 打包运行时保存 | 写到哪里 | 重启后 |
+|------|----------------|----------|--------|
+| `paramType = YAML` | 不能 | — | — |
+| `type = JSON`（导出文档 `/csap/yaml/write`、`writeSelect`） | 不能 | — | — |
+| `paramType = SQL_LITE` | 能 | jar 外：启动目录下的 `<path>/<fileName>.db`，默认 `./csap-api-doc/apidoc.db` | 仍在，启动时读回 |
+| 数据库模式（MySQL / PostgreSQL / 达梦 / 人大金仓） | 1.4.0 计划，当前版本没有 | — | — |
+
+不能保存时，接口返回 HTTP 200 和失败结果（`code` 为 `1007`），DevTools 页面直接显示下面的说明，同时打一条 WARN 日志（1.2.0 及以前是 HTTP 500 + `NullPointerException`）：
+
+```text
+当前以打包后的 jar 运行(classpath 根目录不可用),YAML 规则文件位于 jar 内,DevTools 无法保存。可以:1) 在源码目录运行(IDE 或 mvn spring-boot:run),规则写回 src/main/resources 下的规则文件;2) 改用 SQLite 策略 @EnableApidoc(paramType = ApiStrategyType.SQL_LITE),打包运行时规则保存在 jar 外、启动目录下的 SQLite 文件(默认 ./csap-api-doc/apidoc.db),重启后仍在;3) 1.4.0 起可使用数据库模式(MySQL / PostgreSQL / 达梦 / 人大金仓),当前版本尚未提供。Redis 不是规则存储,只在数据库模式下用于多实例通知。 | Running from a packaged jar ...（同样内容的英文）
+```
+
+推荐做法：
+
+- 平时在 IDE 或 `mvn spring-boot:run` 中用 DevTools 维护规则，YAML 文件写回源码目录，随代码提交、打包；
+- 必须在打包后的环境里调整规则时，用 SQLite 策略。启动目录要可写（不可写时同样返回 `1007`，说明里带上文件路径）；多个实例各有一份文件，互不同步；
+- 需要多实例共享、集中维护规则的，等 1.4.0 的数据库模式。Redis 在该方案里只用于通知各实例刷新，不存放规则。
 
 ## 后端接口
 

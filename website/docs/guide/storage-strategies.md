@@ -250,7 +250,10 @@ DevTools 写 YAML 时，目标路径是把 classpath 根目录中的 `target/cla
 ### 运行时的文件位置
 
 - 在 IDE 中以目录形式运行时，框架直接使用 `src/main/resources` 下的数据库文件，DevTools 的修改会写回这个文件。
-- 打成 jar 运行时，框架把数据库复制到系统临时目录（`java.io.tmpdir`）后读取。
+- 打成 jar 运行时（1.3.0 起）：
+  - 启动目录（`user.dir`）下有 `<path>/<fileName>.db`（默认 `./csap-api-doc/apidoc.db`）时，读写都用这个 jar 外的文件；
+  - 没有这个文件时，jar 里有数据库就复制到系统临时目录（`java.io.tmpdir`）后读取，没有就是空规则；
+  - DevTools 第一次保存时创建 jar 外的文件（jar 里有数据库就以它为初始内容），之后的保存都写到这里，重启后仍然读这个文件。它会优先于 jar 里的数据库，想回到 jar 里的版本，删掉这个文件即可。
 
 规则在启动时读取一次并缓存。
 
@@ -263,10 +266,32 @@ DevTools 写 YAML 时，目标路径是把 classpath 根目录中的 `target/cla
 
 1.2.0 起，框架每次打开数据库连接时都会检查 `api_method` 表：只要存在没有默认值的 `NOT NULL` 列（主键除外），或者 `key` 上有唯一索引，就在一个事务里迁移——按新的表结构建临时表、拷贝全部数据（`id` 不变，原来为 `NULL` 的列按新结构的默认值补齐）、删除旧表、改名，再重建原有的非唯一索引。旧表中新结构没有的列会保留下来。迁移后的表不再满足检查条件，所以只会迁移一次。
 
-迁移会直接修改数据库文件：在 IDE 中运行时改的是 `src/main/resources` 下的文件，打成 jar 运行时改的是复制到临时目录的副本。重要数据请先备份。
+迁移会直接修改数据库文件：在 IDE 中运行时改的是 `src/main/resources` 下的文件，打成 jar 运行时改的是 jar 外的文件或复制到临时目录的副本。重要数据请先备份。
 
 1.1.1 只在表不存在时建表，不会改已有的表结构；仍在使用 1.1.1 时，请删除旧的 `.db` 文件，让框架重新创建（需要保留的规则请先导出 `request`、`response` 两列）。
 :::
+
+## 打包运行时能否在 DevTools 保存
+
+用 `java -jar` 运行打包后的应用时，classpath 在 jar 里，不能写入。用 Spring Boot 3 示例打出 fat jar 实测（1.3.0）：
+
+| 策略 | 打包运行时保存 | 说明 |
+|------|----------------|------|
+| `ANNOTATION` | 不适用 | 规则在注解里，DevTools 本来就不能写回 |
+| `YAML` | 不能 | 规则文件在 jar 内。返回 `code = 1007` 的失败结果和说明，打一条 WARN |
+| `type = JSON`（导出文档） | 不能 | 同上 |
+| `SQL_LITE` | 能 | 写到 jar 外、启动目录下的 `<path>/<fileName>.db`（默认 `./csap-api-doc/apidoc.db`），重启后仍在 |
+| 数据库模式（MySQL / PostgreSQL / 达梦 / 人大金仓） | 1.4.0 计划 | 当前版本没有实现 |
+
+Redis 不是规则存储：在 1.4.0 的数据库模式方案里，它只用于通知多个实例刷新规则。
+
+推荐做法：
+
+- 规则主要在开发环境里维护：在 IDE 或 `mvn spring-boot:run` 中用 DevTools，YAML 文件写回 `src/main/resources`，随代码提交和打包；
+- 必须在打包后的环境里改规则时用 `SQL_LITE`，并确保启动目录可写。每个实例各有一份文件，互不同步；
+- 多实例共享规则请等 1.4.0 的数据库模式。
+
+返回给 DevTools 的提示原文见 [DevTools - 打包运行时能否在 DevTools 保存](/guide/devtools#打包运行时能否在-devtools-保存)。
 
 ## 规则过期检查
 

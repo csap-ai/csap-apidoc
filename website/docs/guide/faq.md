@@ -123,6 +123,18 @@ csap:
 
 注意是 `devtool`（单数）。见 [DevTools](/guide/devtools)。
 
+### 用 java -jar 运行时，DevTools 保存规则失败
+
+打包后的 jar 里 classpath 不能写，YAML / JSON 规则文件无法保存。1.3.0 起接口返回 `code = 1007` 的失败结果，DevTools 页面显示原因和可行的做法，同时打一条 WARN（1.2.0 及以前是 HTTP 500 + `NullPointerException`）。
+
+可以这样做：
+
+- 在 IDE 或 `mvn spring-boot:run` 中运行，规则写回 `src/main/resources`；
+- 改用 `@EnableApidoc(paramType = ApiStrategyType.SQL_LITE)`：打包运行时规则保存在 jar 外、启动目录下的 `./csap-api-doc/apidoc.db`（随 `path`、`fileName` 变化），重启后仍在；
+- 数据库模式（MySQL / PostgreSQL / 达梦 / 人大金仓）计划在 1.4.0 提供，当前版本没有；Redis 不存放规则。
+
+各策略的实测结果见 [存储策略 - 打包运行时能否在 DevTools 保存](/guide/storage-strategies#打包运行时能否在-devtools-保存)。
+
 ### 访问 /devtools-ui 返回 404
 
 DevTools 没有开启。确认当前生效的配置中有 `csap.apidoc.devtool.enabled: true`，并且写的是 `devtool` 而不是 `devtools`。开启后启动日志会打印 DevTools 地址。

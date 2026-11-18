@@ -76,6 +76,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - DevTools frontend could not be built from source (`autoprefixer` missing
   from `package.json`); the bundled DevTools page is now rebuilt from source.
+- Saving rules in DevTools from a packaged jar (`java -jar`) returned HTTP 500
+  with a `NullPointerException` (`getResource("")` is `null` inside a fat jar).
+  The YAML / JSON strategies now answer with HTTP 200 and an `ApidocResult`
+  failure (`code = 1007`) that the DevTools page shows, plus one WARN log line.
+  The message says the rule files are inside the jar and lists what does work:
+  running from the source tree, or `paramType = SQL_LITE`; the database mode
+  (MySQL / PostgreSQL / DM / KingbaseES) is planned for 1.4.0. Reading rules
+  from a jar no longer throws either.
+- SQLite rules can now be saved from a packaged jar: the database is kept
+  outside the jar at `<working dir>/<path>/<fileName>.db` (default
+  `./csap-api-doc/apidoc.db`), created on the first DevTools save (from the
+  template in the jar if there is one) and read back after a restart. Before,
+  saving failed with a `NullPointerException` when no database existed yet,
+  and SQLite write errors were only logged while DevTools reported success;
+  they now return the same `code = 1007` failure with the file path. The
+  SQLite JDBC driver is registered explicitly, so reading rules on the startup
+  scan threads of a fat jar no longer fails with "No suitable driver".
+- DevTools "save selected controllers" (`/csap/yaml/writeSelect` with class
+  names) failed with a `NullPointerException` before writing anything.
 
 ## [1.2.0] - 2026-11-17
 

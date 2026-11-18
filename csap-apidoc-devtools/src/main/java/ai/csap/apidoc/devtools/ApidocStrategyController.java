@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,6 +27,7 @@ import ai.csap.apidoc.model.ParamGroupMethodProperty;
 import ai.csap.apidoc.service.ApidocContext;
 import ai.csap.apidoc.strategy.ApidocStrategy;
 import ai.csap.apidoc.util.ExceptionUtils;
+import ai.csap.apidoc.util.RuleStorageNotWritableException;
 import ai.csap.validation.type.ValidatePatternType;
 
 import cn.hutool.core.collection.CollectionUtil;
@@ -156,5 +158,18 @@ public class ApidocStrategyController {
                 .patternTypeList(ValidatePatternType.PatternMap.PATTERN_DESCR)
                 .build();
         return ApidocResult.success(patternMap);
+    }
+
+    /**
+     * 规则存储不可写(如以 jar 运行时 YAML / JSON 规则文件在 jar 内):
+     * HTTP 200 + {@code code = 1007} 的失败结果,DevTools 前端直接显示 message,而不是 500。
+     * WARN 日志在抛出处已打印。
+     *
+     * @param e 异常
+     * @return 失败结果
+     */
+    @ExceptionHandler(RuleStorageNotWritableException.class)
+    public ApidocResult<Object> ruleStorageNotWritable(RuleStorageNotWritableException e) {
+        return ApidocResult.error(e.getCode(), e.getMessage(), e.getData());
     }
 }
