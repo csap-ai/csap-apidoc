@@ -68,6 +68,16 @@ export default defineConfig({
           ],
         },
         {
+          text: '1.4.0 计划',
+          items: [
+            { text: 'Mock 服务', link: '/guide/mock' },
+            { text: 'JSON Schema 导入导出', link: '/guide/json-schema' },
+            { text: '版本对比与破坏性变更', link: '/guide/api-diff' },
+            { text: '接口上下线管理', link: '/guide/api-status' },
+            { text: '字段库与模板', link: '/guide/field-library' },
+          ],
+        },
+        {
           text: '其他',
           items: [
             { text: 'AI 编码助手技能', link: '/guide/ai-skill' },

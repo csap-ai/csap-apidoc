@@ -34,7 +34,7 @@ Java:字段名是 `@ApiModelProperty.name`,没写时用 Java 字段名(驼峰)�
 
 | 属性 | 用于 | 说明 |
 |---|---|---|
-| `required` | request / response | 是否必填,默认 false。Java:请求字段只有 `required: true` 时 `validate` 才会登记和执行;Go:没写 `required` 的字段,请求里传了值也会按 `validate` 校验(两边差别,计划 1.4.0 前确定) |
+| `required` | request / response | 是否必填,默认 false。Java:请求字段只有 `required: true` 时 `validate` 才会登记和执行;Go:没写 `required` 的字段,请求里传了值也会按 `validate` 校验(当前 Java 1.2.0 / 1.3.0 与 Go 的差别;已定 1.4.0 起 Java 向 Go 对齐) |
 | `include` | response | `true` 才在返回参数中显示 |
 | `paramType` | request | `PATH` `QUERY` `BODY` `FORM_DATA` `HEADER` `FORM` |
 | `description` | request | 只对基础类型方法参数生效 |
