@@ -14,7 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `docs/design/database-mode.md` (`{prefix}rule`, `{prefix}history`,
   `{prefix}meta`; columns `rules` / `before_rules` / `after_rules` keep the
   existing Go names). The feature is not released yet; the Redis mode is
-  planned and not started.
+  in progress.
+- Redis mode and the migration tool (YAML / SQLite <-> database / Redis): added the
+  user guide (`guide/redis-mode`) and the shared Java / Go data convention
+  (`docs/design/redis-mode.md`); both are still being implemented for 1.4.0.
 
 ## [1.3.0] - 2026-11-18
 

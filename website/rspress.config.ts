@@ -50,6 +50,7 @@ export default defineConfig({
             { text: '注解', link: '/guide/annotations' },
             { text: '存储策略与返回过滤', link: '/guide/storage-strategies' },
             { text: '数据库模式(1.4.0 计划)', link: '/guide/database-mode' },
+            { text: 'Redis 模式(1.4.0 计划)', link: '/guide/redis-mode' },
             { text: '返回字段过滤', link: '/guide/runtime-filter' },
             { text: '参数校验', link: '/guide/validation' },
             { text: 'DevTools', link: '/guide/devtools' },

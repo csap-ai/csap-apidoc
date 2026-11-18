@@ -3,7 +3,7 @@
 1.2.0 起，`csap-apidoc-boot-starter` 带有运行时返回字段过滤（模块 `csap-apidoc-runtime`）：开启后，配置了返回规则的接口，实际返回的 JSON 只包含规则放行的字段，与文档显示的返回字段一致。**默认关闭。**
 
 :::info 适用范围
-本页讲的是 **Java 版**的返回字段过滤(`csap-apidoc-runtime`)。Go 版有对应功能(`ResponseFilter` 中间件、`FilterMode`、`FilterEndpoints`、`ShouldFilter`),注册 `ResponseFilter` 中间件后,配了返回规则的接口才会过滤,见 [Go 版](/go/)。
+本页讲的是 **Java 版**的返回字段过滤(`csap-apidoc-runtime`)。Go 版有对应功能(`ResponseFilter` 中间件、`FilterMode`、`FilterEndpoints`、`ShouldFilter`,v0.2.0 起还有按响应体判断的 `ShouldFilterBody`),注册 `ResponseFilter` 中间件后,配了返回规则的接口才会过滤,见 [Go 版](/go/)。
 :::
 
 ## 开启

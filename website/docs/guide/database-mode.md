@@ -273,7 +273,7 @@ if err := s.Migrate(ctx); err != nil { /* ... */ }
 - 其他实例每隔 `poll-interval`（默认 5 秒）查一次版本号，变了就重新加载规则，不需要重启。轮询失败只打 WARN，继续使用内存中的规则。
 - 发现版本变化后，本实例重新加载规则，并重新生成受影响类的文档和字段规则，运行时返回字段过滤、请求校验随之更新；DevTools 关闭的生产实例会整体重新扫描一次文档。回滚同样会触发其他实例的同步。
 - `poll-interval: 0` 关闭轮询，此时其他实例要重启才会读到新规则。
-- 可选的即时通知（例如 Redis）见 [Redis 模式](#redis-模式规划中)，不是默认行为。
+- 可选的即时通知（例如 Redis）见 [Redis 模式](/guide/redis-mode)，不是默认行为。
 
 ## 修改记录与回滚
 
@@ -308,26 +308,70 @@ DevTools 的侧栏有「规则记录」页（`/devtools-ui/rules`），页面语
 
 适合生产环境：规则在测试环境（或之后团队版的审批流）里修改，生产环境只读取。轮询同步仍然有效，在别处改了规则，只读的实例也会按 `poll-interval` 加载到。
 
-## 从 YAML / SQLite 迁移
+## 迁移
 
-:::info 计划中
-YAML 目录 / SQLite 文件与数据库之间互相导入导出的迁移工具（`csap-apidoc-migrate`）**尚未完成**，计划在 1.4.0 发布前提供。完成后会在这里补充用法。导入前会检查冲突、默认不覆盖已有规则，导入本身记一条修改记录、可以回滚。
+:::warning 1.4.0 计划
+迁移工具随 1.4.0 发布，当前版本没有。
 :::
 
-在工具提供之前，可以保留原来的 YAML / SQLite，先在测试环境用数据库模式试用，再用 DevTools 重新勾选需要的规则（规则内容与 YAML 同一结构）。Go 旧表的升级见 [从 Go v0.1.x 的旧表升级](#从-go-v01x-的旧表升级)。
+迁移工具在以下存储之间搬运规则，规则内容是同一种 JSON 结构，不做转换：
 
-原来的 `paramType = SQL_LITE` 继续可用，只是生产环境、多实例推荐改用数据库模式。
+| 方向 | 用途 |
+|------|------|
+| YAML 目录 / SQLite 文件 → 数据库 / Redis | 从 YAML 或 SQLite 切换到数据库模式或 Redis 模式 |
+| 数据库 / Redis → YAML 文件 | 导出做备份，纳入 Git 审查 |
+
+行为：
+
+- **默认不覆盖**：目标里已有且内容相同的规则算"已一致"，内容不同的算"冲突"并跳过，在报告里列出；设置 `overwrite=true` 才覆盖。
+- **可以回滚**：导入按一次保存写入，修改人是 `migrate`，在修改记录里能看到、能回滚；内容相同的规则不写，不产生记录。
+- **其他实例同步**：导入完成后，当前实例立即重新加载，其他实例按轮询或订阅同步。
+- 空规则（没有任何字段）会被忽略。
+
+### Java
+
+模块 `csap-apidoc-migrate`，在应用启动时用启动参数运行，设置了 `csap.apidoc.migrate.from` 才会执行，执行完打印报告：
+
+| 参数 | 说明 |
+|------|------|
+| `csap.apidoc.migrate.from` | 来源：`yaml`、`sql_lite`（也可写 `sqlite`）、`database`、`redis` |
+| `csap.apidoc.migrate.to` | 导入的目标：`database` 或 `redis` |
+| `csap.apidoc.migrate.export-to` | 导出成 YAML 的目录（来源只能是 `database` 或 `redis`）；文件为 `{目录}/method-field/api-method-field.yaml` |
+| `csap.apidoc.migrate.overwrite` | 默认 `false`；`true` 时覆盖目标里内容不同的规则 |
+| `csap.apidoc.migrate.dry-run` | 默认 `false`；`true` 只打印报告，不写入 |
+
+`to` 和 `export-to` 至少设置一个；来源和目标不能相同；目标处于只读模式时不能导入。
+
+```bash
+# 先演练：YAML 目录导入数据库，只看报告
+java -jar app.jar --csap.apidoc.migrate.from=yaml --csap.apidoc.migrate.to=database --csap.apidoc.migrate.dry-run=true
+# 确认后正式导入
+java -jar app.jar --csap.apidoc.migrate.from=yaml --csap.apidoc.migrate.to=database
+# 数据库导出成 YAML 备份
+java -jar app.jar --csap.apidoc.migrate.from=database --csap.apidoc.migrate.export-to=./exported-rules
+```
+
+报告列出：新增、覆盖、已一致、冲突（已跳过）、空规则（已忽略）的数量和规则键。例如数据库导入 Redis，第一次"新增 1"，再运行一次变成"已一致 1"。
+
+来源是 YAML 或 SQLite 时，需要在**原来的应用**里运行（它要按 `@EnableApidoc` 的 `path`、`fileName` 找到规则文件），同时配置好目标存储（例如 `csap.apidoc.database.*` 或 Redis 连接）。也可以在代码里用 `RuleMigrator` 编程调用。
+
+### Go
+
+`strategy.Import(ctx, src, dst, ImportOptions{Overwrite, DryRun, By})` 把任意规则来源（YAML 等）导入 SQL 或 Redis 存储，返回 `Created` / `Updated` / `Unchanged` / `Conflicts` 四个列表，修改人默认 `migrate`。规则为空的接口跳过；某条写入失败不会中断，最后一并返回错误。详见仓库 [IMPORT.md](https://github.com/csap-ai/csap-apidoc/blob/main/csap-apidoc-go/docs/IMPORT.md)。
+
+原来的 `paramType = SQL_LITE` 继续可用，只是生产环境、多实例推荐改用数据库模式。Go 旧表的升级见 [从 Go v0.1.x 的旧表升级](#从-go-v01x-的旧表升级)。
 
 ## Go 版
 
 Go v0.2.0 的 SQL 规则来源改用上面这套表，Java 与 Go 的服务可以指向同一个库，各用各的 `service` 名；规则键不同（Java 是 `类全名.方法名`，Go 是 `分组.接口名`），规则 JSON 结构相同。API、方言和升级步骤见 [Go 版](/go/#sql-规则来源v020)。
 
-## Redis 模式（规划中）
+## Redis 模式
 
-1.4.0 计划同时提供 Redis 模式：规则存进 Redis，多实例订阅变更后即时同步，Java 与 Go 使用同一种数据结构。**目前还没有实现**，用法和配置项以发布时的文档为准。已确定的取舍：修改记录只保留最近若干条，需要完整、长期的审计追溯时请用数据库模式；Redis 需要开启持久化，否则重启会丢规则。
+没有关系数据库、或希望规则跟随已有 Redis 时，见 [Redis 模式](/guide/redis-mode)（1.4.0 计划）。
 
 ## 相关页面
 
+- [Redis 模式](/guide/redis-mode)
 - [存储策略与返回过滤](/guide/storage-strategies)：各种规则来源和字段如何进入文档
 - [DevTools](/guide/devtools)：保存规则、打包运行时能否保存
 - [配置参考](/guide/configuration)
