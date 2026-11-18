@@ -4,8 +4,9 @@
 
 | Version | Supported |
 | ------- | --------- |
-| 1.2.x   | ✅ |
-| 1.1.x   | ❌ (superseded by 1.2.x / 已被 1.2.x 取代) |
+| 1.3.x   | ✅ |
+| 1.2.x   | ❌ (superseded by 1.3.x / 已被 1.3.x 取代) |
+| 1.1.x   | ❌ (superseded / 已被取代) |
 | < 1.1   | ❌ (never published to Maven Central / 未发布到 Maven Central) |
 
 Security fixes are released as a new patch version of the latest minor line.

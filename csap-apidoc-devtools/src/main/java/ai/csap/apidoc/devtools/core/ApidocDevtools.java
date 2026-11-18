@@ -1254,6 +1254,7 @@ public class ApidocDevtools implements FilterData {
         }
         StandardProperties yamlProperties = new StandardProperties();
         yamlProperties.setControllerMap(new HashMap<>(16));
+        yamlProperties.setMethodMap(new HashMap<>(16));
         className.forEach(i -> {
             try {
                 Class<?> cl = Class.forName(i);

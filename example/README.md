@@ -15,6 +15,8 @@
 - [example-spring-boot2 说明](./example-spring-boot2/README.md)
 - [example-spring-boot3 说明](./example-spring-boot3/README.md)
 
+另有 `compat-spring-boot23`:只有测试,在支持范围下限 Spring Boot 2.3 / Spring 5.2 上跑 MCP 与返回字段过滤的端到端测试(复用 example-spring-boot2 的测试源码),`mvn -f example/compat-spring-boot23/pom.xml test`。
+
 ## 快速运行
 
 在仓库根目录先安装本地构建产物,再进入示例目录运行:
@@ -84,7 +86,7 @@ csap:
 
 - 用户管理 `/api/users`: 列表(分页)、详情、创建、更新、删除、`PATCH /{id}/status`
 - 产品管理 `/api/products`: 列表、详情、创建、更新、删除、库存更新、批量删除
-- 高级用法 `/api/advanced`: `@ApiProperty` / `@ApiPropertys` 补充方法参数文档
+- 高级用法 `/api/advanced`: 在参数上标注 `@ApiProperty` 补充参数文档(方法级写法已弃用)
 - 枚举(`@EnumValue` / `@EnumMessage`)、日期时间、JSR-303 参数校验
 
 boot3 额外包含 `/auth/login`、`/auth/whoami`(JWT,见 [SECURITY.md](./example-spring-boot3/SECURITY.md))、

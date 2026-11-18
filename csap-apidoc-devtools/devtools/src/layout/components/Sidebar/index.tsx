@@ -1,5 +1,5 @@
 import { Menu, MenuProps } from 'antd'
-import { ApiOutlined } from '@ant-design/icons'
+import { ApiOutlined, RobotOutlined } from '@ant-design/icons'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { RouteObject } from 'react-router-dom'
 import { useAppStore, useSettingsStore } from '@/store'
@@ -26,7 +26,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
     // 可以根据图标名称返回不同的图标
     const iconMap: Record<string, React.ReactNode> = {
       'api': <ApiOutlined style={{ fontSize: '16px' }} />,
-      'api2': <ApiOutlined style={{ fontSize: '16px' }} />
+      'api2': <ApiOutlined style={{ fontSize: '16px' }} />,
+      'mcp': <RobotOutlined style={{ fontSize: '16px' }} />
     }
 
     return iconMap[iconName] || <ApiOutlined style={{ fontSize: '16px' }} />
@@ -65,9 +66,9 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
               }
             })
 
-          if (children.length === 1 && !meta?.alwaysShow) {
-            // 只有一个子菜单，不显示父级
-            return children[0]
+          if ((children.length === 1 || path === '/') && !meta?.alwaysShow) {
+            // 只有一个子菜单,或是根布局下的页面:不显示父级
+            return children
           }
 
           return {
@@ -84,6 +85,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className }) => {
           icon: getIconComponent(meta?.icon)
         }
       })
+      .flat() as MenuProps['items']
   }
 
   const menuItems = generateMenuItems(routes)

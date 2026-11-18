@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <!-- 支持范围的下限:Spring Boot 2.3.x(Spring Framework 5.2.x) -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>2.3.12.RELEASE</version>
+        <relativePath/>
+    </parent>
+    <groupId>ai.csap.apidoc.example</groupId>
+    <artifactId>compat-spring-boot23</artifactId>
+    <version>1.0.0</version>
+    <name>CSAP API Doc - Spring Boot 2.3 compatibility tests</name>
+    <description>
+        只有测试:在 Spring Boot 2.3 / Spring 5.2 上跑 MCP 与返回字段过滤的端到端测试。
+        测试用的 Controller、模型、MCP 客户端与过滤测试直接复用 example-spring-boot2 的测试源码(见下方 build-helper)。
+    </description>
+
+    <properties>
+        <java.version>11</java.version>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <csap.apidoc.version>1.3.0</csap.apidoc.version>
+        <boot2.test.dir>${project.basedir}/../example-spring-boot2/src/test</boot2.test.dir>
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <maven.install.skip>true</maven.install.skip>
+        <!-- Boot 2.3 管理的 Lombok 1.18.12 不支持 JDK 21(javac JCImport 字段变化),只覆盖 Lombok,其余依赖仍按 Boot 2.3 -->
+        <lombok.version>1.18.34</lombok.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ai.csap.apidoc.boot</groupId>
+            <artifactId>csap-apidoc-boot-starter</artifactId>
+            <version>${csap.apidoc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <testResources>
+            <testResource>
+                <directory>${boot2.test.dir}/resources</directory>
+                <includes>
+                    <include>csap-mcp-e2e/**</include>
+                </includes>
+            </testResource>
+        </testResources>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>reuse-boot2-tests</id>
+                        <phase>generate-test-sources</phase>
+                        <goals>
+                            <goal>add-test-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${boot2.test.dir}/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <!-- 只编译能在 Boot 2.3 上用的部分:fastjson 用例、依赖 example 主程序的用例不要 -->
+                    <testIncludes>
+                        <testInclude>ai/csap/e2e/mcp/McpBoot23E2ETest.java</testInclude>
+                        <testInclude>ai/csap/e2e/mcp/McpClient.java</testInclude>
+                        <testInclude>ai/csap/e2e/mcp/McpOrder.java</testInclude>
+                        <testInclude>ai/csap/e2e/mcp/McpOrderController.java</testInclude>
+                        <testInclude>ai/csap/e2e/mcp/McpE2EApplication.java</testInclude>
+                        <testInclude>ai/csap/e2e/filter/AbstractFilterE2ETest.java</testInclude>
+                        <testInclude>ai/csap/e2e/filter/JacksonFilterE2ETest.java</testInclude>
+                        <testInclude>ai/csap/e2e/filter/FilterE2EApplication.java</testInclude>
+                        <testInclude>ai/csap/e2e/filter/Order.java</testInclude>
+                        <testInclude>ai/csap/e2e/filter/OrderController.java</testInclude>
+                    </testIncludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

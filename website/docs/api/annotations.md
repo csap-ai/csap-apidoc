@@ -1,6 +1,6 @@
 # 注解参考
 
-本页列出 CSAP Apidoc 1.2.0 全部注解及其属性，内容按 `csap-apidoc-annotation` 模块的源码整理。用法和示例见 [注解使用指南](/guide/annotations)。
+本页列出 CSAP Apidoc 1.3.0 全部注解及其属性，内容按 `csap-apidoc-annotation` 模块的源码整理。用法和示例见 [注解使用指南](/guide/annotations)。
 
 :::info 适用范围
 本页是 **Java 版**的注解参考。Go 版没有注解,用结构体标签和 `apidoc.Op` 声明,见 [Go 版](/go/)。
@@ -110,7 +110,7 @@
 | `hidden` | `boolean` | `false` | 标记为隐藏 |
 | `example` | `String` | `""` | 示例值 |
 | `defaultValue` | `String` | `""` | 默认值 |
-| `required` | `boolean` | `false` | 是否必填。注解策略下，为 `true` 时参数的校验规则才会登记到运行时校验；文档里显示的必填取规则中的 `required` 与 `@ApiProperty.required` 的「或」；是否登记到运行时校验只看规则的 `required`（YAML / SQLite 策略下）。见 [参数校验](/guide/validation) |
+| `required` | `boolean` | `false` | 是否必填。YAML / SQLite 策略下，规则里有这个参数时以规则中的 `required` 为准（规则写 `false` 而注解写 `true` 时按非必填），没有这个参数的规则时才用 `@ApiProperty.required`；注解策略下就是 `@ApiProperty.required`。文档显示的必填与运行时校验是否登记用同一个结果，为 `true` 时参数的校验规则才会登记到运行时校验（1.3.0 起；1.2.x 中文档显示取两者的「或」，校验登记只看规则）。见 [参数校验](/guide/validation) |
 | `paramType` | `ParamType` | `QUERY` | 参数位置。参数带 `@PathVariable` 时为 `PATH` |
 | `group` | `String[]` | `"default"` | 分组；保持默认时继承方法 |
 | `version` | `String[]` | `"default"` | 版本；保持默认时继承方法 |
@@ -166,9 +166,13 @@
 | `ignoreRep` | `boolean` | `false` | 在所有返回参数中忽略 |
 | `group` | `String[]` | `"default"` | 分组；保持默认时继承所属实体 |
 | `version` | `String[]` | `"default"` | 版本；保持默认时继承所属实体 |
-| `groups` | `Group[]` | `{}` | 按方法声明的字段规则，只在注解策略下读取，见 [@Group](#group) |
+| `groups` | `Group[]` | `{}` | 按方法声明的字段规则，只在注解策略下读取，见 [@Group](#group)。1.3.0 起弃用，2.0 删除 |
 
 ## @Group
+
+:::warning 已弃用
+`@Group`、`@Request`、`@Response` 和 `@ApiModelProperty.groups` 自 1.3.0 起弃用，2.0 删除，1.3.0 中行为不变。按接口选择字段请改用 YAML / SQLite 规则（`@EnableApidoc(paramType = ...)`），所有接口都显示的字段用 `forceReq` / `forceRep`。
+:::
 
 只能作为其他注解的属性使用（`@Target(ANNOTATION_TYPE)`），用于 `@ApiModelProperty.groups`。
 

@@ -50,25 +50,32 @@ public class SecurityConfig {
      * probes succeed.
      */
     static final String[] PUBLIC_PATHS = {
-            // CSAP API Doc — metadata endpoints consumed by csap-apidoc-ui.
+            // CSAP API Doc 数据接口:/csap/apidoc、/csap/apidoc/{tableName}、/csap/apidoc/parent、
+            // /csap/apidoc/method 与试运行代理 /csap/apidoc/devtools/proxy(默认关闭)
+            "/csap/apidoc",
             "/csap/apidoc/**",
-            "/api-doc",
-            "/api-doc/**",
-            // CSAP API Doc — embedded HTML viewers.
+            // OpenAPI / Postman 导出
+            "/csap/openapi.json",
+            "/csap/openapi/**",
+            // 文档页面(csap-apidoc-ui)及其静态资源
             "/csap-api.html",
+            "/assets/**",
+            // DevTools 页面、静态资源和后端接口(/devtools/**、/csap/yaml/**)。
+            // 只在开发环境开启 csap.apidoc.devtool.enabled;生产环境关闭 DevTools,或去掉这几行改为需要登录。
             "/csap-api-devtools.html",
-            // csap-apidoc-devtools backend (used by backend-side controllers
-            // to manage doc metadata).
+            "/assets2/**",
             "/devtools-ui",
             "/devtools-ui/**",
-            "/api/devtools/**",
-            // Demo auth endpoints themselves must be reachable without a token.
+            "/devtools/**",
+            "/csap/yaml/**",
+            // 内嵌 MCP 端点:token 模式由 MCP 自己校验令牌;passthrough 模式下接口的访问控制
+            // 照常由本过滤链对回环请求执行(见官网 MCP 指南"和 Spring Security 一起使用")
+            "/csap/mcp",
+            // 示例登录接口本身不需要令牌
             "/auth/**",
-            // Operational.
+            // 运维
             "/actuator/health",
             "/error",
-            "/static/**",
-            "/assets/**",
             "/favicon.ico",
     };
 

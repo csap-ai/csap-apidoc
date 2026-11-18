@@ -23,7 +23,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 import ai.csap.apidoc.annotation.ApiProperty;
-import ai.csap.apidoc.annotation.ApiPropertys;
 import ai.csap.apidoc.annotation.EnumMessage;
 import ai.csap.apidoc.annotation.EnumValue;
 import ai.csap.apidoc.core.ModelTypepProperties;

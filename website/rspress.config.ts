@@ -23,7 +23,7 @@ export default defineConfig({
       { text: '发布说明', link: '/changelog' },
       { text: '下载', link: '/download/' },
       {
-        text: 'v1.2.0',
+        text: 'v1.3.0',
         items: [
           { text: 'GitHub Releases', link: `${repo}/releases` },
           { text: 'Maven Central', link: 'https://central.sonatype.com/namespace/ai.csap.apidoc' },
@@ -52,6 +52,7 @@ export default defineConfig({
             { text: '返回字段过滤', link: '/guide/runtime-filter' },
             { text: '参数校验', link: '/guide/validation' },
             { text: 'DevTools', link: '/guide/devtools' },
+            { text: 'MCP(AI 调用接口)', link: '/guide/mcp' },
           ],
         },
         {

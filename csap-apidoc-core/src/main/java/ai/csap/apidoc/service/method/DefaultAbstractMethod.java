@@ -15,6 +15,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import ai.csap.apidoc.util.ApidocUtils;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.method.HandlerMethod;
 
 import com.google.common.collect.Lists;
@@ -193,9 +194,7 @@ public class DefaultAbstractMethod implements FilterData {
 
     /**
      * 方法的单参数 基础数据类型
-     * 支持两种 @ApiProperty 使用方式：
-     * 1. 参数级（优先级最高）：直接标注在参数上
-     * 2. 方法级（向后兼容）：标注在方法上，通过 name 匹配
+     * 只读取标注在参数上的 @ApiProperty;方法上的 @ApiProperty / @ApiPropertys 不会读取(已弃用)。
      *
      * @param typepProperties 模型属性
      * @param method          方法
@@ -219,21 +218,30 @@ public class DefaultAbstractMethod implements FilterData {
                 .paramStrategy(strategyModel.getParamType())
                 .requestBasicParams(strategyModel, paramName, docMethod, method, paramName, parameter);
 
-        // 计算 required 属性（优先级：property.required > paramDataValidate.required）
-        Boolean required = paramDataValidate != null && paramDataValidate.getRequired()
-                || property != null && property.required();
+        // 必填以规则为准:规则来源(YAML / SQLite;注解策略下即参数上的 @ApiProperty)里有这个参数的规则时用规则的 required,
+        // 没有规则时才用参数上的 @ApiProperty.required。文档显示与运行时校验登记用同一个结果。
+        boolean hasRule = paramDataValidate != null;
+        boolean required = hasRule ? paramDataValidate.getRequired() : property != null && property.required();
 
         // 计算 description（优先级：paramDataValidate.description > property.description）
-        String description = paramDataValidate != null && !StrUtil.isEmpty(paramDataValidate.getDescription())
+        String description = hasRule && !StrUtil.isEmpty(paramDataValidate.getDescription())
                 ? paramDataValidate.getDescription() : (property != null ? property.description() : "");
 
         // 添加验证规则
-        if (paramDataValidate != null && paramDataValidate.getRequired()) {
+        if (required) {
             String value = property != null ? property.value() : EMPTY;
             BaseModel baseModel = BaseModel.build().modelType(ModelType.BASE_DATA).field(parameter.getType());
+            List<Validate.ConstraintValidatorField> validate = hasRule ? paramDataValidate.getValidate()
+                    : getValidateFactory().getAllFieldConstraintValidator(parameter.getType(),
+                    parameter.getAnnotations());
             getValidateFactory().addRequestValidate(docMethod.getKey(), parameter.getType().getSimpleName(),
-                    paramName, value, baseModel, paramDataValidate.getValidate());
+                    paramName, value, baseModel, validate);
         }
+
+        // 参数位置:规则里指定的优先;没有时 @PathVariable 记为 PATH,其余用方法默认位置
+        ParamType paramType = hasRule && paramDataValidate.getParamType() != null ? paramDataValidate.getParamType()
+                : ApidocUtils.getParameterAnnotation(parameter, PathVariable.class) != null ? ParamType.PATH
+                : docMethod.getParamType();
 
         // 构建参数文档
         CsapDocParameter csapDocParameter = CsapDocParameter.builder()
@@ -252,8 +260,7 @@ public class DefaultAbstractMethod implements FilterData {
                 .position(property != null ? property.position() : 0)
                 .length(property != null ? property.length() : 0)
                 .decimals(property != null ? property.decimals() : 0)
-                .paramType(paramDataValidate != null && paramDataValidate.getParamType() != null
-                        ? paramDataValidate.getParamType() : docMethod.getParamType())
+                .paramType(paramType)
                 .build();
 
         csapDocParameter.setKey(getKey(csapDocParameter));

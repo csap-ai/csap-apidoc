@@ -33,6 +33,16 @@ public class DbUtilsCrudUtil {
 
     public static final String URL = "jdbc:sqlite:%s";
 
+    static {
+        // 显式注册驱动:以 jar 运行时,DriverManager 若先在线程上下文类加载器为系统类加载器的线程
+        // (如启动时的异步扫描线程)里初始化,ServiceLoader 找不到 jar 内嵌的 sqlite-jdbc,报 No suitable driver
+        try {
+            Class.forName("org.sqlite.JDBC");
+        } catch (ClassNotFoundException e) {
+            log.warn("csap-apidoc: 没有找到 SQLite JDBC 驱动 org.sqlite.JDBC: {}", e.getMessage());
+        }
+    }
+
     /**
      * 获取链接
      *

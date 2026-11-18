@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BASE_URL="http://localhost:8080"
+BASE_URL="${BASE_URL:-http://localhost:8083}"
 
 echo "========================================="
 echo "  Testing CSAP API Doc Example APIs"
@@ -43,13 +43,13 @@ echo ""
 
 # Test 4: Get product list
 echo "📋 Test 4: Get product list"
-curl -s -X GET "${BASE_URL}/api/products?page=1&pageSize=10" \
+curl -s -X GET "${BASE_URL}/api/products/listProducts?page=1&pageSize=10" \
   -H "Accept: application/json" | jq '.'
 echo ""
 
 # Test 5: Create product
 echo "📋 Test 5: Create product"
-curl -s -X POST "${BASE_URL}/api/products" \
+curl -s -X POST "${BASE_URL}/api/products/createProduct" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Test Product",
@@ -63,8 +63,8 @@ echo ""
 
 # Test 6: Get API documentation
 echo "📋 Test 6: Get API documentation metadata"
-curl -s -X GET "${BASE_URL}/api/csap/doc" \
-  -H "Accept: application/json" | jq '.controllers | length' | xargs echo "Total controllers:"
+curl -s -X GET "${BASE_URL}/csap/apidoc" \
+  -H "Accept: application/json" | jq '.data.apiList | length' | xargs echo "Total controllers:"
 echo ""
 
 echo "========================================="

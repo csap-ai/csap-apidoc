@@ -21,9 +21,9 @@
 public class ExampleApplication { }
 ```
 
-(`example-spring-boot3` 用 `apiPackageClasses = {ProductController.class}` 直接列出 Controller 类,而不是用 `value` 按包扫描。)
+(两个示例都用 `value` 按包扫描;只想文档化部分 Controller 时可改用 `apiPackageClasses = {...}` 直接列出类。)
 
-`application-sqlite.yml`、`application-yaml.yml` 只是带不同日志与端口的 profile 样例,**不会**切换策略;策略只由启动类上的 `@EnableApidoc` 决定。要试其他策略,请直接修改 `@EnableApidoc`。
+`application-sqlite.yml`、`application-yaml.yml` 只是带不同日志与应用名的 profile 样例(端口与默认相同),**不会**切换策略;策略只由启动类上的 `@EnableApidoc` 决定。要试其他策略,请直接修改 `@EnableApidoc`。
 
 ## ANNOTATION 策略
 

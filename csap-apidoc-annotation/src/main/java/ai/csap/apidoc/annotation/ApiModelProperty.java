@@ -139,7 +139,11 @@ public @interface ApiModelProperty {
      * 请求 处理的参数列表
      *
      * @return
+     * @deprecated 自 1.3.0 起弃用,将在 2.0 删除。按接口选择显示字段,请改用 YAML 或 SQLite 规则
+     * ({@code @EnableApidoc(paramType = ...)});需要在所有接口里显示的字段用 {@link #forceReq()} / {@link #forceRep()}。
+     * 1.3.0 中行为不变。
      */
+    @Deprecated
     Group[] groups() default {};
 
 

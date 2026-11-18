@@ -2,7 +2,7 @@
 
 本页介绍 `csap-apidoc` 技能:安装后,Claude Code 等支持 Agent Skills 的 AI 编码助手就知道如何给 Java(Spring Boot)或 Go(gin、net/http)项目接入 CSAP Apidoc、写注解或结构体标签和 YAML 规则、排查"文档里看不到字段"。技能会先判断项目是什么语言,再按对应语言的写法处理,不会把 Java 的写法套到 Go 项目上。
 
-技能源文件在仓库的 [`skills/csap-apidoc/`](https://github.com/csap-ai/csap-apidoc/tree/main/skills/csap-apidoc),随版本一起维护。当前对应 Java 1.2.x 和 Go v0.1.x;后续语言发布后会陆续加入。
+技能源文件在仓库的 [`skills/csap-apidoc/`](https://github.com/csap-ai/csap-apidoc/tree/main/skills/csap-apidoc),随版本一起维护。当前对应 Java 1.2.x / 1.3.0 和 Go v0.1.x;后续语言发布后会陆续加入。
 
 ## 安装
 
@@ -34,6 +34,6 @@ cp -R /tmp/csap-apidoc/skills/csap-apidoc ~/.claude/skills/
 - **Go 版**:`go get` 和版本、`apidoc.New` 与 `Options`、gin / net/http 适配、`apidoc.Op` 声明接口、结构体标签、返回过滤(`FilterMode`、`FilterEndpoints`、`ShouldFilter`)、请求校验中间件、devtools 鉴权。
 - 接入后的检查步骤。
 
-## 计划
+## 和 MCP 一起用
 
-1.3.0 计划提供"文档即 MCP":AI 助手可以通过 MCP 直接查询并调用你服务的接口,届时技能会同步加入 MCP 的使用方法。见 [路线图](https://github.com/csap-ai/csap-apidoc/blob/main/docs/ROADMAP.md)。
+1.3.0 起服务可以开启内嵌 MCP 端点(见 [MCP](/guide/mcp)),AI 助手连上后能直接查询和调用接口。技能里写了何时优先用 MCP 工具、怎样读工具的返回和错误、写操作为什么默认不开放,以及开启、客户端配置和排错(`references/mcp.md`)。技能负责"怎么接入和维护",MCP 负责"直接调用",两者配合使用。

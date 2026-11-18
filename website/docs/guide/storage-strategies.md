@@ -70,6 +70,10 @@ YAML 和 SQLite 的实现都已经包含在 `csap-apidoc-boot-starter` 中（它
 
 `paramType = ApiStrategyType.ANNOTATION`（默认）。规则写在 `@ApiModelProperty.groups` 里，每个 `@Group` 对应一个方法：
 
+:::warning 已弃用
+`@Group` / `@Request` / `@Response` / `groups` 自 1.3.0 起弃用，2.0 删除，1.3.0 中行为不变。按接口选择字段请改用下面的 YAML 或 SQLite 规则。
+:::
+
 ```java
 @ApiModelProperty(value = "用户名", groups = {
         @Group(value = "createUser", request = @Request(required = true)),
@@ -246,7 +250,10 @@ DevTools 写 YAML 时，目标路径是把 classpath 根目录中的 `target/cla
 ### 运行时的文件位置
 
 - 在 IDE 中以目录形式运行时，框架直接使用 `src/main/resources` 下的数据库文件，DevTools 的修改会写回这个文件。
-- 打成 jar 运行时，框架把数据库复制到系统临时目录（`java.io.tmpdir`）后读取。
+- 打成 jar 运行时（1.3.0 起）：
+  - 启动目录（`user.dir`）下有 `<path>/<fileName>.db`（默认 `./csap-api-doc/apidoc.db`）时，读写都用这个 jar 外的文件；
+  - 没有这个文件时，jar 里有数据库就复制到系统临时目录（`java.io.tmpdir`）后读取，没有就是空规则；
+  - DevTools 第一次保存时创建 jar 外的文件（jar 里有数据库就以它为初始内容），之后的保存都写到这里，重启后仍然读这个文件。它会优先于 jar 里的数据库，想回到 jar 里的版本，删掉这个文件即可。
 
 规则在启动时读取一次并缓存。
 
@@ -259,10 +266,40 @@ DevTools 写 YAML 时，目标路径是把 classpath 根目录中的 `target/cla
 
 1.2.0 起，框架每次打开数据库连接时都会检查 `api_method` 表：只要存在没有默认值的 `NOT NULL` 列（主键除外），或者 `key` 上有唯一索引，就在一个事务里迁移——按新的表结构建临时表、拷贝全部数据（`id` 不变，原来为 `NULL` 的列按新结构的默认值补齐）、删除旧表、改名，再重建原有的非唯一索引。旧表中新结构没有的列会保留下来。迁移后的表不再满足检查条件，所以只会迁移一次。
 
-迁移会直接修改数据库文件：在 IDE 中运行时改的是 `src/main/resources` 下的文件，打成 jar 运行时改的是复制到临时目录的副本。重要数据请先备份。
+迁移会直接修改数据库文件：在 IDE 中运行时改的是 `src/main/resources` 下的文件，打成 jar 运行时改的是 jar 外的文件或复制到临时目录的副本。重要数据请先备份。
 
 1.1.1 只在表不存在时建表，不会改已有的表结构；仍在使用 1.1.1 时，请删除旧的 `.db` 文件，让框架重新创建（需要保留的规则请先导出 `request`、`response` 两列）。
 :::
+
+## 打包运行时能否在 DevTools 保存
+
+用 `java -jar` 运行打包后的应用时，classpath 在 jar 里，不能写入。用 Spring Boot 3 示例打出 fat jar 实测（1.3.0）：
+
+| 策略 | 打包运行时保存 | 说明 |
+|------|----------------|------|
+| `ANNOTATION` | 不适用 | 规则在注解里，DevTools 本来就不能写回 |
+| `YAML` | 不能 | 规则文件在 jar 内。返回 `code = 1007` 的失败结果和说明，打一条 WARN |
+| `type = JSON`（导出文档） | 不能 | 同上 |
+| `SQL_LITE` | 能 | 写到 jar 外、启动目录下的 `<path>/<fileName>.db`（默认 `./csap-api-doc/apidoc.db`），重启后仍在 |
+| 数据库模式（MySQL / PostgreSQL / 达梦 / 人大金仓） | 1.4.0 计划 | 当前版本没有实现 |
+| Redis 模式 | 1.4.0 计划 | 当前版本没有实现；规则存进 Redis，多实例订阅变更即时同步 |
+
+推荐做法：
+
+- 规则主要在开发环境里维护：在 IDE 或 `mvn spring-boot:run` 中用 DevTools，YAML 文件写回 `src/main/resources`，随代码提交和打包；
+- 必须在打包后的环境里改规则时用 `SQL_LITE`，并确保启动目录可写。每个实例各有一份文件，互不同步；
+- 多实例共享规则请等 1.4.0 的数据库模式。
+
+返回给 DevTools 的提示原文见 [DevTools - 打包运行时能否在 DevTools 保存](/guide/devtools#打包运行时能否在-devtools-保存)。
+
+## 规则过期检查
+
+规则按"类名 + 方法名 + 字段路径"保存,方法改名或返回结构改变后,旧规则不会自动跟着变。1.3.0 起文档生成完成后会检查 `YAML` 和 `SQL_LITE` 两种来源的规则,发现以下情况各打一条 WARN(每个方法汇总一条,结果不变时不重复打):
+
+- 规则里的方法在类中已经不存在,附上名字相近的现有方法;
+- 规则里的请求 / 返回字段路径在当前结构中找不到。
+
+检查只读取已经加载的规则,不重新解析文件,也不改变文档和过滤结果。用 `csap.apidoc.rule-check.enabled=false` 关闭。排查步骤见 [常见问题](/guide/faq#规则过期怎么排查改了方法名或返回结构后字段不见了)。
 
 ## 如何选择
 

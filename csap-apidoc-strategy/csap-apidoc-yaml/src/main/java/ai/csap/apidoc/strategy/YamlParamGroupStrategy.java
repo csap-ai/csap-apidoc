@@ -117,10 +117,8 @@ public class YamlParamGroupStrategy implements ParamGroupStrategy {
         ParamGroupMethodProperty.ParamDataValidate dataValidate = requestGroup(strategyModel,
                 keyName + DOT + paramName, docMethod, method, parameter.getType(),
                 parameter.getAnnotations());
-        if (Objects.isNull(dataValidate)) {
-            dataValidate = new ParamGroupMethodProperty.ParamDataValidate(false, true, null, null, null);
-        }
-        if (Objects.nonNull(parameter.getAnnotation(PathVariable.class))) {
+        // 没有这个参数的规则时返回 null,由调用方回退到参数上的 @ApiProperty(必填以规则为准,没有规则才看注解)
+        if (Objects.nonNull(dataValidate) && Objects.nonNull(parameter.getAnnotation(PathVariable.class))) {
             dataValidate.setParamType(ParamType.PATH);
         }
         return dataValidate;

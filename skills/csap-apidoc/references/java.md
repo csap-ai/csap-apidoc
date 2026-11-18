@@ -1,6 +1,6 @@
 # Java 版(Spring Boot 2.x / 3.x)
 
-当前版本 1.2.0。本文件只适用于 Java 项目;Go 项目见 [go.md](go.md)。共用的 YAML 规则格式见 [yaml-rules.md](yaml-rules.md)。
+当前版本 1.3.0。本文件只适用于 Java 项目;Go 项目见 [go.md](go.md)。共用的 YAML 规则格式见 [yaml-rules.md](yaml-rules.md)。
 
 动手前先看项目现状:`pom.xml` / `build.gradle` 里有没有 `ai.csap.apidoc`、启动类上有没有 `@EnableApidoc`、`src/main/resources/csap-api-doc/method-field/` 下有没有 YAML 规则。
 
@@ -10,7 +10,7 @@
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.2.0</version>
+    <version>1.3.0</version>
 </dependency>
 ```
 
@@ -33,7 +33,7 @@ public class DemoApplication { ... }
 
 - Controller:`@RestController` + `@Api(value = "名称")`,缺一个都不会出现在文档里。
 - 方法:请求映射注解 + `@ApiOperation("接口名称")`(`value` 必填)。
-- 基础类型参数:`@ApiProperty(value = "说明", required = true)`,总会出现在请求参数里。
+- 基础类型参数:`@ApiProperty(value = "说明", required = true)` 直接标在**参数**上,总会出现在请求参数里。标在方法上的 `@ApiProperty` / `@ApiPropertys` 不生效(1.3.0 起弃用)。是否必填:规则(YAML / SQLite)里有这个参数时以规则的 `required` 为准(1.3.0 起),没有规则时才看注解。
 - 模型类:`@ApiModel(description = "...")`(只能用在类上,不能用在参数上)。
 - 模型字段:`@ApiModelProperty(value = "...")`。**没有这个注解的字段永远不出现。**
 - 其他:`@DocGlobalHeader` / `@DocAuth`(调试界面预填请求头和鉴权建议,不继承)、`@ApiResponseCode`(返回码表)、`@EnumValue` / `@EnumMessage`(枚举字段说明),详见 <https://apidoc.csap.ai/guide/annotations>。
@@ -44,7 +44,7 @@ public class DemoApplication { ... }
 
 1. `forceReq = true` / `forceRep = true`:在所有用到该模型的接口的请求 / 返回中显示。最简单。
 2. 按接口选择,取决于 `@EnableApidoc(paramType = ...)` 选的策略(三种策略**互不合并**):
-   - `ANNOTATION`(默认):`@ApiModelProperty(groups = @Group(value = "方法名", request = @Request(required = true), response = @Response))`
+   - `ANNOTATION`(默认):`@ApiModelProperty(groups = @Group(value = "方法名", request = @Request(required = true), response = @Response))`。**1.3.0 起弃用,2.0 删除**;新代码请改用 YAML / SQLite 规则。
    - `YAML`:规则写在 `src/main/resources/csap-api-doc/method-field/<Controller简单类名>-method-field.yaml`,格式见 [yaml-rules.md](yaml-rules.md)
    - `SQL_LITE`:规则存 SQLite,通常用 DevTools 维护
 3. 返回字段在规则里要 `include: true` 才出现;请求字段只要规则里有就出现。

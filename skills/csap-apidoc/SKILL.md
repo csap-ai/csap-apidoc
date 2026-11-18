@@ -1,6 +1,6 @@
 ---
 name: csap-apidoc
-description: 为项目接入和维护 CSAP Apidoc(多语言的运行时 API 文档框架,服务启动即生成接口文档,页面 /csap-api.html)。当前覆盖 Java(Spring Boot 2/3,Maven 坐标 ai.csap.apidoc / ai.csap.apidoc.boot)和 Go(gin、net/http,模块 github.com/csap-ai/csap-apidoc/csap-apidoc-go),后续语言陆续加入。能做:添加依赖并开启(Java 的 @EnableApidoc;Go 的 go get、apidoc.New、apidoc.Op)、写注解(Java 的 @Api/@ApiOperation/@ApiModel/@ApiModelProperty)或结构体标签(Go 的 doc、doc_required、doc_force 等)、按接口选择显示字段(forceReq/forceRep、YAML 规则 *-method-field.yaml,两种语言共用同一种规则文件)、运行时返回字段过滤与请求参数校验、DevTools 后台、读取 /csap/apidoc 文档数据。当用户提到 CSAP Apidoc、csap-apidoc、csap-apidoc-go、csap-api.html、method-field.yaml、@EnableApidoc、apidoc.Op、apidoc.New,或要给使用这些的 Java / Go 项目加接口文档、改字段显示、排查"文档里看不到字段/接口"时使用。Use for integrating or maintaining CSAP Apidoc (a multi-language runtime API documentation framework; Java / Spring Boot and Go / gin, net/http today) in a project.
+description: 为项目接入和维护 CSAP Apidoc(多语言的运行时 API 文档框架,服务启动即生成接口文档,页面 /csap-api.html)。当前覆盖 Java(Spring Boot 2/3,Maven 坐标 ai.csap.apidoc / ai.csap.apidoc.boot)和 Go(gin、net/http,模块 github.com/csap-ai/csap-apidoc/csap-apidoc-go),后续语言陆续加入。能做:添加依赖并开启(Java 的 @EnableApidoc;Go 的 go get、apidoc.New、apidoc.Op)、写注解(Java 的 @Api/@ApiOperation/@ApiModel/@ApiModelProperty)或结构体标签(Go 的 doc、doc_required、doc_force 等)、按接口选择显示字段(forceReq/forceRep、YAML 规则 *-method-field.yaml,两种语言共用同一种规则文件)、运行时返回字段过滤与请求参数校验、DevTools 后台、读取 /csap/apidoc 文档数据、开启内嵌 MCP 端点 /csap/mcp 并通过 MCP 工具查询和调试接口(Java 1.3.0 起;Go 暂无)。当用户提到 CSAP Apidoc、csap-apidoc、csap-apidoc-go、csap-api.html、method-field.yaml、@EnableApidoc、apidoc.Op、apidoc.New、csap.apidoc.mcp、/csap/mcp,或要给使用这些的 Java / Go 项目加接口文档、改字段显示、排查"文档里看不到字段/接口"时使用。Use for integrating or maintaining CSAP Apidoc (a multi-language runtime API documentation framework; Java / Spring Boot and Go / gin, net/http today) in a project.
 ---
 
 # CSAP Apidoc
@@ -9,7 +9,7 @@ CSAP Apidoc 是**多语言的运行时 API 文档框架**:服务启动时从代�
 
 | 语言 | 当前版本 | 框架 | 详细写法 |
 |---|---|---|---|
-| Java | 1.2.0 | Spring Boot 2.x / 3.x | [references/java.md](references/java.md) |
+| Java | 1.3.0 | Spring Boot 2.x / 3.x | [references/java.md](references/java.md) |
 | Go | v0.1.1 | gin、net/http | [references/go.md](references/go.md) |
 | 其他语言 | 规划中 | | 见官网路线图,目前没有可用实现 |
 
@@ -28,7 +28,7 @@ CSAP Apidoc 是**多语言的运行时 API 文档框架**:服务启动时从代�
 ## 共通概念
 
 - **运行时生成文档**:启动时扫描代码(Java 扫注解,Go 读路由、结构体和标签)生成文档,访问 `/csap-api.html` 查看,页面内可以直接调试接口(环境、全局请求头、鉴权、历史、快照)。
-- **字段规则**:同一个模型在不同接口里可以显示不同字段,所以字段默认不会出现在每个接口里,要被"选中"。选中的来源:代码里的标记(Java 的 `forceReq` / `forceRep`,Go 的 `doc_force`)、YAML 规则文件、SQL / SQLite(Java 的 SQLite;Go 的 SQLite / PostgreSQL / MySQL)。Java 另有注解策略下的 `@Group`。
+- **字段规则**:同一个模型在不同接口里可以显示不同字段,所以字段默认不会出现在每个接口里,要被"选中"。选中的来源:代码里的标记(Java 的 `forceReq` / `forceRep`,Go 的 `doc_force`)、YAML 规则文件、SQL / SQLite(Java 的 SQLite;Go 的 SQLite / PostgreSQL / MySQL)。Java 另有注解策略下的 `@Group`(1.3.0 起弃用,2.0 删除,新代码不要用,改用 YAML / SQLite 规则)。
 - **返回字段过滤**:让接口实际返回的 JSON 只含文档里显示的字段。Java 1.2.0 起可用,**默认关闭**(`csap.apidoc.runtime.filter.enabled`);Go 需要注册 `ResponseFilter` 中间件,注册后配了返回规则的接口才会过滤(默认路径白名单模式,`apidoc.Options.FilterMode` 可改)。
 - **请求参数校验**:按规则校验必填、正则、长度等。Java 1.2.0 起可用,**默认关闭**(`csap.validation.mode`);Go 的 `validate.Options.Mode` 默认也是 `Off`。都有 `observe`(只记录不拦截)和 `enforce`(拦截)两种开启方式,建议先观察。
 - **DevTools**:开发阶段的后台页面 `/devtools-ui`,勾选字段、配置校验规则并写回规则文件。**两种语言默认都不开启,不要在生产环境开启**;Go 必须配置鉴权才能创建。
@@ -51,7 +51,7 @@ CSAP Apidoc 是**多语言的运行时 API 文档框架**:服务启动时从代�
 |---|---|---|
 | 声明接口 | `@Api` + `@ApiOperation` + Spring 映射注解 | 注册路由时用 `apidoc.Op(分组, 接口名)...` 声明请求 / 返回结构体 |
 | 描述字段 | `@ApiModelProperty` | 结构体标签 `doc`、`doc_desc`、`doc_example`、`doc_required`、`doc_force` 等 |
-| 字段"选中" | `forceReq` / `forceRep`、`@Group`、YAML、SQLite | `doc_force`、YAML、SQL(没有 `@Group`) |
+| 字段"选中" | `forceReq` / `forceRep`、YAML、SQLite(`@Group` 1.3.0 起弃用) | `doc_force`、YAML、SQL(没有 `@Group`) |
 | 规则文件命名 | 文件名必须以 `-method-field.yaml` 结尾,`.yml` 不读取 | 目录下所有 `.yaml` / `.yml` 都加载,文件名不限 |
 | 规则修改生效 | 手工改 YAML 需重启;DevTools 修改即时生效 | `doc.Watch` 监听,文件改了自动重新加载 |
 | 返回过滤 | `csap.apidoc.runtime.filter.*`,默认关闭;按 `mode: path / csap / off` | `Options.FilterMode`(`ModePath` 默认 / `ModeCsap` / `ModeOff`)、`FilterEndpoints`、`ShouldFilter`,只裁剪 2xx |
@@ -65,6 +65,17 @@ CSAP Apidoc 是**多语言的运行时 API 文档框架**:服务启动时从代�
 
 - **非必填字段的校验**:同一份 YAML 规则在 Go 上可能比 Java 更严格。两边是否对齐、以哪边为准,计划在 1.4.0 前确定;在此之前不要向用户承诺两边行为完全相同。
 - **YAML 文件名**:给 Java 项目写规则文件务必以 `-method-field.yaml` 结尾;只在 Go 项目里使用时 `.yml` 也行,但两边共用同一份文件时按 Java 的要求命名。
+
+## 通过 MCP 查询和调试接口(Java 1.3.0 起,Go 暂无)
+
+服务开启 `csap.apidoc.mcp.enabled: true` 后,`POST /csap/mcp` 是一个 MCP 服务端(Streamable HTTP),文档里的每个接口是一个工具。**默认关闭,默认只暴露 GET。**
+
+- 已经连上这个服务的 MCP(工具名形如 `Product_getProduct`)时,优先用工具查数据、复现问题,不要自己拼 curl;工具说明最后一行是 `HTTP 方法 路径`,参数就是接口的路径 / 查询 / 请求头参数,请求体放在 `body` 里。
+- 工具返回接口的原始响应体;`isError: true` 且文本以 `HTTP 4xx/5xx` 开头表示接口报错,按错误信息修正参数再试。开启了返回字段过滤时,结果已按规则过滤,和文档显示的字段一致。
+- 写操作(POST / PUT / DELETE)默认不是工具;需要时请用户在 DevTools 的 MCP 页面逐个勾选,**不要**为了方便去改配置把写操作全部打开。
+- 调用会记审计日志(调用方、工具、参数摘要);不要把真实令牌、密码写进参数或代码。
+
+开启、客户端配置、鉴权和排错见 [references/mcp.md](references/mcp.md)。
 
 ## 不要承诺的事
 

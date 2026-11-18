@@ -1,8 +1,6 @@
-# YAML Strategy Example Configuration
-# Activate with: --spring.profiles.active=yaml
-
-server:
-  port: 8080
+# YAML 策略配合使用的配置样例,启用:--spring.profiles.active=yaml
+# 注意:profile 不会切换存储策略,策略只由启动类上的 @EnableApidoc(paramType = ...) 决定,见 STRATEGIES.md。
+# 端口沿用 application.yml 的 8083。
 
 spring:
   application:

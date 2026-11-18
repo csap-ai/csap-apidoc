@@ -7,6 +7,100 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-18
+
+Verified with real MCP clients: Claude Code and opencode (DeepSeek `deepseek-flash`)
+listed the tools and called GET tools against the Spring Boot 3 example; calls
+without a token were rejected, and calls were audited under the token name.
+Cursor was not tested.
+
+### Added
+
+- **Embedded MCP endpoint (`csap-apidoc-mcp`, off by default).** With
+  `csap.apidoc.mcp.enabled=true` the service exposes `POST /csap/mcp`
+  (MCP Streamable HTTP, JSON responses). Every documented endpoint becomes an
+  MCP tool: name, description and input JSON Schema (path / query / header
+  parameters and `body`) come from the docs; parameter locations follow the
+  Spring MVC mapping. Supports MCP `2026-07-28` (stateless, `server/discover`,
+  header validation) and the `initialize`-based `2025-11-25`, `2025-06-18`,
+  `2025-03-26`. Pulled in by `csap-apidoc-boot-starter`; one jar for Spring
+  Boot 2 and 3, no Servlet API or MCP SDK dependency.
+- `tools/call` is forwarded to the endpoint as a loopback HTTP request, so all
+  servlet filters (Spring Security etc.) apply and response field filtering
+  (1.2.0) applies too. Non-2xx responses come back as `isError: true`.
+- Only GET endpoints are exposed by default; write operations, tool names and
+  descriptions are configured per endpoint and saved to the rule store
+  (`{path}/mcp.yaml`, or the `mcp_setting` / `mcp_tool` tables for SQLite).
+- Auth: `token` mode (`Authorization: Bearer`, tokens from configuration,
+  fail-closed when none is set) or `passthrough` (forward caller headers to the
+  endpoint). `Origin` validation.
+- Audit log of tool calls and rejected requests (caller, tool, request,
+  argument / result summaries with passwords, tokens etc. masked, status,
+  duration): in-memory ring buffer, optionally persisted to SQLite.
+- **DevTools "MCP" page** (Chinese / English): choose exposed endpoints,
+  rename tools, edit descriptions, switch auth mode, browse the audit log,
+  copy client configuration for Claude Code / Cursor.
+- `csap-apidoc` agent skill: how to query and debug endpoints through MCP.
+- **Stale field-rule check at startup (WARN only).** After the docs are
+  generated, `YAML` and `SQL_LITE` field rules are compared with the current
+  code: rules for a method that no longer exists (e.g. after a rename) are
+  reported with similar existing method names, and request / response field
+  paths that are not found in the current structure (e.g. `data.id` after the
+  return type became `Result<Page<Item>>`) are listed. One log line per
+  method, not repeated when the result is unchanged; the check only reads the
+  already-loaded rules and changes neither the docs nor filtering. Disable
+  with `csap.apidoc.rule-check.enabled=false`.
+
+### Changed
+
+- **Required flag of simple method parameters follows the rules (behavior
+  change).** For parameters like `@RequestParam String id` under the `YAML` /
+  `SQL_LITE` strategies, a rule for that parameter now decides `required`
+  alone; `@ApiProperty(required = true)` only applies when there is no rule for
+  the parameter. 1.2.x showed the OR of rule and annotation in the docs while
+  runtime validation only looked at the rule; now the docs and runtime
+  validation use the same value. Effects: a rule with `required: false` makes
+  the parameter optional even if the annotation says required; a parameter
+  with no rule but `@ApiProperty(required = true)` is now registered for
+  runtime validation (only matters when `csap.validation.mode` is enabled).
+  A `@PathVariable` parameter without a rule is shown as `PATH` under all
+  strategies.
+
+### Deprecated
+
+- `@Group`, `@Request`, `@Response` and `@ApiModelProperty.groups` are
+  deprecated and will be removed in 2.0. Behavior is unchanged in 1.3.x. To
+  choose fields per endpoint, use `YAML` or `SQL_LITE` rules
+  (`@EnableApidoc(paramType = ...)`); for fields shown on every endpoint use
+  `forceReq` / `forceRep`.
+- Method-level `@ApiProperty` / `@ApiPropertys` (never read when generating
+  docs) are deprecated and will be removed in 2.0; put `@ApiProperty` on the
+  parameter instead.
+
+### Fixed
+
+- DevTools frontend could not be built from source (`autoprefixer` missing
+  from `package.json`); the bundled DevTools page is now rebuilt from source.
+- Saving rules in DevTools from a packaged jar (`java -jar`) returned HTTP 500
+  with a `NullPointerException` (`getResource("")` is `null` inside a fat jar).
+  The YAML / JSON strategies now answer with HTTP 200 and an `ApidocResult`
+  failure (`code = 1007`) that the DevTools page shows, plus one WARN log line.
+  The message says the rule files are inside the jar and lists what does work:
+  running from the source tree, or `paramType = SQL_LITE`; the database mode
+  (MySQL / PostgreSQL / DM / KingbaseES) is planned for 1.4.0. Reading rules
+  from a jar no longer throws either.
+- SQLite rules can now be saved from a packaged jar: the database is kept
+  outside the jar at `<working dir>/<path>/<fileName>.db` (default
+  `./csap-api-doc/apidoc.db`), created on the first DevTools save (from the
+  template in the jar if there is one) and read back after a restart. Before,
+  saving failed with a `NullPointerException` when no database existed yet,
+  and SQLite write errors were only logged while DevTools reported success;
+  they now return the same `code = 1007` failure with the file path. The
+  SQLite JDBC driver is registered explicitly, so reading rules on the startup
+  scan threads of a fat jar no longer fails with "No suitable driver".
+- DevTools "save selected controllers" (`/csap/yaml/writeSelect` with class
+  names) failed with a `NullPointerException` before writing anything.
+
 ## [1.2.0] - 2026-11-17
 
 Runtime response filtering and runtime request validation are new and

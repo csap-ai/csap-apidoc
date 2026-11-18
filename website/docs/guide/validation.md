@@ -16,7 +16,7 @@
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-validation-boot-starter</artifactId>
-    <version>1.2.0</version>
+    <version>1.3.0</version>
 </dependency>
 ```
 
@@ -159,7 +159,7 @@ com.example.controller.OrderController:
 生成文档时，框架只在字段**必填**时才把它的校验规则登记到 `IValidateFactory`：
 
 - 实体字段：注解策略下取匹配 `@Group` 的 `@Request.required`（没有匹配的 `@Group` 而靠 `forceReq` 出现时取 `@ApiModelProperty.required`）；YAML / SQLite 策略下取规则中的 `required`；
-- 基础类型的方法参数：注解策略下取 `@ApiProperty.required`；YAML / SQLite 策略下取规则中的 `required`。
+- 基础类型的方法参数：注解策略下取 `@ApiProperty.required`；YAML / SQLite 策略下，规则里有这个参数时取规则中的 `required`（规则说不必填时，`@ApiProperty(required = true)` 不再生效），没有这个参数的规则时取 `@ApiProperty.required`（1.3.0 起；1.2.x 中没有规则时不登记）。文档里显示的必填与此一致。
 
 非必填字段上的规则**仍会显示在文档里**，但运行时不会执行。
 :::

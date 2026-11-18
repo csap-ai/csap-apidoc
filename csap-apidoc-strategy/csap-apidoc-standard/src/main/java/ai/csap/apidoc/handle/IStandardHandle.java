@@ -3,9 +3,11 @@ package ai.csap.apidoc.handle;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Spliterator;
@@ -13,6 +15,7 @@ import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
@@ -20,6 +23,7 @@ import org.springframework.util.AntPathMatcher;
 
 import ai.csap.apidoc.FilePrefixStrategyType;
 import ai.csap.apidoc.core.ApidocStrategyName;
+import ai.csap.apidoc.util.RuleStorageNotWritableException;
 
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.StrUtil;
@@ -72,7 +76,39 @@ public interface IStandardHandle {
      * @return 是否本地环境
      */
     default boolean isLocal() {
-        return "file".equals(Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("")).getProtocol());
+        return classpathDirectory() != null;
+    }
+
+    /**
+     * classpath 根目录(开发环境的 target/classes 等)。
+     * <p>以打包后的 jar 运行时 {@code getResource("")} 为 null 或不是 file 协议,返回 null。
+     *
+     * @return classpath 根目录的 URL,不是目录时返回 null
+     */
+    static URL classpathDirectory() {
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        URL root = cl == null ? null : cl.getResource("");
+        return root != null && "file".equals(root.getProtocol()) ? root : null;
+    }
+
+    /**
+     * 要写入规则文件的 classpath 根目录路径;不可写(jar 内)时打一条 WARN 并抛出说明清楚的异常。
+     *
+     * @param strategyType 策略类型,用于提示
+     * @return classpath 根目录路径(未解码)
+     * @throws RuleStorageNotWritableException classpath 不是目录时
+     */
+    default String writableClasspathRoot(ApidocStrategyName strategyType) {
+        URL root = classpathDirectory();
+        if (root != null) {
+            return root.getPath();
+        }
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        URL actual = cl == null ? null : cl.getResource("");
+        String strategy = strategyType == null ? "YAML/JSON" : strategyType.getName().toUpperCase(Locale.ROOT);
+        RuleStorageNotWritableException e = RuleStorageNotWritableException.classpathNotWritable(strategy, actual);
+        LoggerFactory.getLogger(IStandardHandle.class).warn("DevTools 保存规则失败: {}", e.getMessage());
+        throw e;
     }
 
     /**
@@ -193,11 +229,14 @@ public interface IStandardHandle {
             if (ArrayUtil.isNotEmpty(resources)) {
                 local = "file".equals(resources[0].getURI().getScheme());
             } else {
-                String path1 = Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("")).getPath();
-                String s = String.format(PATTERN_LOCAL, path, prefixName, fileName(), strategyType.getSuffix());
-                File file = new File(URLDecoder.decode(pathNameFilter(path1 + s), StandardCharsets.UTF_8));
-                if (file.exists()) {
-                    return Stream.of(file).map(this::fileInputStream);
+                // 打包运行(jar)时 classpath 不是目录,没有可读的本地文件,按 classpath 读取
+                URL root = classpathDirectory();
+                if (root != null) {
+                    String s = String.format(PATTERN_LOCAL, path, prefixName, fileName(), strategyType.getSuffix());
+                    File file = new File(URLDecoder.decode(pathNameFilter(root.getPath() + s), StandardCharsets.UTF_8));
+                    if (file.exists()) {
+                        return Stream.of(file).map(this::fileInputStream);
+                    }
                 }
             }
         }

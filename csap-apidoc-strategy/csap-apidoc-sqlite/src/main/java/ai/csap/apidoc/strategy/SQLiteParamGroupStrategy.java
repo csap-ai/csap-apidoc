@@ -43,6 +43,7 @@ import ai.csap.apidoc.core.ApidocStrategyName;
 import ai.csap.apidoc.handle.IStandardHandle;
 import ai.csap.apidoc.model.CsapDocMethod;
 import ai.csap.apidoc.model.ParamGroupMethodProperty;
+import ai.csap.apidoc.util.RuleStorageNotWritableException;
 import ai.csap.validation.factory.IValidateFactory;
 import ai.csap.validation.factory.Validate;
 
@@ -86,6 +87,17 @@ public class SQLiteParamGroupStrategy implements ParamGroupStrategy, SQLiteHandl
      */
     @SneakyThrows
     private ApidocOptional<File> filterFile(StrategyModel strategyModel, boolean isDevtools) {
+        if (!isLocal()) {
+            // 打包运行(jar):classpath 不可写,规则保存在 jar 外、启动目录下的 SQLite 文件
+            File external = externalFile(strategyModel);
+            if (external.isFile()) {
+                CREATE_FILE_MAP.put(strategyModel.getId(), external);
+                return ApidocOptional.of(external);
+            }
+            if (isDevtools) {
+                return ApidocOptional.of(createExternalFile(strategyModel, external));
+            }
+        }
         if (CREATE_FILE_MAP.containsKey(strategyModel.getId())) {
             return ApidocOptional.of(CREATE_FILE_MAP.get(strategyModel.getId()));
         }
@@ -117,6 +129,66 @@ public class SQLiteParamGroupStrategy implements ParamGroupStrategy, SQLiteHandl
             }
         }
         return ApidocOptional.empty();
+    }
+
+    /**
+     * 打包运行时 SQLite 规则文件的位置:启动目录(user.dir)下的 {path}/{fileName}.db,默认 ./csap-api-doc/apidoc.db
+     *
+     * @param strategyModel 策略对象
+     * @return 文件
+     */
+    static File externalFile(StrategyModel strategyModel) {
+        String name = strategyModel.getFileName() + ApiStrategyType.SQL_LITE.getSuffix();
+        String path = strategyModel.getPath();
+        File base = new File(System.getProperty("user.dir"));
+        return (path == null || path.trim().isEmpty() ? new File(base, name) : new File(new File(base, path), name)).getAbsoluteFile();
+    }
+
+    /**
+     * DevTools 首次保存时在 jar 外建库:jar 内有模板就复制模板,否则用 DDL 建库
+     *
+     * @param strategyModel 策略对象
+     * @param external      目标文件
+     * @return 目标文件
+     */
+    private File createExternalFile(StrategyModel strategyModel, File external) {
+        try {
+            Resource[] resources = RESOURCE_PATTERN.getResources(String.format("classpath*:%s/%s", strategyModel.getPath(), strategyModel.getFileName() + getSuffix()));
+            File parent = external.getParentFile();
+            if (parent != null && !parent.isDirectory() && !parent.mkdirs()) {
+                throw new IllegalStateException("无法创建目录 " + parent);
+            }
+            if (ArrayUtil.isNotEmpty(resources)) {
+                copyResourceToFile(resources[0], external);
+            }
+            try (Connection connection = getConnection(external.getPath())) {
+                SQLiteSchema.ensureSchema(connection);
+            }
+            log.info("csap-apidoc: 以 jar 运行,SQLite 规则保存在 jar 外的文件 {}", external.getPath());
+            CREATE_FILE_MAP.put(strategyModel.getId(), external);
+            return external;
+        } catch (Exception e) {
+            throw notWritable(external, e);
+        }
+    }
+
+    /**
+     * SQLite 规则文件无法写入时的明确错误(同时打一条 WARN)
+     */
+    private static RuleStorageNotWritableException notWritable(File file, Exception cause) {
+        Throwable root = cause;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        String reason = root.getClass().getSimpleName() + ": " + root.getMessage();
+        RuleStorageNotWritableException e = new RuleStorageNotWritableException(
+                "SQLite 规则文件 " + file.getPath() + " 无法写入(" + reason + ")。"
+                        + "以 jar 运行时 SQLite 规则文件放在启动目录(user.dir)下,请确认该目录可写。"
+                        + " | Cannot write the SQLite rule file " + file.getPath() + " (" + reason + "). "
+                        + "When running from a jar the SQLite rule file is kept under the working directory (user.dir); "
+                        + "make sure it is writable.", cause);
+        log.warn("DevTools 保存规则失败: {}", e.getMessage());
+        return e;
     }
 
     @Override
@@ -255,7 +327,9 @@ public class SQLiteParamGroupStrategy implements ParamGroupStrategy, SQLiteHandl
                         }
                     });
         }
-        return HANDLE_MAP.get(strategyModel.getId());
+        // 还没有规则文件(首次使用、或以 jar 运行且 jar 外尚无文件)时返回空规则,而不是 null
+        Map<String, Map<String, ParamGroupMethodProperty>> result = HANDLE_MAP.get(strategyModel.getId());
+        return result == null ? new HashMap<>(16) : result;
     }
 
     private String objToString(Object o) {
@@ -299,7 +373,8 @@ public class SQLiteParamGroupStrategy implements ParamGroupStrategy, SQLiteHandl
                         }
                         HANDLE_MAP.computeIfAbsent(strategyModel.getId(), s -> new HashMap<>(16)).putAll(dataMap);
                     } catch (Exception e) {
-                        log.error(e.getMessage(), e);
+                        // 以前只记日志、DevTools 仍显示保存成功;现在返回明确错误
+                        throw notWritable(i, e);
                     }
                 });
     }

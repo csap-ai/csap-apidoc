@@ -14,6 +14,7 @@ import ai.csap.apidoc.autoconfigure.StrategyModel;
 import ai.csap.apidoc.core.ApidocStrategyName;
 import ai.csap.apidoc.model.CsapDocMethod;
 import ai.csap.apidoc.model.ParamGroupMethodProperty;
+import ai.csap.apidoc.service.RuleConsistencyChecker;
 
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.map.MapUtil;
@@ -106,6 +107,8 @@ public interface ParamGroupStrategy extends ApidocStrategyName {
      * @return 参数数据验证
      */
     default ParamGroupMethodProperty.ParamDataValidate paramDataValidate(StrategyModel strategyModel, String keyName, CsapDocMethod method, boolean request) {
+        // 记录查过的路径,供文档生成后的规则过期检查使用(只记录,不影响结果)
+        RuleConsistencyChecker.recordLookup(method, request, keyName);
         ParamGroupMethodProperty paramGroupMethodProperty = yamlMethodProperty(strategyModel, method);
         if (Objects.isNull(paramGroupMethodProperty)) {
             return null;

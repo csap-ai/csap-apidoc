@@ -11,9 +11,8 @@ import java.lang.annotation.Target;
 /**
  * @author yangchengfu
  * @description api 的属性。为了单个参数使用
- * 支持方法级和参数级两种使用方式：
- * 1. 方法级：标注在方法上，通过 name 属性匹配参数名（向后兼容）
- * 2. 参数级：直接标注在参数上，更直观（推荐）
+ * 标注在方法参数上,补充该参数的文档说明。
+ * 注意:标注在方法上(通过 name 匹配参数)的写法已弃用,文档生成不会读取。
  * @dataTime 2020年-02月-18日 18:23:00
  **/
 @Target({ElementType.METHOD, ElementType.PARAMETER})
