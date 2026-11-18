@@ -6,6 +6,7 @@ import Layout from '@/layout'
 const Login = lazy(() => import('@/views/login'))
 const NotFound = lazy(() => import('@/views/404'))
 const ApiManagement = lazy(() => import('@/views/api'))
+const McpManagement = lazy(() => import('@/views/mcp'))
 
 export interface RouteMeta {
   title?: string
@@ -57,6 +58,10 @@ const routes: RouteObject[] = [
       {
         path: 'api',
         element: <ApiManagement />
+      },
+      {
+        path: 'mcp',
+        element: <McpManagement />
       }
     ]
   },
@@ -71,6 +76,7 @@ export const routeMetaMap: Record<string, RouteMeta> = {
   '/login': { hidden: true },
   '/404': { hidden: true },
   '/api': { title: '接口管理', icon: 'api2' },
+  '/mcp': { title: 'MCP', icon: 'mcp' },
   '*': { hidden: true }
 }
 

@@ -1,5 +1,6 @@
 package ai.csap.apidoc.mcp.config;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
@@ -32,6 +33,7 @@ public class ToolSetting {
         this.description = description;
     }
 
+    @JsonIgnore
     public boolean isEmpty() {
         return enabled == null && isBlank(name) && isBlank(description);
     }

@@ -42,6 +42,7 @@ class SettingsStoreTest {
         String text = new String(Files.readAllBytes(f.toPath()), StandardCharsets.UTF_8);
         assertTrue(text.contains("com.example.ItemController.get:"), text);
         assertTrue(text.contains("mode: passthrough"), text);
+        assertFalse(text.contains("empty"), text);
         assertSample(store.load());
     }
 

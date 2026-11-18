@@ -1,0 +1,119 @@
+.mcp-container {
+  padding: 16px 20px;
+  background: #f0f2f5;
+  min-height: calc(100vh - 84px);
+
+  .mcp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+
+    h2 {
+      margin: 0 0 4px;
+      font-size: 20px;
+      color: #1f1f1f;
+    }
+  }
+
+  .mcp-summary {
+    margin-bottom: 16px;
+    border-radius: 8px;
+  }
+
+  .mcp-tabs {
+    border-radius: 8px;
+  }
+
+  .mcp-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .mcp-api-cell {
+    line-height: 1.4;
+
+    .mcp-api-title {
+      font-weight: 500;
+    }
+
+    .mcp-api-path {
+      font-family: Menlo, Consolas, monospace;
+      font-size: 12px;
+      word-break: break-all;
+    }
+  }
+
+  .mcp-row-on > td {
+    background: #f6ffed;
+  }
+
+  .mcp-mono {
+    font-family: Menlo, Consolas, monospace;
+    font-size: 12px;
+  }
+
+  .mcp-auth {
+    max-width: 760px;
+
+    .mcp-radio-desc {
+      color: #8c8c8c;
+      font-size: 13px;
+      margin-top: 2px;
+      white-space: normal;
+    }
+  }
+
+  .mcp-field {
+    margin: 20px 0;
+  }
+
+  .mcp-label {
+    font-weight: 500;
+    margin: 12px 0 6px;
+  }
+
+  .mcp-code-wrap {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .mcp-code {
+    flex: 1;
+    margin: 0;
+    padding: 10px 12px;
+    background: #1f1f1f;
+    color: #f0f0f0;
+    border-radius: 6px;
+    font-family: Menlo, Consolas, monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .mcp-connect {
+    max-width: 860px;
+  }
+
+  .mcp-tips {
+    margin: 0;
+    padding-left: 18px;
+  }
+}
+
+.mcp-confirm-list {
+  padding-left: 0;
+  list-style: none;
+
+  li {
+    margin: 4px 0;
+  }
+}
