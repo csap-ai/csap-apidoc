@@ -77,6 +77,13 @@ public class ApidocImportBeanDefinitionRegistrar implements ImportBeanDefinition
             csapDocConfig.setPath(resolveProperty((String) annotationAttributes.get("path")));
             csapDocConfig.setFileName(resolveProperty((String) annotationAttributes.get("fileName")));
             csapDocConfig.setParamType((ApiStrategyType) annotationAttributes.get("paramType"));
+            if (csapDocConfig.getParamType() == ApiStrategyType.REDIS
+                    && !org.springframework.util.ClassUtils.isPresent("org.springframework.data.redis.core.StringRedisTemplate",
+                    getClass().getClassLoader())) {
+                // Redis 模式用应用已有的 Spring Data Redis,没有时启动即报错,而不是文档里静默没有规则
+                throw new IllegalStateException("@EnableApidoc(paramType = ApiStrategyType.REDIS) 需要 Spring Data Redis,"
+                        + "但 classpath 上没有。请引入 spring-boot-starter-data-redis 并配置 Redis 连接。");
+            }
             csapDocConfig.setRequestType((String) annotationAttributes.get("requestType"));
             csapDocConfig.setResponseType((String) annotationAttributes.get("responseType"));
             Set<Class<?>> classSet = ConcurrentHashMap.newKeySet();
@@ -163,8 +170,8 @@ public class ApidocImportBeanDefinitionRegistrar implements ImportBeanDefinition
                 throw new IllegalStateException(String.format(
                         "@EnableApidoc(type = ApiStrategyType.%s) 暂不支持:没有可用的 %s 文档策略。"
                                 + "type 目前只支持 ANNOTATION、YAML、JSON;"
-                                + "如需把参数配置存到 SQLite 或关系数据库,请使用 paramType = ApiStrategyType.SQL_LITE 或 ApiStrategyType.DATABASE"
-                                + "(DATABASE 只能用于 paramType)。",
+                                + "如需把参数配置存到 SQLite、关系数据库或 Redis,请使用 paramType = ApiStrategyType.SQL_LITE、DATABASE 或 REDIS"
+                                + "(DATABASE、REDIS 只能用于 paramType)。",
                         type.name(), type.name()));
         }
     }

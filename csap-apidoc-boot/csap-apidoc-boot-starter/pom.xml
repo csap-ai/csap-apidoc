@@ -34,6 +34,16 @@
         </dependency>
         <dependency>
             <groupId>ai.csap.apidoc</groupId>
+            <artifactId>csap-apidoc-redis</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.csap.apidoc</groupId>
+            <artifactId>csap-apidoc-migrate</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ai.csap.apidoc</groupId>
             <artifactId>csap-apidoc-annotation</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -53,6 +63,23 @@
             <groupId>ai.csap.apidoc</groupId>
             <artifactId>csap-apidoc-mcp</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <!-- test:Redis 模式的迁移端到端测试用 -->
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-redis</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.lettuce</groupId>
+            <artifactId>lettuce-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>1.21.4</version>
+            <scope>test</scope>
         </dependency>
         <!-- test:数据库模式的端到端测试用(按规则重新生成文档需要 Web 环境) -->
         <dependency>

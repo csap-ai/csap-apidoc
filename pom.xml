@@ -146,6 +146,16 @@
             </dependency>
             <dependency>
                 <groupId>ai.csap.apidoc</groupId>
+                <artifactId>csap-apidoc-redis</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.csap.apidoc</groupId>
+                <artifactId>csap-apidoc-migrate</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ai.csap.apidoc</groupId>
                 <artifactId>csap-apidoc-standard</artifactId>
                 <version>${project.version}</version>
             </dependency>

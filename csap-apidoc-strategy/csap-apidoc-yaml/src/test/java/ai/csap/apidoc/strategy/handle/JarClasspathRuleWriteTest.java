@@ -82,7 +82,7 @@ class JarClasspathRuleWriteTest {
         assertTrue(msg.contains("1.4.0") && msg.contains("MySQL / PostgreSQL / 达梦 / 人大金仓"), msg);
         assertTrue(msg.contains("ApiStrategyType.DATABASE"), msg);
         assertFalse(msg.contains("尚未提供"), msg);
-        assertTrue(msg.contains("Redis 模式"), msg);
+        assertTrue(msg.contains("Redis 模式") && msg.contains("ApiStrategyType.REDIS"), msg);
         assertTrue(msg.contains("Running from a packaged jar"), msg);
     }
 
