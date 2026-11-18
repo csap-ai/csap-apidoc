@@ -18,6 +18,10 @@
 | GET | `/csap/openapi/postman` | 导出 Postman Collection | 同上 |
 | GET | `/csap/openapi.json` | 导出 OpenAPI 3.0（1.2.0 起） | 同上 |
 | GET / POST | `/csap/yaml/*` | DevTools：读写 YAML / JSON 文档 | `csap.apidoc.devtool.enabled=true` |
+| GET | `/csap/schema.json`、`/csap/schema/method` | 导出 JSON Schema（1.4.0 起） | 始终开启 |
+| POST | `/csap/schema/import` | 导入 JSON Schema（1.4.0 起） | `csap.apidoc.schema.import-enabled=true` |
+| ANY | `/csap/mock/**`、GET `/csap/mock-status` | Mock 服务（1.4.0 起） | `csap.apidoc.mock.enabled=true` |
+| GET / POST / DELETE | `/csap/yaml/fieldTemplates`、POST `/csap/yaml/setStatus`、`/devtools/rules/*` | DevTools：字段模板、接口状态、规则记录（1.4.0 起） | `csap.apidoc.devtool.enabled=true` |
 | POST | `/devtools/*` | DevTools：字段查询 | `csap.apidoc.devtool.enabled=true` |
 | GET | `/devtools-ui`、`/devtools-ui/**` | DevTools 页面 | `csap.apidoc.devtool.enabled=true` |
 | POST | `/csap/apidoc/devtools/proxy` | 调试用服务端转发 | `csap.apidoc.devtools.proxy.enabled=true` |
@@ -342,6 +346,30 @@ curl -o openapi.json http://localhost:8080/csap/openapi.json
 `write`、`writeSelect`、`writeFieldMethod` 要求 `@EnableApidoc` 的 `type` 是 `YAML` 或 `JSON`，否则返回错误「当前配置不支持yaml或者/json形式的文档」。
 
 `GET /devtools-ui` 和 `/devtools-ui/**` 转发到 DevTools 页面 `/csap-api-devtools.html`。
+
+## 1.4.0 新增接口
+
+下表的"Java / Go"一列说明两种语言是否都有；Go 的开关是 `apidoc.Options` 里的对应选项，路径相同。
+
+| 方法 | 路径 | 默认 | Java / Go | 说明 |
+| --- | --- | --- | --- | --- |
+| GET | `/csap/schema.json` | 开启 | 都有 | 全部接口的 JSON Schema 合集，裸 JSON（不套 `ApidocResult`）；`?download=true` 作为文件下载 |
+| GET | `/csap/schema/method` | 开启 | 都有 | 参数 `key`（接口 key）；单个接口的请求、返回 Schema，裸 JSON；key 不存在返回 404 |
+| POST | `/csap/schema/import` | **关闭** | 都有 | Body：`key`、`kind`、`section`、`schema`、`apply`；默认只预览，`apply=true` 才写入。开启：Java `csap.apidoc.schema.import-enabled=true`，Go `Options.Schema.ImportEnabled`；关闭时 404 |
+| ANY | `/csap/mock/{原接口路径}` | **关闭** | 都有 | 按文档里的返回结构生成可复现的模拟数据，任意 HTTP 方法；路径不存在 404，方法不对 405。开启：Java `csap.apidoc.mock.enabled=true`，Go `Options.Mock.Enabled`；关闭时 404 |
+| GET | `/csap/mock-status` | **关闭**（随 Mock） | 都有 | Mock 开启时返回 `{"enabled":true,"prefix":"/csap/mock","seed":"csap"}`（有 `ApidocResult` 包装），文档页用它探测 |
+| GET | `/csap/yaml/fieldTemplates` | 随 DevTools | 都有 | 内置 + 项目字段模板，标注来源 |
+| POST | `/csap/yaml/fieldTemplates` | 随 DevTools | 都有 | Body：模板（`name`、`title`、`description`、`example`、`required`、`validate`）；保存项目模板 |
+| DELETE | `/csap/yaml/fieldTemplates/{name}` | 随 DevTools | 都有 | 删除项目模板，内置模板只读 |
+| POST | `/csap/yaml/setStatus` | 随 DevTools | 都有 | Body：`className`、`methodName`、`status`、`statusNote`；`status` 传 `null` 清除覆盖 |
+| GET | `/devtools/rules/status` | 随 DevTools | 都有 | 是否是数据库 / Redis 模式（`supported`）、是否只读（`readOnly`）、当前 `paramType` |
+| GET | `/devtools/rules/history` | 随 DevTools | 都有 | 参数 `ruleKey`（可选）、`limit`（默认 100，范围 1~1000）；修改记录，最新的在前 |
+| POST | `/devtools/rules/rollback` | 随 DevTools | 都有 | Body：`{"changeId": 记录ID}`；回滚到该条修改之前的内容，回滚本身产生新记录（修改人 `devtools-rollback`）；只读模式返回 `code = 1007` |
+
+- "随 DevTools"：Java 需要 `csap.apidoc.devtool.enabled=true`，Go 需要用 `devtools.New` 创建并配置鉴权，与其他 DevTools 接口一样；
+- `/csap/yaml/fieldTemplates`、`setStatus` 在不可写（只读、打包运行不可写、`ANNOTATION` 模式）时返回 `1007`；
+- `devtools/rules/*` 只对数据库模式和 Redis 模式有效，其他模式 `status` 返回 `supported: false`；
+- 各接口的用法见 [Mock](/guide/mock)、[JSON Schema](/guide/json-schema)、[字段库](/guide/field-library)、[接口状态](/guide/api-status)、[数据库模式](/guide/database-mode#devtools规则记录页)。
 
 ## POST /csap/apidoc/devtools/proxy
 
