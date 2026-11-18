@@ -46,6 +46,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   already-loaded rules and changes neither the docs nor filtering. Disable
   with `csap.apidoc.rule-check.enabled=false`.
 
+### Changed
+
+- **Required flag of simple method parameters follows the rules (behavior
+  change).** For parameters like `@RequestParam String id` under the `YAML` /
+  `SQL_LITE` strategies, a rule for that parameter now decides `required`
+  alone; `@ApiProperty(required = true)` only applies when there is no rule for
+  the parameter. 1.2.x showed the OR of rule and annotation in the docs while
+  runtime validation only looked at the rule; now the docs and runtime
+  validation use the same value. Effects: a rule with `required: false` makes
+  the parameter optional even if the annotation says required; a parameter
+  with no rule but `@ApiProperty(required = true)` is now registered for
+  runtime validation (only matters when `csap.validation.mode` is enabled).
+  A `@PathVariable` parameter without a rule is shown as `PATH` under all
+  strategies.
+
 ### Fixed
 
 - DevTools frontend could not be built from source (`autoprefixer` missing

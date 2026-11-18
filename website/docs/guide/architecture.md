@@ -113,7 +113,7 @@ csap-validation-boot-starter ──▶ csap-validation-core
 
 - **请求参数**：策略返回了该字段的规则，或者字段标注了 `forceReq = true`，字段才会出现。必填、参数位置、校验规则优先取策略里的；策略没有给出时，必填取 `@ApiModelProperty` 的 `required`，校验规则从字段上的校验注解解析。
 - **返回参数**：策略返回的规则里 `include` 为 `true`，或者字段标注了 `forceRep = true`，字段才会出现。必填同样优先取策略里的。
-- **方法上的简单参数**（如 `@RequestParam Long id`）：必填取「策略规则」与「`@ApiProperty(required)`」的或；描述优先取策略里的，其次是 `@ApiProperty` 的。
+- **方法上的简单参数**（如 `@RequestParam Long id`）：策略里有这个参数的规则时，必填以规则为准；没有规则时取 `@ApiProperty(required)`（1.3.0 起；1.2.x 取两者的或）。描述优先取策略里的，其次是 `@ApiProperty` 的。
 
 同一份规则在生成文档时也会登记到 `IValidateFactory`。1.2.0 起，运行时可以用这些规则校验请求参数（`csap.validation.mode`，默认关闭），也可以按返回字段规则裁剪接口实际返回的 JSON（`csap.apidoc.runtime.filter.enabled`，默认关闭）；1.1.x 中没有组件使用这些登记结果。参见[参数校验](/guide/validation)、[返回字段过滤](/guide/runtime-filter)。
 

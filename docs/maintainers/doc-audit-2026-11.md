@@ -153,7 +153,7 @@
 | 2. `/devtools/hiddenMethod` 没作用 | 文档备注"目前没用" | 已写在 `api/rest.md`、`guide/devtools.md` |
 | 3. `AdvancedController` 演示方法级 `@ApiProperty` | 方法级写法按弃用处理,1.3.0 中示例改为参数级 | 文档保持"方法级不生效" |
 | 4. 示例配置与注释不符、示例里没有 `@Group` | 用户倾向**直接去掉 `@Group` 注解**(不再使用) | **未改文档**:`@Group` 目前仍在代码里并且是注解策略下"按接口选字段"的主要写法(`guide/annotations.md`、`storage-strategies.md`、`api/annotations.md`、SKILL 都有介绍),必须代码先删除或标记弃用,文档才能同步;影响面见下 |
-| 5. 基础类型参数必填 | 用户:**以实际配置(规则)为准**,即规则里的 `required` 优先 | 代码现为"规则与 `@ApiProperty` 取或",文档按代码写;改代码后文档改回"以规则为准" |
+| 5. 基础类型参数必填 | 用户:**以实际配置(规则)为准**,即规则里的 `required` 优先 | 1.3.0 已改:规则里有这个参数时以规则的 `required` 为准,没有规则才用注解;文档显示与运行时校验登记一致(`DefaultAbstractMethod.methodBasicParams`),官网与 CHANGELOG 已同步 |
 | 6. YAML 上级字段 `include: true` | 已向用户解释(返回规则里,`data` 这样的外层字段本身要被选中,下级字段才会输出;`ApidocResult.data` 已是 `forceRep` 所以不用写) | 已按两种情形写在 `yaml-rules.md` |
 | 7. `SECURITY.md` 只支持最新次版本线 | 同意 | 已改 |
 | 8. GitHub 仓库描述 / topics / v1.2.0 发布说明要写清 Go | 同意,**已在 GitHub 上修改** | 描述改为多语言口径(Java / Spring Boot 2 & 3、Go / gin & net/http);topics 增加 `go`、`golang`、`gin`;v1.2.0 发布说明在 Go 一行后补"Go 单独版本、当前 v0.1.1、go get 命令、官网 Go 页" |
