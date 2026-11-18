@@ -1,1 +1,16 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"/><link rel="icon" type="image/svg+xml" href="/favicon.ico"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>csap-apidoc</title><script type="module" crossorigin src="/assets/js/index-a8cfe7dd.js"></script><link rel="stylesheet" href="/assets/css/index-e2170641.css"></head><body><div id="root"></div></body></html>
+<!doctype html><html lang="en"><head><meta charset="UTF-8"/><link rel="icon" type="image/svg+xml" href="/favicon.ico"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>csap-apidoc</title><script>// 在样式和脚本加载前设置主题,避免暗色模式下先闪白。
+    // 与 src/theme/themeMode.ts 保持一致:键 csap-apidoc:theme,值 light / dark / system。
+    (function () {
+      var mode = 'system';
+      try {
+        var stored = window.localStorage.getItem('csap-apidoc:theme');
+        if (stored === 'light' || stored === 'dark' || stored === 'system') mode = stored;
+      } catch (e) {}
+      var dark = false;
+      try {
+        dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      } catch (e) {}
+      var theme = dark ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+      document.documentElement.style.colorScheme = theme;
+    })();</script><script type="module" crossorigin src="/assets/js/index-ed40eb29.js"></script><link rel="stylesheet" href="/assets/css/index-2d58681c.css"></head><body><div id="root"></div></body></html>
