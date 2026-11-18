@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.3.0] - Unreleased
+## [1.3.0] - 2026-11-18
+
+Verified with real MCP clients: Claude Code and opencode (DeepSeek `deepseek-flash`)
+listed the tools and called GET tools against the Spring Boot 3 example; calls
+without a token were rejected, and calls were audited under the token name.
+Cursor was not tested.
 
 ### Added
 

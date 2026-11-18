@@ -1,6 +1,6 @@
 # 注解参考
 
-本页列出 CSAP Apidoc 1.2.0 全部注解及其属性，内容按 `csap-apidoc-annotation` 模块的源码整理。用法和示例见 [注解使用指南](/guide/annotations)。
+本页列出 CSAP Apidoc 1.3.0 全部注解及其属性，内容按 `csap-apidoc-annotation` 模块的源码整理。用法和示例见 [注解使用指南](/guide/annotations)。
 
 :::info 适用范围
 本页是 **Java 版**的注解参考。Go 版没有注解,用结构体标签和 `apidoc.Op` 声明,见 [Go 版](/go/)。

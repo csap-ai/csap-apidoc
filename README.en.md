@@ -25,7 +25,7 @@ The doc protocol, the rule file format and the docs page are shared across langu
 
 | Language | Status | Frameworks |
 |---|---|---|
-| **Java** | ✅ Released [1.2.0](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
+| **Java** | ✅ Released [1.3.0](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
 | **Go** | ✅ Released [v0.1.1](https://pkg.go.dev/github.com/csap-ai/csap-apidoc/csap-apidoc-go) (`go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.1`) | gin, net/http |
 | **Rust** | 📋 Planned | axum, actix-web |
 | More | 📋 Coming | see the [roadmap](docs/ROADMAP.md) |
@@ -42,6 +42,7 @@ These work in both Java and Go (see the [Go guide](https://apidoc.csap.ai/go/) f
 - **Gateway aggregation** (Java): browse several services' docs from one page.
 - **Response field filtering** (Java since 1.2.0, off by default; in Go, endpoints with response rules are filtered by default): endpoints with rules return only the fields the docs show; Jackson, fastjson and fastjson2. See [Response field filtering](https://apidoc.csap.ai/guide/runtime-filter).
 - **Request validation** (Java since 1.2.0, off by default; off by default in Go too): off / observe / enforce modes with per-endpoint overrides. See [Validation](https://apidoc.csap.ai/guide/validation).
+- **Docs as MCP** (Java since 1.3.0, off by default): the service embeds `/csap/mcp`; every documented endpoint becomes a tool AI agents can call, GET only by default, with token auth and audit. See [MCP](https://apidoc.csap.ai/guide/mcp).
 
 ## Quick start (Java)
 
@@ -51,7 +52,7 @@ These work in both Java and Go (see the [Go guide](https://apidoc.csap.ai/go/) f
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.2.0</version>
+    <version>1.3.0</version>
 </dependency>
 ```
 

@@ -1,6 +1,6 @@
 # 配置参考
 
-本页列出 CSAP Apidoc 1.2.0 中全部真实存在的配置：`@EnableApidoc` 注解属性，以及 `application.yml` 中 `csap.apidoc`、`csap.apidoc.devtools.proxy`、`csap.apidoc.runtime.filter`、`csap.validation` 四组配置项。配置项名称使用 Spring Boot 的 kebab-case 写法。
+本页列出 CSAP Apidoc 1.3.0 中全部真实存在的配置：`@EnableApidoc` 注解属性，以及 `application.yml` 中 `csap.apidoc`、`csap.apidoc.devtools.proxy`、`csap.apidoc.runtime.filter`、`csap.validation` 四组配置项。配置项名称使用 Spring Boot 的 kebab-case 写法。
 
 :::info 适用范围
 本页的配置项都是 **Java 版**(Spring Boot 2.x / 3.x)的配置。Go 版用 `apidoc.Options` 配置(gin、net/http)的接入、结构体标签、过滤和校验见 [Go 版](/go/)；两种语言共用文档页面和 YAML 规则文件格式。

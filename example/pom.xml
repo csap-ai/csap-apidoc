@@ -5,7 +5,7 @@
     <parent>
         <artifactId>csap-apidoc-build</artifactId>
         <groupId>ai.csap.apidoc</groupId>
-        <version>1.2.0</version>
+        <version>1.3.0</version>
         <relativePath>../csap-apidoc-build</relativePath>
     </parent>
     <packaging>pom</packaging>

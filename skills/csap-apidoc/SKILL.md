@@ -9,7 +9,7 @@ CSAP Apidoc 是**多语言的运行时 API 文档框架**:服务启动时从代�
 
 | 语言 | 当前版本 | 框架 | 详细写法 |
 |---|---|---|---|
-| Java | 1.2.0 | Spring Boot 2.x / 3.x | [references/java.md](references/java.md) |
+| Java | 1.3.0 | Spring Boot 2.x / 3.x | [references/java.md](references/java.md) |
 | Go | v0.1.1 | gin、net/http | [references/go.md](references/go.md) |
 | 其他语言 | 规划中 | | 见官网路线图,目前没有可用实现 |
 
