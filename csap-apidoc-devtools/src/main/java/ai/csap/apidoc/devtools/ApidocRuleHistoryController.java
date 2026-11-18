@@ -100,6 +100,13 @@ public class ApidocRuleHistoryController {
         m.put("readOnly", p != null && p.isReadOnly());
         m.put("paramType", enableApidocConfig == null || enableApidocConfig.getParamType() == null
                 ? null : enableApidocConfig.getParamType().getName());
+        if (p == null) {
+            // 语言中立的前端优先显示后端给的 hint(Java 写法);格式见 docs/design/devtools-hints.md
+            Map<String, String> hint = new LinkedHashMap<>();
+            hint.put("zh", "把启动类上的 @EnableApidoc 改为(二选一):\n@EnableApidoc(paramType = ApiStrategyType.DATABASE)\n@EnableApidoc(paramType = ApiStrategyType.REDIS)");
+            hint.put("en", "Change @EnableApidoc to (either):\n@EnableApidoc(paramType = ApiStrategyType.DATABASE)\n@EnableApidoc(paramType = ApiStrategyType.REDIS)");
+            m.put("hint", hint);
+        }
         return ApidocResult.success(m);
     }
 

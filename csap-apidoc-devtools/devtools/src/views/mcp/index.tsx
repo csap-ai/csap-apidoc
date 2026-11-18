@@ -10,6 +10,7 @@ import {
   type McpAuditEntry, type McpSaveResult, type McpStatus, type McpToolRow, type McpToolUpdate
 } from '@/api/mcp'
 import { initialLang, messages, saveLang, type Lang } from './i18n'
+import { DOCS_URL, pickHint } from '@/utils/hint'
 import './index.scss'
 
 const METHOD_COLORS: Record<string, string> = {
@@ -295,14 +296,9 @@ const McpManagement: React.FC = () => {
           <Alert type="info" showIcon message={t.disabled} description={
             <div>
               <p>{t.disabledTip}</p>
-              <pre className="mcp-code">{`csap:
-  apidoc:
-    mcp:
-      enabled: true
-      auth:
-        tokens:
-          - name: my-ide
-            value: \${CSAP_MCP_TOKEN:}`}</pre>
+              {pickHint(status.hint, lang)
+                ? <pre className="mcp-code" style={{ whiteSpace: 'pre-wrap' }}>{pickHint(status.hint, lang)}</pre>
+                : <a href={`${DOCS_URL}/guide/mcp`} target="_blank" rel="noreferrer">{DOCS_URL}/guide/mcp</a>}
             </div>
           } />
         </Card>
@@ -335,7 +331,7 @@ const McpManagement: React.FC = () => {
                     <span className="mcp-mono">{status?.storeLocation}</span>
                     {status?.storePersistent
                       ? <Tag color="success">{t.persisted}</Tag>
-                      : <Tooltip title={t.notPersistedTip}><Tag color="warning">{t.notPersisted}</Tag></Tooltip>}
+                      : <Tooltip title={[t.notPersistedTip, pickHint(status?.persistHint, lang)].filter(Boolean).join('; ')}><Tag color="warning">{t.notPersisted}</Tag></Tooltip>}
                   </Space>
                 </Descriptions.Item>
               </Descriptions>
@@ -374,7 +370,7 @@ const McpManagement: React.FC = () => {
                     <Space direction="vertical" size={12}>
                       <Radio value="token">
                         <b>{t.modeToken}</b>
-                        <div className="mcp-radio-desc">{t.modeTokenDesc}</div>
+                        <div className="mcp-radio-desc">{t.modeTokenDesc}{pickHint(status?.tokenHint, lang) ? ` ${pickHint(status?.tokenHint, lang)}` : ''}</div>
                       </Radio>
                       <Radio value="passthrough">
                         <b>{t.modePassthrough}</b>
@@ -442,7 +438,10 @@ const McpManagement: React.FC = () => {
                     <ul className="mcp-tips">
                       <li>{t.security1}</li>
                       <li>{t.security2}</li>
-                      <li>{t.security3}</li>
+                      {(status?.securityNotes || []).map((n, i) => {
+                        const text = pickHint(n, lang)
+                        return text ? <li key={i}>{text}</li> : null
+                      })}
                     </ul>
                   } />
                 </div>

@@ -1,5 +1,6 @@
 import request from '@/utils/request'
 import type { ApiResponse } from '@/api/devtools'
+import type { Hint } from '@/utils/hint'
 
 export interface McpStatus {
   enabled: boolean
@@ -18,6 +19,11 @@ export interface McpStatus {
   auditPersistent?: boolean
   toolCount?: number
   exposedCount?: number
+  /** 后端给出的当前语言 / 框架的具体做法,见 docs/design/devtools-hints.md */
+  hint?: Hint
+  persistHint?: Hint
+  tokenHint?: Hint
+  securityNotes?: Hint[]
 }
 
 export interface McpToolRow {

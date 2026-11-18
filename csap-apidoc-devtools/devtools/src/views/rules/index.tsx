@@ -4,6 +4,7 @@ import { HistoryOutlined, ReloadOutlined, RollbackOutlined } from '@ant-design/i
 import type { ColumnsType } from 'antd/es/table'
 import { getRuleHistory, getRuleStatus, rollbackRule, type RuleChange, type RuleStatus } from '@/api/rules'
 import { initialLang, messages, saveLang, type Lang } from './i18n'
+import { DOCS_URL, pickHint } from '@/utils/hint'
 import { lineDiff, pretty } from './diff'
 import './index.scss'
 
@@ -149,7 +150,14 @@ const RuleHistory: React.FC = () => {
           <Alert type="info" showIcon message={t.unsupported} description={
             <div>
               <p>{t.unsupportedTip}</p>
-              <pre className="rules-code">{'@EnableApidoc(paramType = ApiStrategyType.DATABASE)\n@EnableApidoc(paramType = ApiStrategyType.REDIS)'}</pre>
+              {pickHint(status.hint, lang)
+                ? <pre className="rules-code" style={{ whiteSpace: 'pre-wrap' }}>{pickHint(status.hint, lang)}</pre>
+                : (
+                  <Space>
+                    <a href={`${DOCS_URL}/guide/database-mode`} target="_blank" rel="noreferrer">{t.docsDatabase}</a>
+                    <a href={`${DOCS_URL}/guide/redis-mode`} target="_blank" rel="noreferrer">{t.docsRedis}</a>
+                  </Space>
+                )}
             </div>
           } />
         </Card>

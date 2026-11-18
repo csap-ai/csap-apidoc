@@ -5,6 +5,8 @@ export interface RuleStatus {
   supported: boolean
   readOnly: boolean
   paramType?: string | null
+  /** 后端给出的当前语言 / 框架的具体做法,见 docs/design/devtools-hints.md */
+  hint?: import('@/utils/hint').Hint
 }
 
 export interface RuleChange {
