@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- 1.4.0 preview: skeleton pages for Mock, JSON Schema, version diff / breaking-change
+  detection, endpoint status and the field library; validation alignment announced
+  (non-required fields with a value are validated, following Go).
 - Database mode (planned for 1.4.0, in progress): added the user guide
   (`guide/database-mode`) and finalized the shared Java / Go table schema in
   `docs/design/database-mode.md` (`{prefix}rule`, `{prefix}history`,

@@ -36,7 +36,7 @@
 | 1.1.1 | 2026-11-17(已发布) | 补丁 |
 | 1.2.0 + Go v0.1.0 | 2026-11-17(已发布,原计划 12-04) | 运行时过滤与校验、Go 版首发 |
 | 1.3.0 | 2026-11-18(已发布,原计划 12-11) | 文档即 MCP |
-| 1.4.0 | 2026-12-22 | Mock、JSON Schema、字段库、版本管理 |
+| 1.4.0 | 2026-12-22 | 数据库模式、Mock、JSON Schema、字段库、版本管理 |
 | 团队版 1.0 | 2026-12-31 | 文档中心、成员与角色、规则审批 |
 
 ### 1.1.1 — 补丁(已发布,2026-11-17)
@@ -74,13 +74,13 @@
 
 ### 1.4.0 — 设计与协作基础(2026-12-22)
 
-- **数据库模式(首要项)**:字段规则可以存进业务已有的 **MySQL / PostgreSQL / 达梦(DM8)/ 人大金仓(KingbaseES)**,不再只能用 SQLite 文件。默认使用应用自己的 DataSource;多实例在几秒内同步(轮询版本号,可选 Redis 等即时通知);每次修改留记录、可回滚;提供 YAML / SQLite 与数据库 / Redis 互相迁移的工具(实现中)。**Java 与 Go 共用同一套表**(Go 已有 SQL 来源,随 v0.2.0 升级表结构)。也可以存进 **Redis**(Java 与 Go 同一种数据结构,订阅变更即时同步;修改记录保留最近若干条,完整审计用数据库;**实现中**,见官网 [Redis 模式](https://apidoc.csap.ai/guide/redis-mode),数据约定见 [redis-mode.md](https://github.com/csap-ai/csap-apidoc/blob/main/docs/design/redis-mode.md))。SQLite 保留用于单机和开发环境。使用说明见官网 [数据库模式](https://apidoc.csap.ai/guide/database-mode)(实现中,方案已审定),设计见 [database-mode.md](https://github.com/csap-ai/csap-apidoc/blob/main/docs/design/database-mode.md)
+- **数据库模式(首要项)**:字段规则可以存进业务已有的 **MySQL / PostgreSQL / 达梦(DM8)/ 人大金仓(KingbaseES)**,不再只能用 SQLite 文件。默认使用应用自己的 DataSource;多实例在几秒内同步(轮询版本号,可选 Redis 等即时通知);每次修改留记录、可回滚;提供 YAML / SQLite 与数据库 / Redis 互相迁移的工具。**状态:数据库模式、Redis 模式、迁移工具已实现,待 1.4.0 发布**。**Java 与 Go 共用同一套表**(Go 已有 SQL 来源,随 v0.2.0 升级表结构)。也可以存进 **Redis**(Java 与 Go 同一种数据结构,订阅变更即时同步;修改记录保留最近若干条,完整审计用数据库;**已实现,待发布**,见官网 [Redis 模式](https://apidoc.csap.ai/guide/redis-mode),数据约定见 [redis-mode.md](https://github.com/csap-ai/csap-apidoc/blob/main/docs/design/redis-mode.md))。SQLite 保留用于单机和开发环境。使用说明见官网 [数据库模式](https://apidoc.csap.ai/guide/database-mode)(已实现,待发布),设计见 [database-mode.md](https://github.com/csap-ai/csap-apidoc/blob/main/docs/design/database-mode.md)
 - **Mock 服务**(已有设计文档 M9.3):按文档生成模拟数据,前端可先行开发
 - **JSON Schema 导入导出**
-- **字段库与模板**:常用字段、校验规则做成模板复用(现有正则模板的扩展)
+- **字段库与模板**(已定放进 1.4.0,不顺延):常用字段、校验规则做成模板复用(现有正则模板的扩展)
 - **版本管理与变更追踪**:文档版本快照、版本之间的差异对比、破坏性变更检测(可在 CI 里拦截)
 - **接口上下线管理**:基于现有 `ApiStatus`(开发中 / 完成 / 过时),在文档和 MCP 中体现
-- **Java 与 Go 的校验行为对齐**:非必填字段上的规则,Java 1.2.0 不执行,Go 在传值时执行。1.4.0 前确定以哪边为准并统一
+- **Java 与 Go 的校验行为对齐**(已定,**以 Go 为准**):非必填字段上写了规则、请求传了该字段值时也会校验(Java 1.2.0 / 1.3.0 不执行)。这是 Java 的行为变化,1.4.0 提供开关,可以恢复旧行为;详见官网[参数校验](https://apidoc.csap.ai/guide/validation)
 
 ### 2.0(不兼容变更)
 
