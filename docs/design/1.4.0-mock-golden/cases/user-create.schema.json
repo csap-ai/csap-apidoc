@@ -62,11 +62,13 @@
               {
                 "type": "Pattern",
                 "pattern": "PATTERN_35",
-                "message": "手机号格式不正确"
+                "message": "手机号格式不正确",
+                "level": 1
               },
               {
                 "type": "Pattern",
-                "pattern": "^1\\d{10}$"
+                "pattern": "^1\\d{10}$",
+                "level": 1
               }
             ],
             "x-csap-key": "request.phone"
@@ -83,11 +85,13 @@
             "x-csap-validate": [
               {
                 "type": "Min",
-                "pattern": "0"
+                "pattern": "0",
+                "level": 1
               },
               {
                 "type": "Max",
-                "pattern": "150"
+                "pattern": "150",
+                "level": 1
               }
             ]
           },
@@ -110,7 +114,8 @@
             "x-csap-validate": [
               {
                 "type": "Enum",
-                "pattern": "admin,user"
+                "pattern": "admin,user",
+                "level": 1
               }
             ]
           },
@@ -125,7 +130,8 @@
             "x-csap-validate": [
               {
                 "type": "Size",
-                "pattern": "1,5"
+                "pattern": "1,5",
+                "level": 1
               }
             ]
           },

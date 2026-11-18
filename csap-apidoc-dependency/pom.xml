@@ -273,6 +273,11 @@
                 <artifactId>csap-apidoc-mcp</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>ai.csap.apidoc</groupId>
+                <artifactId>csap-apidoc-mock</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- Spring Framework -->
             <dependency>

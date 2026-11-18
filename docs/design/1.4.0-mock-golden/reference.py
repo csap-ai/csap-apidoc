@@ -36,6 +36,10 @@ def rand(seed: str, path: str) -> int:
     return splitmix64(fnv1a64((seed + "\n" + path).encode("utf-8")))
 
 
+ARRAY_NAMES = ("list", "set", "collection", "iterable", "array", "arraylist", "linkedlist", "hashset", "linkedhashset",
+               "treeset", "sortedset", "vector", "queue", "deque", "arraydeque")
+
+
 def kind_of(data_type):
     """dataType → (kind, elementType)。kind: string integer number boolean date datetime time object array"""
     t = (data_type or "").strip()
@@ -44,7 +48,7 @@ def kind_of(data_type):
     lt, gt = t.find("<"), t.rfind(">")
     raw = t[:lt] if lt > 0 else t
     raw = raw[raw.rfind(".") + 1:].lower()
-    if raw.endswith("list") or raw.endswith("set") or raw in ("collection", "iterable", "array"):
+    if raw in ARRAY_NAMES or (lt > 0 and (raw.endswith("list") or raw.endswith("set"))):
         return "array", (t[lt + 1:gt] if lt > 0 and gt > lt else "string")
     if raw in ("int", "integer", "int32", "short", "byte", "long", "int64", "biginteger", "atomicinteger", "atomiclong"):
         return "integer", None
@@ -106,7 +110,7 @@ def validates(p, typ):
 
 
 def fit_string(s, p):
-    for v in validates(p, "length"):
+    for v in validates(p, "length") + validates(p, "size"):
         try:
             lo, hi = parse_range(v.get("pattern") or "")
         except ValueError:

@@ -218,6 +218,16 @@ public class ApidocAutoConfiguration {
                 new PostmanConverterService());
     }
 
+    /**
+     * JSON Schema 导出端点(/csap/schema.json、/csap/schema/method),只读,始终开启
+     */
+    @Bean
+    @ConditionalOnBean(ApidocStrategy.class)
+    @ConditionalOnMissingBean
+    public ai.csap.apidoc.web.CsapSchemaController csapSchemaController() {
+        return new ai.csap.apidoc.web.CsapSchemaController();
+    }
+
     @Bean
     public ApidocContext apidocContext(CsapResourcesProvider resourcesProvider,
                                        ScannerPackageConfig scannerPackageConfig,
