@@ -157,3 +157,63 @@ func TestResponseFilterStatusAndOverrides(t *testing.T) {
 		t.Fatalf("endpoint off: %s", got)
 	}
 }
+
+// 业务失败也返回 200:ShouldFilterBody 按响应体判断,失败体原样输出;与 ShouldFilter 组合时先粗筛再细判。
+func TestResponseFilterBody(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	newEngine := func(opts apidoc.Options) *gin.Engine {
+		opts.Strategies = []strategy.Strategy{strategy.NewMemory(strategy.Rules{
+			"U.get": {Response: map[string]strategy.FieldRule{"data.id": {Include: model.Bool(true)}}},
+		})}
+		opts.Wrapper = &apidoc.Wrapper{Type: result{}}
+		doc := apidoc.New(opts)
+		r := gin.New()
+		r.Use(ResponseFilter(doc))
+		Mount(r, doc).GET("/users/:id", apidoc.Op("U", "get").Resp(user{}), func(c *gin.Context) {
+			c.JSON(http.StatusOK, result{Code: "0", Message: "m", Success: c.Query("biz") == "", Data: user{ID: 1, Name: "a", Password: "p"}})
+		})
+		return r
+	}
+	const filtered = `{"code":"0","message":"m","data":{"id":1}}`
+	const rawOK = `{"code":"0","message":"m","data":{"id":1,"name":"a","password":"p"},"success":true}`
+	const rawFail = `{"code":"0","message":"m","data":{"id":1,"name":"a","password":"p"},"success":false}`
+
+	r := newEngine(apidoc.Options{})
+	if got := do(r, "GET", "/users/1?biz=1", "").Body.String(); got != filtered {
+		t.Fatalf("no hook: %s", got)
+	}
+
+	r = newEngine(apidoc.Options{ShouldFilterBody: apidoc.SuccessField("success", true)})
+	if got := do(r, "GET", "/users/1", "").Body.String(); got != filtered {
+		t.Fatalf("success body should be filtered: %s", got)
+	}
+	if got := do(r, "GET", "/users/1?biz=1", "").Body.String(); got != rawFail {
+		t.Fatalf("business failure must pass through: %s", got)
+	}
+
+	var gotStatus int
+	var gotBody string
+	r = newEngine(apidoc.Options{ShouldFilterBody: func(_ *http.Request, status int, body []byte) bool {
+		gotStatus, gotBody = status, string(body)
+		return false
+	}})
+	if got := do(r, "GET", "/users/1", "").Body.String(); got != rawOK || gotStatus != 200 || gotBody != rawOK {
+		t.Fatalf("custom hook: %s %d %s", got, gotStatus, gotBody)
+	}
+
+	called := false
+	r = newEngine(apidoc.Options{
+		ShouldFilter:     func(*http.Request, int) bool { return false },
+		ShouldFilterBody: func(*http.Request, int, []byte) bool { called = true; return true },
+	})
+	if got := do(r, "GET", "/users/1", "").Body.String(); got != rawOK || called {
+		t.Fatalf("ShouldFilter false: %s called=%v", got, called)
+	}
+	r = newEngine(apidoc.Options{
+		ShouldFilter:     func(*http.Request, int) bool { return true },
+		ShouldFilterBody: func(*http.Request, int, []byte) bool { return true },
+	})
+	if got := do(r, "GET", "/users/1", "").Body.String(); got != filtered {
+		t.Fatalf("both true: %s", got)
+	}
+}

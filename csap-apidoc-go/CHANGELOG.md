@@ -16,6 +16,7 @@ csap-apidoc-go 的版本号独立于 Java 版,tag 格式为 `csap-apidoc-go/vX.Y
 - `sql.ServiceNotifier`:带服务名的通知(可选,实现它就优先使用)。原 `Notifier` 接口不变。
 - **Redis 规则来源 `strategy/redis`**:与 Java 1.4.0 Redis 模式的数据约定一致(`docs/design/redis-mode.md`),Lua 保存脚本在 `strategy/redis/save.lua`。实现 Strategy / Saver / Historian / Watcher;订阅通知 + 轮询兜底;修改记录按 `HistoryLimit` 裁剪。主模块不依赖 Redis 客户端,使用方实现最小接口 `redis.Client`,go-redis v9 适配器见 [docs/REDIS.md](docs/REDIS.md)。
 - **规则导入 `strategy.Import`**:把 YAML 等来源导入 SQL / Redis,默认不覆盖已有的不同规则并返回冲突列表,支持 dry-run,修改人 `migrate`。见 [docs/IMPORT.md](docs/IMPORT.md)。
+- `Options.ShouldFilterBody func(r, status, body) bool`:按响应体判断是否裁剪,用于"业务失败也返回 HTTP 200"的接口(Java 只过滤正常返回的对象)。在 `ShouldFilter` 返回 true 之后、裁剪之前调用,返回 false 原样输出;不设置时行为不变。gin、net/http 适配器都支持,自定义适配器调用 `Doc.ShouldFilterBody`。附现成判断 `apidoc.SuccessField("success", true)`。见 [docs/FILTER-BODY.md](docs/FILTER-BODY.md)。
 
 ### 升级
 
