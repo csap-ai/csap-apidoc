@@ -1,0 +1,12 @@
+# MCP 端到端测试:详情接口只返回这几个字段(secret、password 被返回字段过滤去掉)
+ai.csap.e2e.mcp.McpOrderController:
+  get:
+    response:
+      id:
+        include: true
+      no:
+        include: true
+      tenant:
+        include: true
+      lang:
+        include: true
