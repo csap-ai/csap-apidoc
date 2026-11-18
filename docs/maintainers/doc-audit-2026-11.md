@@ -145,21 +145,22 @@
 - 侧边栏标签"存储策略与返回过滤"与该页 H1 一致(该页内含"返回字段过滤"一节,另有独立的"返回字段过滤"页,不冲突)。
 - 使用文档按读者操作顺序(快速开始 → 安装 → 基础使用 → 配置)走查:依赖坐标、`@EnableApidoc`、注解属性(`@Api`、`@ApiOperation`、`@ApiProperty`、`@ApiModel`、`@ApiModelProperty` 的 `forceReq` / `forceRep` / `required` / `example`)均存在,片段可照抄;已改的是 Gradle 版本号和 starter 内容说明。
 
-## 三、待主会话裁定
+## 三、裁定结果与后续(用户已答复的项)
 
-1. **非必填字段上的校验规则,Go 与 Java 行为不同**(`csap-apidoc-go/validate/validate.go:352-358` 与 `website/docs/guide/validation.md` "只有必填字段的规则会执行")。Go 在非必填字段传了值时也按规则校验;Java 1.2.0 只在 `required: true` 时登记并执行。同一份 YAML 在两边结果不同,Go 更严格。`DESIGN.md` 已把它写成"有意为之",本次只在 DESIGN 里如实记录,**官网 Go 页和 Go 的 `CHANGELOG.md` "与 Java 版的差别"清单没有改**:需要裁定这是有意保留的差别(那就补进这两处),还是要在代码里对齐 Java。
-2. **`AdvancedController` 示例演示的是文档标明"不生效"的方法级 `@ApiProperty` / `@ApiPropertys`**(`example/*/controller/AdvancedController.java`,类注释写"正确用法";`DefaultAbstractMethod.java:196-198` 的 javadoc 也写支持方法级,但 `:217` 只读参数级)。文档按实际行为写,警告保留;方法级到底是 bug 还是已弃用,需裁定后统一示例或代码。
-3. **示例 `ExampleApplication` 的配置与注释不符**(`paramType = YAML` 但注释写"annotation strategy";boot3 只扫描 `ProductController`,`UserController` 的 `@DocGlobalHeader` / `@DocAuth` 演示不可见;`src/main/resources` 下没有规则文件,全仓库 main 代码没有 `@Group`)。是有意还是遗留,需裁定后改示例代码。
-4. **基础类型参数的必填口径**:文档显示取规则与 `@ApiProperty.required` 的"或",运行时校验登记只看规则(`DefaultAbstractMethod.java:224,232`)。取"或"是否有意?
-5. **YAML 里上级字段 `include: true` 的统一写法**(见 F10)。
-6. **`SECURITY.md` 的支持版本策略**:只支持最新次版本线(1.2.x)是否符合预期。
-7. **GitHub 仓库描述 / topics、v1.2.0 发布说明**(见 G10、G11),只读,未改。
-9. **示例工程里的代码/配置问题(文档已如实说明,代码未改)**:
-   - `SecurityConfig.PUBLIC_PATHS` 含框架没有的 `/api-doc`、`/api/devtools/**`,又漏了 `/csap/openapi.json`、`/devtools/**`、`/csap/yaml/**`,启用 JWT 后这些接口会 401;
-   - boot3 的 `@EnableApidoc` 用 `apiPackageClasses = {ProductController.class}`,只文档化这一个 Controller,是否有意;
-   - `test-api.sh`、`api-test.http`、`application-{sqlite,yaml,gateway}.yml` 里端口仍是 8080,且 sqlite / yaml 两个 profile 并不会切换存储策略(策略由 `@EnableApidoc` 固定),建议改名或删除。
-10. `csap-apidoc-devtools/devtools/README-zh.md` 原文是 vue-admin-template 残留,已改成一行指向 README.md,是否直接删除该文件。
-11. **`/devtools/hiddenMethod` 目前什么也不做**(`ApidocDevtools.java:1221` 直接返回 `true`)。文档已如实写成"没有实际作用",但如果这是未完成的功能而不是有意保留,可能要在 1.3.0 里处理或从文档中去掉该接口。
+| 项 | 结论 | 文档状态 |
+|---|---|---|
+| 1. Go / Java 非必填字段校验不一致 | 讨论中,倾向 Java 向 Go 对齐(非必填但传了值也校验,`Pattern` 本就对 null 放行),属行为变更,只能放 1.3.0 之后并先用 `observe`;未定方向 | 未改;定后再补官网 Go 页、Go CHANGELOG 或校验页 |
+| 2. `/devtools/hiddenMethod` 没作用 | 文档备注"目前没用" | 已写在 `api/rest.md`、`guide/devtools.md` |
+| 3. `AdvancedController` 演示方法级 `@ApiProperty` | 待定,与 4 一起看 | 文档保持"方法级不生效" |
+| 4. 示例配置与注释不符、示例里没有 `@Group` | 用户倾向**直接去掉 `@Group` 注解**(不再使用) | **未改文档**:`@Group` 目前仍在代码里并且是注解策略下"按接口选字段"的主要写法(`guide/annotations.md`、`storage-strategies.md`、`api/annotations.md`、SKILL 都有介绍),必须代码先删除或标记弃用,文档才能同步;影响面见下 |
+| 5. 基础类型参数必填 | 用户:**以实际配置(规则)为准**,即规则里的 `required` 优先 | 代码现为"规则与 `@ApiProperty` 取或",文档按代码写;改代码后文档改回"以规则为准" |
+| 6. YAML 上级字段 `include: true` | 已向用户解释(返回规则里,`data` 这样的外层字段本身要被选中,下级字段才会输出;`ApidocResult.data` 已是 `forceRep` 所以不用写) | 已按两种情形写在 `yaml-rules.md` |
+| 7. `SECURITY.md` 只支持最新次版本线 | 同意 | 已改 |
+| 8. GitHub 仓库描述 / topics / v1.2.0 发布说明要写清 Go | 同意,**已在 GitHub 上修改** | 描述改为多语言口径(Java / Spring Boot 2 & 3、Go / gin & net/http);topics 增加 `go`、`golang`、`gin`;v1.2.0 发布说明在 Go 一行后补"Go 单独版本、当前 v0.1.1、go get 命令、官网 Go 页" |
+| 9. 示例工程代码/配置问题 | 用户:需要权衡后解决 | 属代码改动,文档已如实说明;待安排 |
+| 10. `devtools/README-zh.md`(vue-admin-template 残留) | 无用,**已删除** | 已删 |
+
+`@Group` 若删除的影响:注解策略下"同一模型按接口显示不同字段"只剩 `forceReq`/`forceRep`(全接口生效)和 YAML / SQLite 策略;`@ApiModelProperty.groups`、`@Group`、`@Request`、`@Response` 四个注解/属性会一起失效;`AnnotationParamGroupStrategy`、示例、官网"同一个模型,在不同接口里显示不同字段"这条核心卖点的"注解"方式都要改。
 
 ## 四、顺带发现,未处理(超出"只改文档"的范围)
 
