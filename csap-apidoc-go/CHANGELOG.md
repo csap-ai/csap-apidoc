@@ -4,6 +4,21 @@ csap-apidoc-go 的版本号独立于 Java 版,tag 格式为 `csap-apidoc-go/vX.Y
 
 ## [未发布]
 
+## [0.1.1] - 2026-11-18
+
+### 修复
+
+- **有外层包装但没声明 `Resp` 时 `data` 被整段裁掉**:`Options.Wrapper` 已设、接口有返回规则、但 `Op` 没有 `Resp(...)` 时,csap 模式和路径模式都会把 `data` 去掉。现在 `data` 类型未知时整段放行,外层包装上的规则照常生效。
+- **返回过滤作用于错误响应**:`ResponseFilter`(gin、net/http)原来对所有响应体都裁剪,包括 4xx/5xx 错误体和异常处理中间件写的失败体。现在默认只裁剪 2xx,与 Java 只过滤控制器正常返回的对象一致。
+- **规则路径与返回类型对不上时字段被全部裁掉**:例如接口返回改成 `ApiResult<Page<Item>>`,规则还是 `data.xxx`(少了 `rows` 一层)时,csap 模式把列表元素的字段全部裁掉。现在与 Java 1.2.0 一致:只有至少一条返回规则命中实际返回字段路径的接口才过滤,否则原样输出(路径模式同样适用)。
+- **校验失败的字段名**:路径、查询、请求头、表单参数校验失败时,`validate.Violation.Field` 原来是 `updated_at.updated_at` 这种规则路径写法,现在是参数名 `updated_at`,与 Java 一致;请求体字段仍为规则路径。
+
+### 新增
+
+- `Options.ShouldFilter func(r *http.Request, status int) bool`:自定义哪些响应要裁剪(默认只裁剪 2xx);`Doc.ShouldFilter` 供自定义适配器调用。
+- `Options.FilterEndpoints map[string]filter.Mode` 与 `filter.ModeOff`:按接口(规则的键 `分组.接口名`)覆盖过滤模式或关闭过滤,对应 Java `csap.apidoc.runtime.filter.endpoints`;`FilterMode: filter.ModeOff` 全局关闭。
+- 模型显示名覆盖(对应 Java `@ApiModel.value`):可选接口 `apidoc.ModelNamer`(`ApidocName() string`)和 `Options.TypeNames map[reflect.Type]string`,优先级 `TypeNames` > `ApidocName()` > 类型名。字段的 `dataType` 不受影响。
+
 ## [0.1.0] - 2026-11-17
 
 首个版本。模块路径 `github.com/csap-ai/csap-apidoc/csap-apidoc-go`,最低 Go 1.22。协议与 Java 版 1.1.x 兼容。
@@ -35,5 +50,6 @@ csap-apidoc-go 的版本号独立于 Java 版,tag 格式为 `csap-apidoc-go/vX.Y
 - 文档页面在线调试的跨域代理(Java `/csap/apidoc/devtools/proxy`)未提供。
 - SQL 规则来源的 MySQL 方言未实测。
 
-[未发布]: https://github.com/csap-ai/csap-apidoc/compare/csap-apidoc-go/v0.1.0...HEAD
+[未发布]: https://github.com/csap-ai/csap-apidoc/compare/csap-apidoc-go/v0.1.1...HEAD
+[0.1.1]: https://github.com/csap-ai/csap-apidoc/compare/csap-apidoc-go/v0.1.0...csap-apidoc-go/v0.1.1
 [0.1.0]: https://github.com/csap-ai/csap-apidoc/releases/tag/csap-apidoc-go/v0.1.0

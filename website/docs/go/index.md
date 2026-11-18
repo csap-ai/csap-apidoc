@@ -13,12 +13,12 @@ CSAP Apidoc 的 Go 实现,是仓库 `csap-apidoc-go/` 目录下的独立 Go 模�
 - **规则文件与 Java 通用**:YAML 规则与 Java 的 `method-field.yaml` 格式相同,Java 项目的规则文件可以直接拿来用。
 - **导出**:OpenAPI 3.1(`/csap/openapi.json`)和 Postman Collection(`/csap/openapi/postman`)。
 
-当前版本 **v0.1.0**,最低 Go 1.22,协议 Apache-2.0。源码与设计文档见 [csap-apidoc-go](https://github.com/csap-ai/csap-apidoc/tree/main/csap-apidoc-go)。
+当前版本 **v0.1.1**,最低 Go 1.22,协议 Apache-2.0。源码与设计文档见 [csap-apidoc-go](https://github.com/csap-ai/csap-apidoc/tree/main/csap-apidoc-go)。
 
 ## 安装
 
 ```bash
-go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.0
+go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.1
 ```
 
 根包只依赖标准库;用到 gin 适配、YAML 规则时才会编译对应的依赖。SQL 规则来源不引入任何数据库驱动,由你自己 import。
@@ -87,7 +87,21 @@ Go 的 handler 签名都一样,看不出请求和返回用的是哪个结构体,
 | `doc_required:"true"` | `required` | 也识别 gin 的 `binding:"required"` |
 | `doc_hidden:"true"` | `hidden` | 文档不显示,也不输出 |
 | `doc_force:"true"` | `forceReq` / `forceRep` | 不受规则限制,始终显示和输出 |
-| `doc_type:"Long"` | — | 覆盖类型显示名 |
+| `doc_type:"Long"` | — | 覆盖字段的类型显示名(`dataType`) |
+
+结构体(模型)在文档里的显示名默认是 Go 类型名(泛型显示成 `Page<Item>`),相当于 Java `@ApiModel` 的 `value`。有两种方式覆盖,优先级 `Options.TypeNames` > `ApidocName()` > 类型名:
+
+```go
+// 方式一:类型实现可选接口 apidoc.ModelNamer(值或指针接收者都可以,在零值上调用)
+func (Page[T]) ApidocName() string { return "分页返回信息" }
+
+// 方式二:在 Options 里按类型指定,适合改不了源码的类型
+doc := apidoc.New(apidoc.Options{
+    TypeNames: map[reflect.Type]string{reflect.TypeOf(User{}): "用户信息"},
+})
+```
+
+覆盖只影响模型的显示名,字段的 `dataType`(如 `List<User>`)仍按类型名生成。
 
 ## 接入标准库 net/http
 
@@ -145,12 +159,27 @@ example.UserController:          # 分组(Java 的 Controller 全名)
 
 ## 返回字段过滤
 
-接口配置了返回规则后,`ResponseFilter` 只输出放行的字段;没有返回规则的接口不过滤、不缓冲。两种模式(`apidoc.Options.FilterMode`):
+接口配置了返回规则后,`ResponseFilter` 只输出放行的字段;没有返回规则的接口不过滤、不缓冲。模式(`apidoc.Options.FilterMode`):
 
 | 模式 | 说明 |
 |---|---|
 | `filter.ModePath`(默认) | 路径白名单:只输出 `include: true` 的路径、`doc_force` 字段,以及有下级被放行的上级字段。被放行的字段没有下级规则时整段输出。 |
 | `filter.ModeCsap` | 完整复刻 Java 按类型过滤的行为(fastjson `SimplePropertyPreFilter`),包括同一类型在不同路径上规则互相影响等细节。从 Java 迁移、要求返回与 Java 逐字节一致时用它。 |
+| `filter.ModeOff` | 不过滤。可以全局关闭,也可以只在 `FilterEndpoints` 里关掉个别接口。 |
+
+```go
+doc := apidoc.New(apidoc.Options{
+    FilterMode: filter.ModePath,
+    // 按接口覆盖模式,键为规则的键"分组.接口名"(对应 Java csap.apidoc.runtime.filter.endpoints)
+    FilterEndpoints: map[string]filter.Mode{"example.UserController.export": filter.ModeOff},
+    // 可选:自定义哪些响应要裁剪,默认只裁剪 2xx
+    ShouldFilter: func(r *http.Request, status int) bool { return status == http.StatusOK },
+})
+```
+
+- **只裁剪 2xx**:与 Java 只过滤控制器正常返回的对象一致,4xx/5xx 的错误体(参数错误、异常处理中间件写的失败体等)原样输出。业务失败也用 200 返回的项目,可以用 `ShouldFilter` 按请求或状态码进一步排除。
+- **规则要命中返回字段**:与 Java 1.2.0 一致,只有至少一条返回规则命中了实际的返回字段路径(沿放行的字段展开),接口才会过滤。规则路径过期、和返回类型对不上(例如返回改成了 `Page<Item>`,规则还是 `data.title`,少了 `rows` 一层)时原样输出,而不是把字段全部裁掉。改正规则路径后即按规则过滤。
+- **没声明 `Resp`**:有统一外层包装、但 `Op` 没有 `Resp(...)` 时,`data` 的类型未知,整段原样输出;外层包装上的规则照常生效。
 
 裁剪在 JSON 字节流上进行,保持原有键顺序,不依赖用的是哪个 JSON 编码器。流式输出(SSE 等)的接口不要配置返回规则。
 
@@ -171,6 +200,7 @@ v := validate.New(doc, validate.Options{
 
 - 规则类型:Java 的 `NotNull`、`NotEmpty`、`Pattern`,以及 Go 版新增的 `NotBlank`、`Min`、`Max`、`Length`/`Size`、`Enum`;`validate.Register` 注册自定义规则。
 - `pattern` 可以写内置规则名(`PATTERN_1` 到 `PATTERN_44`,如 `PATTERN_35` 手机号)。Java 内置正则里写错的几条已修正;Java 写法的 `\uXXXX` 会自动转换,中文正则可以直接用。
+- `Violation.Field` 是出错的字段:路径、查询、请求头、表单参数为参数名(如 `updated_at`,与 Java 一致),请求体字段为规则路径(如 `request.items.name`)。
 - 失败返回默认与 Java 一致:HTTP 200,`{code, message, success:false}`,`code`、`message` 取规则配置,信息格式按 `TipType`;`Options.Respond` 可以换成自己的格式。
 - 规则改了,下一个请求就按新规则校验。
 

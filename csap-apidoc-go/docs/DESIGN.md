@@ -73,7 +73,7 @@ Java 的请求是"方法参数列表"，Go 是一个请求结构体，映射规�
 - BODY 字段合并成一个 `OBJECT` 参数，参数名默认 `request`（`BodyName` 可改），规则路径为 `request.<字段>`。
 - `Body(v)`：整个结构体作为请求体（对应 `@RequestBody`），切片时 `modelType` 为 `ARRAY`。
 
-字段类型显示名沿用 Java 写法：`string`→`String`，`int`/`int32`→`Integer`，`int64`/`uint64`→`Long`，`float64`→`Double`，`bool`→`Boolean`，`time.Time`→`Date`，切片→`List<X>`，map→`Map<K, V>`，泛型 `Page[pkg.Item]`→`Page<Item>`；可用 `doc_type` 标签覆盖。
+字段类型显示名（`dataType`）沿用 Java 写法：`string`→`String`，`int`/`int32`→`Integer`，`int64`/`uint64`→`Long`，`float64`→`Double`，`bool`→`Boolean`，`time.Time`→`Date`，切片→`List<X>`，map→`Map<K, V>`，泛型 `Page[pkg.Item]`→`Page<Item>`；可用 `doc_type` 标签覆盖。模型（结构体）的显示名（对应 Java `@ApiModel.value`）默认为类型名，可用 `Options.TypeNames` 或可选接口 `ApidocName() string` 覆盖（v0.1.1）。
 
 参数节点的 `key` 不再随机生成，而是由接口 key、请求/返回、`keyName` 哈希得到，重启后不变，前端照样能用作节点 ID。
 
@@ -196,7 +196,9 @@ func (n redisNotifier) Subscribe(ctx context.Context, fn func(int64)) error {
   - 由此产生的 Java 怪异行为也一并复刻，例如同一类型先在 A 路径没放行 `name`、后在 B 路径放行 `name`，结果两处都不输出 `name`（见 `mask_test.go`）。
   - 不会自动放行上级：上级没写 `include: true`，下级规则无效。
 - 两种模式下，规则路径都同时认驼峰和下划线写法（Java 规则用 Java 字段名 `data.rows.leagueId`，返回 JSON 是 `league_id`），对应 Java 的 `response-type: toUnderlineCase` 别名。
-- 两种模式都只对**配置了返回规则的接口**生效。Java 对扫描到的接口一律挂过滤器（没规则时只剩 `forceRep` 字段），Go 版不这样做，避免误伤没配规则的接口。
+- 两种模式都只对**配置了返回规则、且至少一条规则命中了返回字段路径的接口**生效（v0.1.1 起；遍历方式同 csap 模式，只沿放行的字段展开）。这与 Java 1.2.0 一致：`DefaultAbstractMethod.group` 命中规则时才调用 `ResponseRuleIndex.markResponseRule`，`ResponseRuleRegistry.compile` 只编译被标记的接口。规则路径过期、和返回类型对不上时原样输出。注意旧 csap-framework（apidoc 1.0.0 + fastjson `PropertyPreFilters`）没有这道检查，同样的过期规则会按类型黑名单把字段裁掉。返回值不是结构体（如 map）时无从判断，仍按路径规则过滤。
+- 有统一外层包装、但接口没声明 `Resp` 时，`data` 的类型未知，两种模式都整段放行。
+- `ResponseFilter` 默认只裁剪 2xx 响应（`Options.ShouldFilter` 可自定义）；`Options.FilterEndpoints` 按接口覆盖模式，`filter.ModeOff` 关闭（对应 Java `csap.apidoc.runtime.filter.endpoints`）。
 
 **黄金样本验证（2026-11-17）**：在使用方的比对环境启动 Java 生产版本，抓了 79 个接口的真实返回。Java 序列化开了 `WriteMapNullValue`，白名单字段即使为 null 也会输出，所以每个对象的键集合就是它的白名单。`filter/golden_test.go` 逐个对象比较 Go 掩码放行的键和 Java 实际输出的键，**79 个接口全部一致**；另外验证了 Prune 不改动 Java 返回，并能去掉额外注入的字段。数据属于使用方，不进仓库，测试默认跳过，运行方法见测试文件注释。
 

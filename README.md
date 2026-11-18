@@ -26,7 +26,7 @@ CSAP Apidoc 在服务运行时直接从代码生成 API 文档,不需要单独�
 | 语言 | 状态 | 支持的框架 |
 |---|---|---|
 | **Java** | ✅ 已发布 [1.2.0](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
-| **Go** | ✅ 已发布 [v0.1.0](https://pkg.go.dev/github.com/csap-ai/csap-apidoc/csap-apidoc-go)(`go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.0`) | gin、net/http |
+| **Go** | ✅ 已发布 [v0.1.1](https://pkg.go.dev/github.com/csap-ai/csap-apidoc/csap-apidoc-go)(`go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.1`) | gin、net/http |
 | **Rust** | 📋 规划中 | axum、actix-web |
 | 更多语言 | 📋 陆续支持 | 见 [路线图](docs/ROADMAP.md) |
 
