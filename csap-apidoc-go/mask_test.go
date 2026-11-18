@@ -151,6 +151,30 @@ func TestNoRulesNoMask(t *testing.T) {
 	}
 }
 
+// 有统一外层包装、接口有返回规则、但没声明 Resp:data 的类型未知,整个放行,外壳上的规则照常生效。
+func TestWrapperWithoutRespKeepsData(t *testing.T) {
+	for _, mode := range []filter.Mode{filter.ModePath, filter.ModeCsap} {
+		d := New(Options{
+			Wrapper:    &Wrapper{Type: apiResult{}},
+			FilterMode: mode,
+			Strategies: []strategy.Strategy{strategy.NewMemory(strategy.Rules{"G.raw": {Response: map[string]strategy.FieldRule{
+				"data":    {Include: model.Bool(true)},
+				"data.id": {Include: model.Bool(true)},
+			}}})},
+		})
+		d.Register("GET", "/raw", Op("G", "raw"), "")
+		mask := d.Snapshot().Endpoint("GET", "/raw").ResponseMask
+		if mask == nil {
+			t.Fatalf("mode %d: wrapper rules should still apply", mode)
+		}
+		got := render(t, mask, sample)
+		want := `{"code":"0","message":"成功","data":{"rows":[{"id":7,"league_id":3,"home":{"id":1,"name":"A","secret":"s"},"away":{"id":2,"name":"B","secret":"s"},"by_half":{"h1":{"id":1,"name":"A","secret":"s"}},"internal":"x","hidden":"h"}],"total":1,"size":20},"language":"ZH","time":1}`
+		if got != want {
+			t.Fatalf("mode %d:\ngot  %s\nwant %s", mode, got, want)
+		}
+	}
+}
+
 func TestFilterModeOffAndEndpointOverride(t *testing.T) {
 	newDoc := func(o Options) *Doc {
 		o.Wrapper = &Wrapper{Type: apiResult{}}

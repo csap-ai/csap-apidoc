@@ -23,6 +23,8 @@ type classFilter struct {
 //   - 只有被放行的字段才继续展开它的类型;
 //   - 同一类型出现在多个路径时,规则合并到同一个过滤器;
 //   - 输出时先看黑名单,再看白名单:白名单非空只输出白名单,白名单为空则输出黑名单之外的全部。
+//
+// 有统一外层包装、但接口没声明 Resp 时,业务数据字段的类型未知,按原样放行(不展开、不过滤)。
 func (b *builder) csapMask(op *Operation, mr strategy.MethodRules) *filter.Node {
 	filters := map[reflect.Type]*classFilter{}
 	var root reflect.Type
@@ -52,15 +54,20 @@ func (b *builder) csapMask(op *Operation, mr strategy.MethodRules) *filter.Node 
 				continue
 			}
 			ft := f.Type
-			if top && w != nil && meta.Name == w.DataField {
-				if op.resp == nil {
-					continue
-				}
+			name := meta.Name
+			unknownData := top && w != nil && name == w.DataField && op.resp == nil
+			if top && w != nil && name == w.DataField && op.resp != nil {
 				ft = op.resp
 			}
-			name := meta.Name
 			if _, seen := fieldTypes[t][name]; !seen {
 				cf.order = append(cf.order, name)
+			}
+			if unknownData {
+				// 没声明 Resp:业务数据的类型未知,放行整个值(fieldTypes 记 nil,不生成子掩码)
+				fieldTypes[t][name] = nil
+				cf.includes[name] = true
+				delete(cf.excludes, name)
+				continue
 			}
 			fieldTypes[t][name] = ft
 			rule, ok := strategy.Lookup(mr.Response, prefix+name)

@@ -101,7 +101,12 @@ func (b *builder) method(info GroupInfo, op *Operation, httpMethod, rawPath, nam
 		if mode == filter.ModeCsap {
 			mask = b.csapMask(op, mr)
 		} else {
-			mask = filter.Compile(mc.outPaths, mc.mapPaths)
+			out := mc.outPaths
+			if w := b.wrapper(op); w != nil && op.resp == nil {
+				// 没声明 Resp:业务数据的类型未知,整个放行
+				out = append(out, w.DataField)
+			}
+			mask = filter.Compile(out, mc.mapPaths)
 		}
 	}
 	for _, md := range m.Request {
