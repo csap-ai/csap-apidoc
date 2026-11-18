@@ -129,6 +129,9 @@ class RuleMigrationDocumentTest {
         v.setInclude(true);
         v.setParamType(type);
         v.setDescription(description);
+        v.setExample("例:" + description);
+        v.setTemplate("tpl-" + description);
+        v.setMock(required ? "@oneOf(a,b)" : java.util.Collections.singletonMap("lo", 1));
         if (required) {
             v.getValidate().add(new Validate.ConstraintValidatorField().setDescr("必填").setLevel(1).setMessage(description + "不能为空"));
         }
@@ -138,6 +141,8 @@ class RuleMigrationDocumentTest {
     static Map<String, Map<String, ParamGroupMethodProperty>> rules() {
         ParamGroupMethodProperty query = new ParamGroupMethodProperty();
         query.getRequest().put("keyword.keyword", field("关键字", true, ParamType.QUERY));
+        query.setStatus(ai.csap.apidoc.annotation.ApiStatus.DEPRECATED);
+        query.setStatusNote("请改用 /v2/query");
         ParamGroupMethodProperty save = new ParamGroupMethodProperty();
         save.getRequest().put("req.name", field("名称", true, ParamType.BODY));
         save.getRequest().put("req.age", field("年龄", false, ParamType.BODY));
@@ -212,7 +217,9 @@ class RuleMigrationDocumentTest {
     }
 
     private static void assertRulesAreInTheDocument(String doc) {
-        assertThat(doc).contains("关键字").contains("名称").contains("年龄").contains("名称不能为空");
+        assertThat(doc).contains("关键字").contains("名称").contains("年龄").contains("名称不能为空").contains("DEPRECATED").contains("请改用 /v2/query")
+                .contains("@oneOf(a,b)").contains("例:关键字").contains("\"mock\":{\"lo\":1}")
+                .contains("\"status\":\"FINISH\"");
     }
 
     // ------------------------------------------------------------------ 测试

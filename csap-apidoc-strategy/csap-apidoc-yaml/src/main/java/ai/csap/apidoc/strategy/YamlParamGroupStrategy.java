@@ -163,10 +163,7 @@ public class YamlParamGroupStrategy implements ParamGroupStrategy {
      * 复制一份参数规则,校验列表为新列表,避免修改缓存中的 YAML 规则
      */
     private static ParamGroupMethodProperty.ParamDataValidate copyOf(ParamGroupMethodProperty.ParamDataValidate source) {
-        ParamGroupMethodProperty.ParamDataValidate copy = new ParamGroupMethodProperty.ParamDataValidate(
-                source.getRequired(), source.getInclude(), source.getParamType(), source.getDescription(), null);
-        copy.getValidate().addAll(source.getValidate());
-        return copy;
+        return source.copyForUse();
     }
 
     @Override

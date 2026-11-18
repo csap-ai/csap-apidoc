@@ -392,10 +392,7 @@ public abstract class RuleStoreParamGroupStrategy implements ParamGroupStrategy,
     }
 
     private static ParamGroupMethodProperty.ParamDataValidate copyOf(ParamGroupMethodProperty.ParamDataValidate source) {
-        ParamGroupMethodProperty.ParamDataValidate copy = new ParamGroupMethodProperty.ParamDataValidate(
-                source.getRequired(), source.getInclude(), source.getParamType(), source.getDescription(), null);
-        copy.getValidate().addAll(source.getValidate());
-        return copy;
+        return source.copyForUse();
     }
 
     // ------------------------------------------------------------------ 保存

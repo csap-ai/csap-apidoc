@@ -21,7 +21,7 @@ public class DbE2eController {
     }
 
     @PostMapping("/save")
-    @ApiOperation(value = "保存", description = "保存")
+    @ApiOperation(value = "保存", description = "保存", status = ai.csap.apidoc.annotation.ApiStatus.FINISH)
     public DbE2eResp save(@RequestBody DbE2eReq req) {
         DbE2eResp resp = new DbE2eResp();
         resp.setName(req.getName());
