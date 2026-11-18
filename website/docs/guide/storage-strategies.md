@@ -100,6 +100,8 @@ private String username;
 | `DEFAULT` | `classpath*:csap-api-doc/method-field/*-method-field.yaml` | 每个 Controller 一个文件：`<Controller简单类名>-method-field.yaml` |
 | `FIXED` | `classpath*:csap-api-doc/method-field/api-method-field.yaml` | 全部写入 `api-method-field.yaml` |
 
+文件名必须以 `-method-field.yaml` 结尾，扩展名只认 `.yaml`：写成 `.yml` 或其他名字不会被读取。
+
 在 Maven 项目里，文件通常放在 `src/main/resources/csap-api-doc/method-field/`。
 
 规则在应用启动生成文档时读取并缓存。手工修改 YAML 后需要重启应用；通过 DevTools 修改会同时更新缓存和文件。

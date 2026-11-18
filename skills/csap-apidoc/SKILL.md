@@ -41,6 +41,7 @@ public class DemoApplication { ... }
 - 基础类型参数:`@ApiProperty(value = "说明", required = true)`,总会出现在请求参数里。
 - 模型类:`@ApiModel(description = "...")`(只能用在类上,不能用在参数上)。
 - 模型字段:`@ApiModelProperty(value = "...")`。**没有这个注解的字段永远不出现。**
+- 其他:`@DocGlobalHeader` / `@DocAuth`(调试界面预填请求头和鉴权建议,不继承)、`@ApiResponseCode`(返回码表)、`@EnumValue` / `@EnumMessage`(枚举字段说明),详见 <https://apidoc.csap.ai/guide/annotations>。
 
 ## 4. 字段为什么"不显示"(最常见的问题)
 

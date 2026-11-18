@@ -6,7 +6,7 @@
 
 - 默认:`src/main/resources/csap-api-doc/method-field/<Controller简单类名>-method-field.yaml`(classpath `csap-api-doc/method-field/*-method-field.yaml`)。
 - `@EnableApidoc(path = "...")` 可改根目录(默认 `csap-api-doc`);`prefixStrategy = FilePrefixStrategyType.FIXED` 时全部写在 `api-method-field.yaml`。
-- 文件名不要求和类名一致,框架读取目录下所有匹配文件;同一个 Controller 出现在多个文件里时只认一个,不要重复写。
+- 文件名不要求和类名一致,但必须以 `-method-field.yaml` 结尾(扩展名只认 `.yaml`,`.yml` 不会被读取),框架读取目录下所有匹配文件;同一个 Controller 出现在多个文件里时只认一个,不要重复写。
 
 ## 结构
 
@@ -77,6 +77,6 @@ com.example.controller.UserController:
 
 注意:
 
-- 上级字段也要写 `include: true`(上例的 `data`),否则下级不会出现。
+- 上级字段本身没有 `forceRep` 时也要写 `include: true`(上例的 `data`,假设它是自定义包装类的字段),否则下级不会出现;用框架自带的 `ApidocResult` 时 `data` 已是 `forceRep`,可以省略。
 - `code` 用字符串写法 `"1001"`。
 - 手工修改后重启应用生效;用 DevTools 修改会即时生效并写回文件。

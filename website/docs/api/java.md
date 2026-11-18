@@ -12,8 +12,11 @@
 | `GlobalCsapResponseParamProvider` | 公共返回参数（目前未使用） | 声明同类型 Bean |
 | `ParamGroupStrategy` | 字段规则来源（是否出现、必填、校验） | 继承内置实现并声明 Bean |
 | `IMethodRequest` / `IMethodResponse` | 请求 / 返回参数的解析方式 | 声明 Bean，并在 `@EnableApidoc` 里按名称选用 |
+| `ApiMethodHandle`（`ai.csap.apidoc.core`） | 运行时校验开启后，对每个方法参数追加自定义检查（1.2.0 起）。实现 `resolve(MethodParameter, Object)`，`getOrder()` 默认 100 | 声明 Bean，按顺序依次调用，见 [参数校验](/guide/validation) |
+| `ViolationRecorder`（`ai.csap.validation.runtime`） | 接收每次校验失败（上报到日志、指标以外的地方）。接口只有 `record(ValidationViolation)` | 声明 Bean，与内置记录器并存，见 [参数校验](/guide/validation) |
+| `ApidocRulesRefreshedEvent`（`ai.csap.apidoc.event`） | Spring 事件：文档全量或按类重新生成后发布，可取 `getDocument()`、`getClassNames()`、`isFullRefresh()` | 用 `@EventListener` 监听 |
 
-这些类型都在 `csap-apidoc-core` 中，引入 `csap-apidoc-boot-starter` 即可使用。下面的示例都放在一个普通的 `@Configuration` 类里注册。
+这些类型分布在 `csap-apidoc-core`、`csap-apidoc-common`（如 `IMethodRequest`、`ApiMethodHandle`）和 `csap-validation-core` 中，引入 `csap-apidoc-boot-starter` 即可使用（`ViolationRecorder` 的接入需要 `csap-validation-boot-starter`）。下面的示例都放在一个普通的 `@Configuration` 类里注册。
 
 ## CsapResourcesProvider
 
