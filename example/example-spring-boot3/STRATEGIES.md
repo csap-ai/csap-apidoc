@@ -1,253 +1,104 @@
-# Parameter Strategies Examples
+# 参数存储策略
 
-This document demonstrates how to use different parameter strategies in CSAP Framework API Doc.
+`@EnableApidoc` 通过 `paramType` 选择接口参数文档的存储方式(`ApiStrategyType`):
 
-## 📚 Available Strategies
+| 取值 | 说明 |
+|---|---|
+| `ANNOTATION`(默认) | 只读注解,不生成外部文件 |
+| `YAML` | 参数配置存成 YAML 文件,适合纳入版本管理 |
+| `JSON` | 同上,格式为 JSON |
+| `SQL_LITE` | 存成 SQLite 数据库文件,配合 DevTools 可视化维护 |
 
-### 1. ANNOTATION Strategy (Default - Recommended)
+一个应用实例同一时间只能使用一种策略。各策略的详细说明以官网 https://apidoc.csap.ai 为准,本页只说明示例项目里的用法。
 
-This is the default and recommended approach. Parameters are defined using annotations in your code.
+## 示例项目当前使用的策略
 
-**Configuration:**
+两个示例的启动类都固定使用 `YAML`:
 
 ```java
 @SpringBootApplication
-@EnableApidoc("ai.csap.example")
+@EnableApidoc(value = "ai.csap.example", paramType = ApiStrategyType.YAML)
 public class ExampleApplication { }
 ```
 
-**Usage:**
+(`example-spring-boot3` 用 `apiPackageClasses = {ProductController.class}` 直接列出 Controller 类,而不是用 `value` 按包扫描。)
+
+`application-sqlite.yml`、`application-yaml.yml` 只是带不同日志与端口的 profile 样例,**不会**切换策略;策略只由启动类上的 `@EnableApidoc` 决定。要试其他策略,请直接修改 `@EnableApidoc`。
+
+## ANNOTATION 策略
 
 ```java
-@GetMapping("/{id}")
-@ApiOperation(value = "Get User")
-public User getUser(
-    @ApiProperty(value = "User ID", required = true, example = "1001")
-    @PathVariable Long id
-) { }
+@EnableApidoc("ai.csap.example")
 ```
 
-**Advantages:**
-- ✅ Type-safe
-- ✅ IDE support
-- ✅ Easy to maintain
-- ✅ No external files needed
+参数文档完全来自代码里的注解,不生成外部文件,适合以代码为准的场景。
 
-**When to use:**
-- Standard API documentation
-- Code-first approach
-- Type safety is important
-
-### 2. SQLite Strategy
-
-Parameter configurations are stored in a SQLite database file, allowing dynamic configuration via DevTools.
-
-**Configuration:**
+## YAML 策略
 
 ```java
-@SpringBootApplication
+@EnableApidoc(
+    value = "ai.csap.example",
+    paramType = ApiStrategyType.YAML,
+    path = "csap-api-doc"      // 可省略,默认值即 csap-api-doc
+)
+```
+
+- 文件写在 classpath 根目录下的 `path` 目录中(开发时即 `target/classes/csap-api-doc/`)
+- 在 DevTools 中编辑后会写回这些文件;需要保留修改时,把它们放进 `src/main/resources/<path>/` 并提交到 Git
+- 示例测试资源见 `src/test/resources/csap-api-doc/method-field/`
+
+## SQL_LITE 策略
+
+```java
+@EnableApidoc(
+    value = "ai.csap.example",
+    paramType = ApiStrategyType.SQL_LITE,
+    path = "csap-data",
+    fileName = "apidoc-db"
+)
+```
+
+- 数据库文件为 `<path>/<fileName>.db`(位于 classpath 根目录下),首次使用时自动建表
+- 适合通过 DevTools 在线调整参数、由非开发人员维护文档的场景
+- 二进制文件不便做 diff 与代码评审
+
+## 策略对比
+
+| 特性 | ANNOTATION | YAML | SQL_LITE |
+|---------|-----------|------|----------|
+| 外部文件 | 无 | YAML 文件 | `.db` 文件 |
+| 可视化配置 | 否 | DevTools / 手工编辑 | DevTools |
+| 版本管理 | 随代码 | 文本,易 diff | 二进制,不便 |
+| 参数是否改代码 | 是 | 否 | 否 |
+
+## 切换策略
+
+1. 修改 `@EnableApidoc` 的 `paramType`(以及 `path` / `fileName`)
+2. 重启应用
+
+旧策略里的数据不会自动迁移。
+
+## 在注解参数中引用配置
+
+`@EnableApidoc` 的字符串属性支持 `${...}` 占位符:
+
+```java
 @EnableApidoc(
     value = "ai.csap.example",
     paramType = ApiStrategyType.SQL_LITE,
     path = "${apidoc.path:csap-data}",
     fileName = "${apidoc.filename:apidoc-db}"
 )
-public class ExampleApplication { }
 ```
-
-**application-sqlite.yml:**
 
 ```yaml
 apidoc:
-  path: csap-sqlite-data
+  path: csap-data
   filename: example-db
 ```
 
-**Run with:**
+## 常见问题
 
-```bash
-mvn spring-boot:run -Dspring-boot.run.profiles=sqlite
-```
+**能同时用多种策略吗?** 不能,同一实例只有一个 `paramType`。
 
-**Advantages:**
-- ✅ Dynamic configuration via DevTools
-- ✅ No code changes needed for parameter updates
-- ✅ Query and filter parameter data
-- ✅ Good for visual management
-
-**When to use:**
-- Need visual parameter configuration
-- Non-developers manage API documentation
-- Dynamic parameter management required
-
-### 3. YAML Strategy
-
-Parameter configurations are stored in YAML files, making them easy to read and version control.
-
-**Configuration:**
-
-```java
-@SpringBootApplication
-@EnableApidoc(
-    value = "ai.csap.example",
-    paramType = ApiStrategyType.YAML,
-    path = "${apidoc.path:csap-docs}"
-)
-public class ExampleApplication { }
-```
-
-**application-yaml.yml:**
-
-```yaml
-apidoc:
-  path: csap-yaml-docs
-```
-
-**Run with:**
-
-```bash
-mvn spring-boot:run -Dspring-boot.run.profiles=yaml
-```
-
-**Advantages:**
-- ✅ Human-readable format
-- ✅ Easy to version control (Git)
-- ✅ Easy to review and edit manually
-- ✅ Good for documentation-first approach
-
-**When to use:**
-- Documentation needs version control
-- Easy manual editing required
-- Documentation-first workflow
-
-## 🔄 Strategy Comparison
-
-| Feature | ANNOTATION | SQL_LITE | YAML |
-|---------|-----------|----------|------|
-| Type Safety | ✅ Yes | ❌ No | ❌ No |
-| IDE Support | ✅ Yes | ⚠️ Limited | ⚠️ Limited |
-| Visual Configuration | ❌ No | ✅ Yes (DevTools) | ⚠️ Manual |
-| Version Control | ✅ Yes (code) | ❌ Binary file | ✅ Yes (text) |
-| Easy to Update | ✅ In code | ✅ In DevTools | ✅ Edit files |
-| Performance | ⚡ Fast | ⚡ Fast | ⚠️ Slower parsing |
-| Learning Curve | 📘 Low | 📗 Medium | 📗 Medium |
-
-## 🎯 Switching Strategies
-
-### From ANNOTATION to SQLite
-
-1. Update `@EnableApidoc`:
-   ```java
-   @EnableApidoc(
-       value = "ai.csap.example",
-       paramType = ApiStrategyType.SQL_LITE,
-       path = "csap-data",
-       fileName = "apidoc-db"
-   )
-   ```
-
-2. Restart application
-3. Configure parameters via DevTools
-
-### From ANNOTATION to YAML
-
-1. Update `@EnableApidoc`:
-   ```java
-   @EnableApidoc(
-       value = "ai.csap.example",
-       paramType = ApiStrategyType.YAML,
-       path = "csap-docs"
-   )
-   ```
-
-2. Restart application
-3. Edit YAML files in the `csap-docs` directory
-
-## 💡 Environment Variables
-
-All strategies support environment variables:
-
-```java
-@EnableApidoc(
-    value = "ai.csap.example",
-    paramType = ApiStrategyType.SQL_LITE,
-    path = "${apidoc.path:/tmp/apidoc}",
-    fileName = "${apidoc.filename:${spring.application.name}}"
-)
-```
-
-**application.yml:**
-
-```yaml
-apidoc:
-  path: /var/apidoc/data
-  filename: myapp-db
-```
-
-**Environment variables:**
-
-```bash
-export APIDOC_PATH=/var/apidoc/data
-export APIDOC_FILENAME=myapp-db
-```
-
-## 📝 Best Practices
-
-### For Development
-- Use **ANNOTATION** strategy
-- Keep documentation close to code
-- Easy to refactor
-
-### For Testing
-- Use **SQLite** strategy
-- Quick parameter adjustments via DevTools
-- No code changes needed
-
-### For Production
-- Use **ANNOTATION** strategy
-- Type safety and performance
-- Or disable documentation entirely
-
-### For Documentation Teams
-- Use **YAML** strategy
-- Easy to review and edit
-- Good for non-developers
-
-## 🔍 Example Files Location
-
-After starting with different strategies, files are created at:
-
-- **SQLite**: `./csap-sqlite-data/example-sqlite-db.db`
-- **YAML**: `./csap-yaml-docs/*.yaml`
-- **ANNOTATION**: No external files (in-memory)
-
-## 🛠️ Troubleshooting
-
-### Q: Can I use multiple strategies?
-
-A: No, only one `paramType` can be active at a time per application instance.
-
-### Q: How do I migrate from one strategy to another?
-
-A: Change the `@EnableApidoc` configuration and restart. The framework will use the new strategy. Previous data is not automatically migrated.
-
-### Q: Which strategy is fastest?
-
-A: ANNOTATION is fastest as it doesn't require file I/O. SQLite and YAML have similar performance for small to medium projects.
-
-### Q: Can I use different strategies in different environments?
-
-A: Yes! Use Spring profiles:
-
-```java
-@Profile("dev")
-@EnableApidoc(paramType = ApiStrategyType.SQL_LITE, ...)
-
-@Profile("prod")
-@EnableApidoc(paramType = ApiStrategyType.ANNOTATION, ...)
-```
-
----
-
-**Need more help?** Check the [main documentation](../../README.md) or [quick start guide](../../QUICK_START.md).
-
+**不同环境用不同路径?** 可以,用 `${...}` 占位符让 `path` / `fileName` 随环境配置变化。生产环境建议关闭 DevTools(`csap.apidoc.devtool.enabled: false`)。

@@ -1,207 +1,52 @@
-# Postman转换器服务
+# Postman 导出
 
-## 概述
+`PostmanConverterService`(`ai.csap.apidoc.service.standard`)把 CSAP API 文档转换成 Postman Collection v2.1 JSON,可以直接在 Postman 里导入。
 
-`PostmanConverterService` 是一个用于将CSAP Framework API文档转换为Postman集合格式的服务。它可以将现有的API文档模型转换为符合Postman规范的JSON格式，方便开发者在Postman中导入和使用。
+## 最简单的用法:HTTP 接口
 
-## 功能特性
+引入 `csap-apidoc-boot-starter` 后,应用自带导出接口:
 
-- **API文档转换**: 将CSAP Framework的API文档转换为Postman集合
-- **标签分组**: 按API标签自动分组，创建层次化的Postman集合结构
-- **请求信息完整**: 包含HTTP方法、URL、请求头、查询参数等完整信息
-- **变量支持**: 自动生成基础URL等环境变量
-- **响应示例**: 支持响应示例的生成
-- **多控制器支持**: 支持多个控制器的API文档转换
+```
+GET /csap/openapi/postman
+```
 
-## 核心组件
+返回 Postman Collection JSON。把内容保存为文件,在 Postman 中选择 Import 导入即可。
 
-### PostmanConverterService
+同一个应用还提供 OpenAPI 3.0 导出:`GET /csap/openapi.json`。
 
-主要的转换服务类，提供以下方法：
+## 在代码中使用
 
-- `convertToPostmanCollection(CsapDocParentResponse)`: 将API文档转换为Postman集合JSON字符串
-
-### Postman模型类
-
-- `PostmanCollection`: Postman集合主模型
-- `PostmanCollectionInfo`: 集合信息模型
-- `PostmanItem`: 集合项目模型（支持嵌套）
-- `PostmanRequest`: 请求模型
-- `PostmanUrl`: URL模型
-- `PostmanHeader`: 请求头模型
-- `PostmanBody`: 请求体模型
-- `PostmanResponse`: 响应模型
-- `PostmanVariable`: 变量模型
-
-## 使用方法
-
-### 1. 基本使用
+`PostmanConverterService` 由 starter 在 `ApidocAutoConfiguration` 中注册为 Bean,入参是 `CsapDocResponse`:
 
 ```java
 @Autowired
 private PostmanConverterService postmanConverterService;
 
-public String exportToPostman(CsapDocParentResponse apiDocResponse) {
-    return postmanConverterService.convertToPostmanCollection(apiDocResponse);
+public String export(CsapDocResponse apiDoc) {
+    return postmanConverterService.convertToPostmanCollection(apiDoc);   // JSON 字符串
 }
 ```
 
-### 2. 转换结果示例
+另有 `convertToPostmanCollectionMap(CsapDocResponse)`,返回 `Map<String, Object>` 形式的集合。转换失败会抛出 `RuntimeException`。
 
-转换后的Postman集合JSON结构：
-
-```json
-{
-  "info": {
-    "name": "User Management API",
-    "description": "用户管理相关接口",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "item": [
-    {
-      "name": "user",
-      "item": [
-        {
-          "name": "getUser",
-          "request": {
-            "method": "GET",
-            "url": {
-              "raw": "/api/users/{id}",
-              "query": [
-                {
-                  "key": "id",
-                  "value": "",
-                  "description": ""
-                }
-              ]
-            },
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "description": "请求内容类型"
-              }
-            ]
-          }
-        }
-      ]
-    }
-  ],
-  "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:8080",
-      "description": "API基础URL"
-    }
-  ]
-}
-```
+Postman 模型类(`PostmanCollection`、`PostmanItem`、`PostmanRequest`、`PostmanUrl`、`PostmanHeader`、`PostmanBody`、`PostmanResponse`、`PostmanVariable` 等)是 `PostmanConverterService` 的静态内部类。
 
 ## 转换规则
 
-### 1. 标签分组
+- 集合名称与描述取自 `csap.apidoc.api-info`(`title` / `description`),未配置时为默认值
+- 每个 Controller 对应一个 Postman 文件夹,文件夹名取 Controller 的名称(`@Api` 的值),为空时取类简名
+- URL 为 Controller 路径加方法路径,自动合并多余的斜杠;集合变量 `baseUrl` 默认值为 `http://localhost:8080`,请在 Postman 中改成实际地址
+- 请求头取自接口文档中的请求头配置
+- 查询参数取自接口的请求参数:有示例值时使用示例;非必填参数默认置为禁用;没有模型信息时回退到方法的参数名列表
+- HTTP 方法取自接口的方法列表,缺省为 GET
+- 请求体按接口的请求模型生成
 
-- API方法按标签自动分组
-- 每个标签创建一个Postman文件夹
-- 支持多层嵌套结构
-
-### 2. URL构建
-
-- 控制器路径 + 方法路径
-- 自动处理路径分隔符
-- 支持查询参数
-
-### 3. 请求头
-
-- 从`CsapDocMethodHeaders`转换
-- 包含键、值、描述信息
-
-### 4. 查询参数
-
-- 从`paramNames`自动生成
-- 支持路径参数和查询参数
-
-### 5. HTTP方法
-
-- 从`methods`列表获取
-- 默认使用GET方法
-
-## 测试验证
-
-项目包含完整的测试用例，验证以下功能：
-
-- 基本转换功能
-- 空响应处理
-- 复杂API结构
-- 请求头转换
-- 查询参数处理
-- 不同HTTP方法
-- 标签分组功能
-
-### 运行测试
+## 测试
 
 ```bash
-# 运行所有测试
-mvn test -Dtest=PostmanConverterServiceTest
-
-# 运行简单测试程序
-mvn exec:java -Dexec.mainClass="ai.csap.apidoc.service.PostmanConverterTest"
+mvn -pl csap-apidoc-core test -Dtest=PostmanConverterServiceUrlTest
 ```
-
-## 扩展性
-
-### 1. 自定义转换逻辑
-
-可以通过继承`PostmanConverterService`来扩展转换逻辑：
-
-```java
-@Service
-public class CustomPostmanConverterService extends PostmanConverterService {
-    
-    @Override
-    protected PostmanBody buildRequestBody(List<CsapDocModel> requestModels) {
-        // 自定义请求体构建逻辑
-        return super.buildRequestBody(requestModels);
-    }
-}
-```
-
-### 2. 添加新的Postman特性
-
-可以在Postman模型类中添加新的字段，并在转换逻辑中处理：
-
-```java
-public static class PostmanRequest {
-    private String method;
-    private List<PostmanHeader> header;
-    private PostmanBody body;
-    private PostmanUrl url;
-    private String description; // 新增字段
-    
-    // getters and setters
-}
-```
-
-## 注意事项
-
-1. **依赖管理**: 服务使用简单的字符串拼接进行JSON转换，避免Jackson依赖问题
-2. **性能考虑**: 对于大型API文档，建议异步处理转换过程
-3. **错误处理**: 转换失败时会抛出RuntimeException，需要适当处理
-4. **内存使用**: 大型文档转换时注意内存使用情况
-
-## 未来改进
-
-1. **Jackson集成**: 集成Jackson库提供更强大的JSON处理能力
-2. **模板支持**: 支持自定义Postman集合模板
-3. **批量导出**: 支持批量导出多个API文档
-4. **格式验证**: 添加Postman集合格式验证
-5. **增量更新**: 支持增量更新Postman集合
-
-## 贡献
-
-欢迎提交Issue和Pull Request来改进这个服务。
 
 ## 许可证
 
-遵循项目的整体许可证。
-
+遵循项目整体许可证(Apache License 2.0)。

@@ -8,7 +8,7 @@
 
 ## 默认行为：关闭
 
-不修改任何配置时，所有接口公开（与本次改造之前完全一致）：
+不修改任何配置时（`csap.example.security.enabled` 默认 `false`），所有接口公开：
 
 ```
 GET  /api/users           → 200
@@ -94,22 +94,22 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8083/api/users | jq
 # 200 OK
 ```
 
-### 5. 在 csap-apidoc-ui 里配置（M3 完成后可用）
+### 5. 在 csap-apidoc-ui 里配置
 
-1. 顶栏 → 环境管理 → 新建 `Local-Demo`，Base URL `http://localhost:8083`
-2. 顶栏 → 认证 → 新建 Bearer Scheme，token 粘贴第 3 步获得的 `accessToken`
-3. 顶栏 → 切换到 `Local-Demo` 环境
-4. 打开 `/api/users` 接口的 **Try it out** → Send → 200
+1. 顶栏环境下拉 → 管理环境 → 新建 `Local-Demo`，Base URL `http://localhost:8083`
+2. 顶栏「认证」→ 新建 Bearer 方案，token 粘贴第 3 步获得的 `accessToken`
+3. 顶栏切换到 `Local-Demo` 环境
+4. 打开 `/api/users` 接口详情页的「试运行 v2」标签 → Send → 200
 
 ## 公开端点（即便启用 JWT 也不需要 token）
 
 ```
-/csap/apidoc/**          # 文档元数据（csap-apidoc-boot 暴露给 csap-apidoc-ui）
-/api-doc, /api-doc/**    # OpenAPI/Swagger 数据接口
+/csap/apidoc/**          # 文档元数据（暴露给 csap-apidoc-ui）
+/api-doc, /api-doc/**    # 预留路径（框架实际的数据接口是 /csap/apidoc 与 /csap/openapi.json）
 /csap-api.html           # 嵌入式文档查看器 HTML
 /csap-api-devtools.html  # devtools 控制台 HTML
 /devtools-ui/**          # 后端开发者用的 devtools 控制台前端
-/api/devtools/**         # devtools 后端 API
+/api/devtools/**         # 预留路径（devtools 实际接口位于 /devtools/** 与 /csap/yaml/**，启用 JWT 后需自行放行或带 token）
 /auth/**                 # 登录端点本身
 /actuator/health
 /error, /static/**, /assets/**, /favicon.ico

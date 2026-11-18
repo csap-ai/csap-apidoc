@@ -129,6 +129,16 @@
 | G11 | GitHub Release `v1.2.0` 发布说明 | 正文是英文 CHANGELOG 摘录,事实(坐标、Go 与其同时发布 v0.1.0、已知问题表)与代码一致;末尾写"Go: released together as csap-apidoc-go/v0.1.0" | 事实无误;Go 现在是 v0.1.1 | 可不改。如要改,加一句"Go 后续补丁见 csap-apidoc-go/v0.1.1" | 措辞 | **待主会话裁定**(只读,未改) |
 | G12 | GitHub Release `csap-apidoc-go/v0.1.1` | 中文发布说明,内容与 `csap-apidoc-go/CHANGELOG.md` 一致,安装命令正确 | 无问题 | — | — | — |
 
+### I. 示例与各模块 README(第三批,约 90 处,逐条明细见主会话笔记目录的 module-readmes-report.md)
+
+已重写或修正:`example/README.md`、`example-spring-boot2|3/{README,ANNOTATIONS,FILES,STRATEGIES}.md`、`example-spring-boot3/SECURITY.md`、`csap-apidoc-core/README-Postman.md`、`csap-apidoc-devtools/{PROXY,EXAMPLE-APPLICATION}.md`、`csap-apidoc-devtools/devtools/README*.md`、`csap-apidoc-ui/README.md`、`csap-validation-core/VALIDATION_FRAMEWORK.md`(1676 → 1129 行,头部加"以官网为准")。主要问题类型:
+
+- **使用了不存在的东西**(错误):`@ApiDoc` 注解、`csap.apidoc.enabled/title/base-package` 配置、`/api-doc` 接口、`PostmanConverterServiceTest` 等测试类、不存在的文档链接(`SPRING_BOOT_COMPATIBILITY.md`、`QUICK_START.md`、`TYPESCRIPT-MIGRATION.md`、`DEVTOOLS-DEPLOY.md`)、不存在的 Record DTO / HTTP Interface / Native Image / 文件上传下载示例。
+- **编造内容**(错误):性能对比数字(启动快 28%、吞吐 10K→12K 等)、伪造的启动日志、"已验证"状态。已删除。
+- **事实错误**:示例端口 8080(实际 8082 / 8083)、依赖 1.1.0、JDK 8、"`@ApiProperty` 不能用在参数上"(实际 `@Target` 含 `PARAMETER`)、profile 能切换存储策略(实际由 `@EnableApidoc` 固定)、`README-zh.md` 是 vue-admin-template 残留。
+
+**未逐行核对**:`VALIDATION_FRAMEWORK.md` 的 84-334 行、使用示例、自定义注解、FAQ 其余条目只抽查;示例技术栈表里 Jackson / Hibernate Validator / Tomcat 版本按 Spring Boot BOM 填写,没有解析依赖树验证。
+
 ### H. 官网导航与链接
 
 - 侧边栏、顶部导航:`guide/*` 17 页、`api/*` 3 页、`go/`、`download/`、路线图、发布说明全部已挂,无漏挂;`npm run build` 的死链检查通过。
@@ -144,7 +154,12 @@
 5. **YAML 里上级字段 `include: true` 的统一写法**(见 F10)。
 6. **`SECURITY.md` 的支持版本策略**:只支持最新次版本线(1.2.x)是否符合预期。
 7. **GitHub 仓库描述 / topics、v1.2.0 发布说明**(见 G10、G11),只读,未改。
-8. **`/devtools/hiddenMethod` 目前什么也不做**(`ApidocDevtools.java:1221` 直接返回 `true`)。文档已如实写成"没有实际作用",但如果这是未完成的功能而不是有意保留,可能要在 1.3.0 里处理或从文档中去掉该接口。
+9. **示例工程里的代码/配置问题(文档已如实说明,代码未改)**:
+   - `SecurityConfig.PUBLIC_PATHS` 含框架没有的 `/api-doc`、`/api/devtools/**`,又漏了 `/csap/openapi.json`、`/devtools/**`、`/csap/yaml/**`,启用 JWT 后这些接口会 401;
+   - boot3 的 `@EnableApidoc` 用 `apiPackageClasses = {ProductController.class}`,只文档化这一个 Controller,是否有意;
+   - `test-api.sh`、`api-test.http`、`application-{sqlite,yaml,gateway}.yml` 里端口仍是 8080,且 sqlite / yaml 两个 profile 并不会切换存储策略(策略由 `@EnableApidoc` 固定),建议改名或删除。
+10. `csap-apidoc-devtools/devtools/README-zh.md` 原文是 vue-admin-template 残留,已改成一行指向 README.md,是否直接删除该文件。
+11. **`/devtools/hiddenMethod` 目前什么也不做**(`ApidocDevtools.java:1221` 直接返回 `true`)。文档已如实写成"没有实际作用",但如果这是未完成的功能而不是有意保留,可能要在 1.3.0 里处理或从文档中去掉该接口。
 
 ## 四、顺带发现,未处理(超出"只改文档"的范围)
 
