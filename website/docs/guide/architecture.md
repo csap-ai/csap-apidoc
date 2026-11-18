@@ -2,6 +2,10 @@
 
 本页说明 CSAP Apidoc 的模块划分与依赖关系、应用启动时如何扫描生成文档、字段规则从哪里来以及如何合并，还有文档缓存与刷新的实际行为。
 
+:::info 适用范围
+本页讲的是 **Java 版**(Spring Boot 2.x / 3.x)。Go 版的设计见仓库里的 `csap-apidoc-go/docs/DESIGN.md`，用法见 [Go 版](/go/)；两种语言共用文档页面和 YAML 规则文件格式。
+:::
+
 ## 模块
 
 仓库是一个 Maven 多模块工程，当前发布版本 `1.2.0`。除两个 starter 的 groupId 是 `ai.csap.apidoc.boot` 外，其余模块的 groupId 都是 `ai.csap.apidoc`。

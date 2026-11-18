@@ -18,9 +18,9 @@ hero:
 
 features:
   - title: 运行时生成文档
-    details: 启动时扫描 Controller 和模型上的注解,在内存里生成文档,打开 /csap-api.html 即可查看。
+    details: 启动时从代码生成文档(Java 扫描注解,Go 读取路由和结构体标签),在内存里生成,打开 /csap-api.html 即可查看。
   - title: 字段规则
-    details: 用注解或 YAML 文件描述每个接口显示哪些请求参数和返回字段,同一个模型在不同接口里可以显示不同字段。
+    details: 用注解(Java)、结构体标签(Go)或 YAML 文件描述每个接口显示哪些请求参数和返回字段,同一个模型在不同接口里可以显示不同字段。YAML 规则文件两种语言通用。
   - title: 在线调试
     details: 文档页内直接发请求,支持环境切换、全局请求头、鉴权、请求历史与重放、命名快照导入导出(1.1.1 起)。
   - title: 多格式导出
@@ -31,7 +31,9 @@ features:
     details: 在一个页面里切换查看多个服务的文档。
 ---
 
-## 一分钟接入(Java)
+## 一分钟接入
+
+### Java(Spring Boot 2.x / 3.x)
 
 ```xml
 <dependency>
@@ -42,6 +44,14 @@ features:
 ```
 
 在启动类上加 `@EnableApidoc` 指定要扫描的包,启动后访问 `http://localhost:8080/csap-api.html`。完整步骤见 [快速开始](/guide/quick-start)。
+
+### Go(gin、net/http)
+
+```bash
+go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.1
+```
+
+创建 `apidoc.New(...)`,用 `ginadapter.Mount` 或 `nethttpadapter.Mount` 挂载,注册路由时用 `apidoc.Op` 声明接口,启动后访问 `/csap-api.html`。完整步骤见 [Go 版](/go/)。
 
 ## 适用范围
 

@@ -2,6 +2,10 @@
 
 本页用一个最小的 Spring Boot 项目，5 分钟内跑起 CSAP Apidoc 文档页面：加依赖、加 `@EnableApidoc`、给 Controller 和模型加注解、启动后访问页面。
 
+:::info 适用范围
+本页是 **Java 版**(Spring Boot)的快速开始。Go 版(gin、net/http)的接入步骤见 [Go 版](/go/)。
+:::
+
 ## 准备
 
 - JDK 11 及以上；Spring Boot 3 项目需要 JDK 17 及以上。

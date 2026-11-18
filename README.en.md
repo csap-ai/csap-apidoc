@@ -30,16 +30,18 @@ The doc protocol, the rule file format and the docs page are shared across langu
 | **Rust** | 📋 Planned | axum, actix-web |
 | More | 📋 Coming | see the [roadmap](docs/ROADMAP.md) |
 
-## What you get today (Java)
+## What you get today
 
-- **Runtime docs**: annotations are scanned at startup; open `/csap-api.html`.
-- **Field rules**: annotations, YAML files or SQLite decide which request parameters and response fields each endpoint shows; one model can show different fields in different endpoints.
+These work in both Java and Go (see the [Go guide](https://apidoc.csap.ai/go/) for Go's filtering and validation); items marked "Java" exist only in the Java version for now.
+
+- **Runtime docs**: docs are generated from code at startup (Java scans annotations, Go reads routes and struct tags); open `/csap-api.html`.
+- **Field rules**: annotations (Java), struct tags (Go), YAML files or SQLite / SQL decide which request parameters and response fields each endpoint shows; one model can show different fields in different endpoints.
 - **Try it out**: send requests from the docs page with environments, global headers, auth, request history and replay, and named snapshots you can import and export.
 - **Export**: OpenAPI 3.0, Postman v2.1 and Markdown from the docs page, or copy as TypeScript types.
 - **DevTools**: in development, pick fields and configure validation rules in a UI that writes back to YAML.
-- **Gateway aggregation**: browse several services' docs from one page.
-- **Response field filtering** (since 1.2.0, off by default): endpoints with rules return only the fields the docs show; Jackson, fastjson and fastjson2. See [Response field filtering](https://apidoc.csap.ai/guide/runtime-filter).
-- **Request validation** (since 1.2.0, off by default): off / observe / enforce modes with per-endpoint overrides. See [Validation](https://apidoc.csap.ai/guide/validation).
+- **Gateway aggregation** (Java): browse several services' docs from one page.
+- **Response field filtering** (Java since 1.2.0, off by default; in Go, endpoints with response rules are filtered by default): endpoints with rules return only the fields the docs show; Jackson, fastjson and fastjson2. See [Response field filtering](https://apidoc.csap.ai/guide/runtime-filter).
+- **Request validation** (Java since 1.2.0, off by default; off by default in Go too): off / observe / enforce modes with per-endpoint overrides. See [Validation](https://apidoc.csap.ai/guide/validation).
 
 ## Quick start (Java)
 
@@ -91,11 +93,31 @@ public class User {
 
 Why `forceReq` / `forceRep`, and how to choose fields per endpoint: see [Quick start](https://apidoc.csap.ai/guide/quick-start) (Chinese).
 
+## Quick start (Go)
+
+```bash
+go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.1
+```
+
+```go
+doc := apidoc.New(apidoc.Options{})
+r := gin.New()
+g := ginadapter.Mount(r, doc) // serves /csap/apidoc*, /csap/openapi*, /csap-api.html
+g.GET("/api/v1/users/:id",
+    apidoc.Op("example.UserController", "get").Summary("Get a user").Req(GetUserReq{}).Resp(User{}),
+    getUser)
+r.Run(":8080")
+```
+
+Then open <http://localhost:8080/csap-api.html>. `net/http`, struct tags, response filtering, validation and the admin console are covered in the [Go guide](https://apidoc.csap.ai/go/) (Chinese) and [csap-apidoc-go/README.md](csap-apidoc-go/README.md).
+
 ## Documentation
 
 Full documentation (currently in Chinese) lives at **<https://apidoc.csap.ai>**. See also the [changelog](CHANGELOG.md) and the [roadmap](docs/ROADMAP.md).
 
-## Modules
+## Modules (Java)
+
+The Go version is a single Go module, `github.com/csap-ai/csap-apidoc/csap-apidoc-go`, see above.
 
 | Coordinates | Purpose |
 |---|---|
@@ -113,7 +135,7 @@ Java modules live at the repository root, the Go implementation in `csap-apidoc-
 
 ## AI coding assistants
 
-The repository ships a [`csap-apidoc` skill](skills/csap-apidoc/SKILL.md). Install it in Claude Code or any assistant that supports Agent Skills and it will know how to integrate and maintain CSAP Apidoc; see the [install guide](https://apidoc.csap.ai/guide/ai-skill) (Chinese).
+The repository ships a [`csap-apidoc` skill](skills/csap-apidoc/SKILL.md). Install it in Claude Code or any assistant that supports Agent Skills and it will know how to integrate and maintain CSAP Apidoc in Java and Go projects; see the [install guide](https://apidoc.csap.ai/guide/ai-skill) (Chinese).
 
 ## Contributing
 

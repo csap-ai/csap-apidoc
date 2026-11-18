@@ -2,6 +2,10 @@
 
 本页介绍 CSAP Apidoc 的开发工具（DevTools）：它在开发阶段提供一个网页，用来按接口勾选请求和返回字段、配置校验规则，并把结果写回 YAML 或 SQLite 规则文件。
 
+:::info 适用范围
+本页的开启方式和配置是 **Java 版**的。Go 版的后台管理页面与接口和 Java 兼容(页面是同一份前端),但需要用 `devtools.New` 创建并必须配置鉴权,见 [Go 版](/go/)。
+:::
+
 ## 它解决什么问题
 
 使用 YAML 或 SQLite 存放字段规则（见 [存储策略](/guide/storage-strategies)）时，手写规则文件需要记住字段键的写法（`user.username`、`data.id`……）。DevTools 读取 Controller 方法的参数和返回类型，列出可选字段，你只需要勾选、填写必填和校验规则，保存后由它生成规则条目。

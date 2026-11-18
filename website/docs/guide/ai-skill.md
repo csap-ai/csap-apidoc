@@ -1,8 +1,8 @@
 # AI 编码助手技能(Skill)
 
-本页介绍 `csap-apidoc` 技能:安装后,Claude Code 等支持 Agent Skills 的 AI 编码助手就知道如何给项目接入 CSAP Apidoc、写注解和 YAML 规则、排查"文档里看不到字段"。
+本页介绍 `csap-apidoc` 技能:安装后,Claude Code 等支持 Agent Skills 的 AI 编码助手就知道如何给 Java(Spring Boot)或 Go(gin、net/http)项目接入 CSAP Apidoc、写注解或结构体标签和 YAML 规则、排查"文档里看不到字段"。技能会先判断项目是什么语言,再按对应语言的写法处理,不会把 Java 的写法套到 Go 项目上。
 
-技能源文件在仓库的 [`skills/csap-apidoc/`](https://github.com/csap-ai/csap-apidoc/tree/main/skills/csap-apidoc),随版本一起维护。当前版本对应 Java 1.2.x。
+技能源文件在仓库的 [`skills/csap-apidoc/`](https://github.com/csap-ai/csap-apidoc/tree/main/skills/csap-apidoc),随版本一起维护。当前对应 Java 1.2.x 和 Go v0.1.x;后续语言发布后会陆续加入。
 
 ## 安装
 
@@ -23,17 +23,16 @@ mkdir -p ~/.claude/skills
 cp -R /tmp/csap-apidoc/skills/csap-apidoc ~/.claude/skills/
 ```
 
-之后在对话里提到 CSAP Apidoc、`@EnableApidoc`、`method-field.yaml` 等,助手会自动加载这个技能。
+之后在对话里提到 CSAP Apidoc、`@EnableApidoc`、`apidoc.Op`、`csap-apidoc-go`、`method-field.yaml` 等,助手会自动加载这个技能。
 
 ## 技能里有什么
 
-- 正确的 Maven 坐标和依赖(以及旧文档里错误坐标的识别)
-- `@EnableApidoc` 和各注解的写法
-- 字段"默认不显示"的规则,以及 `forceReq` / `forceRep`、`@Group`、YAML 三种选择字段的方式
-- YAML 规则文件的位置、字段键写法和完整示例
-- 文档数据接口(`/csap/apidoc` 等)和 DevTools 的用法
-- 返回字段过滤、运行时参数校验（1.2.0 起，默认关闭）的开启方式和注意事项,避免助手对用户做出不成立的承诺
-- 接入后的检查步骤
+技能分共通部分和分语言的部分:
+
+- **共通**:先判断项目语言的方法;运行时生成文档、字段规则、返回过滤、请求校验、DevTools 的概念;两种语言共用的文档数据接口(`/csap/apidoc` 等)和 YAML 规则文件格式;两种语言的差别(例如非必填字段上的校验规则:Java 不执行,Go 传了值就执行);避免助手对用户做出不成立的承诺(返回过滤和校验是否默认开启等)。
+- **Java 版**:正确的 Maven 坐标和依赖(以及旧文档里错误坐标的识别)、`@EnableApidoc` 和各注解的写法、字段"默认不显示"的规则与 `forceReq` / `forceRep`、`@Group`、YAML 三种选择字段的方式、`csap.apidoc.*` 和 `csap.validation.*` 配置、DevTools。
+- **Go 版**:`go get` 和版本、`apidoc.New` 与 `Options`、gin / net/http 适配、`apidoc.Op` 声明接口、结构体标签、返回过滤(`FilterMode`、`FilterEndpoints`、`ShouldFilter`)、请求校验中间件、devtools 鉴权。
+- 接入后的检查步骤。
 
 ## 计划
 

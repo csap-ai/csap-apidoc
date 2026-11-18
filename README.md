@@ -30,16 +30,18 @@ CSAP Apidoc 在服务运行时直接从代码生成 API 文档,不需要单独�
 | **Rust** | 📋 规划中 | axum、actix-web |
 | 更多语言 | 📋 陆续支持 | 见 [路线图](docs/ROADMAP.md) |
 
-## 已有能力(Java)
+## 已有能力
 
-- **运行时生成文档**:启动时扫描注解,生成文档,访问 `/csap-api.html` 查看。
-- **字段规则**:用注解、YAML 文件或 SQLite 描述每个接口显示哪些请求参数和返回字段;同一个模型在不同接口里可以显示不同字段。
+以下能力 Java 和 Go 都有(Go 的返回过滤和校验见 [Go 版](https://apidoc.csap.ai/go/));标注「Java」的目前只有 Java 版。
+
+- **运行时生成文档**:启动时从代码生成文档(Java 扫描注解,Go 读取路由和结构体标签),访问 `/csap-api.html` 查看。
+- **字段规则**:用注解(Java)、结构体标签(Go)、YAML 文件或 SQLite / SQL 描述每个接口显示哪些请求参数和返回字段;同一个模型在不同接口里可以显示不同字段。
 - **在线调试**:在文档页直接发请求,支持环境切换、全局请求头、鉴权、请求历史与重放、命名快照导入导出。
 - **导出**:在文档页导出 OpenAPI 3.0、Postman v2.1、Markdown,或复制为 TypeScript 类型。
 - **DevTools**:开发环境下用可视化界面勾选字段、配置校验规则,写回 YAML。
-- **网关聚合**:一个页面切换查看多个服务的文档。
-- **返回字段过滤**(1.2.0 起,默认关闭):按接口规则只返回文档里显示的字段,支持 Jackson、fastjson、fastjson2,见 [返回字段过滤](https://apidoc.csap.ai/guide/runtime-filter)。
-- **请求参数校验**(1.2.0 起,默认关闭):关闭 / 观察 / 拦截三种模式,可按接口覆盖,见 [参数校验](https://apidoc.csap.ai/guide/validation)。
+- **网关聚合**(Java):一个页面切换查看多个服务的文档。
+- **返回字段过滤**(Java 1.2.0 起,默认关闭;Go 配了返回规则的接口默认过滤):按接口规则只返回文档里显示的字段,支持 Jackson、fastjson、fastjson2,见 [返回字段过滤](https://apidoc.csap.ai/guide/runtime-filter)。
+- **请求参数校验**(Java 1.2.0 起,默认关闭;Go 默认关闭):关闭 / 观察 / 拦截三种模式,可按接口覆盖,见 [参数校验](https://apidoc.csap.ai/guide/validation)。
 
 ## 快速开始(Java)
 
@@ -91,6 +93,24 @@ public class User {
 
 字段为什么要写 `forceReq` / `forceRep`、怎样按接口选择字段,见 [快速开始](https://apidoc.csap.ai/guide/quick-start)。
 
+## 快速开始(Go)
+
+```bash
+go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.1
+```
+
+```go
+doc := apidoc.New(apidoc.Options{})
+r := gin.New()
+g := ginadapter.Mount(r, doc) // 挂 /csap/apidoc*、/csap/openapi*、/csap-api.html
+g.GET("/api/v1/users/:id",
+    apidoc.Op("example.UserController", "get").Summary("查询用户").Req(GetUserReq{}).Resp(User{}),
+    getUser)
+r.Run(":8080")
+```
+
+启动后打开 <http://localhost:8080/csap-api.html>。标准库 `net/http`、结构体标签、返回过滤、校验和后台管理见 [Go 版](https://apidoc.csap.ai/go/) 和 [csap-apidoc-go/README.md](csap-apidoc-go/README.md)。
+
 ## 文档
 
 完整文档在 **<https://apidoc.csap.ai>**:
@@ -100,7 +120,9 @@ public class User {
 - [REST 接口](https://apidoc.csap.ai/api/rest) · [注解参考](https://apidoc.csap.ai/api/annotations) · [Java 扩展点](https://apidoc.csap.ai/api/java)
 - [发布说明](CHANGELOG.md) · [路线图](docs/ROADMAP.md)
 
-## 模块
+## 模块(Java)
+
+Go 版是单个 Go 模块 `github.com/csap-ai/csap-apidoc/csap-apidoc-go`,见上文。
 
 | 坐标 | 说明 |
 |---|---|
@@ -118,7 +140,7 @@ public class User {
 
 ## AI 编码助手
 
-仓库提供 [`csap-apidoc` 技能](skills/csap-apidoc/SKILL.md),装进 Claude Code 等支持 Agent Skills 的助手后,它就知道如何接入和维护 CSAP Apidoc,见 [安装说明](https://apidoc.csap.ai/guide/ai-skill)。
+仓库提供 [`csap-apidoc` 技能](skills/csap-apidoc/SKILL.md),装进 Claude Code 等支持 Agent Skills 的助手后,它就知道如何给 Java 或 Go 项目接入和维护 CSAP Apidoc,见 [安装说明](https://apidoc.csap.ai/guide/ai-skill)。
 
 ## 参与贡献
 

@@ -2,6 +2,10 @@
 
 本页给出一个完整的 Controller + 请求 / 返回模型示例，并说明它在文档页面 `/csap-api.html` 上显示成什么样。依赖和 `@EnableApidoc` 的写法见 [快速开始](/guide/quick-start)。
 
+:::info 适用范围
+本页讲的是 **Java 版**(Spring Boot 2.x / 3.x)。Go 版(gin、net/http)的接入、结构体标签、过滤和校验见 [Go 版](/go/)；两种语言共用文档页面和 YAML 规则文件格式。
+:::
+
 示例以 Spring Boot 3 为准（校验注解使用 `jakarta.validation`），并用 Lombok 生成 getter / setter，和仓库里的示例工程一致。
 
 ## 示例代码
