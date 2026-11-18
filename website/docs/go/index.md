@@ -27,6 +27,10 @@ go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.1
 
 ```go
 import (
+    "context"
+
+    "github.com/gin-gonic/gin"
+
     apidoc "github.com/csap-ai/csap-apidoc/csap-apidoc-go"
     ginadapter "github.com/csap-ai/csap-apidoc/csap-apidoc-go/adapter/gin"
     "github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
@@ -56,6 +60,7 @@ doc := apidoc.New(apidoc.Options{
     Strategies: []strategy.Strategy{yaml.Dir("csap-api-doc/method-field")},
 })
 doc.Group(apidoc.GroupInfo{Name: "example.UserController", Title: "用户管理", Path: "/api/v1/users"})
+ctx := context.Background() // 实际项目里用随进程退出而取消的 ctx
 go doc.Watch(ctx) // 规则文件改了自动重新加载,不用重启
 
 r := gin.New()
@@ -71,7 +76,7 @@ g.GET("/api/v1/users/:id",
 
 Go 的 handler 签名都一样,看不出请求和返回用的是哪个结构体,所以注册路由时用 `apidoc.Op(分组, 接口名)` 声明一次:
 
-- `Req(v)`:请求结构体,每个字段按标签决定位置,`uri`→PATH、`header`→HEADER、`form`→QUERY(GET)或 FORM、`json`→BODY,也可以用 `in:"query|path|header|body|form"` 显式指定。
+- `Req(v)`:请求结构体,每个字段按标签决定位置:`uri`→PATH、`header`→HEADER;与路径参数同名的字段也是 PATH;POST / PUT / PATCH 上 `form`→FORM、`json`→BODY,其他方法(GET、DELETE 等)上都是 QUERY。也可以用 `in:"query|path|header|body|form"` 显式指定。完整的优先级见 [DESIGN.md](https://github.com/csap-ai/csap-apidoc/blob/main/csap-apidoc-go/docs/DESIGN.md) 3.1.1。
 - `Body(v)`:整个请求体(相当于 `@RequestBody`)。
 - `Resp(v)`:业务返回类型,不含外层包装;文档和规则里它出现在 `data` 下。
 - 分组名对应 Java 的 Controller 全名(规则文件的一级键),接口名对应方法名(二级键)。两者都可以留空,按 handler 的函数名推断。
@@ -84,10 +89,11 @@ Go 的 handler 签名都一样,看不出请求和返回用的是哪个结构体,
 |---|---|---|
 | `doc:"标题"` | `@ApiModelProperty.value` | 字段说明 |
 | `doc_desc`、`doc_example`、`doc_default` | `description`、`example`、`defaultValue` | |
-| `doc_required:"true"` | `required` | 也识别 gin 的 `binding:"required"` |
+| `doc_required:"true"` | `required` | 也识别 gin 的 `binding:"required"` 和 `validate:"required"` |
 | `doc_hidden:"true"` | `hidden` | 文档不显示,也不输出 |
 | `doc_force:"true"` | `forceReq` / `forceRep` | 不受规则限制,始终显示和输出 |
 | `doc_type:"Long"` | — | 覆盖字段的类型显示名(`dataType`) |
+| `doc_position:"1"` | `position` | 字段排序 |
 
 结构体(模型)在文档里的显示名默认是 Go 类型名(泛型显示成 `Page<Item>`),相当于 Java `@ApiModel` 的 `value`。有两种方式覆盖,优先级 `Options.TypeNames` > `ApidocName()` > 类型名:
 
@@ -127,7 +133,7 @@ http.ListenAndServe(":8080", mux)
 
 路径参数用 `r.PathValue` 取。`ServeMux` 不能列出已注册的路由,所以只有通过 `Mux` 注册的路由会出现在文档里;过滤和校验中间件也要用 `m.Use` 注册(需要知道请求命中了哪条路由)。
 
-完整示例:仓库里的 `examples/gin-basic`、`examples/nethttp-basic`,`go run ./examples/gin-basic` 后打开 `http://localhost:8080/csap-api.html`。
+完整示例:仓库里的 `examples/gin-basic`、`examples/nethttp-basic`,在 `csap-apidoc-go` 目录下执行 `go run ./examples/gin-basic` 后打开 `http://localhost:8080/csap-api.html`。
 
 ## 字段规则(YAML,与 Java 兼容)
 
@@ -201,7 +207,7 @@ v := validate.New(doc, validate.Options{
 - 规则类型:Java 的 `NotNull`、`NotEmpty`、`Pattern`,以及 Go 版新增的 `NotBlank`、`Min`、`Max`、`Length`/`Size`、`Enum`;`validate.Register` 注册自定义规则。
 - `pattern` 可以写内置规则名(`PATTERN_1` 到 `PATTERN_44`,如 `PATTERN_35` 手机号)。Java 内置正则里写错的几条已修正;Java 写法的 `\uXXXX` 会自动转换,中文正则可以直接用。
 - `Violation.Field` 是出错的字段:路径、查询、请求头、表单参数为参数名(如 `updated_at`,与 Java 一致),请求体字段为规则路径(如 `request.items.name`)。
-- 失败返回默认与 Java 一致:HTTP 200,`{code, message, success:false}`,`code`、`message` 取规则配置,信息格式按 `TipType`;`Options.Respond` 可以换成自己的格式。
+- 失败返回默认与 Java 的 `ApidocResult` 一致:HTTP 200,body 含 `code`、`message`、`success:false`、`language`、`time`,没有 `data`;`code`、`message` 取规则配置,信息格式按 `TipType`;`Options.Respond` 可以换成自己的格式。
 - 规则改了,下一个请求就按新规则校验。
 
 ## 后台管理
@@ -222,14 +228,16 @@ ginadapter.MountDevtools(r, dt)       // gin
 
 - **默认不开启**:不调用 `devtools.New` 并挂载就没有后台;`Auth` 不传会返回错误。可用 `BasicAuth`、`Token`(网关注入的请求头)、`AllowLocal`(只允许本机)、`Any` 组合,或接自己的登录态。`AllowAll` 只用于本机开发。建议只在开发、测试环境或内网开启。
 - **与 Java 前端兼容**:`/csap/yaml/*`、`/devtools/*` 接口的请求和返回格式与 Java 版一致,页面就是 Java 版的 DevTools 前端。
-- **修改记录与回滚**:每次保存都记录修改人、时间、修改前后的规则。`GET /csap/yaml/history?className=&methodName=` 查看,`POST /csap/yaml/rollback {"id": 记录ID}` 恢复到该次修改之前(回滚本身也留记录)。YAML 规则的记录默认写在规则目录下的 `.csap-apidoc-history.jsonl`,SQL 规则写在 `history` 表。
+- **修改记录与回滚**:每次保存都记录修改人、时间、修改前后的规则。`GET /csap/yaml/history?className=&methodName=` 查看,`POST /csap/yaml/rollback {"id": 记录ID}` 恢复到该次修改之前(回滚本身也留记录)。YAML 规则的记录默认写在规则目录下的 `.csap-apidoc-history.jsonl`,SQL 规则写在 `<表前缀>history` 表(默认 `csap_apidoc_history`)。
 
 ## 在线调试的请求头和认证建议
 
 对应 Java 1.1.0 的 `@DocGlobalHeader`、`@DocAuth`,文档页面"在线调试"时自动预填,不影响后端处理:
 
 ```go
-apidoc.New(apidoc.Options{
+import "github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
+
+doc := apidoc.New(apidoc.Options{
     HeaderHints: []model.GlobalHeaderHint{{Name: "X-Tenant-Id", Example: "1", Required: true}}, // 全局
     Auth:        apidoc.NewAuthHint("bearer", "登录令牌", "", ""),
 })

@@ -1,6 +1,6 @@
 # csap-apidoc-go 设计
 
-> 状态：草案（2026-11-17）。第 10 节是需要确认的事项，确认后按第 9 节的里程碑实现。
+> 状态：已实现（当前 v0.1.1）。第 9 节是里程碑记录，第 10 节是已确认事项。下文个别结构体是设计时的草稿，以代码为准。
 
 ## 1. 定位
 
@@ -44,17 +44,17 @@
 
 ### 3.1 接口描述
 
+实际的声明方式是 `apidoc.Operation`（`operation.go`），用链式方法声明一次：
+
 ```go
-type Endpoint struct {
-    Group    string        // 对应 Java Controller(全名作为 key,Title 作为显示名)
-    Name     string        // 对应 Java 方法名;Group+"."+Name 即规则的 key(与 YAML 一级/二级键一致)
-    Method   string
-    Path     string
-    Summary  string
-    Request  reflect.Type  // 可为 nil;query/path/body 由字段标签 in:"query|path|body|header" 区分
-    Response reflect.Type  // 业务返回类型(不含统一外层包装,包装另外注册)
-}
+apidoc.Op(group, name).Summary("…").Req(ReqStruct{}).Body(BodyStruct{}).Resp(RespStruct{})
+// group 对应 Java Controller(全名作为 key,Title 作为显示名)
+// name  对应 Java 方法名;group+"."+name 即规则的 key(与 YAML 一级/二级键一致)
+// Req:请求结构体,字段位置由标签 in:"query|path|header|body|form" 区分
+// Resp:业务返回类型(不含统一外层包装,包装另外注册)
 ```
+
+`apidoc.Endpoint` 是快照里的运行时信息（`Key/Method/Path/Rules/Doc/ResponseMask/Checks`），不是上面这个声明。
 
 Go 的 handler 签名都一样（如 `gin.HandlerFunc`），看不出请求和返回用的是哪个结构体。所以每条路由要用下面任一种方式声明一次：
 
@@ -98,15 +98,14 @@ Java 的请求是"方法参数列表"，Go 是一个请求结构体，映射规�
 
 ```go
 type FieldRule struct {
-    Path        string
     Description string
-    Required    bool
-    Include     *bool   // 返回字段:是否输出;nil = 未配置
-    Hidden      bool    // 文档中隐藏
-    ParamType   string  // 请求参数:QUERY / PATH / BODY / HEADER
+    Required    *bool          // nil = 未配置
+    Include     *bool          // 返回字段:是否输出;nil = 未配置
+    Hidden      *bool          // 文档中隐藏
+    ParamType   string         // 请求参数:QUERY / PATH / BODY / HEADER
     Example     string
-    Pattern     string  // 请求校验(可选)
-}
+    Validate    []ValidateRule // 请求校验规则(可选)
+}   // 规则的路径(如 data.rows.leagueId)是 MethodRules 里的 key,不在结构体里
 ```
 
 规则按 **结构体标签 < YAML < SQL** 的顺序合并，后面的覆盖前面的。
@@ -217,10 +216,12 @@ func (n redisNotifier) Subscribe(ctx context.Context, fn func(int64)) error {
 
 ### 5.5.1 Java 版怎么做的
 
+> 本节描述设计时 Java 1.1.x 的行为。1.2.0 起 Java 增加了 `csap.validation.mode`（off / observe / enforce）、默认就校验只写了 `required: true` 的字段（code `400`、message `不能为空`）、并把运行时校验和返回字段过滤做成独立模块，行为见官网「参数校验」页。
+
 - **规则**：每个接口的每个参数可以设 `required`，以及若干条 `validate`。每条 `validate` 包含类型（`NotNull` / `NotEmpty` / `Pattern`）、正则、错误码、错误信息和优先级 `level`。规则来源有三种：JSR-303 注解、YAML（写在 `method-field.yaml` 的 `request.<参数>.validate`）、SQLite。
 - **后台配置**：devtools 提供以下接口：
   - `/csap/yaml/getMethodValidateFields`：查看某个接口的校验规则。
-  - `/csap/yaml/validatePatternTypes`：列出 45 种内置正则，如手机号、身份证、邮箱。
+  - `/csap/yaml/validatePatternTypes`：列出内置正则（46 项：`PATTERN_00`、`PATTERN_01` 是 `NotNull`、`NotEmpty` 的类型占位，其余 `PATTERN_1`～`PATTERN_44` 是正则），如手机号、身份证、邮箱。
   - `/csap/yaml/writeSelect`：勾选参数和规则后写回 YAML。
 - **执行**：`ValidateIntercept` 是一个 `ApiMethodHandle`，在 Spring 解析完方法参数后逐个参数校验。嵌套对象和 List 会递归校验。校验失败抛出 `ValidateException`，`ValidateExceptionHandler` 把它转成 **HTTP 200** 的 `ApidocResult`，`code` 和 `message` 取规则里配置的值。错误信息格式由 `tipType` 决定（`TIP_1` 为 `字段%s,%s` 等 7 种）。参数类型错误另有固定错误码：411、413、400。
 - **开关**：只有显式配置 `csap.validation.enabled=true`，`ValidateIntercept` 才会注册（`@ConditionalOnProperty(havingValue="true")`，没有 `matchIfMissing`）。
@@ -239,13 +240,13 @@ func (n redisNotifier) Subscribe(ctx context.Context, fn func(int64)) error {
 | 正则 | 与 Java `matches()` 一样整串匹配，自动加 `^(?:…)$`；编译结果缓存 |
 | 类型校验 | 单值参数和请求体里的基本类型字段，按 `Integer`/`Long`/`Double`/`Float`/`Boolean` 检查格式，失败返回 `400`、`<说明>,数据格式错误`（对应 Java `MethodArgumentTypeMismatch` 和 fastjson `DeserializerValidate`） |
 | 顺序 | 按字段顺序，每个字段内按 `level` 从小到大，第一条失败即返回 |
-| 失败返回 | 默认与 Java 一致：HTTP 200，`ApidocResult{code, message}`（Java 路径 B 的格式：tab 缩进、`success:false`、无 `data`），`code`、`message` 取规则配置，信息格式按 `TipType`（7 种，默认 `TIP_1`：`字段username,用户名不能为空`）。`Options.Respond` 可以换成自己的外层包装和 HTTP 状态码 |
+| 失败返回 | 默认与 Java 一致：HTTP 200，`ApidocResult{code, message, success:false, language, time}`（Java 路径 B 的格式：tab 缩进、无 `data`），`code`、`message` 取规则配置，信息格式按 `TipType`（7 种，默认 `TIP_1`：`字段username,用户名不能为空`）。`Options.Respond` 可以换成自己的外层包装和 HTTP 状态码 |
 | 模式 | `Off`（默认，与 Java 一致）、`Observe`（只调用 `OnViolation` 记录，默认 slog Warn，放行请求）、`Enforce`（拦截）；`Endpoints` 按接口覆盖 |
 | 实时 | 校验项在快照里，规则变更后下一个请求即生效（测试 `TestRulesHotReload`） |
 
 **与 Java 不同的地方（有意为之）**：
 
-- Java 只在 `required: true` 时才执行 `validate` 规则，而只写 `required: true`、不写 `validate` 时**什么都不校验**（`addRequestValidate` 在规则列表为空时直接返回）。Go 版：`required: true` 没写规则时按"不能为空"校验（错误码 `RequiredCode` 默认 `400`）；非必填字段传了值也执行规则，没传则跳过。
+- Java 只在 `required: true` 时才执行 `validate` 规则。Java 1.1.x 只写 `required: true`、不写 `validate` 时什么都不校验；1.2.0 起 Java 与 Go 一致：`required: true` 没写规则时按"不能为空"校验（错误码 `RequiredCode` 默认 `400`）。差别只剩：Go 版非必填字段传了值也执行规则，没传则跳过；Java 非必填字段上的规则不执行。
 - Java 的 `Pattern` 对 null 放行，Go 版相同；`NotEmpty` 对空数组、空对象也判失败（与 Hutool `ObjectUtil.isEmpty` 一致）。
 
 ### 5.5.3 需要注意的地方
@@ -270,10 +271,10 @@ func (n redisNotifier) Subscribe(ctx context.Context, fn func(int64)) error {
 
 ## 6.1 后台管理(M4 实现,`devtools` 包)
 
-- `devtools.New(doc, Options{Auth, Realm, Store, User})`:`Auth` 必填;`Store` 默认是 Strategies 里最后一个可写的(只读的 `yaml.FS` 跳过)。挂载:`ginadapter.MountDevtools`、`nethttpadapter.MountDevtools`,或按 `Routes()` / `Patterns()` 自己挂。
+- `devtools.New(doc, Options{Auth, Realm, Store, User, DisableUI, MaxBodyBytes})`:`Auth` 必填;`MaxBodyBytes` 默认 10MB;`Store` 默认是 Strategies 里最后一个可写的(只读的 `yaml.FS` 跳过)。挂载:`ginadapter.MountDevtools`、`nethttpadapter.MountDevtools`,或按 `Routes()` / `Patterns()` 自己挂。
 - 修改的语义按 Java `ApidocDevtools.addMethodParam`:请求参数按提交的参数名整体替换该参数下的规则,校验规则只有前端点开过校验弹窗(`clickValidate`)才覆盖;返回字段整体替换为提交的字段(全部 `include: true`)。改进:旧规则按 `<参数名>.` 删除(Java 用 startsWith 会误删同前缀参数),保留字段原有的说明、示例、hidden。
 - 读写基于 Store 自己的规则(不含其他来源合并进来的),保存后立即 `Doc.Refresh`。
-- 修改记录统一为 `strategy.Change` / `strategy.Historian`:SQL 存 `history` 表;YAML 默认追加写 `<Dir>/.csap-apidoc-history.jsonl`(`Options.History` 可改,`"-"` 只记内存);Memory 记在内存。
+- 修改记录统一为 `strategy.Change` / `strategy.Historian`:SQL 存 `history` 表;YAML 默认追加写 `<Dir>/.csap-apidoc-history.jsonl`(`yaml.Options.History` 可改,`"-"` 只记内存);Memory 记在内存。
 - 正则:页面用 JS 测试正则,所以 `validatePatternTypes` 输出 `\uXXXX` 写法;保存时转成 RE2 的 `\x{XXXX}`;`validate` 编译前也会把 Java 写法转换,两种写法都能用。
 
 ## 7. 安全
@@ -290,16 +291,19 @@ csap-apidoc-go/
 ├── doc.go, apidoc.go        # 入口:New(opts) / Register / Snapshot
 ├── model/                   # 文档模型(兼容 Java JSON 字段)
 ├── strategy/                # Strategy 接口 + tag / yaml / sql 三种实现
-├── filter/                  # 返回字段过滤(路径白名单 / csap 兼容)、请求校验
+├── filter/                  # 返回字段过滤(路径白名单 / csap 兼容)
+├── validate/                # 请求参数校验(规则、内置正则、中间件)
 ├── openapi/  postman/       # 导出
 ├── devtools/                # 后台管理接口、修改记录、回滚
 ├── ui/                      # 内嵌前端构建产物(go:embed)
 ├── adapter/gin, adapter/nethttp   # 首批适配;echo / chi / fiber 后续
-├── examples/gin-basic/
+├── examples/gin-basic/  examples/nethttp-basic/
+├── integration/             # SQL 集成测试,独立 go.mod
+├── scripts/                 # sync-ui.sh 等
 └── docs/
 ```
 
-依赖原则：根包只依赖标准库。YAML、SQL 驱动、gin 都放在各自的子包里，用户用到哪个才引入哪个。目前是单个 go.mod，gin 写在 require 里（固定 v1.10.1，它要求的 Go 版本不超过 1.22）；只用根包的项目编译时不会编译 gin，但 go.sum 里会有它。如果以后有人在意，再把适配器拆成嵌套模块。
+依赖原则：根包只依赖标准库。YAML、SQL 驱动、gin 都放在各自的子包里，用户用到哪个才引入哪个。主模块是单个 go.mod（SQL 集成测试在独立模块 `integration/` 里），gin 写在 require 里（固定 v1.10.1，它要求的 Go 版本不超过 1.22）；只用根包的项目编译时不会编译 gin，但 go.sum 里会有它。如果以后有人在意，再把适配器拆成嵌套模块。
 
 `ui/static` 是 `csap-apidoc-ui` 构建产物的副本（`go:embed` 不能引用模块目录外的文件），用 `scripts/sync-ui.sh` 同步，`--build` 会先重新构建前端。
 
@@ -311,7 +315,7 @@ csap-apidoc-go/
 | M2 过滤与校验（**已完成** 2026-11-17） | 返回字段过滤（路径白名单、csap 兼容模式、外层包装）、请求参数校验（中间件、内置与自定义规则、观察模式）、基准测试 | 用 Java 的真实返回做黄金样本：79 个接口的返回字段集合与 Java 完全一致；`/csap/apidoc` 编码器对 2.5MB 的 Java 实时返回逐字节还原。性能目标 30% 未达到，实测约 50%（见 5.2） |
 | M3 配置（**已完成** 2026-11-17） | YAML 策略（读写、热加载）、SQL 策略（版本号、轮询、Redis 通知） | 改 YAML 或数据库后几秒内生效，不重启：示例项目实测改 YAML 3 秒内返回字段变化；SQL 两实例共用一个库，A 保存后 B 在轮询间隔内生效（SQLite、PostgreSQL 实测，MySQL 未实测） |
 | M4 管理(**已完成** 2026-11-17) | devtools 接口与前端（含必填和校验规则配置）、修改记录、回滚、鉴权;`globalHeaderHints`、`authHint` | 用 devtools 页面勾选字段后，返回结果实时变化，并能回滚(浏览器实测) |
-| M5 发布(**已完成** 2026-11-17,待打 tag) | net/http 适配、Postman 导出、README、CHANGELOG、CI、官网接入文档 | 总覆盖率 80%;tag `csap-apidoc-go/v0.1.0` 由用户发布时打 |
+| M5 发布(**已完成** 2026-11-17) | net/http 适配、Postman 导出、README、CHANGELOG、CI、官网接入文档 | 总覆盖率 80%;已发布 tag `csap-apidoc-go/v0.1.0`,v0.1.1 见 CHANGELOG |
 
 ## 10. 已确认事项
 
