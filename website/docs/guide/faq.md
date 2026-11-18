@@ -59,6 +59,29 @@
 
 最快的做法是在字段上加 `forceReq = true` 和 / 或 `forceRep = true`。原理见 [基础使用](/guide/basic-usage) 和 [存储策略](/guide/storage-strategies)。
 
+### 规则过期怎么排查(改了方法名或返回结构后字段不见了)
+
+使用 `YAML` / `SQL_LITE` 策略时,规则按"类名 + 方法名 + 字段路径"保存。下面两种改动不会自动同步到规则里:
+
+- **方法改名**:旧方法名下的规则留在原处,新方法名下没有规则(或只剩零星几条)。
+- **返回结构变了**(例如从 `Result<Item>` 改成分页 `Result<Page<Item>>`):旧路径 `data.id` 在新结构里变成了 `data.rows.id`,白名单里没有新路径,分页元素的字段全被排除。文档里 `data` 下面是空的,看起来像泛型没解析。
+
+1.3.0 起,文档生成完成后会对照已加载的规则检查一遍,每个有问题的方法打一条 WARN(只打日志,不改变文档和过滤结果):
+
+```text
+WARN  csap-apidoc 字段规则可能已过期: com.example.ItemController.listItems —— 类中已没有这个方法(规则来源 yaml: csap-api-doc);相似的现有方法: pageItems。方法改名后请把规则移到新方法名下,否则新方法没有规则
+WARN  csap-apidoc 字段规则可能已过期: com.example.ItemController.pageItems —— 以下路径在当前的参数 / 返回结构中找不到(规则来源 yaml: csap-api-doc);返回: data.animationUrl。返回结构改过(例如改成分页)时,白名单会把新结构的字段排除,文档看起来像泛型没解析
+```
+
+排查步骤:
+
+1. 启动日志里搜 `字段规则可能已过期`,确认是哪个类、哪个方法、哪些路径。
+2. 方法改名:在规则文件里把旧方法名下的规则改到新方法名下(YAML 在 `{path}/method-field/{类简名}-method-field.yaml`;SQLite 改 `api_method` 等表,或直接在 DevTools 里重新勾选)。
+3. 结构改了:在 DevTools 里打开这个接口,按新结构重新勾选返回字段并保存;或在 YAML 里把旧路径换成新路径(如 `data.id` → `data.rows.id`,并加上 `data.rows`)。
+4. 重启或调用 `/csap/apidoc?flush=true`,确认 WARN 消失。
+
+只有"上级路径在当前结构里存在、但这一级不存在"的路径才会被报告,未展开的子树不会误报。不需要这个检查时设置 `csap.apidoc.rule-check.enabled=false`。
+
 ### 能直接用 Swagger 的注解吗？
 
 不能。框架只识别 `ai.csap.apidoc.annotation` 包下的注解，例如扫描 Controller 时查找的是 `ai.csap.apidoc.annotation.Api`。Swagger 的 `io.swagger.annotations.Api` 等不会被识别。注解同名但属性不同，迁移时需要逐个核对。见 [注解](/guide/annotations)。

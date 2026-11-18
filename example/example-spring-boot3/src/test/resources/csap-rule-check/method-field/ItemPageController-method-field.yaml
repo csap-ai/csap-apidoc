@@ -1,0 +1,35 @@
+# 规则过期检查的测试数据:listItems 已改名为 pageItems,返回值改成了 Result<Page<Item>>
+ai.csap.e2e.rulecheck.ItemPageController:
+  listItems:
+    response:
+      code:
+        include: true
+      data:
+        include: true
+      data.id:
+        include: true
+      data.name:
+        include: true
+  pageItems:
+    request:
+      keyword.keyword:
+        required: false
+      kw.kw:
+        required: true
+    response:
+      code:
+        include: true
+      data:
+        include: true
+      data.animationUrl:
+        include: true
+  detail:
+    response:
+      code:
+        include: true
+      data:
+        include: true
+      data.id:
+        include: true
+      data.name:
+        include: true

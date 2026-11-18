@@ -72,6 +72,11 @@ public class CsapDocConfig {
      */
     @NestedConfigurationProperty
     private ApidocDevtoolsProperties devtool = new ApidocDevtoolsProperties();
+    /**
+     * 启动时检查字段规则是否过期(只打 WARN 日志,不改变行为)
+     */
+    @NestedConfigurationProperty
+    private RuleCheckProperties ruleCheck = new RuleCheckProperties();
 
     public void setApiPackages(List<String> apiPackages) {
         if (this.apiPackages == null) {
@@ -115,5 +120,16 @@ public class CsapDocConfig {
          * 缓存
          */
         private Boolean cache = Boolean.TRUE;
+    }
+
+    /**
+     * 字段规则过期检查
+     */
+    @Data
+    public static class RuleCheckProperties {
+        /**
+         * 文档生成后检查 YAML / SQLite 字段规则:方法已不存在、字段路径在当前结构中找不到时打 WARN(默认开启,只打日志)
+         */
+        private Boolean enabled = Boolean.TRUE;
     }
 }

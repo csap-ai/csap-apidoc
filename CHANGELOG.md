@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - Unreleased
+
+### Added
+
+- **Stale field-rule check at startup (WARN only).** After the docs are
+  generated, `YAML` and `SQL_LITE` field rules are compared with the current
+  code: rules for a method that no longer exists (e.g. after a rename) are
+  reported with similar existing method names, and request / response field
+  paths that are not found in the current structure (e.g. `data.id` after the
+  return type became `Result<Page<Item>>`) are listed. One log line per
+  method, not repeated when the result is unchanged; the check only reads the
+  already-loaded rules and changes neither the docs nor filtering. Disable
+  with `csap.apidoc.rule-check.enabled=false`.
+
 ## [1.2.0] - 2026-11-17
 
 Runtime response filtering and runtime request validation are new and

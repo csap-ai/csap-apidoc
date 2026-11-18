@@ -114,6 +114,12 @@ public class DemoApplication {
 | `csap.apidoc.resources[n].url` | `String` | 无 | 该服务文档树接口的地址，一般是 `/服务前缀/csap/apidoc/parent` |
 | `csap.apidoc.resources[n].version` | `String` | 无 | 版本标识 |
 
+### 规则过期检查 rule-check
+
+| 配置项 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `csap.apidoc.rule-check.enabled` | `Boolean` | `true` | 文档生成后检查 `YAML` / `SQL_LITE` 字段规则:方法已不存在、字段路径在当前结构中找不到时打 WARN。只打日志,不改变任何行为(1.3.0 起) |
+
 ### DevTools devtool
 
 对应 `CsapDocConfig.ApidocDevtoolsProperties`。注意前缀是 `devtool`（单数）。

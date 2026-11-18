@@ -193,6 +193,7 @@ public class ApidocContext implements ApplicationContextAware, SmartInitializing
         List<StrategyModel> classeList = config.getApiClasseList();
         response.getGroups().addAll(Lists.newArrayList(DEFAULT));
         response.getVersions().addAll(Lists.newArrayList(DEFAULT));
+        RuleConsistencyChecker.reset();
         log.info("start load apidoc....");
         // 使用 waitAllIgnoreException 确保即使部分文档加载失败，也能继续加载其他文档
         // 这样可以保证系统的可用性，同时会记录失败信息便于排查问题
@@ -215,7 +216,26 @@ public class ApidocContext implements ApplicationContextAware, SmartInitializing
                 .getApiInfo());
         response.sortApi();
         response.setResources(Objects.nonNull(csapResourcesProvider) ? csapResourcesProvider.get() : null);
+        checkRules(classeList, response);
         return response;
+    }
+
+    /**
+     * 字段规则过期检查:只打 WARN,任何异常都不影响文档生成
+     */
+    private static void checkRules(List<StrategyModel> models, CsapDocResponse response) {
+        if (csapDocConfig == null || csapDocConfig.getRuleCheck() == null
+                || !Boolean.TRUE.equals(csapDocConfig.getRuleCheck().getEnabled())) {
+            return;
+        }
+        try {
+            RuleConsistencyChecker.check(models, response, model -> {
+                ParamGroupStrategy strategy = paramStrategy(model.getParamType());
+                return strategy == null ? null : strategy.getHandle(model, null);
+            });
+        } catch (RuntimeException e) {
+            log.debug("rule check failed: {}", e.getMessage(), e);
+        }
     }
 
     /**
