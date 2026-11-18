@@ -74,7 +74,7 @@
 
 ### 1.4.0 — 设计与协作基础(2026-12-22)
 
-- **数据库模式(首要项)**:字段规则可以存进业务已有的 **MySQL / PostgreSQL / 达梦(DM8)/ 人大金仓(KingbaseES)**,不再只能用 SQLite 文件。默认使用应用自己的 DataSource;多实例在几秒内同步(轮询版本号,可选 Redis 等即时通知);每次修改留记录、可回滚;提供 YAML / SQLite 与数据库互相迁移的工具。**Java 与 Go 共用同一套表**(Go 已有 SQL 来源,随 v0.2.0 升级表结构)。SQLite 保留用于单机和开发环境。方案见 [database-mode.md](https://github.com/csap-ai/csap-apidoc/blob/main/docs/design/database-mode.md)
+- **数据库模式(首要项)**:字段规则可以存进业务已有的 **MySQL / PostgreSQL / 达梦(DM8)/ 人大金仓(KingbaseES)**,不再只能用 SQLite 文件。默认使用应用自己的 DataSource;多实例在几秒内同步(轮询版本号,可选 Redis 等即时通知);每次修改留记录、可回滚;提供 YAML / SQLite 与数据库互相迁移的工具。**Java 与 Go 共用同一套表**(Go 已有 SQL 来源,随 v0.2.0 升级表结构)。也可以存进 **Redis**(Java 与 Go 同一种数据结构,订阅变更即时同步;修改记录保留最近若干条,完整审计用数据库)。SQLite 保留用于单机和开发环境。方案见 [database-mode.md](https://github.com/csap-ai/csap-apidoc/blob/main/docs/design/database-mode.md)
 - **Mock 服务**(已有设计文档 M9.3):按文档生成模拟数据,前端可先行开发
 - **JSON Schema 导入导出**
 - **字段库与模板**:常用字段、校验规则做成模板复用(现有正则模板的扩展)
@@ -160,7 +160,7 @@
 3. **语言顺序**:按主流程度,Rust → Python → Node.js / TypeScript → 其他。
 4. **MCP**:内嵌在服务中,默认关闭、按需开启;默认只暴露 GET;在 DevTools 后台管理暴露范围、鉴权和审计。
 5. **官网**:以文档完整为重点,覆盖接入开发、文档使用团队、管理运维三类读者;规划内容只在路线图页。
-6. **数据库模式**(2026-11-18):1.4.0 支持把规则存进 MySQL、PostgreSQL、达梦、人大金仓,Java 与 Go 共用同一套表;团队版在此基础上做多人协作(草稿、冲突检测、审批)和审计追溯。
+6. **数据库模式**(2026-11-18):1.4.0 支持把规则存进 MySQL、PostgreSQL、达梦、人大金仓,以及 Redis,Java 与 Go 共用同一套表;团队版在此基础上做多人协作(草稿、冲突检测、审批)和审计追溯。
 7. **弃用**(2026-11-18):`@Group` / `@Request` / `@Response` / `groups` 与方法级 `@ApiProperty` / `@ApiPropertys` 在 1.3.0 标为弃用,2.0 删除。
 
 ## 6. 原则
