@@ -1,26 +1,39 @@
 package ai.csap.apidoc.service.standard;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.web.bind.annotation.RequestMethod;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+
 import ai.csap.apidoc.annotation.ParamType;
 import ai.csap.apidoc.model.CsapDocMethod;
+import ai.csap.apidoc.model.CsapDocMethodHeaders;
 import ai.csap.apidoc.model.CsapDocModel;
 import ai.csap.apidoc.model.CsapDocModelController;
 import ai.csap.apidoc.model.CsapDocParameter;
+import ai.csap.apidoc.model.CsapDocResponse;
+import ai.csap.apidoc.properties.CsapApiInfo;
 import ai.csap.apidoc.response.CsapDocParentResponse;
 import ai.csap.apidoc.type.ModelType;
 
 /**
  * OpenAPI规范转换器服务
- * 将API文档转换为OpenAPI 3.0.0规范的JSON格式
+ * 将API文档转换为OpenAPI 3.0.3规范的JSON格式
+ *
+ * <p>入口是 {@link #convertToOpenApi(CsapDocResponse)}:同时处理 {@code globalApiList} 与正常扫描出的 {@code apiList}。
+ * {@code GET /csap/openapi.json} 即由它生成。</p>
  *
  * @author yangchengfu
  * @date 2024/12/01
@@ -28,439 +41,491 @@ import ai.csap.apidoc.type.ModelType;
 public class OpenApiConverterService {
 
     /**
-     * 将API文档转换为OpenAPI格式
+     * OpenAPI 版本
+     */
+    public static final String OPENAPI_VERSION = "3.0.3";
+
+    /**
+     * 嵌套模型最大展开深度,防止自引用模型无限递归
+     */
+    private static final int MAX_DEPTH = 12;
+
+    private static final Pattern PATH_VARIABLE = Pattern.compile("\\{([^}:]+)(?::[^}]*)?}");
+
+    private static final ObjectMapper MAPPER = new ObjectMapper()
+            .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+            .enable(SerializationFeature.INDENT_OUTPUT);
+
+    /**
+     * 将扫描得到的API文档转换为OpenAPI JSON
+     *
+     * @param apiDocResponse 文档数据({@code /csap/apidoc} 的返回内容)
+     * @return OpenAPI JSON字符串
+     */
+    public String convertToOpenApi(CsapDocResponse apiDocResponse) {
+        return toJson(buildOpenApiSpec(apiDocResponse == null ? null : apiDocResponse.getApiInfo(),
+                apiDocResponse == null ? null : apiDocResponse.getGlobalApiList(),
+                apiDocResponse == null ? null : apiDocResponse.getApiList()));
+    }
+
+    /**
+     * 将扫描得到的API文档转换为OpenAPI结构对象
+     *
+     * @param apiDocResponse 文档数据
+     * @return OpenAPI结构
+     */
+    public OpenApiSpec convertToOpenApiSpec(CsapDocResponse apiDocResponse) {
+        return buildOpenApiSpec(apiDocResponse == null ? null : apiDocResponse.getApiInfo(),
+                apiDocResponse == null ? null : apiDocResponse.getGlobalApiList(),
+                apiDocResponse == null ? null : apiDocResponse.getApiList());
+    }
+
+    /**
+     * 将树形文档转换为OpenAPI格式。树形结构里的普通接口只有标题和路径,没有参数信息,
+     * 因此这里只能处理 {@code globalApiList}。
      *
      * @param apiDocResponse API文档响应
      * @return OpenAPI JSON字符串
+     * @deprecated 请改用 {@link #convertToOpenApi(CsapDocResponse)}
      */
+    @Deprecated
     public String convertToOpenApi(CsapDocParentResponse apiDocResponse) {
+        return toJson(buildOpenApiSpec(apiDocResponse == null ? null : apiDocResponse.getApiInfo(),
+                apiDocResponse == null ? null : apiDocResponse.getGlobalApiList(), null));
+    }
+
+    private String toJson(OpenApiSpec spec) {
         try {
-            OpenApiSpec openApiSpec = buildOpenApiSpec(apiDocResponse);
-            return convertToJsonString(openApiSpec);
-        } catch (Exception e) {
-            System.err.println("转换OpenAPI规范失败: " + e.getMessage());
-            throw new RuntimeException("转换OpenAPI规范失败", e);
+            return MAPPER.writeValueAsString(spec);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("转换OpenAPI规范失败", e);
         }
     }
 
     /**
      * 构建OpenAPI规范
      */
-    private OpenApiSpec buildOpenApiSpec(CsapDocParentResponse apiDocResponse) {
+    private OpenApiSpec buildOpenApiSpec(CsapApiInfo apiInfo,
+                                         List<CsapDocModelController> globalApiList,
+                                         List<CsapDocModelController> apiList) {
         OpenApiSpec spec = new OpenApiSpec();
-
-        // 设置OpenAPI版本
-        spec.setOpenapi("3.0.0");
-
-        // 设置基本信息
-        spec.setInfo(buildInfo(apiDocResponse));
-
-        // 设置服务器信息
+        spec.setOpenapi(OPENAPI_VERSION);
+        spec.setInfo(buildInfo(apiInfo));
         spec.setServers(buildServers());
 
-        // 构建路径信息
-        Map<String, PathItem> paths = new LinkedHashMap<>();
-
-        // 处理全局API列表
-        if (apiDocResponse.getGlobalApiList() != null) {
-            for (CsapDocModelController controller : apiDocResponse.getGlobalApiList()) {
-                buildControllerPaths(controller, paths);
-            }
+        List<CsapDocModelController> controllers = new ArrayList<>();
+        if (globalApiList != null) {
+            controllers.addAll(globalApiList);
+        }
+        if (apiList != null) {
+            controllers.addAll(apiList);
         }
 
+        Map<String, PathItem> paths = new LinkedHashMap<>();
+        Map<String, Tag> tags = new LinkedHashMap<>();
+        Set<String> operationIds = new LinkedHashSet<>();
+        for (CsapDocModelController controller : controllers) {
+            if (controller == null || Boolean.TRUE.equals(controller.getHidden())) {
+                continue;
+            }
+            if (buildControllerPaths(controller, paths, operationIds)) {
+                String tagName = tagName(controller);
+                if (tagName != null && !tags.containsKey(tagName)) {
+                    Tag tag = new Tag();
+                    tag.setName(tagName);
+                    tag.setDescription(emptyToNull(controller.getDescription()));
+                    tags.put(tagName, tag);
+                }
+            }
+        }
         spec.setPaths(paths);
-
-        // 构建组件（schemas, responses等）
-        spec.setComponents(buildComponents(apiDocResponse));
-
-        // 设置标签
-        spec.setTags(buildTags(apiDocResponse));
-
+        spec.setComponents(buildComponents());
+        spec.setTags(new ArrayList<>(tags.values()));
         return spec;
     }
 
     /**
      * 构建基本信息
      */
-    private Info buildInfo(CsapDocParentResponse apiDocResponse) {
+    private Info buildInfo(CsapApiInfo apiInfo) {
         Info info = new Info();
-
-        if (apiDocResponse.getApiInfo() != null) {
-            info.setTitle(apiDocResponse.getApiInfo().getTitle());
-            info.setDescription(apiDocResponse.getApiInfo().getDescription());
-            info.setVersion(apiDocResponse.getApiInfo().getVersion());
-        } else {
-            info.setTitle("CSAP API Documentation");
-            info.setDescription("Generated from CSAP Framework");
-            info.setVersion("1.0.0");
-        }
-
-        Contact contact = new Contact();
-        contact.setName("CSAP Framework");
-        contact.setEmail("support@csap.com");
-        info.setContact(contact);
-
+        info.setTitle(apiInfo != null && notEmpty(apiInfo.getTitle()) ? apiInfo.getTitle() : "CSAP API Documentation");
+        info.setDescription(apiInfo != null ? emptyToNull(apiInfo.getDescription()) : null);
+        info.setVersion(apiInfo != null && notEmpty(apiInfo.getVersion()) ? apiInfo.getVersion() : "1.0.0");
         return info;
     }
 
     /**
-     * 构建服务器信息
+     * 构建服务器信息:使用相对地址,导入工具会以文档所在的服务为准
      */
     private List<Server> buildServers() {
-        List<Server> servers = new ArrayList<>();
+        Server server = new Server();
+        server.setUrl("/");
+        server.setDescription("当前服务");
+        return Collections.singletonList(server);
+    }
 
-        Server localServer = new Server();
-        localServer.setUrl("http://localhost:8080");
-        localServer.setDescription("本地开发服务器");
-        servers.add(localServer);
-
-        Server prodServer = new Server();
-        prodServer.setUrl("https://api.example.com");
-        prodServer.setDescription("生产环境服务器");
-        servers.add(prodServer);
-
-        return servers;
+    private String tagName(CsapDocModelController controller) {
+        if (notEmpty(controller.getValue())) {
+            return controller.getValue();
+        }
+        return notEmpty(controller.getSimpleName()) ? controller.getSimpleName() : controller.getName();
     }
 
     /**
      * 构建控制器路径
+     *
+     * @return 是否生成了至少一个操作
      */
-    private void buildControllerPaths(CsapDocModelController controller, Map<String, PathItem> paths) {
+    private boolean buildControllerPaths(CsapDocModelController controller, Map<String, PathItem> paths, Set<String> operationIds) {
         if (controller.getMethodList() == null || controller.getMethodList().isEmpty()) {
-            return;
+            return false;
         }
-
+        boolean any = false;
         for (CsapDocMethod method : controller.getMethodList()) {
-            if (Boolean.TRUE.equals(method.getHidden())) {
+            if (method == null || Boolean.TRUE.equals(method.getHidden())) {
                 continue;
             }
-
             String path = buildPath(method, controller);
             PathItem pathItem = paths.computeIfAbsent(path, k -> new PathItem());
-
-            Operation operation = buildOperation(method, controller);
-
-            // 根据HTTP方法设置操作
-            if (method.getMethods() != null) {
-                for (RequestMethod requestMethod : method.getMethods()) {
-                    switch (requestMethod) {
-                        case GET:
-                            pathItem.setGet(operation);
-                            break;
-                        case POST:
-                            pathItem.setPost(operation);
-                            break;
-                        case PUT:
-                            pathItem.setPut(operation);
-                            break;
-                        case DELETE:
-                            pathItem.setDelete(operation);
-                            break;
-                        case PATCH:
-                            pathItem.setPatch(operation);
-                            break;
-                        default:
-                            pathItem.setGet(operation);
-                            break;
-                    }
+            List<RequestMethod> requestMethods = method.getMethods() == null || method.getMethods().isEmpty()
+                    ? Collections.singletonList(RequestMethod.GET) : method.getMethods();
+            for (RequestMethod requestMethod : requestMethods) {
+                Operation operation = buildOperation(method, controller, path, requestMethod);
+                operation.setOperationId(uniqueOperationId(method, controller, requestMethod, operationIds));
+                switch (requestMethod) {
+                    case POST:
+                        pathItem.setPost(operation);
+                        break;
+                    case PUT:
+                        pathItem.setPut(operation);
+                        break;
+                    case DELETE:
+                        pathItem.setDelete(operation);
+                        break;
+                    case PATCH:
+                        pathItem.setPatch(operation);
+                        break;
+                    default:
+                        pathItem.setGet(operation);
+                        break;
                 }
-            } else {
-                pathItem.setGet(operation);
+                any = true;
             }
         }
+        return any;
+    }
+
+    private String uniqueOperationId(CsapDocMethod method, CsapDocModelController controller,
+                                     RequestMethod requestMethod, Set<String> operationIds) {
+        String base = notEmpty(method.getKey()) ? method.getKey()
+                : (notEmpty(controller.getName()) ? controller.getName() + "." : "") + method.getName();
+        String id = base;
+        if (operationIds.contains(id)) {
+            id = base + "_" + requestMethod.name().toLowerCase();
+        }
+        int i = 2;
+        String candidate = id;
+        while (operationIds.contains(candidate)) {
+            candidate = id + "_" + i++;
+        }
+        operationIds.add(candidate);
+        return candidate;
     }
 
     /**
-     * 构建路径
+     * 构建路径:控制器路径 + 方法路径,中间只保留一个 /;去掉路径变量里的正则
      */
-    private String buildPath(CsapDocMethod method, CsapDocModelController controller) {
-        StringBuilder path = new StringBuilder();
-
-        // 添加控制器路径
+    String buildPath(CsapDocMethod method, CsapDocModelController controller) {
+        String base = null;
         if (controller.getPath() != null && controller.getPath().length > 0) {
-            String controllerPath = controller.getPath()[0];
-            if (!controllerPath.startsWith("/")) {
-                path.append("/");
+            base = controller.getPath()[0];
+        } else if (method.getApiPath() != null && method.getApiPath().length > 0) {
+            base = method.getApiPath()[0];
+        }
+        String sub = method.getPaths() != null && method.getPaths().length > 0 ? method.getPaths()[0] : null;
+        StringBuilder path = new StringBuilder();
+        for (String part : new String[]{base, sub}) {
+            if (part == null || part.trim().isEmpty()) {
+                continue;
             }
-            path.append(controllerPath);
-        }
-
-        // 添加方法路径
-        if (method.getPaths() != null && method.getPaths().length > 0) {
-            String methodPath = method.getPaths()[0];
-            if (!path.toString().endsWith("/") && !methodPath.startsWith("/")) {
-                path.append("/");
+            while (path.length() > 0 && path.charAt(path.length() - 1) == '/') {
+                path.setLength(path.length() - 1);
             }
-            path.append(methodPath);
+            path.append('/').append(part.trim().replaceFirst("^/+", ""));
         }
-
-        // 确保路径以/开头
-        if (path.length() == 0 || !path.toString().startsWith("/")) {
-            path.insert(0, "/");
+        String result = path.length() == 0 ? "/" : path.toString();
+        if (result.length() > 1 && result.endsWith("/")) {
+            result = result.substring(0, result.length() - 1);
         }
-
-        return path.toString();
+        return PATH_VARIABLE.matcher(result).replaceAll("{$1}");
     }
 
     /**
      * 构建操作
      */
-    private Operation buildOperation(CsapDocMethod method, CsapDocModelController controller) {
+    private Operation buildOperation(CsapDocMethod method, CsapDocModelController controller, String path, RequestMethod requestMethod) {
         Operation operation = new Operation();
-
-        operation.setSummary(method.getValue());
-        operation.setDescription(method.getDescription());
-        operation.setOperationId(method.getKey());
-
-        // 设置标签
-        List<String> tags = new ArrayList<>();
-        if (controller.getValue() != null && !controller.getValue().isEmpty()) {
-            tags.add(controller.getValue());
-        } else if (controller.getSimpleName() != null) {
-            tags.add(controller.getSimpleName());
-        }
-        operation.setTags(tags);
-
-        // 构建参数
-        List<Parameter> parameters = buildParameters(method);
-        if (!parameters.isEmpty()) {
-            operation.setParameters(parameters);
+        operation.setSummary(notEmpty(method.getValue()) ? method.getValue() : method.getName());
+        operation.setDescription(emptyToNull(method.getDescription()));
+        String tagName = tagName(controller);
+        if (tagName != null) {
+            operation.setTags(Collections.singletonList(tagName));
         }
 
-        // 构建请求体
-        if (method.getRequest() != null && !method.getRequest().isEmpty() &&
-                method.getMethods() != null &&
-                (method.getMethods().contains(RequestMethod.POST) ||
-                        method.getMethods().contains(RequestMethod.PUT) ||
-                        method.getMethods().contains(RequestMethod.PATCH))) {
-            operation.setRequestBody(buildRequestBody(method));
-        }
-
-        // 构建响应
-        operation.setResponses(buildResponses(method));
-
-        return operation;
-    }
-
-    /**
-     * 构建参数
-     */
-    private List<Parameter> buildParameters(CsapDocMethod method) {
+        boolean bodyAllowed = requestMethod == RequestMethod.POST || requestMethod == RequestMethod.PUT || requestMethod == RequestMethod.PATCH;
         List<Parameter> parameters = new ArrayList<>();
+        Set<String> declared = new LinkedHashSet<>();
+        List<CsapDocParameter> jsonBody = new ArrayList<>();
+        List<CsapDocParameter> formBody = new ArrayList<>();
+        boolean jsonBodyModel = false;
+        Set<String> pathVariables = new LinkedHashSet<>();
+        Matcher variables = PATH_VARIABLE.matcher(path);
+        while (variables.find()) {
+            pathVariables.add(variables.group(1));
+        }
 
         if (method.getRequest() != null) {
-            for (CsapDocModel requestModel : method.getRequest()) {
-                if (requestModel.getParameters() != null) {
-                    for (CsapDocParameter param : requestModel.getParameters()) {
-                        // 只处理查询参数和路径参数
-                        if (param.getParamType() == ParamType.QUERY ||
-                                param.getParamType() == ParamType.DEFAULT ||
-                                param.getParamType() == ParamType.PATH) {
-
-                            Parameter parameter = new Parameter();
-                            parameter.setName(param.getName());
-                            parameter.setDescription(param.getDescription());
-                            parameter.setRequired(param.getRequired());
-
-                            // 设置参数位置
-                            if (param.getParamType() == ParamType.PATH) {
-                                parameter.setIn("path");
+            for (CsapDocModel model : method.getRequest()) {
+                if (model == null) {
+                    continue;
+                }
+                boolean simple = model.getModelType() == null || model.getModelType() == ModelType.BASE_DATA;
+                if (model.getParameters() == null || model.getParameters().isEmpty()) {
+                    // 对象类型的 @RequestBody 参数即使没有可展示的字段,也要声明请求体
+                    if (bodyAllowed && !simple && resolveModelParamType(model, method) == ParamType.BODY) {
+                        jsonBodyModel = true;
+                    }
+                    continue;
+                }
+                for (CsapDocParameter param : model.getParameters()) {
+                    if (param == null || Boolean.TRUE.equals(param.getHidden()) || param.getName() == null) {
+                        continue;
+                    }
+                    ParamType type = resolveParamType(param, model, method);
+                    // 基础类型的方法参数(如 @PathVariable Long id)名字出现在路径变量里时,按路径参数处理
+                    if (simple && type != ParamType.HEADER && pathVariables.contains(param.getName())) {
+                        type = ParamType.PATH;
+                    }
+                    switch (type) {
+                        case PATH:
+                            addParameter(parameters, declared, param, "path");
+                            break;
+                        case HEADER:
+                            addParameter(parameters, declared, param, "header");
+                            break;
+                        case BODY:
+                            if (bodyAllowed) {
+                                jsonBody.add(param);
                             } else {
-                                parameter.setIn("query");
+                                addParameter(parameters, declared, param, "query");
                             }
-
-                            // 设置参数模式
-                            Schema schema = new Schema();
-                            schema.setType(mapDataTypeToOpenApiType(param.getDataType()));
-                            schema.setDescription(param.getDescription());
-
-                            if (param.getExample() != null && !param.getExample().isEmpty()) {
-                                schema.setExample(param.getExample());
+                            break;
+                        case FORM:
+                        case FORM_DATA:
+                            if (bodyAllowed) {
+                                formBody.add(param);
+                            } else {
+                                addParameter(parameters, declared, param, "query");
                             }
-
-                            parameter.setSchema(schema);
-                            parameters.add(parameter);
-                        }
+                            break;
+                        default:
+                            addParameter(parameters, declared, param, "query");
+                            break;
                     }
                 }
             }
         }
 
-        return parameters;
+        // 方法级请求头
+        if (method.getMethodHeaders() != null) {
+            for (CsapDocMethodHeaders header : method.getMethodHeaders()) {
+                if (header == null || Boolean.TRUE.equals(header.getHidden()) || !notEmpty(header.getKey())
+                        || declared.contains("header:" + header.getKey())) {
+                    continue;
+                }
+                Parameter parameter = new Parameter();
+                parameter.setName(header.getKey());
+                parameter.setIn("header");
+                parameter.setDescription(emptyToNull(notEmpty(header.getDescription()) ? header.getDescription() : header.getValue()));
+                parameter.setRequired(Boolean.TRUE.equals(header.getRequired()));
+                Schema schema = new Schema().type("string");
+                if (notEmpty(header.getExample())) {
+                    schema.setExample(header.getExample());
+                }
+                parameter.setSchema(schema);
+                parameters.add(parameter);
+                declared.add("header:" + header.getKey());
+            }
+        }
+
+        // 路径里出现但没有声明的变量,补一个 string 类型的路径参数(OpenAPI 要求路径变量必须声明)
+        for (String name : pathVariables) {
+            if (!declared.contains("path:" + name)) {
+                Parameter parameter = new Parameter();
+                parameter.setName(name);
+                parameter.setIn("path");
+                parameter.setRequired(Boolean.TRUE);
+                parameter.setSchema(new Schema().type("string"));
+                parameters.add(parameter);
+                declared.add("path:" + name);
+            }
+        }
+        if (!parameters.isEmpty()) {
+            operation.setParameters(parameters);
+        }
+
+        if (!jsonBody.isEmpty() || !formBody.isEmpty() || jsonBodyModel) {
+            RequestBody requestBody = new RequestBody();
+            Map<String, MediaType> content = new LinkedHashMap<>();
+            boolean required = false;
+            if (!jsonBody.isEmpty() || jsonBodyModel) {
+                MediaType mediaType = new MediaType();
+                mediaType.setSchema(buildObjectSchema(jsonBody, 0));
+                content.put("application/json", mediaType);
+                required = true;
+            }
+            if (!formBody.isEmpty()) {
+                MediaType mediaType = new MediaType();
+                mediaType.setSchema(buildObjectSchema(formBody, 0));
+                content.put("application/x-www-form-urlencoded", mediaType);
+                required = required || formBody.stream().anyMatch(p -> Boolean.TRUE.equals(p.getRequired()));
+            }
+            requestBody.setRequired(required);
+            requestBody.setContent(content);
+            operation.setRequestBody(requestBody);
+        }
+
+        operation.setResponses(buildResponses(method));
+        return operation;
+    }
+
+    private ParamType resolveModelParamType(CsapDocModel model, CsapDocMethod method) {
+        if (model.getParamType() != null && model.getParamType() != ParamType.DEFAULT) {
+            return model.getParamType();
+        }
+        return method.getParamType() != null ? method.getParamType() : ParamType.DEFAULT;
     }
 
     /**
-     * 构建请求体
+     * 参数位置:参数自身 &gt; 所属模型 &gt; 方法;DEFAULT 视为未指定
      */
-    private RequestBody buildRequestBody(CsapDocMethod method) {
-        RequestBody requestBody = new RequestBody();
-        requestBody.setDescription("请求体参数");
-        requestBody.setRequired(true);
+    private ParamType resolveParamType(CsapDocParameter param, CsapDocModel model, CsapDocMethod method) {
+        if (param.getParamType() != null && param.getParamType() != ParamType.DEFAULT) {
+            return param.getParamType();
+        }
+        if (model.getParamType() != null && model.getParamType() != ParamType.DEFAULT) {
+            return model.getParamType();
+        }
+        if (method.getParamType() != null) {
+            return method.getParamType();
+        }
+        return ParamType.DEFAULT;
+    }
 
-        Map<String, MediaType> content = new HashMap<>();
-        MediaType mediaType = new MediaType();
-
-        Schema schema = buildSchemaFromModels(method.getRequest());
-        mediaType.setSchema(schema);
-
-        content.put("application/json", mediaType);
-        requestBody.setContent(content);
-
-        return requestBody;
+    private void addParameter(List<Parameter> parameters, Set<String> declared, CsapDocParameter param, String in) {
+        String id = in + ":" + param.getName();
+        if (declared.contains(id)) {
+            return;
+        }
+        Parameter parameter = new Parameter();
+        parameter.setName(param.getName());
+        parameter.setIn(in);
+        parameter.setDescription(emptyToNull(param.getDescription()));
+        // 路径参数在 OpenAPI 中必须为 required: true;其余按文档取值,null 视为非必填
+        parameter.setRequired("path".equals(in) || Boolean.TRUE.equals(param.getRequired()));
+        Schema schema = buildSchemaFromParameter(param, 0);
+        schema.setDescription(null);
+        parameter.setSchema(schema);
+        parameters.add(parameter);
+        declared.add(id);
     }
 
     /**
      * 构建响应
      */
     private Map<String, Response> buildResponses(CsapDocMethod method) {
-        Map<String, Response> responses = new HashMap<>();
-
-        // 200 成功响应
+        Map<String, Response> responses = new LinkedHashMap<>();
         Response successResponse = new Response();
         successResponse.setDescription("请求成功");
-
-        if (method.getResponse() != null && !method.getResponse().isEmpty()) {
-            Map<String, MediaType> content = new HashMap<>();
+        List<CsapDocParameter> fields = new ArrayList<>();
+        if (method.getResponse() != null) {
+            for (CsapDocModel model : method.getResponse()) {
+                if (model != null && model.getParameters() != null) {
+                    fields.addAll(model.getParameters());
+                }
+            }
+        }
+        if (!fields.isEmpty()) {
+            Map<String, MediaType> content = new LinkedHashMap<>();
             MediaType mediaType = new MediaType();
-
-            Schema responseSchema = buildResponseSchema(method.getResponse());
-            mediaType.setSchema(responseSchema);
-
+            mediaType.setSchema(buildObjectSchema(fields, 0));
             content.put("application/json", mediaType);
             successResponse.setContent(content);
         }
-
         responses.put("200", successResponse);
-
-        // 400 错误响应
-        Response errorResponse = new Response();
-        errorResponse.setDescription("请求参数错误");
-        responses.put("400", errorResponse);
-
-        // 404 错误响应
-        Response notFoundResponse = new Response();
-        notFoundResponse.setDescription("资源不存在");
-        responses.put("404", notFoundResponse);
-
         return responses;
     }
 
     /**
-     * 从模型构建Schema
+     * 由一组字段构建 object Schema
      */
-    private Schema buildSchemaFromModels(List<CsapDocModel> models) {
-        if (models == null || models.isEmpty()) {
-            return new Schema().type("object");
-        }
-
-        Schema schema = new Schema();
-        schema.setType("object");
+    private Schema buildObjectSchema(List<CsapDocParameter> fields, int depth) {
+        Schema schema = new Schema().type("object");
         Map<String, Schema> properties = new LinkedHashMap<>();
         List<String> required = new ArrayList<>();
-
-        for (CsapDocModel model : models) {
-            if (model.getParameters() != null) {
-                for (CsapDocParameter param : model.getParameters()) {
-                    if (Boolean.TRUE.equals(param.getHidden())) {
-                        continue;
-                    }
-
-                    Schema propSchema = buildSchemaFromParameter(param);
-                    properties.put(param.getName(), propSchema);
-
-                    if (param.getRequired()) {
-                        required.add(param.getName());
-                    }
-                }
+        for (CsapDocParameter field : fields) {
+            if (field == null || Boolean.TRUE.equals(field.getHidden()) || field.getName() == null) {
+                continue;
+            }
+            properties.put(field.getName(), buildSchemaFromParameter(field, depth + 1));
+            if (Boolean.TRUE.equals(field.getRequired()) && !required.contains(field.getName())) {
+                required.add(field.getName());
             }
         }
-
-        schema.setProperties(properties);
+        if (!properties.isEmpty()) {
+            schema.setProperties(properties);
+        }
         if (!required.isEmpty()) {
             schema.setRequired(required);
         }
-
         return schema;
-    }
-
-    /**
-     * 构建响应Schema
-     */
-    private Schema buildResponseSchema(List<CsapDocModel> models) {
-        Schema wrapperSchema = new Schema();
-        wrapperSchema.setType("object");
-        Map<String, Schema> wrapperProperties = new LinkedHashMap<>();
-
-        // 标准响应格式
-        wrapperProperties.put("code", new Schema().type("string").description("响应码").example("0"));
-        wrapperProperties.put("message", new Schema().type("string").description("响应消息").example("成功"));
-        wrapperProperties.put("time", new Schema().type("integer").description("响应时间").example(1540483321460L));
-
-        // 数据部分
-        Schema dataSchema = buildSchemaFromModels(models);
-        wrapperProperties.put("data", dataSchema);
-
-        wrapperSchema.setProperties(wrapperProperties);
-        return wrapperSchema;
     }
 
     /**
      * 从参数构建Schema
      */
-    private Schema buildSchemaFromParameter(CsapDocParameter param) {
-        Schema schema = new Schema();
-
-        // 处理数组类型
+    private Schema buildSchemaFromParameter(CsapDocParameter param, int depth) {
+        Schema schema;
+        List<CsapDocParameter> children = depth < MAX_DEPTH ? param.getParameters() : null;
+        boolean hasChildren = children != null && !children.isEmpty();
         if (param.getModelType() == ModelType.ARRAY || isArrayType(param.getDataType())) {
-            schema.setType("array");
-
-            if (param.getParameters() != null && !param.getParameters().isEmpty()) {
-                // 对象数组
-                Schema itemSchema = new Schema();
-                itemSchema.setType("object");
-                Map<String, Schema> itemProperties = new LinkedHashMap<>();
-
-                for (CsapDocParameter childParam : param.getParameters()) {
-                    itemProperties.put(childParam.getName(), buildSchemaFromParameter(childParam));
-                }
-
-                itemSchema.setProperties(itemProperties);
-                schema.setItems(itemSchema);
-            } else {
-                // 基础类型数组
-                Schema itemSchema = new Schema();
-                itemSchema.setType(mapDataTypeToOpenApiType(param.getDataType()));
-                schema.setItems(itemSchema);
-            }
-        } else if (param.getParameters() != null && !param.getParameters().isEmpty()) {
-            // 对象类型
-            schema.setType("object");
-            Map<String, Schema> properties = new LinkedHashMap<>();
-            List<String> required = new ArrayList<>();
-
-            for (CsapDocParameter childParam : param.getParameters()) {
-                properties.put(childParam.getName(), buildSchemaFromParameter(childParam));
-                if (childParam.getRequired()) {
-                    required.add(childParam.getName());
-                }
-            }
-
-            schema.setProperties(properties);
-            if (!required.isEmpty()) {
-                schema.setRequired(required);
-            }
+            schema = new Schema().type("array");
+            schema.setItems(hasChildren ? buildObjectSchema(children, depth) : new Schema().type(mapDataTypeToOpenApiType(elementType(param.getDataType()))));
+        } else if (hasChildren) {
+            schema = buildObjectSchema(children, depth);
+        } else if (param.getModelType() == ModelType.OBJECT || param.getModelType() == ModelType.T_OBJECT) {
+            schema = new Schema().type("object");
         } else {
-            // 基础类型
-            schema.setType(mapDataTypeToOpenApiType(param.getDataType()));
+            schema = new Schema().type(mapDataTypeToOpenApiType(param.getDataType()));
         }
-
-        schema.setDescription(param.getDescription());
-
-        if (param.getExample() != null && !param.getExample().isEmpty()) {
+        schema.setDescription(emptyToNull(param.getDescription()));
+        if (notEmpty(param.getExample())) {
             schema.setExample(param.getExample());
         }
-
         return schema;
+    }
+
+    private String elementType(String dataType) {
+        if (dataType == null) {
+            return null;
+        }
+        int lt = dataType.indexOf('<');
+        int gt = dataType.lastIndexOf('>');
+        if (lt >= 0 && gt > lt) {
+            return dataType.substring(lt + 1, gt);
+        }
+        return dataType.replace("[]", "");
     }
 
     /**
@@ -471,7 +536,8 @@ public class OpenApiConverterService {
             return false;
         }
         String type = dataType.toLowerCase();
-        return type.contains("[]") || type.contains("list<") || type.contains("set<") || type.contains("collection<");
+        return type.contains("[]") || type.contains("list<") || type.contains("set<") || type.contains("collection<")
+                || "list".equals(type) || "set".equals(type) || "array".equals(type);
     }
 
     /**
@@ -481,299 +547,46 @@ public class OpenApiConverterService {
         if (dataType == null || dataType.isEmpty()) {
             return "string";
         }
-
         String lowerType = dataType.toLowerCase();
-
-        if (lowerType.contains("string")) {
+        if (lowerType.contains("string") || lowerType.contains("char")) {
             return "string";
-        } else if (lowerType.contains("int") || lowerType.contains("long")) {
-            return "integer";
-        } else if (lowerType.contains("double") || lowerType.contains("float") || lowerType.contains("decimal")) {
-            return "number";
         } else if (lowerType.contains("boolean")) {
             return "boolean";
-        } else if (lowerType.contains("date") || lowerType.contains("time")) {
-            return "string";
-        } else if (lowerType.contains("[]") || lowerType.contains("list") || lowerType.contains("set")) {
-            return "array";
-        } else {
-            return "string";
+        } else if (lowerType.contains("double") || lowerType.contains("float") || lowerType.contains("decimal")) {
+            return "number";
+        } else if (lowerType.contains("int") || lowerType.contains("long") || lowerType.contains("short")
+                || lowerType.contains("byte") || lowerType.equals("biginteger")) {
+            return "integer";
+        } else if (lowerType.contains("map") || lowerType.equals("object")) {
+            return "object";
         }
+        return "string";
     }
 
     /**
      * 构建组件
      */
-    private Components buildComponents(CsapDocParentResponse apiDocResponse) {
+    private Components buildComponents() {
         Components components = new Components();
-
-        // 可以在这里添加通用的schemas, responses等
-        Map<String, Schema> schemas = new HashMap<>();
-
-        // 标准响应格式
-        Schema standardResponse = new Schema();
-        standardResponse.setType("object");
+        Map<String, Schema> schemas = new LinkedHashMap<>();
+        Schema standardResponse = new Schema().type("object");
         Map<String, Schema> responseProps = new LinkedHashMap<>();
         responseProps.put("code", new Schema().type("string").description("响应码"));
         responseProps.put("message", new Schema().type("string").description("响应消息"));
         responseProps.put("data", new Schema().description("响应数据"));
         responseProps.put("time", new Schema().type("integer").description("响应时间戳"));
         standardResponse.setProperties(responseProps);
-
         schemas.put("StandardResponse", standardResponse);
         components.setSchemas(schemas);
-
         return components;
     }
 
-    /**
-     * 构建标签
-     */
-    private List<Tag> buildTags(CsapDocParentResponse apiDocResponse) {
-        List<Tag> tags = new ArrayList<>();
-        Set<String> tagNames = new HashSet<>();
-
-        if (apiDocResponse.getGlobalApiList() != null) {
-            for (CsapDocModelController controller : apiDocResponse.getGlobalApiList()) {
-                String tagName = controller.getValue() != null && !controller.getValue().isEmpty() ?
-                        controller.getValue() : controller.getSimpleName();
-
-                if (tagName != null && !tagNames.contains(tagName)) {
-                    Tag tag = new Tag();
-                    tag.setName(tagName);
-                    tag.setDescription(controller.getDescription());
-                    tags.add(tag);
-                    tagNames.add(tagName);
-                }
-            }
-        }
-
-        return tags;
+    private static boolean notEmpty(String s) {
+        return s != null && !s.trim().isEmpty();
     }
 
-    /**
-     * 转换为JSON字符串
-     */
-    private String convertToJsonString(OpenApiSpec spec) {
-        StringBuilder json = new StringBuilder();
-        json.append("{\n");
-        json.append("  \"openapi\": \"").append(spec.getOpenapi()).append("\",\n");
-        json.append("  \"info\": ").append(convertToJsonString(spec.getInfo())).append(",\n");
-        json.append("  \"servers\": ").append(convertToJsonString(spec.getServers())).append(",\n");
-        json.append("  \"paths\": ").append(convertToJsonString(spec.getPaths())).append(",\n");
-        json.append("  \"components\": ").append(convertToJsonString(spec.getComponents())).append(",\n");
-        json.append("  \"tags\": ").append(convertToJsonString(spec.getTags())).append("\n");
-        json.append("}");
-        return json.toString();
-    }
-
-    private String convertToJsonString(Object obj) {
-        if (obj == null) {
-            return "null";
-        } else if (obj instanceof String) {
-            return "\"" + escapeJsonString((String) obj) + "\"";
-        } else if (obj instanceof Number) {
-            return obj.toString();
-        } else if (obj instanceof Boolean) {
-            return obj.toString();
-        } else if (obj instanceof Info) {
-            Info info = (Info) obj;
-            StringBuilder json = new StringBuilder();
-            json.append("{\n");
-            json.append("    \"title\": ").append(convertToJsonString(info.getTitle())).append(",\n");
-            json.append("    \"description\": ").append(convertToJsonString(info.getDescription())).append(",\n");
-            json.append("    \"version\": ").append(convertToJsonString(info.getVersion()));
-            if (info.getContact() != null) {
-                json.append(",\n    \"contact\": ").append(convertToJsonString(info.getContact()));
-            }
-            json.append("\n  }");
-            return json.toString();
-        } else if (obj instanceof Contact) {
-            Contact contact = (Contact) obj;
-            return String.format("{\"name\":%s,\"email\":%s}",
-                    convertToJsonString(contact.getName()), convertToJsonString(contact.getEmail()));
-        } else if (obj instanceof List) {
-            List<?> list = (List<?>) obj;
-            if (list.isEmpty()) {
-                return "[]";
-            }
-            StringBuilder json = new StringBuilder("[\n");
-            for (int i = 0; i < list.size(); i++) {
-                if (i > 0) {
-                    json.append(",\n");
-                }
-                String itemJson = convertToJsonString(list.get(i));
-                json.append("    ").append(itemJson.replace("\n", "\n    "));
-            }
-            json.append("\n  ]");
-            return json.toString();
-        } else if (obj instanceof Map) {
-            Map<?, ?> map = (Map<?, ?>) obj;
-            if (map.isEmpty()) {
-                return "{}";
-            }
-            StringBuilder json = new StringBuilder("{\n");
-            boolean first = true;
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                if (!first) {
-                    json.append(",\n");
-                }
-                first = false;
-                json.append("    ").append(convertToJsonString(entry.getKey())).append(": ");
-                String valueJson = convertToJsonString(entry.getValue());
-                json.append(valueJson.replace("\n", "\n    "));
-            }
-            json.append("\n  }");
-            return json.toString();
-        } else if (obj instanceof Server) {
-            Server server = (Server) obj;
-            return String.format("{\"url\":%s,\"description\":%s}",
-                    convertToJsonString(server.getUrl()), convertToJsonString(server.getDescription()));
-        } else if (obj instanceof PathItem) {
-            PathItem pathItem = (PathItem) obj;
-            StringBuilder json = new StringBuilder("{");
-            boolean first = true;
-
-            if (pathItem.getGet() != null) {
-                json.append("\"get\":").append(convertToJsonString(pathItem.getGet()));
-                first = false;
-            }
-            if (pathItem.getPost() != null) {
-                if (!first) {
-                    json.append(",");
-                }
-                json.append("\"post\":").append(convertToJsonString(pathItem.getPost()));
-                first = false;
-            }
-            if (pathItem.getPut() != null) {
-                if (!first) {
-                    json.append(",");
-                }
-                json.append("\"put\":").append(convertToJsonString(pathItem.getPut()));
-                first = false;
-            }
-            if (pathItem.getDelete() != null) {
-                if (!first) {
-                    json.append(",");
-                }
-                json.append("\"delete\":").append(convertToJsonString(pathItem.getDelete()));
-                first = false;
-            }
-            if (pathItem.getPatch() != null) {
-                if (!first) {
-                    json.append(",");
-                }
-                json.append("\"patch\":").append(convertToJsonString(pathItem.getPatch()));
-            }
-
-            json.append("}");
-            return json.toString();
-        } else if (obj instanceof Operation) {
-            Operation op = (Operation) obj;
-            StringBuilder json = new StringBuilder("{\n");
-            json.append("      \"summary\": ").append(convertToJsonString(op.getSummary()));
-            if (op.getDescription() != null && !op.getDescription().isEmpty()) {
-                json.append(",\n      \"description\": ").append(convertToJsonString(op.getDescription()));
-            }
-            json.append(",\n      \"operationId\": ").append(convertToJsonString(op.getOperationId()));
-            if (op.getTags() != null && !op.getTags().isEmpty()) {
-                json.append(",\n      \"tags\": ").append(convertToJsonString(op.getTags()));
-            }
-            if (op.getParameters() != null && !op.getParameters().isEmpty()) {
-                json.append(",\n      \"parameters\": ").append(convertToJsonString(op.getParameters()));
-            }
-            if (op.getRequestBody() != null) {
-                json.append(",\n      \"requestBody\": ").append(convertToJsonString(op.getRequestBody()));
-            }
-            json.append(",\n      \"responses\": ").append(convertToJsonString(op.getResponses()));
-            json.append("\n    }");
-            return json.toString();
-        } else if (obj instanceof Parameter) {
-            Parameter param = (Parameter) obj;
-            StringBuilder json = new StringBuilder("{");
-            json.append("\"name\":").append(convertToJsonString(param.getName()));
-            json.append(",\"in\":").append(convertToJsonString(param.getIn()));
-            if (param.getDescription() != null && !param.getDescription().isEmpty()) {
-                json.append(",\"description\":").append(convertToJsonString(param.getDescription()));
-            }
-            json.append(",\"required\":").append(param.getRequired());
-            json.append(",\"schema\":").append(convertToJsonString(param.getSchema()));
-            json.append("}");
-            return json.toString();
-        } else if (obj instanceof RequestBody) {
-            RequestBody rb = (RequestBody) obj;
-            StringBuilder json = new StringBuilder("{");
-            if (rb.getDescription() != null) {
-                json.append("\"description\":").append(convertToJsonString(rb.getDescription())).append(",");
-            }
-            json.append("\"required\":").append(rb.getRequired());
-            json.append(",\"content\":").append(convertToJsonString(rb.getContent()));
-            json.append("}");
-            return json.toString();
-        } else if (obj instanceof Response) {
-            Response resp = (Response) obj;
-            StringBuilder json = new StringBuilder("{");
-            json.append("\"description\":").append(convertToJsonString(resp.getDescription()));
-            if (resp.getContent() != null && !resp.getContent().isEmpty()) {
-                json.append(",\"content\":").append(convertToJsonString(resp.getContent()));
-            }
-            json.append("}");
-            return json.toString();
-        } else if (obj instanceof MediaType) {
-            MediaType mt = (MediaType) obj;
-            return "{\"schema\":" + convertToJsonString(mt.getSchema()) + "}";
-        } else if (obj instanceof Schema) {
-            Schema schema = (Schema) obj;
-            StringBuilder json = new StringBuilder("{");
-            json.append("\"type\":").append(convertToJsonString(schema.getType()));
-            if (schema.getDescription() != null && !schema.getDescription().isEmpty()) {
-                json.append(",\"description\":").append(convertToJsonString(schema.getDescription()));
-            }
-            if (schema.getExample() != null) {
-                json.append(",\"example\":").append(convertToJsonString(schema.getExample()));
-            }
-            if (schema.getProperties() != null && !schema.getProperties().isEmpty()) {
-                json.append(",\"properties\":").append(convertToJsonString(schema.getProperties()));
-            }
-            if (schema.getRequired() != null && !schema.getRequired().isEmpty()) {
-                json.append(",\"required\":").append(convertToJsonString(schema.getRequired()));
-            }
-            if (schema.getItems() != null) {
-                json.append(",\"items\":").append(convertToJsonString(schema.getItems()));
-            }
-            json.append("}");
-            return json.toString();
-        } else if (obj instanceof Components) {
-            Components comp = (Components) obj;
-            StringBuilder json = new StringBuilder("{");
-            if (comp.getSchemas() != null && !comp.getSchemas().isEmpty()) {
-                json.append("\"schemas\":").append(convertToJsonString(comp.getSchemas()));
-            }
-            json.append("}");
-            return json.toString();
-        } else if (obj instanceof Tag) {
-            Tag tag = (Tag) obj;
-            StringBuilder json = new StringBuilder("{");
-            json.append("\"name\":").append(convertToJsonString(tag.getName()));
-            if (tag.getDescription() != null && !tag.getDescription().isEmpty()) {
-                json.append(",\"description\":").append(convertToJsonString(tag.getDescription()));
-            }
-            json.append("}");
-            return json.toString();
-        }
-
-        return "{}";
-    }
-
-    private String escapeJsonString(String str) {
-        if (str == null) {
-            return "";
-        }
-        return str.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
+    private static String emptyToNull(String s) {
+        return notEmpty(s) ? s : null;
     }
 
     // OpenAPI规范相关的模型类

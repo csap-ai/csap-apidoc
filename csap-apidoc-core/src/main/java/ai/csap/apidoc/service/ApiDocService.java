@@ -508,7 +508,35 @@ public final class ApiDocService extends AbstractApiDocService implements Filter
         if (containsPathMethod(docController, docMethod)) {
             return null;
         }
-        getValidateFactory().clear(docController.getName() + DOT + method.getName());
+        if (Boolean.TRUE.equals(strategyModel.getIsParent())) {
+            // 只要接口和方法,不处理参数,也不改动已登记的字段规则
+            buildMethodDetail(docController, method, typeVariableModel, strategyModel, apiOperation, handlerMethod,
+                    docMethod);
+            return docMethod;
+        }
+        // 字段规则先登记到临时键,整个接口处理完再替换到正式键,运行时读规则不会读到清空后的中间状态
+        String ruleKey = docMethod.getKey();
+        String stagingKey = ResponseRuleIndex.beginBuild(ruleKey);
+        docMethod.setKey(stagingKey);
+        try {
+            buildMethodDetail(docController, method, typeVariableModel, strategyModel, apiOperation, handlerMethod,
+                    docMethod);
+        } catch (Throwable e) {
+            docMethod.setKey(ruleKey);
+            ResponseRuleIndex.abort(stagingKey);
+            throw e;
+        }
+        docMethod.setKey(ruleKey);
+        ResponseRuleIndex.commit(ruleKey, stagingKey);
+        return docMethod;
+    }
+
+    /**
+     * 处理接口的请求头、请求参数和返回参数(docMethod 的 key 此时是临时键)
+     */
+    private void buildMethodDetail(CsapDocModelController docController, Method method,
+                                   TypeVariableModel typeVariableModel, StrategyModel strategyModel,
+                                   ApiOperation apiOperation, HandlerMethod handlerMethod, CsapDocMethod docMethod) {
         headers(apiOperation, docMethod);
         // M7: 收集 @DocGlobalHeader / @DocAuth 提示（仅供 try-it-out UI 预填）
         Class<?> controllerClass = typeVariableModel.getAClass();
@@ -549,7 +577,6 @@ public final class ApiDocService extends AbstractApiDocService implements Filter
         if (CollectionUtil.isEmpty(docMethod.getParamTypes())) {
             docMethod.getParamTypes().add(docMethod.getParamType().name());
         }
-        return docMethod;
     }
 
     @Override

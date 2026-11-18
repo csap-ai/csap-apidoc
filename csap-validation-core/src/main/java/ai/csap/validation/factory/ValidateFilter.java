@@ -6,26 +6,20 @@ import static ai.csap.apidoc.util.IValidate.DEFAULT_CODE;
 import static ai.csap.apidoc.util.IValidate.MESSAGE;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import org.hibernate.validator.internal.engine.constraintvalidation.ConstraintValidatorDescriptor;
 import org.hibernate.validator.internal.metadata.core.ConstraintHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.annotation.AnnotationUtils;
 
-import com.google.common.collect.Lists;
-
+import ai.csap.validation.constraint.ConstraintResolver;
+import ai.csap.validation.constraint.ConstraintValidatorAdapter;
+import ai.csap.validation.constraint.MessageTemplates;
 import ai.csap.validation.type.ValidationStrategyType;
 
-import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ArrayUtil;
-import jakarta.validation.Constraint;
-import jakarta.validation.ConstraintValidator;
 
 /**
  * 方法过滤.
@@ -46,59 +40,30 @@ public interface ValidateFilter extends ValidateData {
     ConstraintHelper getConstraintHelper();
 
     /**
-     * 根据注解 获取验证业务处理类
-     *
-     * @param annotationType 字段注解
-     * @param <A>            注解类型
-     * @return 验证列表
-     */
-    default <A extends Annotation> List<ConstraintValidatorDescriptor<A>> getAllValidatorDescriptors(Class<A> annotationType) {
-        List<ConstraintValidatorDescriptor<A>> list = getConstraintHelper().getAllValidatorDescriptors(annotationType);
-        if (CollectionUtil.isEmpty(list)) {
-            list = Lists.newArrayList();
-        }
-        return list;
-    }
-
-    /**
-     * 获取当前字段所有验证逻辑
+     * 获取当前字段所有验证逻辑.
+     * <p>同时识别 jakarta.validation 与 javax.validation 的约束注解,见 {@link ConstraintResolver}。
      *
      * @param fieldClass  字段class
      * @param annotations 注解
      * @return 自定义验证列表
      */
     default List<Validate.ConstraintValidatorField> getAllFieldConstraintValidator(Class<?> fieldClass, Annotation[] annotations) {
-        return Stream.of(annotations)
-                .filter(i -> i.annotationType().isAnnotationPresent(Constraint.class))
-                .map(i -> getAllValidatorDescriptors(i.annotationType())
-                        .stream()
-                        .map(ConstraintValidatorDescriptor::getValidatorClass)
-                        .filter(i2 -> containsClass(fieldClass, (Class<?>) getClass(i2)))
-                        .map(i3 -> validator(i3, i))
-                        .collect(Collectors.toList()))
-                .flatMap(Collection::stream)
-                .filter(i -> containsClass(fieldClass, (Class<?>) getClass(i.getValidator().getClass())))
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * 获取验证的目标Class
-     *
-     * @param clss 注解类型
-     * @return 实际类型
-     */
-    default Type getClass(Class<? extends ConstraintValidator> clss) {
-        try {
-            Type[] classes = clss.getGenericInterfaces();
-            if (ArrayUtil.isNotEmpty(classes)) {
-                return ((ParameterizedType) classes[0]).getActualTypeArguments()[1];
-            } else {
-                return ((ParameterizedType) clss.getGenericSuperclass()).getActualTypeArguments()[0];
-            }
-        } catch (Exception e) {
-            LOGS.error(e.getMessage(), e);
+        if (fieldClass == null || ArrayUtil.isEmpty(annotations)) {
+            return new ArrayList<>();
         }
-        return null;
+        List<Validate.ConstraintValidatorField> list = new ArrayList<>();
+        for (Annotation annotation : annotations) {
+            ConstraintValidatorAdapter adapter = ConstraintResolver.resolve(getConstraintHelper(), fieldClass, annotation);
+            if (adapter != null) {
+                list.add(new Validate.ConstraintValidatorField()
+                        .setValidator(adapter)
+                        .setAnnotation(annotation)
+                        .setCode(code(annotation))
+                        .setType(ValidationStrategyType.Annotation)
+                        .setMessage(MessageTemplates.interpolate(message(annotation), annotation)));
+            }
+        }
+        return list;
     }
 
     /**
@@ -119,29 +84,6 @@ public interface ValidateFilter extends ValidateData {
     }
 
     /**
-     * 获取具体验证规则
-     *
-     * @param cl 注解类型
-     * @param i  注解
-     * @return 验证信息
-     */
-    default Validate.ConstraintValidatorField validator(Class<? extends ConstraintValidator<? extends Annotation, ?>> cl, Annotation i) {
-        try {
-            ConstraintValidator validator = cl.getDeclaredConstructor().newInstance();
-            validator.initialize(i);
-            return new Validate.ConstraintValidatorField()
-                    .setValidator(validator)
-                    .setAnnotation(i)
-                    .setCode(code(i))
-                    .setType(ValidationStrategyType.Annotation)
-                    .setMessage(message(i));
-        } catch (Exception e) {
-            LOGS.error(e.getMessage(), e);
-            return null;
-        }
-    }
-
-    /**
      * 获取提示编码
      *
      * @param annotation 注解
@@ -149,9 +91,12 @@ public interface ValidateFilter extends ValidateData {
      */
     default String code(Annotation annotation) {
         try {
-            return annotation.getClass().getMethod(CODE).invoke(annotation).toString();
+            Object code = AnnotationUtils.getValue(annotation, CODE);
+            if (code != null && !code.toString().isEmpty()) {
+                return code.toString();
+            }
         } catch (Exception ignored) {
-
+            // 注解没有 code 属性
         }
         return DEFAULT_CODE;
     }
@@ -164,7 +109,10 @@ public interface ValidateFilter extends ValidateData {
      */
     default String message(Annotation annotation) {
         try {
-            return annotation.getClass().getMethod(MESSAGE).invoke(annotation).toString();
+            Object message = AnnotationUtils.getValue(annotation, MESSAGE);
+            if (message != null) {
+                return message.toString();
+            }
         } catch (Exception ignored) {
         }
         return DEFAULT_CODE;

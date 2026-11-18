@@ -25,12 +25,12 @@ The doc protocol, the rule file format and the docs page are shared across langu
 
 | Language | Status | Frameworks |
 |---|---|---|
-| **Java** | ✅ Released [1.1.1](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
-| **Go** | 🚧 In development ([PR #13](https://github.com/csap-ai/csap-apidoc/pull/13)) | gin, net/http |
+| **Java** | ✅ Released [1.2.0](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
+| **Go** | ✅ Released [v0.1.0](https://pkg.go.dev/github.com/csap-ai/csap-apidoc/csap-apidoc-go) (`go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.0`) | gin, net/http |
 | **Rust** | 📋 Planned | axum, actix-web |
 | More | 📋 Coming | see the [roadmap](docs/ROADMAP.md) |
 
-## What you get today (Java 1.1.x)
+## What you get today (Java)
 
 - **Runtime docs**: annotations are scanned at startup; open `/csap-api.html`.
 - **Field rules**: annotations, YAML files or SQLite decide which request parameters and response fields each endpoint shows; one model can show different fields in different endpoints.
@@ -38,8 +38,8 @@ The doc protocol, the rule file format and the docs page are shared across langu
 - **Export**: OpenAPI 3.0, Postman v2.1 and Markdown from the docs page, or copy as TypeScript types.
 - **DevTools**: in development, pick fields and configure validation rules in a UI that writes back to YAML.
 - **Gateway aggregation**: browse several services' docs from one page.
-
-> Runtime **response-field filtering** and **request validation** only record rules in 1.1.x and do not enforce them. They come back as a standalone module in 1.2.0; see the [roadmap](docs/ROADMAP.md).
+- **Response field filtering** (since 1.2.0, off by default): endpoints with rules return only the fields the docs show; Jackson, fastjson and fastjson2. See [Response field filtering](https://apidoc.csap.ai/guide/runtime-filter).
+- **Request validation** (since 1.2.0, off by default): off / observe / enforce modes with per-endpoint overrides. See [Validation](https://apidoc.csap.ai/guide/validation).
 
 ## Quick start (Java)
 
@@ -49,7 +49,7 @@ The doc protocol, the rule file format and the docs page are shared across langu
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.1.1</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 

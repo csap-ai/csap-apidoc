@@ -5,13 +5,13 @@
     <parent>
         <groupId>ai.csap.apidoc</groupId>
         <artifactId>csap-apidoc-build</artifactId>
-        <version>1.1.1</version>
+        <version>1.2.0</version>
         <relativePath>../csap-apidoc-build</relativePath>
     </parent>
     <artifactId>csap-apidoc-common</artifactId>
     <name>CSAP Apidoc Common</name>
     <description>Shared models and utilities of CSAP Apidoc.</description>
-    <version>1.1.1</version>
+    <version>1.2.0</version>
     <dependencies>
         <dependency>
             <groupId>cn.hutool</groupId>

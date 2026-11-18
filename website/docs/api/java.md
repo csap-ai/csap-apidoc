@@ -385,4 +385,4 @@ public class Application {
 | `ai.csap.apidoc.GlobalDocModelControllerProvider` | 只有接口定义，框架内没有任何地方使用 |
 | `ai.csap.apidoc.DevtoolsClass` | 默认实现的 `devtools()` 返回 `false`；改为返回 `true` 后，隐藏接口的判断会读取一个通常为 `null` 的字段，可能导致扫描出错 |
 | `ai.csap.apidoc.service.standard.PostmanConverterService` | 没有注册为 Bean，需要时直接 `new`，见[导出](/guide/export) |
-| `ai.csap.apidoc.service.standard.OpenApiConverterService` | 没有注册为 Bean，不处理普通扫描出来的接口，参数 `required` 为空时会空指针，见[导出](/guide/export) |
+| `ai.csap.apidoc.service.standard.OpenApiConverterService` | 没有注册为 Bean，需要时直接 `new`；1.2.0 起请用 `convertToOpenApi(CsapDocResponse)`，旧的 `CsapDocParentResponse` 重载只处理 `globalApiList`，见[导出](/guide/export) |

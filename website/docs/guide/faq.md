@@ -125,6 +125,7 @@ DevTools 没有开启。确认当前生效的配置中有 `csap.apidoc.devtool.e
 | `/csap-api.html`、`/assets/**`、`/favicon.ico` | 文档页面及其静态资源 |
 | `/csap/apidoc/**` | 文档数据 |
 | `/csap/openapi/postman` | Postman Collection 导出 |
+| `/csap/openapi.json` | OpenAPI 3.0 导出（1.2.0 起） |
 | `/devtools-ui/**`、`/csap-api-devtools.html`、`/assets2/**` | DevTools 页面及其静态资源（开启 DevTools 时） |
 | `/devtools/**`、`/csap/yaml/**` | DevTools 接口（开启 DevTools 时） |
 
@@ -138,6 +139,7 @@ DevTools 没有开启。确认当前生效的配置中有 `csap.apidoc.devtool.e
 | `GET /csap/apidoc/parent` | 文档树，网关聚合时 `resources[n].url` 指向它 |
 | `GET /csap/apidoc/method?name=类全名&key=方法全名` | 单个方法的详细信息 |
 | `GET /csap/openapi/postman` | Postman Collection JSON |
+| `GET /csap/openapi.json` | OpenAPI 3.0 JSON（1.2.0 起） |
 
 详见 [REST 接口](/api/rest)。
 
@@ -145,7 +147,7 @@ DevTools 没有开启。确认当前生效的配置中有 `csap.apidoc.devtool.e
 
 ### 如何导出为 Postman、OpenAPI 或 Markdown？
 
-在文档页面顶部点击「导出文档」，可以选择 OpenAPI 3.0、Postman Collection 或 Markdown。Postman Collection 也可以直接从 `GET /csap/openapi/postman` 获取。见 [导出](/guide/export)。
+在文档页面顶部点击「导出文档」，可以选择 OpenAPI 3.0、Postman Collection 或 Markdown。Postman Collection 也可以直接从 `GET /csap/openapi/postman` 获取，1.2.0 起 OpenAPI 3.0 可以从 `GET /csap/openapi.json` 获取。见 [导出](/guide/export)。
 
 ### 多个微服务的文档能放在一起看吗？
 

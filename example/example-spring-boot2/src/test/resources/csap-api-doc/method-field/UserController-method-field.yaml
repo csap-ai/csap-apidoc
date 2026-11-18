@@ -1,0 +1,27 @@
+# 测试用的 YAML 校验规则(运行时校验集成测试)
+ai.csap.example.controller.UserController:
+  listUsers:
+    request:
+      keyword.keyword:
+        required: true
+        paramType: QUERY
+        validate:
+          - type: Pattern
+            level: 1
+            pattern: '^[a-z]*$'
+            code: "1002"
+            message: 只能是小写字母
+  # 只登记字段(required: true),校验规则来自 User 字段上的 javax.validation 注解
+  createUser:
+    request:
+      user.username:
+        required: true
+        paramType: BODY
+      user.email:
+        required: true
+        paramType: BODY
+  updateUser:
+    request:
+      user.username:
+        required: true
+        paramType: BODY

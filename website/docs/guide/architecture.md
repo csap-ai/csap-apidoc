@@ -4,7 +4,7 @@
 
 ## 模块
 
-仓库是一个 Maven 多模块工程，当前发布版本 `1.1.1`。除两个 starter 的 groupId 是 `ai.csap.apidoc.boot` 外，其余模块的 groupId 都是 `ai.csap.apidoc`。
+仓库是一个 Maven 多模块工程，当前发布版本 `1.2.0`。除两个 starter 的 groupId 是 `ai.csap.apidoc.boot` 外，其余模块的 groupId 都是 `ai.csap.apidoc`。
 
 | 模块 | 作用 | 直接依赖的本项目模块 |
 | --- | --- | --- |
@@ -120,7 +120,7 @@ csap-validation-boot-starter ──▶ csap-validation-core
 | --- | --- |
 | 应用启动 | 异步生成一次。1.1.1 起扫描写入一个新对象，完成后才替换缓存；扫描完成前到来的请求会等待，拿到的是完整文档（1.1.0 中可能拿到尚未生成完的文档） |
 | `GET /csap/apidoc?flush=true` | 重新全量扫描，完成后替换缓存（1.1.1 起；1.1.0 中缓存已存在时直接返回缓存，`flush` 不生效） |
-| `GET /csap/apidoc/parent`、`/csap/openapi/postman` | 只读缓存 |
+| `GET /csap/apidoc/parent`、`/csap/openapi/postman`、`/csap/openapi.json` | 只读缓存 |
 | `GET /csap/apidoc/method`、`/csap/apidoc/{tableName}`，且 `csap.apidoc.devtool.enabled=true` | 先重新扫描参数里指定的那个类，用新结果替换缓存里该 Controller 的接口列表，再返回 |
 | 同上，但未开启 DevTools | 只读缓存 |
 

@@ -9,6 +9,7 @@ import HeadersButton from '@/components/HeadersButton';
 import AuthButton from '@/components/AuthButton';
 import SettingsButton from '@/components/SettingsButton';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import ThemeSwitcher from '@/components/ThemeSwitcher';
 import './index.less';
 
 const {Header} = Layout;
@@ -164,6 +165,9 @@ const LayoutHeader = (props: IProps, ref) => {
                     </div>
                     <div className="api-item">
                         <LanguageSwitcher />
+                    </div>
+                    <div className="api-item">
+                        <ThemeSwitcher />
                     </div>
                     <div className="api-item">
                         <Dropdown menu={{items: exportMenuItems}} placement="bottomRight">

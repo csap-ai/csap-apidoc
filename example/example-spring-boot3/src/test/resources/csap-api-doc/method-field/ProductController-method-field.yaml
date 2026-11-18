@@ -1,0 +1,13 @@
+# 测试用的 YAML 校验规则
+ai.csap.example.controller.ProductController:
+  updateStock:
+    request:
+      stock.stock:
+        required: true
+        paramType: QUERY
+        validate:
+          - type: Pattern
+            level: 1
+            pattern: '^\d{1,4}$'
+            code: "1002"
+            message: 库存只能是0-9999

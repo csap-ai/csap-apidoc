@@ -14,7 +14,6 @@ import ai.csap.validation.properties.ValidationProperties;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.ObjectUtil;
-import jakarta.validation.ConstraintValidatorContext;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -49,21 +48,21 @@ public class DefaultValidateFactoryImpl implements IValidateFactory {
      * @param paramClass      参数类型
      * @param parameterName   参数名
      */
-    public void validation(Object args, Method method, Class<?> controllerClass, Class<?> paramClass, String parameterName, ConstraintValidatorContext validatorContext) {
+    public void validation(Object args, Method method, Class<?> controllerClass, Class<?> paramClass, String parameterName) {
         //TODO 基础验证
         Validate.ValidateField validateField = request(controllerClass, method, paramClass.getSimpleName());
         if (validateField == null) {
             return;
         }
         //TODO 验证当前数据
-        validateField.validators(args, validationProperties.getTipType(), validatorContext);
+        validateField.validators(args, validationProperties);
         if (validateField.getModelType().equals(ModelType.BASE_DATA)) {
             if (validateField.getChildren().containsKey(parameterName)) {
-                validateField.getChildren().get(parameterName).validators(args, validationProperties.getTipType(), validatorContext);
+                validateField.getChildren().get(parameterName).validators(args, validationProperties);
             }
         } else {
             //TODO 级联验证
-            validatorsChildren(parameterName, validateField.getChildren(), args, null, ReflectionKit::getValidateValue, validatorContext);
+            validatorsChildren(parameterName, validateField.getChildren(), args, null, ReflectionKit::getValidateValue);
         }
     }
 
@@ -77,15 +76,14 @@ public class DefaultValidateFactoryImpl implements IValidateFactory {
     public Validate.ValidateField validatorsChildren(String parameterName,
                                                       Map<String, Validate.ValidateField> validateField,
                                                       Object value, Object childrenValue,
-                                                      BiFunctionValidation<String, List<String>, Object, Object> function,
-                                                      ConstraintValidatorContext validatorContext) {
+                                                      BiFunctionValidation<String, List<String>, Object, Object> function) {
         return validateField
                 .entrySet()
                 .stream()
-                .map(e -> validatorsField(parameterName, e, childrenValue != null ? childrenValue : value, function, validatorContext))
+                .map(e -> validatorsField(parameterName, e, childrenValue != null ? childrenValue : value, function))
                 .filter(ObjUtil::isNotEmpty)
                 .filter(i -> !i.getMapData().getValue().getChildren().isEmpty())
-                .map(e -> validatorsChildren(parameterName, e.getMapData().getValue().getChildren(), e.getValue(), childrenValue, function, validatorContext))
+                .map(e -> validatorsChildren(parameterName, e.getMapData().getValue().getChildren(), e.getValue(), childrenValue, function))
                 .filter(ObjectUtil::isNotEmpty)
                 .findFirst()
                 .orElse(null);
@@ -103,22 +101,21 @@ public class DefaultValidateFactoryImpl implements IValidateFactory {
     private StoreData validatorsField(String parameterName,
                                        Map.Entry<String, Validate.ValidateField> validateFieldEntry,
                                        Object value,
-                                       BiFunctionValidation<String, List<String>, Object, Object> function,
-                                       ConstraintValidatorContext validatorContext) {
+                                       BiFunctionValidation<String, List<String>, Object, Object> function) {
         Object values = value;
         if (!ModelType.BASE_DATA.equals(validateFieldEntry.getValue().getModelType()) && values instanceof Collection) {
             for (Object i : (Collection<?>) values) {
                 Map<String, Validate.ValidateField> fieldMap = MapUtil.<String, Validate.ValidateField>builder()
                         .put(validateFieldEntry.getKey(), validateFieldEntry.getValue()).build();
-                validatorsChildren(parameterName, fieldMap, i, null, function, validatorContext);
+                validatorsChildren(parameterName, fieldMap, i, null, function);
             }
             return null;
         } else {
             if (ModelType.BASE_DATA.equals(validateFieldEntry.getValue().getModelType())) {
-                validateFieldEntry.getValue().validators(values, validationProperties.getTipType(), validatorContext);
+                validateFieldEntry.getValue().validators(values, validationProperties);
             } else {
                 values = function.apply(validateFieldEntry.getKey(), null, values);
-                validateFieldEntry.getValue().validators(values, validationProperties.getTipType(), validatorContext);
+                validateFieldEntry.getValue().validators(values, validationProperties);
             }
         }
         return StoreData.builder()

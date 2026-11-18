@@ -40,7 +40,7 @@
 
 ### 步骤1: 检查代码风格
 ```bash
-cd /Users/ycf/Documents/产品/csap/framework/csap-framework-apidoc
+cd csap-apidoc   # 仓库根目录
 mvn checkstyle:check
 ```
 

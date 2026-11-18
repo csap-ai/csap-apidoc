@@ -5,12 +5,12 @@
     <parent>
         <groupId>ai.csap.apidoc</groupId>
         <artifactId>csap-apidoc</artifactId>
-        <version>1.1.1</version>
+        <version>1.2.0</version>
     </parent>
     <artifactId>csap-apidoc-dependency</artifactId>
     <name>CSAP Apidoc Dependency</name>
     <description>Dependency management (BOM) of CSAP Apidoc.</description>
-    <version>1.1.1</version>
+    <version>1.2.0</version>
     <packaging>pom</packaging>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -20,6 +20,7 @@
         <hutool.version>5.8.39</hutool.version>
         <guava.version>27.0-jre</guava.version>
         <alibaba.fastjson.version>1.2.79</alibaba.fastjson.version>
+        <alibaba.fastjson2.version>2.0.53</alibaba.fastjson2.version>
         <lombok.version>1.18.38</lombok.version>
         <slf4j.version>1.7.30</slf4j.version>
         <jackson.version>2.10.1</jackson.version>
@@ -243,6 +244,29 @@
                 <groupId>com.fasterxml.jackson.dataformat</groupId>
                 <artifactId>jackson-dataformat-yaml</artifactId>
                 <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.alibaba.fastjson2</groupId>
+                <artifactId>fastjson2</artifactId>
+                <version>${alibaba.fastjson2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.alibaba.fastjson2</groupId>
+                <artifactId>fastjson2-extension-spring5</artifactId>
+                <version>${alibaba.fastjson2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.alibaba.fastjson2</groupId>
+                <artifactId>fastjson2-extension-spring6</artifactId>
+                <version>${alibaba.fastjson2.version}</version>
+            </dependency>
+
+            <!-- CSAP Apidoc 运行时模块(返回字段过滤) -->
+            <dependency>
+                <groupId>ai.csap.apidoc</groupId>
+                <artifactId>csap-apidoc-runtime</artifactId>
+                <version>${project.version}</version>
             </dependency>
 
             <!-- Spring Framework -->

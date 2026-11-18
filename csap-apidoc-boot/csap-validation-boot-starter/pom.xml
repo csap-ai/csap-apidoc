@@ -5,7 +5,7 @@
     <parent>
         <groupId>ai.csap.apidoc.boot</groupId>
         <artifactId>csap-apidoc-boot</artifactId>
-        <version>1.1.1</version>
+        <version>1.2.0</version>
     </parent>
     <artifactId>csap-validation-boot-starter</artifactId>
     <name>CSAP Validation Boot Starter</name>
@@ -15,6 +15,36 @@
         <dependency>
             <groupId>ai.csap.apidoc</groupId>
             <artifactId>csap-validation-core</artifactId>
+        </dependency>
+        <!-- 包装 RequestMappingHandlerAdapter 的参数解析器(只在 Servlet Web 应用中生效) -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <!-- Spring Boot 2 的 javax.validation.ConstraintViolationException 处理器 -->
+        <dependency>
+            <groupId>javax.validation</groupId>
+            <artifactId>validation-api</artifactId>
+            <version>2.0.1.Final</version>
+            <optional>true</optional>
+        </dependency>
+        <!-- 违规计数 csap.validation.violations -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

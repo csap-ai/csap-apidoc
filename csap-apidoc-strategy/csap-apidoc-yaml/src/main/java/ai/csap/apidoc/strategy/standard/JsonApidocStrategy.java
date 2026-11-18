@@ -18,7 +18,7 @@ import ai.csap.apidoc.strategy.handle.ParamHandle;
 import ai.csap.apidoc.util.TypeVariableModel;
 
 /**
- * yaml形式文档配置实现
+ * json形式文档配置实现(1.2.0 起写出真正的 JSON;读取时兼容旧版本写出的 YAML 内容)
  *
  * @Author ycf
  * @Date 2021/9/9 3:47 下午

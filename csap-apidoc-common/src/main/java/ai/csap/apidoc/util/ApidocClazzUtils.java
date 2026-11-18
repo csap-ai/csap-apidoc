@@ -144,12 +144,15 @@ public final class ApidocClazzUtils {
 
     /**
      * 验证时需要排除的类型列表
-     * 这些类型不需要进行参数验证，如Model、HttpServletRequest等
+     * 这些类型不需要进行参数验证，如Model、HttpServletRequest等(javax 与 jakarta 两套都要列出)
      */
     public static final List<String> VALIDATE_EXCLUDE_MAP = Arrays.asList(
             "org.springframework.ui.Model",
             "javax.servlet.http.HttpServletRequest",
-            "javax.servlet.http.HttpServletResponse");
+            "javax.servlet.http.HttpServletResponse",
+            // Spring Boot 3 / Jakarta EE 9+
+            "jakarta.servlet.http.HttpServletRequest",
+            "jakarta.servlet.http.HttpServletResponse");
 
     /**
      * 泛型类型匹配正则表达式

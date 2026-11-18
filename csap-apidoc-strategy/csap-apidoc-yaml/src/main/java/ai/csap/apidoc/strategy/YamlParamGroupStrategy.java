@@ -135,6 +135,10 @@ public class YamlParamGroupStrategy implements ParamGroupStrategy {
 
     /**
      * 通用的请求参数处理
+     * <p>
+     * YAML 规则缓存在 {@link #HANDLE_MAP} 里,这里返回的是缓存规则的副本:
+     * 副本的校验列表 = YAML 规则 + 注解规则,再按优先级排序。
+     * 不能直接往缓存对象的列表里追加注解规则,否则每重新生成一次文档就会重复累加一份。
      *
      * @param keyName     字段拼接名称
      * @param method      方法
@@ -147,6 +151,7 @@ public class YamlParamGroupStrategy implements ParamGroupStrategy {
                                                                     Method method, Class<?> type,
                                                                     Annotation[] annotations) {
         return ApidocOptional.ofNullable(paramDataValidate(strategyModel, keyName, docMethod, true))
+                             .map(YamlParamGroupStrategy::copyOf)
                              .isNotNullCondition(i -> Objects.nonNull(validateFactory),
                                      i -> i.getValidate().addAll(validateFactory
                                              .getAllFieldConstraintValidator(type, annotations)))
@@ -154,6 +159,16 @@ public class YamlParamGroupStrategy implements ParamGroupStrategy {
                                      i -> i.getValidate().sort(Comparator.comparingInt(
                                              Validate.ConstraintValidatorField::getLevel)))
                              .get();
+    }
+
+    /**
+     * 复制一份参数规则,校验列表为新列表,避免修改缓存中的 YAML 规则
+     */
+    private static ParamGroupMethodProperty.ParamDataValidate copyOf(ParamGroupMethodProperty.ParamDataValidate source) {
+        ParamGroupMethodProperty.ParamDataValidate copy = new ParamGroupMethodProperty.ParamDataValidate(
+                source.getRequired(), source.getInclude(), source.getParamType(), source.getDescription(), null);
+        copy.getValidate().addAll(source.getValidate());
+        return copy;
     }
 
     @Override

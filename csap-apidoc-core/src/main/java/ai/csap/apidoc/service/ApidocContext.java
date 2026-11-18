@@ -4,16 +4,19 @@ import static ai.csap.apidoc.strategy.ApidocStrategy.DEFAULT;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.ApplicationEventPublisher;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -22,6 +25,7 @@ import ai.csap.apidoc.CsapResourcesProvider;
 import ai.csap.apidoc.autoconfigure.StrategyModel;
 import ai.csap.apidoc.config.ScannerPackageConfig;
 import ai.csap.apidoc.core.ApidocStrategyName;
+import ai.csap.apidoc.event.ApidocRulesRefreshedEvent;
 import ai.csap.apidoc.model.CsapDocResponse;
 import ai.csap.apidoc.properties.CsapDocConfig;
 import ai.csap.apidoc.strategy.ApidocStrategy;
@@ -81,6 +85,10 @@ public class ApidocContext implements ApplicationContextAware, SmartInitializing
      * 扫描锁:全量扫描与按类刷新互斥,扫描期间的请求在此等待扫描完成
      */
     private static final Object SCAN_LOCK = new Object();
+    /**
+     * 发布 {@link ApidocRulesRefreshedEvent}
+     */
+    private static volatile ApplicationEventPublisher eventPublisher;
 
     /**
      * 默认构造函数
@@ -170,6 +178,9 @@ public class ApidocContext implements ApplicationContextAware, SmartInitializing
             }
             CsapDocResponse fresh = scanAll(isParent);
             csapDocResponse = fresh;
+            if (!Boolean.TRUE.equals(isParent)) {
+                publishRulesRefreshed(fresh, Collections.emptySet());
+            }
             return fresh;
         }
     }
@@ -242,13 +253,37 @@ public class ApidocContext implements ApplicationContextAware, SmartInitializing
                     .getConfig()
                     .getApiInfo());
             response.setResources(Objects.nonNull(csapResourcesProvider) ? csapResourcesProvider.get() : null);
+            publishRulesRefreshed(response, new LinkedHashSet<>(Collections.singleton(className)));
             return response;
+        }
+    }
+
+    /**
+     * 在扫描锁内同步发布规则刷新事件;监听方出错不影响文档。
+     *
+     * @param document   刷新后的文档
+     * @param classNames 涉及的类名,空集合表示全量
+     */
+    private static void publishRulesRefreshed(CsapDocResponse document, Set<String> classNames) {
+        ApplicationEventPublisher publisher = eventPublisher;
+        if (publisher == null) {
+            return;
+        }
+        try {
+            publisher.publishEvent(new ApidocRulesRefreshedEvent(document, classNames));
+        } catch (RuntimeException e) {
+            log.warn("apidoc 规则刷新事件处理失败: {}", e.getMessage(), e);
         }
     }
 
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         this.applicationContext = applicationContext;
+        setEventPublisher(applicationContext);
+    }
+
+    private static void setEventPublisher(ApplicationEventPublisher publisher) {
+        eventPublisher = publisher;
     }
 
     /**

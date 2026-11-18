@@ -15,7 +15,7 @@
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.1.1</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
@@ -155,6 +155,7 @@ API 文档地址：
 | `GET /csap/apidoc` | 完整文档数据（JSON） |
 | `GET /csap/apidoc/parent` | 文档树（页面左侧列表使用的数据） |
 | `GET /csap/openapi/postman` | Postman Collection 格式的 JSON |
+| `GET /csap/openapi.json` | OpenAPI 3.0 格式的 JSON（1.2.0 起） |
 
 全部接口见 [REST 接口](/api/rest)。
 

@@ -1125,6 +1125,14 @@ public class ApidocDevtools implements FilterData {
         ApidocContext.paramStrategy(strategyModel.getParamType()).writeAndMerge(
                 strategyModel, dataMap, strategyModel.getParamType(),
                 methodModel.getClassName(), methodModel.getMethodName(), request);
+        // 立即按新规则重新生成该类的文档和字段规则(会发布 ApidocRulesRefreshedEvent),
+        // 下一个请求即按新规则过滤 / 校验,不必等文档页面再次刷新。
+        // flush 必须为 false:为 true 时会把该类再追加一份到文档列表,而不是替换
+        try {
+            ApidocContext.cmd(methodModel.getClassName(), null, false);
+        } catch (RuntimeException e) {
+            log.warn("规则已保存,但重新生成 {} 的文档失败: {}", methodModel.getClassName(), e.getMessage(), e);
+        }
         return Boolean.TRUE;
     }
 

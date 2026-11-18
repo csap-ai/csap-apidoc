@@ -1,0 +1,89 @@
+/*
+ * 亮 / 暗主题的 CSS 变量。
+ * <html data-theme="dark"> 由 src/theme/themeMode.ts(以及 index.html 里的内联脚本)设置。
+ * var.less 里的 @bg-* / @text-* / @border-* / @shadow-* 都指向这里的变量,
+ * 新写样式时请优先使用 var.less 里的变量,不要直接写 #fff、rgba(0,0,0,...) 这类中性色。
+ */
+:root {
+  --csap-bg-primary: #ffffff;
+  --csap-bg-secondary: #f8fafc;
+  --csap-bg-hover: #f1f5f9;
+  --csap-bg-muted: #fafafa;          // 表头、只读块
+  --csap-bg-subtle: #fcfcfd;
+  --csap-bg-glass: rgba(248, 250, 252, 0.95);
+  --csap-bg-glass-light: rgba(248, 250, 252, 0.6);
+  --csap-bg-card-gradient: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  --csap-fill: rgba(0, 0, 0, 0.04);   // 行内代码等浅填充
+  --csap-fill-strong: #f5f5f5;
+
+  --csap-border: #e2e8f0;
+  --csap-border-light: #f1f5f9;
+  --csap-split: #f0f0f0;              // AntD 风格分隔线
+
+  --csap-text-primary: #1e293b;
+  --csap-text-secondary: #64748b;
+  --csap-text-tertiary: #94a3b8;
+  --csap-text-strong: rgba(0, 0, 0, 0.85);
+  --csap-text-body: rgba(0, 0, 0, 0.65);
+  --csap-text-muted: rgba(0, 0, 0, 0.45);
+  --csap-text-code: #262626;
+
+  --csap-tooltip-bg: #1e293b;
+
+  --csap-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --csap-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --csap-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --csap-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+  --csap-header-bg: linear-gradient(135deg, #4a6fa5 0%, #3d5a80 50%, #2d4a6a 100%);
+  --csap-warning-bg: #fffbe6;
+  --csap-warning-border: #ffe58f;
+  --csap-warning-text: #ad6800;
+  --csap-warning-bg-hover: #fff1b8;
+  --csap-selected-bg: #e6f7ff;
+}
+
+html[data-theme='dark'] {
+  --csap-bg-primary: #1f1f1f;
+  --csap-bg-secondary: #141414;
+  --csap-bg-hover: #2a2a2a;
+  --csap-bg-muted: #1d1d1d;
+  --csap-bg-subtle: #1a1a1a;
+  --csap-bg-glass: rgba(20, 20, 20, 0.95);
+  --csap-bg-glass-light: rgba(255, 255, 255, 0.03);
+  --csap-bg-card-gradient: linear-gradient(135deg, #1f1f1f 0%, #1a1a1a 100%);
+  --csap-fill: rgba(255, 255, 255, 0.08);
+  --csap-fill-strong: #262626;
+
+  --csap-border: #303030;
+  --csap-border-light: #262626;
+  --csap-split: #303030;
+
+  --csap-text-primary: rgba(255, 255, 255, 0.88);
+  --csap-text-secondary: rgba(255, 255, 255, 0.65);
+  --csap-text-tertiary: rgba(255, 255, 255, 0.45);
+  --csap-text-strong: rgba(255, 255, 255, 0.85);
+  --csap-text-body: rgba(255, 255, 255, 0.65);
+  --csap-text-muted: rgba(255, 255, 255, 0.45);
+  --csap-text-code: rgba(255, 255, 255, 0.85);
+
+  --csap-tooltip-bg: #434343;
+
+  --csap-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --csap-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.4);
+  --csap-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.55), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+  --csap-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+
+  --csap-header-bg: linear-gradient(135deg, #22324a 0%, #1c2a3e 50%, #162232 100%);
+  --csap-warning-bg: #2b2111;
+  --csap-warning-border: #594214;
+  --csap-warning-text: #e8b339;
+  --csap-warning-bg-hover: #3a2c13;
+  --csap-selected-bg: #111b26;
+}
+
+html,
+body {
+  background-color: var(--csap-bg-secondary);
+  color: var(--csap-text-primary);
+}
