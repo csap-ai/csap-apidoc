@@ -231,6 +231,8 @@ type Parameter struct {
 	Validate     []ValidateAttribute `json:"validate"`
 	Value        string              `json:"value"`
 	Version      []string            `json:"version"`
+	// Mock 是规则里为这个字段指定的 Mock 取值(任意 JSON 值,没有时不输出),只用于 Mock 响应,见 docs/design/1.4.0-mock-schema.md。
+	Mock any `json:"mock,omitempty"`
 }
 
 // ValidateAttribute 对应 CsapDocParameter.ValidateAttribute。

@@ -547,6 +547,9 @@ func (b *builder) field(f reflect.StructField, meta tag.Meta, prefix string, req
 		if rule.Example != "" {
 			p.Example = rule.Example
 		}
+		if rule.Mock != nil {
+			p.Mock = rule.Mock // 只用于 Mock 响应,见 mock 包
+		}
 	}
 	if hasRule && rule.Hidden != nil && *rule.Hidden && !meta.Force {
 		mc.docHidden[p] = true
