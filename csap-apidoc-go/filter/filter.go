@@ -16,6 +16,9 @@ const (
 	// ModeCsap 复刻 Java 的行为:按"类型"挂过滤器,同一类型出现在多个路径时规则合并;
 	// 某类型的白名单为空时,改为"除黑名单外全部输出"。从 Java 迁移、要求返回逐字节一致时用。
 	ModeCsap
+	// ModeOff 不过滤。可以作为全局模式,也可以在 apidoc.Options.FilterEndpoints 里关掉个别接口
+	// (对应 Java csap.apidoc.runtime.filter.mode / endpoints 的 off)。
+	ModeOff
 )
 
 // Node 是编译好的字段掩码。nil 表示原样保留整个值。

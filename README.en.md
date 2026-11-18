@@ -26,7 +26,7 @@ The doc protocol, the rule file format and the docs page are shared across langu
 | Language | Status | Frameworks |
 |---|---|---|
 | **Java** | ✅ Released [1.2.0](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
-| **Go** | ✅ Released [v0.1.0](https://pkg.go.dev/github.com/csap-ai/csap-apidoc/csap-apidoc-go) (`go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.0`) | gin, net/http |
+| **Go** | ✅ Released [v0.1.1](https://pkg.go.dev/github.com/csap-ai/csap-apidoc/csap-apidoc-go) (`go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.1`) | gin, net/http |
 | **Rust** | 📋 Planned | axum, actix-web |
 | More | 📋 Coming | see the [roadmap](docs/ROADMAP.md) |
 

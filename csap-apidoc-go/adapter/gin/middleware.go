@@ -18,7 +18,8 @@ import (
 //
 //	r.Use(ginadapter.ResponseFilter(doc))
 //
-// 规则热更新后,下一个请求即按新规则过滤。
+// 默认只裁剪 2xx 响应,4xx/5xx 的错误体原样输出;可用 apidoc.Options.ShouldFilter 自定义,
+// 用 apidoc.Options.FilterEndpoints 按接口关闭。规则热更新后,下一个请求即按新规则过滤。
 func ResponseFilter(doc *apidoc.Doc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ep := doc.Snapshot().Endpoint(c.Request.Method, c.FullPath())
@@ -30,7 +31,11 @@ func ResponseFilter(doc *apidoc.Doc) gin.HandlerFunc {
 		c.Writer = bw
 		c.Next()
 		c.Writer = bw.ResponseWriter
-		bw.flushTo(ep.ResponseMask)
+		mask := ep.ResponseMask
+		if !doc.ShouldFilter(c.Request, bw.status) {
+			mask = nil
+		}
+		bw.flushTo(mask)
 	}
 }
 
@@ -81,10 +86,11 @@ func (w *bufferWriter) Written() bool { return w.wroteHeader }
 // Flush 在缓冲模式下不做事:流式输出(SSE 等)的接口不应该配置返回过滤。
 func (w *bufferWriter) Flush() {}
 
+// flushTo 写出缓冲的响应,mask 为 nil 时原样写出。
 func (w *bufferWriter) flushTo(mask *filter.Node) {
 	out := w.buf.Bytes()
 	ct, _, _ := mime.ParseMediaType(w.Header().Get("Content-Type"))
-	if ct == "application/json" || (len(ct) > 5 && ct[len(ct)-5:] == "+json") {
+	if mask != nil && (ct == "application/json" || (len(ct) > 5 && ct[len(ct)-5:] == "+json")) {
 		if pruned, err := filter.Prune(out, mask); err == nil {
 			out = pruned
 		} else {

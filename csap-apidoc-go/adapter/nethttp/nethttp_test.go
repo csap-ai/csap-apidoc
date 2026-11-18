@@ -11,6 +11,7 @@ import (
 
 	apidoc "github.com/csap-ai/csap-apidoc/csap-apidoc-go"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/devtools"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/filter"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/validate"
@@ -201,5 +202,51 @@ func TestHelpers(t *testing.T) {
 	}
 	if New := (&Mux{mux: http.NewServeMux()}); New.ServeMux() == nil {
 		t.Fatal("ServeMux")
+	}
+}
+
+// 默认只裁剪 2xx;错误体原样输出。ShouldFilter 可自定义,FilterEndpoints 可按接口关闭。
+func TestResponseFilterStatusAndOverrides(t *testing.T) {
+	newMux := func(opts apidoc.Options) *http.ServeMux {
+		opts.Strategies = []strategy.Strategy{strategy.NewMemory(strategy.Rules{
+			"U.get": {Response: map[string]strategy.FieldRule{"data.id": {Include: model.Bool(true)}}},
+		})}
+		opts.Wrapper = &apidoc.Wrapper{Type: result{}}
+		doc := apidoc.New(opts)
+		mux := http.NewServeMux()
+		m := Mount(mux, doc)
+		m.Use(ResponseFilter(doc))
+		m.GET("/users/{id}", apidoc.Op("U", "get").Resp(user{}), func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			if r.URL.Query().Get("fail") != "" {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+			_, _ = io.WriteString(w, `{"code":"0","message":"m","data":{"id":1,"name":"a","password":"p"},"success":true}`)
+		})
+		return mux
+	}
+	const filtered = `{"code":"0","message":"m","data":{"id":1}}`
+	const raw = `{"code":"0","message":"m","data":{"id":1,"name":"a","password":"p"},"success":true}`
+
+	mux := newMux(apidoc.Options{})
+	if got := do(mux, "GET", "/users/1", "").Body.String(); got != filtered {
+		t.Fatalf("2xx: %s", got)
+	}
+	rec := do(mux, "GET", "/users/1?fail=1", "")
+	if rec.Code != http.StatusInternalServerError || rec.Body.String() != raw {
+		t.Fatalf("5xx must not be filtered: %d %s", rec.Code, rec.Body.String())
+	}
+
+	mux = newMux(apidoc.Options{ShouldFilter: func(r *http.Request, status int) bool { return r.URL.Query().Get("raw") == "" }})
+	if got := do(mux, "GET", "/users/1?raw=1", "").Body.String(); got != raw {
+		t.Fatalf("custom ShouldFilter false: %s", got)
+	}
+	if got := do(mux, "GET", "/users/1?fail=1", "").Body.String(); got != filtered {
+		t.Fatalf("custom ShouldFilter true on 5xx: %s", got)
+	}
+
+	mux = newMux(apidoc.Options{FilterEndpoints: map[string]filter.Mode{"U.get": filter.ModeOff}})
+	if got := do(mux, "GET", "/users/1", "").Body.String(); got != raw {
+		t.Fatalf("endpoint off: %s", got)
 	}
 }

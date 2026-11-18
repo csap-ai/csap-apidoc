@@ -113,6 +113,24 @@ func TestQueryRules(t *testing.T) {
 	}
 }
 
+// 单值参数的 Violation.Field 是参数名(与 Java ValidationViolation.field 一致),不是 "limit.limit"。
+func TestViolationFieldName(t *testing.T) {
+	d := newDoc(rules)
+	v := New(d, Options{Mode: Enforce})
+	for url, want := range map[string]string{
+		"/list?id=1&limit=abc": "limit", // 类型错误
+		"/list?id=1&limit=0":   "limit", // 规则失败
+		"/list":                "id",    // 必填
+	} {
+		if viol := check(t, v, d, "GET", "/list", url, "", nil); viol == nil || viol.Field != want {
+			t.Errorf("%s: got %+v want field %s", url, viol, want)
+		}
+	}
+	if viol := check(t, v, d, "GET", "/users/:id", "/users/x", "", map[string]string{"id": "x"}); viol == nil || viol.Field != "id" {
+		t.Errorf("path type: %+v", viol)
+	}
+}
+
 func TestBodyRules(t *testing.T) {
 	d := newDoc(rules)
 	v := New(d, Options{Mode: Enforce})
@@ -153,7 +171,7 @@ func TestPathAndHeader(t *testing.T) {
 	}
 	r := httptest.NewRequest("GET", "/list?id=1", nil)
 	viol := v.Check(r, d.Snapshot().Endpoint("GET", "/list"), nil)
-	if viol == nil || viol.Field != "X-Token.X-Token" {
+	if viol == nil || viol.Field != "X-Token" {
 		t.Fatalf("missing header: %+v", viol)
 	}
 }

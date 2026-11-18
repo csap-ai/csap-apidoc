@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	apidoc "github.com/csap-ai/csap-apidoc/csap-apidoc-go"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/filter"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/validate"
@@ -108,5 +109,51 @@ func TestRequestValidatorMiddleware(t *testing.T) {
 	r, _, _ = setup(t, validate.Observe)
 	if got := do(r, "POST", "/api/users", `{"name":""}`).Body.String(); got != `{"extra":1,"name":""}` {
 		t.Fatalf("observe should pass: %s", got)
+	}
+}
+
+// 默认只裁剪 2xx;错误体原样输出。ShouldFilter 可自定义,FilterEndpoints 可按接口关闭。
+func TestResponseFilterStatusAndOverrides(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	newEngine := func(opts apidoc.Options) *gin.Engine {
+		opts.Strategies = []strategy.Strategy{strategy.NewMemory(strategy.Rules{
+			"U.get": {Response: map[string]strategy.FieldRule{"data.id": {Include: model.Bool(true)}}},
+		})}
+		opts.Wrapper = &apidoc.Wrapper{Type: result{}}
+		doc := apidoc.New(opts)
+		r := gin.New()
+		r.Use(ResponseFilter(doc))
+		Mount(r, doc).GET("/users/:id", apidoc.Op("U", "get").Resp(user{}), func(c *gin.Context) {
+			status := http.StatusOK
+			if c.Query("fail") != "" {
+				status = http.StatusBadRequest
+			}
+			c.JSON(status, result{Code: "0", Message: "m", Success: true, Data: user{ID: 1, Name: "a", Password: "p"}})
+		})
+		return r
+	}
+	const filtered = `{"code":"0","message":"m","data":{"id":1}}`
+	const raw = `{"code":"0","message":"m","data":{"id":1,"name":"a","password":"p"},"success":true}`
+
+	r := newEngine(apidoc.Options{})
+	if got := do(r, "GET", "/users/1", "").Body.String(); got != filtered {
+		t.Fatalf("2xx: %s", got)
+	}
+	rec := do(r, "GET", "/users/1?fail=1", "")
+	if rec.Code != http.StatusBadRequest || rec.Body.String() != raw {
+		t.Fatalf("4xx must not be filtered: %d %s", rec.Code, rec.Body.String())
+	}
+
+	r = newEngine(apidoc.Options{ShouldFilter: func(req *http.Request, status int) bool { return req.URL.Query().Get("raw") == "" }})
+	if got := do(r, "GET", "/users/1?raw=1", "").Body.String(); got != raw {
+		t.Fatalf("custom ShouldFilter false: %s", got)
+	}
+	if got := do(r, "GET", "/users/1?fail=1", "").Body.String(); got != filtered {
+		t.Fatalf("custom ShouldFilter true on 4xx: %s", got)
+	}
+
+	r = newEngine(apidoc.Options{FilterEndpoints: map[string]filter.Mode{"U.get": filter.ModeOff}})
+	if got := do(r, "GET", "/users/1", "").Body.String(); got != raw {
+		t.Fatalf("endpoint off: %s", got)
 	}
 }

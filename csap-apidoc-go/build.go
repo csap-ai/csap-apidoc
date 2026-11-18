@@ -97,11 +97,20 @@ func (b *builder) method(info GroupInfo, op *Operation, httpMethod, rawPath, nam
 		m.ParamTypes = []string{model.ParamDefault}
 	}
 	var mask *filter.Node
-	if len(mr.Response) > 0 && (op.resp != nil || b.wrapper(op) != nil) {
-		if b.doc.opts.FilterMode == filter.ModeCsap {
-			mask = b.csapMask(op, mr)
-		} else {
-			mask = filter.Compile(mc.outPaths, mc.mapPaths)
+	if mode := b.doc.filterMode(strategy.Key(info.Name, name)); mode != filter.ModeOff && len(mr.Response) > 0 && (op.resp != nil || b.wrapper(op) != nil) {
+		// 与 Java 一致:只有返回字段路径真正命中过规则的接口才过滤(ResponseRuleIndex.markResponseRule),
+		// 规则路径过期、和返回类型对不上时原样输出。返回值不是结构体(如 map)时无从判断,沿用路径规则。
+		if tr := b.collectTypeRules(op, mr); tr.hit || tr.root == nil {
+			if mode == filter.ModeCsap {
+				mask = tr.csapMask()
+			} else {
+				out := mc.outPaths
+				if w := b.wrapper(op); w != nil && op.resp == nil {
+					// 没声明 Resp:业务数据的类型未知,整个放行
+					out = append(out, w.DataField)
+				}
+				mask = filter.Compile(out, mc.mapPaths)
+			}
 		}
 	}
 	for _, md := range m.Request {
@@ -207,7 +216,7 @@ func (b *builder) request(m *model.Method, op *Operation, rawPath string, mc *me
 			}
 		}
 		if len(bodyFields) > 0 {
-			md := objectModel(t, model.ModelObject)
+			md := b.objectModel(t, model.ModelObject)
 			for _, rf := range bodyFields {
 				if p := b.field(rf.sf, rf.meta, bodyName+".", true, mc, []reflect.Type{t}); p != nil {
 					md.Parameters = append(md.Parameters, p)
@@ -224,7 +233,7 @@ func (b *builder) request(m *model.Method, op *Operation, rawPath string, mc *me
 			mt = model.ModelArray
 			t = deref(t.Elem())
 		}
-		md := objectModel(t, mt)
+		md := b.objectModel(t, mt)
 		if t.Kind() == reflect.Struct {
 			md.Parameters = b.structParams(t, bodyName+".", true, mc, []reflect.Type{t})
 		}
@@ -388,7 +397,7 @@ func (b *builder) response(m *model.Method, op *Operation, mc *methodCtx) {
 			mt = model.ModelArray
 			t = deref(t.Elem())
 		}
-		md := objectModel(t, mt)
+		md := b.objectModel(t, mt)
 		if isBase(t) {
 			md.ModelType = model.ModelBaseData
 			md.Description, md.Value = nil, nil
@@ -399,7 +408,7 @@ func (b *builder) response(m *model.Method, op *Operation, mc *methodCtx) {
 		return
 	}
 	wt := deref(reflect.TypeOf(w.Type))
-	md := objectModel(wt, model.ModelTObject)
+	md := b.objectModel(wt, model.ModelTObject)
 	if w.Title != "" {
 		md.Value = model.Str(w.Title)
 	}
@@ -489,7 +498,7 @@ func (b *builder) field(f reflect.StructField, meta tag.Meta, prefix string, req
 		if isList {
 			mt = model.ModelArray
 		}
-		child := objectModel(elem, mt)
+		child := b.objectModel(elem, mt)
 		child.Parameters = b.structParams(elem, keyName+".", request, mc, append(stack, elem))
 		if selected || len(child.Parameters) > 0 {
 			p.Children = child
@@ -582,16 +591,45 @@ func flatFields(t reflect.Type) []reflect.StructField {
 	return out
 }
 
-func objectModel(t reflect.Type, mt string) *model.Model {
+func (b *builder) objectModel(t reflect.Type, mt string) *model.Model {
 	return &model.Model{
 		Description: model.Str(""),
 		Group:       []string{model.Default},
 		ModelType:   mt,
 		Name:        fullName(t),
 		Parameters:  []*model.Parameter{},
-		Value:       model.Str(displayName(t)),
+		Value:       model.Str(b.modelName(t)),
 		Version:     []string{model.Default},
 	}
+}
+
+var modelNamerType = reflect.TypeOf((*ModelNamer)(nil)).Elem()
+
+// modelName 返回结构体在文档里的显示名:Options.TypeNames > 类型的 ApidocName() > displayName。
+// 只影响模型的显示名(Java @ApiModel.value),字段的 dataType 仍按类型名生成。
+func (b *builder) modelName(t reflect.Type) string {
+	t = deref(t)
+	if b != nil && b.doc != nil {
+		if n, ok := b.doc.opts.TypeNames[t]; ok && n != "" {
+			return n
+		}
+	}
+	if t.Kind() == reflect.Struct && reflect.PointerTo(t).Implements(modelNamerType) {
+		if n := callModelNamer(t); n != "" {
+			return n
+		}
+	}
+	return displayName(t)
+}
+
+// callModelNamer 在零值上调用 ApidocName;方法 panic 时当作没有实现。
+func callModelNamer(t reflect.Type) (name string) {
+	defer func() {
+		if recover() != nil {
+			name = ""
+		}
+	}()
+	return reflect.New(t).Interface().(ModelNamer).ApidocName()
 }
 
 // ---------- 类型映射 ----------
