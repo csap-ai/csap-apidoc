@@ -1,0 +1,42 @@
+{
+  "success": true,
+  "code": "200",
+  "message": "ok",
+  "data": {
+    "id": 9190,
+    "name": "Bob",
+    "email": "user258@example.com",
+    "phone": "13344712269",
+    "avatar": "https://example.com/avatar",
+    "age": 23,
+    "status": "ENABLED",
+    "score": 88.28,
+    "level": 2,
+    "token": "3ce02703-34dd-46d8-8d65-26614ca57e16",
+    "nickname": "Davi",
+    "remark": "hello",
+    "grade": 5,
+    "birthday": "2026-11-15",
+    "createdAt": "2026-08-04T00:15:55Z",
+    "vip": true,
+    "tags": [
+      "string",
+      "string"
+    ],
+    "attrs": {},
+    "orders": [
+      {
+        "orderId": "id-5e1bd4db",
+        "amount": 12.5,
+        "paid": true,
+        "buyerId": 9935
+      },
+      {
+        "orderId": "id-01dd6cb4",
+        "amount": 12.5,
+        "paid": true,
+        "buyerId": 7794
+      }
+    ]
+  }
+}

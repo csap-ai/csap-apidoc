@@ -1,0 +1,11 @@
+{
+  "description": "BASE_DATA 返回(接口直接返回 Long / Boolean)",
+  "seed": "csap",
+  "response": [
+    {
+      "modelType": "BASE_DATA",
+      "name": "Long",
+      "parameters": []
+    }
+  ]
+}
