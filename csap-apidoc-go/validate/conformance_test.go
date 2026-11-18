@@ -52,8 +52,8 @@ func TestConformanceCases(t *testing.T) {
 	if err := json.Unmarshal(raw, &file); err != nil {
 		t.Fatal(err)
 	}
-	if len(file.Cases) < 66 {
-		t.Fatalf("黄金用例应不少于 66 条,实际 %d", len(file.Cases))
+	if len(file.Cases) < 71 {
+		t.Fatalf("黄金用例应不少于 71 条,实际 %d", len(file.Cases))
 	}
 	v := New(apidoc.New(apidoc.Options{}), Options{})
 	for _, c := range file.Cases {

@@ -1,106 +1,116 @@
-# 内置字段模板(随库发布,只读)。格式见 docs/design/1.4.0-field-library.md。
-# 项目里同名的模板会覆盖这里的。validate 的 type 只用 NotNull / NotEmpty / Pattern,
-# pattern 写内置正则名(PATTERN_nn)或正则本身。
+# 内置字段模板(随 jar 发布,只读)。格式见 docs/design/1.4.0-field-library.md,Java 与 Go 共用同一份。
+# 正则一律用两种语言都支持的写法(不用零宽断言);pattern 可写内置名(PATTERN_35)或正则本身,按整个值匹配。
+# 与地区相关的模板名里带地区后缀(-cn)。
 version: 1
 templates:
   - name: phone-cn
     title: 手机号(中国大陆)
-    category: 通用
+    category: 联系方式
     description: 手机号
     example: "13800138000"
     validate:
-      - {type: Pattern, pattern: PATTERN_35, code: "400", message: 手机号格式不对, level: 1}
+      - { type: Pattern, pattern: PATTERN_35, code: "400", message: 手机号格式不对, level: 1 }
   - name: email
     title: 邮箱
-    category: 通用
+    category: 联系方式
     description: 邮箱地址
-    example: "user@example.com"
+    example: user@example.com
     validate:
-      - {type: Pattern, pattern: PATTERN_32, code: "400", message: 邮箱格式不对, level: 1}
-  - name: id-card-cn
-    title: 身份证号(15/18 位)
-    category: 通用
-    description: 身份证号
-    example: "110101199003071234"
-    validate:
-      - {type: Pattern, pattern: PATTERN_38, code: "400", message: 身份证号格式不对, level: 1}
-  - name: credit-code-cn
-    title: 统一社会信用代码
-    category: 通用
-    description: 统一社会信用代码
-    example: "91350100M000100Y43"
-    validate:
-      - {type: Pattern, pattern: '[0-9A-HJ-NPQRTUWXY]{2}[0-9]{6}[0-9A-HJ-NPQRTUWXY]{10}', code: "400", message: 统一社会信用代码格式不对, level: 1}
+      - { type: Pattern, pattern: PATTERN_32, code: "400", message: 邮箱格式不对, level: 1 }
   - name: url
-    title: 网址(http/https)
-    category: 通用
-    description: 网址
-    example: "https://example.com/path"
+    title: 网址
+    category: 联系方式
+    description: 网址(http 或 https)
+    example: https://example.com/path
     validate:
-      - {type: Pattern, pattern: PATTERN_34, code: "400", message: 网址格式不对, level: 1}
-  - name: ipv4
-    title: IPv4 地址
-    category: 通用
-    description: IPv4 地址
-    example: "192.168.1.10"
+      - { type: Pattern, pattern: PATTERN_34, code: "400", message: 网址格式不对, level: 1 }
+  - name: id-card-cn
+    title: 身份证号(中国大陆)
+    category: 证件
+    description: 身份证号(15 位或 18 位)
+    example: "11010519491231002X"
     validate:
-      - {type: Pattern, pattern: PATTERN_44, code: "400", message: IP 地址格式不对, level: 1}
+      - { type: Pattern, pattern: PATTERN_38, code: "400", message: 身份证号格式不对, level: 1 }
+  - name: postal-code-cn
+    title: 邮政编码(中国大陆)
+    category: 证件
+    description: 邮政编码
+    example: "100000"
+    validate:
+      - { type: Pattern, pattern: PATTERN_43, code: "400", message: 邮政编码格式不对, level: 1 }
   - name: username
-    title: 用户名(字母开头,4-20 位字母数字下划线)
+    title: 用户名
     category: 账号
-    description: 用户名
-    example: "zhangsan"
-    required: true
+    description: 用户名(字母开头,字母数字下划线,3-20 位)
+    example: zhang_san
     validate:
-      - {type: NotEmpty, pattern: NotEmpty, code: "400", message: 用户名不能为空, level: 1}
-      - {type: Pattern, pattern: '[A-Za-z][A-Za-z0-9_]{3,19}', code: "400", message: 用户名需字母开头,4-20 位字母、数字或下划线, level: 2}
+      - { type: Pattern, pattern: "^[A-Za-z][A-Za-z0-9_]{2,19}$", code: "400", message: 用户名需字母开头,3-20 位字母数字下划线, level: 1 }
   - name: password
     title: 密码(8-32 位)
     category: 账号
-    description: 密码
-    required: true
+    description: 密码(8-32 位可见字符)
     validate:
-      - {type: NotEmpty, pattern: NotEmpty, code: "400", message: 密码不能为空, level: 1}
-      - {type: Pattern, pattern: '.{8,32}', code: "400", message: 密码长度需为 8-32 位, level: 2}
+      - { type: Pattern, pattern: "^[\\x21-\\x7e]{8,32}$", code: "400", message: 密码需 8-32 位可见字符, level: 1 }
+  - name: uuid
+    title: UUID
+    category: 标识
+    description: UUID
+    example: 123e4567-e89b-12d3-a456-426614174000
+    validate:
+      - { type: Pattern, pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", code: "400", message: UUID 格式不对, level: 1 }
+  - name: id-positive
+    title: 主键 ID(正整数)
+    category: 标识
+    description: 主键 ID
+    example: "1001"
+    validate:
+      - { type: Pattern, pattern: PATTERN_11, code: "400", message: ID 必须是正整数, level: 1 }
   - name: page-no
-    title: 页码(从 1 开始)
+    title: 页码
     category: 分页
     description: 页码,从 1 开始
     example: "1"
     validate:
-      - {type: Pattern, pattern: PATTERN_11, code: "400", message: 页码必须是正整数, level: 1}
+      - { type: Pattern, pattern: "^[1-9][0-9]*$", code: "400", message: 页码必须是正整数, level: 1 }
   - name: page-size
-    title: 每页条数(1-1000)
+    title: 每页条数
     category: 分页
-    description: 每页条数
-    example: "10"
+    description: 每页条数(1-1000)
+    example: "20"
     validate:
-      - {type: Pattern, pattern: '([1-9][0-9]{0,2}|1000)', code: "400", message: 每页条数取值 1-1000, level: 1}
+      - { type: Pattern, pattern: "^([1-9][0-9]{0,2}|1000)$", code: "400", message: 每页条数取值 1-1000, level: 1 }
   - name: sort-field
-    title: 排序字段(字母数字下划线)
+    title: 排序字段
     category: 分页
-    description: 排序字段
-    example: "createdAt"
+    description: 排序字段名
+    example: created_at
     validate:
-      - {type: Pattern, pattern: '[A-Za-z_][A-Za-z0-9_]{0,63}', code: "400", message: 排序字段格式不对, level: 1}
+      - { type: Pattern, pattern: "^[A-Za-z_][A-Za-z0-9_]{0,63}$", code: "400", message: 排序字段名格式不对, level: 1 }
   - name: date
-    title: 日期 yyyy-MM-dd
-    category: 日期时间
+    title: 日期(yyyy-MM-dd)
+    category: 时间
     description: 日期,格式 yyyy-MM-dd
-    example: "2026-01-01"
+    example: "2026-11-18"
     validate:
-      - {type: Pattern, pattern: PATTERN_39, code: "400", message: 日期格式应为 yyyy-MM-dd, level: 1}
+      - { type: Pattern, pattern: "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$", code: "400", message: 日期格式应为 yyyy-MM-dd, level: 1 }
+  - name: datetime
+    title: 日期时间(yyyy-MM-dd HH:mm:ss)
+    category: 时间
+    description: 日期时间,格式 yyyy-MM-dd HH:mm:ss
+    example: "2026-11-18 12:30:00"
+    validate:
+      - { type: Pattern, pattern: "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$", code: "400", message: 日期时间格式应为 yyyy-MM-dd HH:mm:ss, level: 1 }
   - name: amount-2
-    title: 金额(最多 2 位小数)
+    title: 金额(最多两位小数)
     category: 数值
     description: 金额,最多两位小数
-    example: "99.00"
+    example: "99.90"
     validate:
-      - {type: Pattern, pattern: PATTERN_9, code: "400", message: 金额最多两位小数, level: 1}
-  - name: id-positive
-    title: ID(正整数)
-    category: 数值
-    description: ID
-    example: "1001"
+      - { type: Pattern, pattern: "^(0|[1-9][0-9]*)(\\.[0-9]{1,2})?$", code: "400", message: 金额格式不对,最多两位小数, level: 1 }
+  - name: required-text
+    title: 必填文本
+    category: 通用
+    description: 必填文本
+    required: true
     validate:
-      - {type: Pattern, pattern: PATTERN_11, code: "400", message: ID 必须是正整数, level: 1}
+      - { type: NotEmpty, pattern: NotEmpty, code: "400", message: 不能为空, level: 1 }

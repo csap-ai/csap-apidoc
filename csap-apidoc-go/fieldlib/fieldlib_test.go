@@ -205,3 +205,22 @@ func TestProjectTemplatesYAMLStore(t *testing.T) {
 		t.Fatal("没有模板时应删除文件")
 	}
 }
+
+// 内置模板必须与 Java 版是同一份文件(逐字节)。仓库里没有 Java 那份时跳过。
+func TestBuiltinMatchesJava(t *testing.T) {
+	p := filepath.Join("..", "..", "csap-apidoc-core", "src", "main", "resources", "META-INF", "csap-apidoc", "field-templates.yaml")
+	java, err := os.ReadFile(p)
+	if os.IsNotExist(err) {
+		t.Skip("没有 Java 版内置模板 " + p + ",跳过")
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	mine, err := os.ReadFile("field-templates.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(java) != string(mine) {
+		t.Fatalf("fieldlib/field-templates.yaml 与 Java 版不一致;以 Java 为准,请逐字复制:\n  cp %s fieldlib/field-templates.yaml", p)
+	}
+}
