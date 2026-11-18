@@ -165,3 +165,11 @@
 
 - `.github/workflows/docs.yml` 的 `paths` 只监听 `website/**` 和 `CHANGELOG.md`,没有 `docs/ROADMAP.md`;路线图页由 `sync.mjs` 从它生成,改了路线图不会触发站点发布。
 - `csap-apidoc-devtools/devtools` 前端没有 `test` 脚本(CONTRIBUTING 已改为指向 `csap-apidoc-ui`)。
+
+## 四、裁定结果(2026-11-18)
+
+1. 非必填字段的校验差别:暂不改代码,在官网 Go 页写明差别;是否对齐、以哪边为准,1.4.0 前确定。
+2. 方法级 `@ApiProperty` / `@ApiPropertys`:按已弃用处理。1.3.0 中示例改为参数级写法,`DefaultAbstractMethod` 的 javadoc 同步改正。
+3. `SECURITY.md`:只支持 1.2.x,1.1.x 标为已被取代,保持本次修改。
+4. GitHub 仓库描述与 topics:改为多语言口径,topics 增加 `go`、`golang`、`gin`(已在仓库设置中修改)。
+5. F9、F10 按本次写法保留;v1.2.0 发布说明不改。
