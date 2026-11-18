@@ -37,7 +37,10 @@ type Historian interface {
 var ErrNoChange = errors.New("apidoc: change not found")
 
 // IsEmpty 判断规则是否为空(保存空规则表示删除)。
-func (m MethodRules) IsEmpty() bool { return len(m.Request) == 0 && len(m.Response) == 0 }
+// 空规则:没有字段规则,也没有状态覆盖和状态备注。只有状态的接口是一条有内容的规则。
+func (m MethodRules) IsEmpty() bool {
+	return len(m.Request) == 0 && len(m.Response) == 0 && !ValidStatus(m.Status) && m.StatusNote == ""
+}
 
 // Journal 保存修改记录,供没有数据库的策略(YAML、Memory)使用。
 // Path 为空时只记在内存里(重启后丢失);否则追加写到该文件(每行一条 JSON)。
@@ -179,5 +182,5 @@ func Clone(m MethodRules) MethodRules {
 		}
 		return out
 	}
-	return MethodRules{Request: cp(m.Request), Response: cp(m.Response)}
+	return MethodRules{Request: cp(m.Request), Response: cp(m.Response), Status: m.Status, StatusNote: m.StatusNote}
 }

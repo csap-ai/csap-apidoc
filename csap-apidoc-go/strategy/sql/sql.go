@@ -393,6 +393,9 @@ func (s *Strategy) Load(ctx context.Context) (strategy.Rules, error) {
 		if err := rows.Scan(&key, &raw); err != nil {
 			return nil, err
 		}
+		if strategy.ReservedKey(key) {
+			continue // @templates 等保留键不是接口规则
+		}
 		var mr strategy.MethodRules
 		if err := json.Unmarshal([]byte(raw), &mr); err != nil {
 			errs = append(errs, fmt.Errorf("apidoc/sql: rule %s: %w", key, err))
@@ -419,6 +422,36 @@ func (s *Strategy) Version(ctx context.Context) (int64, error) {
 
 // Save 保存一个接口的规则(空规则表示删除),全局版本号加 1,并写一条修改记录。返回新版本号。
 func (s *Strategy) Save(ctx context.Context, key string, rules strategy.MethodRules, by string) (int64, error) {
+	var after []byte
+	if !rules.IsEmpty() {
+		var err error
+		if after, err = json.Marshal(rules); err != nil {
+			return 0, err
+		}
+	}
+	return s.saveRaw(ctx, key, string(after), by)
+}
+
+var _ strategy.RawStore = (*Strategy)(nil)
+
+// LoadRaw 读取一条规则行的原始 JSON(用于 @templates 等保留键)。不存在时 ok 为 false。
+func (s *Strategy) LoadRaw(ctx context.Context, key string) (string, bool, error) {
+	var raw string
+	err := s.opts.DB.QueryRowContext(ctx, s.q("SELECT rules FROM "+s.t.rule+" WHERE service = ? AND rule_key = ?"), s.opts.Service, key).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	return raw, err == nil, err
+}
+
+// SaveRaw 保存一条规则行的原始 JSON(用于 @templates 等保留键),raw 为空表示删除。
+// 与 Save 走同一条路径:版本号加 1、写修改记录、通知其他实例。
+func (s *Strategy) SaveRaw(ctx context.Context, key, raw, by string) (int64, error) {
+	return s.saveRaw(ctx, key, raw, by)
+}
+
+// saveRaw 是 Save 的实现,after 为空字符串表示删除。
+func (s *Strategy) saveRaw(ctx context.Context, key, after, by string) (int64, error) {
 	if err := s.checkService(); err != nil {
 		return 0, err
 	}
@@ -428,14 +461,7 @@ func (s *Strategy) Save(ctx context.Context, key string, rules strategy.MethodRu
 	if by == "" {
 		by = "unknown" // 达梦 / Oracle 兼容模式会把空串当成 NULL
 	}
-	empty := len(rules.Request) == 0 && len(rules.Response) == 0
-	var after []byte
-	if !empty {
-		var err error
-		if after, err = json.Marshal(rules); err != nil {
-			return 0, err
-		}
-	}
+	empty := after == ""
 	v, err := s.tx(ctx, func(tx *sql.Tx) (int64, error) {
 		// 先加版本号:PostgreSQL / MySQL 会锁住 meta 行,并发保存串行化
 		if _, err := tx.ExecContext(ctx, s.q("UPDATE "+s.t.meta+" SET version = version + 1 WHERE service = ?"), s.opts.Service); err != nil {
@@ -458,18 +484,18 @@ func (s *Strategy) Save(ctx context.Context, key string, rules strategy.MethodRu
 			}
 		case before.Valid:
 			if _, err := tx.ExecContext(ctx, s.q("UPDATE "+s.t.rule+" SET rules = ?, version = ?, updated_by = ?, updated_at = ? WHERE service = ? AND rule_key = ?"),
-				string(after), v, by, now, s.opts.Service, key); err != nil {
+				after, v, by, now, s.opts.Service, key); err != nil {
 				return 0, err
 			}
 		default:
 			if _, err := tx.ExecContext(ctx, s.q("INSERT INTO "+s.t.rule+" (service, rule_key, rules, version, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?)"),
-				s.opts.Service, key, string(after), v, by, now); err != nil {
+				s.opts.Service, key, after, v, by, now); err != nil {
 				return 0, err
 			}
 		}
 		var afterArg any
 		if !empty {
-			afterArg = string(after)
+			afterArg = after
 		}
 		var beforeArg any
 		if before.Valid {
@@ -523,6 +549,8 @@ func (s *Strategy) History(ctx context.Context, key string, limit int) ([]Change
 	if key != "" {
 		query += " AND rule_key = ?"
 		args = append(args, key)
+	} else {
+		query += " AND rule_key NOT LIKE '@%'" // @templates 等保留键不是接口规则
 	}
 	query += " ORDER BY id DESC LIMIT " + strconv.Itoa(limit)
 	rows, err := s.opts.DB.QueryContext(ctx, s.q(query), args...)
@@ -560,6 +588,9 @@ func (s *Strategy) Rollback(ctx context.Context, changeID int64, by string) (int
 	}
 	if err != nil {
 		return 0, fmt.Errorf("apidoc/sql: change %d: %w", changeID, err)
+	}
+	if strategy.ReservedKey(key) {
+		return s.saveRaw(ctx, key, before.String, by) // 保留键存的不是 MethodRules,原样恢复
 	}
 	mr, err := decode(before)
 	if err != nil {

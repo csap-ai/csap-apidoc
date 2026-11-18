@@ -33,6 +33,13 @@ func Mount(engine *gin.Engine, doc *apidoc.Doc) *Router {
 		engine.GET(p, h)
 		engine.HEAD(p, h)
 	}
+	for _, mp := range doc.MethodPaths() { // 开启 Mock / Schema 导入时才有
+		if mp.Method == "*" {
+			engine.Any(mp.Path, h)
+		} else {
+			engine.Handle(mp.Method, mp.Path, h)
+		}
+	}
 	doc.SetRouteSource(func() []apidoc.Route {
 		var out []apidoc.Route
 		for _, ri := range engine.Routes() {

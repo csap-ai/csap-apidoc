@@ -4,11 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"os"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/fieldlib"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
 	sqlstrategy "github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy/sql"
@@ -298,6 +300,152 @@ func TestServiceNotifier(t *testing.T) {
 			case <-chB:
 				t.Fatal("别的服务不该被唤醒")
 			case <-time.After(300 * time.Millisecond):
+			}
+		})
+	}
+}
+
+// 状态随规则一起存取;只有状态的规则不会被当空规则删除;@ 开头的保留键加载时跳过。SQL 与 Redis 各跑一遍。
+func TestStatusAndReservedKeySQLAndRedis(t *testing.T) {
+	ctx := context.Background()
+	type store interface {
+		strategy.Store
+		strategy.Historian
+	}
+	var stores []struct {
+		name  string
+		s     store
+		raw   func(key, json string) error // 绕过 Save 直接写保留键
+		clean func()
+	}
+	for _, c := range cases(t) {
+		c := c
+		db := c.open(t)
+		p := prefix(t, db)
+		s := newSvc(db, c, p, "st")
+		if err := s.EnsureSchema(ctx); err != nil {
+			t.Fatal(err)
+		}
+		stores = append(stores, struct {
+			name  string
+			s     store
+			raw   func(key, json string) error
+			clean func()
+		}{c.name, s, func(key, js string) error {
+			_, err := db.Exec(ph(c.dialect, "INSERT INTO "+p+"rule (service, rule_key, rules, version, updated_by, updated_at) VALUES (?, ?, ?, 1, 'x', 1)"), "st", key, js)
+			return err
+		}, nil})
+	}
+	if os.Getenv("CSAP_TEST_REDIS_ADDR") != "" {
+		rdb, p := redisEnv(t)
+		stores = append(stores, struct {
+			name  string
+			s     store
+			raw   func(key, json string) error
+			clean func()
+		}{"redis", newRedis(rdb, p, "st", 0, -1), func(key, js string) error {
+			return rdb.HSet(ctx, p+"{st}:rules", key, js).Err()
+		}, nil})
+	}
+	for _, st := range stores {
+		t.Run(st.name, func(t *testing.T) {
+			if _, err := st.s.Save(ctx, "G.old", strategy.MethodRules{Status: "DEPRECATED", StatusNote: "请改用 /v2"}, "u"); err != nil {
+				t.Fatal(err)
+			}
+			if err := st.raw("@templates", `{"version":1,"templates":[]}`); err != nil {
+				t.Fatal(err)
+			}
+			rs, err := st.s.Load(ctx)
+			if err != nil || len(rs) != 1 || rs["G.old"].Status != "DEPRECATED" || rs["G.old"].StatusNote != "请改用 /v2" {
+				t.Fatalf("%v %+v", err, rs)
+			}
+			// 历史里能回滚状态的修改
+			h, _ := st.s.History(ctx, "G.old", 0)
+			if len(h) != 1 || h[0].After == nil || h[0].After.Status != "DEPRECATED" {
+				t.Fatalf("%+v", h)
+			}
+			if _, err := st.s.Rollback(ctx, h[0].ID, "u"); err != nil {
+				t.Fatal(err)
+			}
+			if rs, _ = st.s.Load(ctx); len(rs) != 0 {
+				t.Fatalf("回滚到没有规则应删除: %v", rs)
+			}
+		})
+	}
+}
+
+// 项目字段模板经 SQL / Redis 的保留键 @templates 存取;与规则一起走版本号、修改记录,可回滚;不出现在规则和接口修改记录里。
+func TestProjectTemplatesInDatabaseAndRedis(t *testing.T) {
+	ctx := context.Background()
+	type store interface {
+		strategy.Store
+		strategy.Historian
+		strategy.RawStore
+	}
+	var stores []struct {
+		name string
+		s    store
+	}
+	for _, c := range cases(t) {
+		db := c.open(t)
+		s := newSvc(db, c, prefix(t, db), "tpl")
+		if err := s.EnsureSchema(ctx); err != nil {
+			t.Fatal(err)
+		}
+		stores = append(stores, struct {
+			name string
+			s    store
+		}{c.name, s})
+	}
+	if os.Getenv("CSAP_TEST_REDIS_ADDR") != "" {
+		rdb, p := redisEnv(t)
+		stores = append(stores, struct {
+			name string
+			s    store
+		}{"redis", newRedis(rdb, p, "tpl", 0, -1)})
+	}
+	for _, st := range stores {
+		t.Run(st.name, func(t *testing.T) {
+			f, _, err := fieldlib.LoadProject(ctx, st.s)
+			if err != nil || len(f.Templates) != 0 {
+				t.Fatalf("%v %+v", err, f)
+			}
+			_ = f.Upsert(fieldlib.Template{Name: "order-no", Title: "订单号", Example: "20260101001"})
+			v1, err := fieldlib.SaveProject(ctx, st.s, f, "alice")
+			if err != nil || v1 != 1 {
+				t.Fatalf("%d %v", v1, err)
+			}
+			if _, err := st.s.Save(ctx, "G.m", rr("a"), "bob"); err != nil {
+				t.Fatal(err)
+			}
+			f2, _, err := fieldlib.LoadProject(ctx, st.s)
+			if err != nil || len(f2.Templates) != 1 || f2.Templates[0].Example != "20260101001" {
+				t.Fatalf("%v %+v", err, f2)
+			}
+			rules, _ := st.s.Load(ctx)
+			if len(rules) != 1 {
+				t.Fatalf("@templates 不该出现在规则里: %v", rules)
+			}
+			hist, _ := st.s.History(ctx, "", 0)
+			if len(hist) != 1 || hist[0].Key != "G.m" {
+				t.Fatalf("@templates 不该出现在规则修改记录里: %+v", hist)
+			}
+			// 模板的修改也能回滚(按保留键的修改记录 id)
+			_ = f2.Upsert(fieldlib.Template{Name: "order-no", Title: "订单号2"})
+			if _, err := fieldlib.SaveProject(ctx, st.s, f2, "alice"); err != nil {
+				t.Fatal(err)
+			}
+			raw, ok, _ := st.s.LoadRaw(ctx, fieldlib.ReservedKey)
+			if !ok || !strings.Contains(raw, "订单号2") {
+				t.Fatalf("%s", raw)
+			}
+			// 删光后条目被删除
+			f2.Remove("order-no")
+			if _, err := fieldlib.SaveProject(ctx, st.s, f2, "alice"); err != nil {
+				t.Fatal(err)
+			}
+			if _, ok, _ := st.s.LoadRaw(ctx, fieldlib.ReservedKey); ok {
+				t.Fatal("没有模板时应删除条目")
 			}
 		})
 	}

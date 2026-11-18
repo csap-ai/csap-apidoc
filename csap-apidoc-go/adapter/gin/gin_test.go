@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -84,4 +85,39 @@ func names(s *apidoc.Snapshot) []string {
 		out = append(out, c.Name)
 	}
 	return out
+}
+
+// 开启 Mock 后,/csap/mock/** 任意方法可用;Schema 导出始终可用;Mock 路由不会出现在文档里。
+func TestMountMockAndSchema(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	doc := apidoc.New(apidoc.Options{Mock: apidoc.MockOptions{Enabled: true}})
+	r := gin.New()
+	g := Mount(r, doc)
+	g.POST("/api/items", apidoc.Op("demo.Item", "create").Resp(map[string]string{}), func(c *gin.Context) { c.Status(204) })
+	do := func(method, path string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(method, path, nil))
+		return w
+	}
+	if w := do("POST", "/csap/mock/api/items"); w.Code != 200 || w.Header().Get("X-CSAP-Mock") != "1" {
+		t.Fatalf("%d %v", w.Code, w.Header())
+	}
+	if w := do("GET", "/csap/mock-status"); w.Code != 200 {
+		t.Fatalf("%d", w.Code)
+	}
+	if w := do("GET", "/csap/schema.json"); w.Code != 200 || !strings.Contains(w.Body.String(), "x-csap-operations") {
+		t.Fatalf("%d", w.Code)
+	}
+	if strings.Contains(string(doc.Snapshot().Doc.ApiList[0].MethodList[0].Key), "mock") || len(doc.Snapshot().Doc.ApiList[0].MethodList) != 1 {
+		t.Fatal("Mock 路由不该出现在文档里")
+	}
+	// 关闭时 404
+	doc2 := apidoc.New(apidoc.Options{})
+	r2 := gin.New()
+	Mount(r2, doc2)
+	w := httptest.NewRecorder()
+	r2.ServeHTTP(w, httptest.NewRequest("GET", "/csap/mock/api/items", nil))
+	if w.Code != 404 {
+		t.Fatalf("%d", w.Code)
+	}
 }

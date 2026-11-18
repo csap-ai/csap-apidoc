@@ -182,6 +182,12 @@ func (n redisNotifier) Subscribe(ctx context.Context, fn func(int64)) error {
 - 同步：订阅通知即时生效，`Poll` 轮询版本号兜底，订阅断开 1 秒后重连并补查一次。
 - `strategy.Import(ctx, src, dst, opts)` 读 `src` 全部规则，与 `dst` 比较后分为新增、相同、冲突（默认不覆盖）、覆盖；支持 dry-run；写入用 `Saver.Save`，修改人 `migrate`。
 
+### 3.7 接口状态、字段库、Mock、JSON Schema（v0.2.0）
+
+- 约定都在仓库 `docs/design/1.4.0-*.md`（Java 与 Go 一致）：`1.4.0-api-status.md`、`1.4.0-field-library.md`、`1.4.0-mock-schema.md`（含 `1.4.0-mock-golden/` 黄金样本）、`1.4.0-validation-alignment.md`（黄金用例 `docs/conformance/validation-cases.json`）。Go 的使用说明见 [STATUS.md](STATUS.md)、[FIELD-LIBRARY.md](FIELD-LIBRARY.md)、[MOCK.md](MOCK.md)。
+- 状态存在 `MethodRules.Status/StatusNote`，空规则的判定改为"没有字段规则、也没有状态"。保留键（`@` 开头）不是接口规则，规则来源加载时跳过；项目字段模板经 `strategy.RawStore` 存在 `@templates`。
+- `mock`、`jsonschema` 两个包只依赖 `model`（再加共用的 `internal/typekind`、`internal/ordered`），不依赖 HTTP；路由在 `apidoc` 包（`mock_http.go`），适配器通过 `Doc.MethodPaths()` 注册任意方法的 Mock 路由。单测直接读黄金样本目录，按 JSON 值相等比较。
+
 ## 4. 运行时流程
 
 1. **启动**：适配器收集路由，与第 3.1 节的声明合并，再按 3.2 合并规则，生成文档模型和过滤计划，原子替换 `atomic.Pointer[snapshot]`。

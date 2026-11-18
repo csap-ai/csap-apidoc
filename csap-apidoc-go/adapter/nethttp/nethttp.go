@@ -45,6 +45,16 @@ func Mount(mux *http.ServeMux, doc *apidoc.Doc) *Mux {
 			mux.Handle(pat, h) // GET 模式同时匹配 HEAD
 		}
 	}
+	for _, mp := range doc.MethodPaths() { // 开启 Mock / Schema 导入时才有
+		pat := muxPath(mp.Path)
+		if mp.Method != "*" {
+			pat = mp.Method + " " + pat
+		}
+		if !seen[pat] {
+			seen[pat] = true
+			mux.Handle(pat, h)
+		}
+	}
 	return &Mux{mux: mux, doc: doc}
 }
 

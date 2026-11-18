@@ -317,3 +317,29 @@ func TestResponseFilterBody(t *testing.T) {
 		t.Fatalf("both true: %s", got)
 	}
 }
+
+// 开启 Mock 后 /csap/mock/ 任意方法可用;Schema 导入开启时才注册 POST /csap/schema/import。
+func TestMountMockAndSchemaImport(t *testing.T) {
+	mem := strategy.NewMemory(nil)
+	doc := apidoc.New(apidoc.Options{Mock: apidoc.MockOptions{Enabled: true}, Schema: apidoc.SchemaOptions{ImportEnabled: true, Store: mem},
+		Strategies: []strategy.Strategy{mem}})
+	mux := http.NewServeMux()
+	m := Mount(mux, doc)
+	m.HandleFunc("POST /api/items", apidoc.Op("demo.Item", "create").Resp(user{}), func(w http.ResponseWriter, r *http.Request) {})
+	if rec := do(mux, "POST", "/csap/mock/api/items", ""); rec.Code != 200 || rec.Header().Get("X-CSAP-Mock") != "1" {
+		t.Fatalf("%d %v", rec.Code, rec.Header())
+	}
+	if rec := do(mux, "GET", "/csap/mock-status", ""); rec.Code != 200 {
+		t.Fatalf("%d", rec.Code)
+	}
+	rec := do(mux, "POST", "/csap/schema/import", `{"key":"demo.Item.create","kind":"response","schema":{"properties":{"id":{"description":"编号"}}}}`)
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"matched":1`) {
+		t.Fatalf("%d %s", rec.Code, rec.Body.String())
+	}
+	// 默认关闭时没有这些路由
+	mux2 := http.NewServeMux()
+	Mount(mux2, apidoc.New(apidoc.Options{}))
+	if rec := do(mux2, "POST", "/csap/mock/api/items", ""); rec.Code != 404 {
+		t.Fatalf("%d", rec.Code)
+	}
+}

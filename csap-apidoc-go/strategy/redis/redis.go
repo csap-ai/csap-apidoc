@@ -122,6 +122,9 @@ func (s *Strategy) Load(ctx context.Context) (strategy.Rules, error) {
 	out := strategy.Rules{}
 	var errs []error
 	for key, raw := range all {
+		if strategy.ReservedKey(key) {
+			continue // @templates 等保留键不是接口规则
+		}
 		var mr strategy.MethodRules
 		if err := json.Unmarshal([]byte(raw), &mr); err != nil {
 			errs = append(errs, fmt.Errorf("apidoc/redis: rule %s: %w", key, err))
@@ -155,6 +158,26 @@ func (s *Strategy) Save(ctx context.Context, key string, rules strategy.MethodRu
 	if sameRules(cur, ok, rules) {
 		return s.Version(ctx)
 	}
+	return s.eval(ctx, key, after, by)
+}
+
+var _ strategy.RawStore = (*Strategy)(nil)
+
+// LoadRaw 读取规则 Hash 里一个字段的原始 JSON(用于 @templates 等保留键)。不存在时 ok 为 false。
+func (s *Strategy) LoadRaw(ctx context.Context, key string) (string, bool, error) {
+	return s.opts.Client.HGet(ctx, s.k.rules, key)
+}
+
+// SaveRaw 保存规则 Hash 里一个字段的原始 JSON(用于 @templates 等保留键),raw 为空表示删除。
+// 与 Save 走同一段脚本:版本号加 1、写修改记录、发布通知;内容(文本)相同时不加版本号。
+func (s *Strategy) SaveRaw(ctx context.Context, key, raw, by string) (int64, error) {
+	if by == "" {
+		by = "unknown"
+	}
+	return s.eval(ctx, key, raw, by)
+}
+
+func (s *Strategy) eval(ctx context.Context, key, after, by string) (int64, error) {
 	v, err := s.opts.Client.Eval(ctx, SaveScript,
 		[]string{s.k.rules, s.k.version, s.k.historyPrefix + key, s.k.changes},
 		key, after, by, time.Now().UnixMilli(), s.opts.HistoryLimit, s.k.channel)
@@ -259,7 +282,7 @@ func (s *Strategy) History(ctx context.Context, key string, limit int) ([]strate
 		}
 		seen := map[string]bool{}
 		for _, rk := range idx {
-			if seen[rk] {
+			if seen[rk] || strategy.ReservedKey(rk) {
 				continue
 			}
 			seen[rk] = true
@@ -303,6 +326,13 @@ func (s *Strategy) Rollback(ctx context.Context, changeID int64, by string) (int
 	for _, r := range recs {
 		if r.ID != changeID {
 			continue
+		}
+		if strategy.ReservedKey(ruleKey) { // 保留键存的不是 MethodRules,原样恢复
+			before := ""
+			if r.Before != nil {
+				before = *r.Before
+			}
+			return s.SaveRaw(ctx, ruleKey, before, by)
 		}
 		mr, err := decodeRules(r.Before)
 		if err != nil {

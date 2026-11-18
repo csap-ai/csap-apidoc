@@ -156,9 +156,11 @@ type Method struct {
 	Search            []string           `json:"search"`
 	SimpleName        string             `json:"simpleName"`
 	Status            string             `json:"status"`
-	Tags              []string           `json:"tags"`
-	Value             string             `json:"value"`
-	Version           []string           `json:"version"`
+	// StatusNote 是接口状态的备注(如替代接口),没有时不输出。
+	StatusNote string   `json:"statusNote,omitempty"`
+	Tags       []string `json:"tags"`
+	Value      string   `json:"value"`
+	Version    []string `json:"version"`
 }
 
 // GlobalHeaderHint 对应 Java CsapDocGlobalHeaderHint(@DocGlobalHeader):
@@ -229,6 +231,8 @@ type Parameter struct {
 	Validate     []ValidateAttribute `json:"validate"`
 	Value        string              `json:"value"`
 	Version      []string            `json:"version"`
+	// Mock 是规则里为这个字段指定的 Mock 取值(任意 JSON 值,没有时不输出),只用于 Mock 响应,见 docs/design/1.4.0-mock-schema.md。
+	Mock any `json:"mock,omitempty"`
 }
 
 // ValidateAttribute 对应 CsapDocParameter.ValidateAttribute。
