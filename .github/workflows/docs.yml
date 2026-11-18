@@ -9,11 +9,13 @@ on:
     paths:
       - 'website/**'
       - 'CHANGELOG.md'
+      - 'docs/ROADMAP.md'
       - '.github/workflows/docs.yml'
   pull_request:
     paths:
       - 'website/**'
       - 'CHANGELOG.md'
+      - 'docs/ROADMAP.md'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
