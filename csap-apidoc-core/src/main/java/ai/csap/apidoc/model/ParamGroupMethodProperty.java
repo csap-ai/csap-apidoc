@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 
 import com.google.common.collect.Lists;
 
+import ai.csap.apidoc.annotation.ApiStatus;
 import ai.csap.apidoc.annotation.ParamType;
 import ai.csap.validation.factory.Validate;
 
@@ -41,6 +42,19 @@ public class ParamGroupMethodProperty {
      * key is field name value is field property
      */
     private Map<String, ParamDataValidate> response = new HashMap<>(16);
+    /**
+     * 接口状态覆盖(开发中 / 完成 / 过时):不为空时优先于注解上的状态;为空表示没有覆盖。
+     * 与 request、response 一起存取(YAML、数据库、Redis、SQLite),旧版本读取时忽略。
+     *
+     * @since 1.4.0
+     */
+    private ApiStatus status;
+    /**
+     * 状态备注,如替代接口、下线时间
+     *
+     * @since 1.4.0
+     */
+    private String statusNote;
 
     public static Map<String, ParamDataValidate> sortedKeyLength(Map<String, ParamDataValidate> data) {
         return data
@@ -78,6 +92,47 @@ public class ParamGroupMethodProperty {
          * 验证信息
          */
         private List<Validate.ConstraintValidatorField> validate;
+        /**
+         * 字段示例,文档里的示例值优先用它
+         *
+         * @since 1.4.0
+         */
+        private String example;
+        /**
+         * 套用字段模板时记下的模板名,只用于展示和“与模板不一致”的提示,运行时不读
+         *
+         * @since 1.4.0
+         */
+        private String template;
+        /**
+         * Mock 取值:任意 JSON 值(字面值,或 @int(lo,hi)、@oneOf(...)、@uuid 之类的表达式字符串);
+         * 这里只原样存取并透传到文档的 Parameter,不解释
+         *
+         * @since 1.4.0
+         */
+        private Object mock;
+
+        public ParamDataValidate(Boolean required, Boolean include, ParamType paramType, String description,
+                                 List<Validate.ConstraintValidatorField> validate) {
+            this.required = required;
+            this.include = include;
+            this.paramType = paramType;
+            this.description = description;
+            this.validate = validate;
+        }
+
+        /**
+         * 复制一份:校验列表是新列表(元素共用),其余字段原样带上。
+         * 返回给文档生成的规则必须是副本,否则往里追加注解校验器会污染缓存。
+         */
+        public ParamDataValidate copyForUse() {
+            ParamDataValidate copy = new ParamDataValidate(required, include, paramType, description, null);
+            copy.example = example;
+            copy.template = template;
+            copy.mock = mock;
+            copy.getValidate().addAll(getValidate());
+            return copy;
+        }
 
         public List<Validate.ConstraintValidatorField> getValidate() {
             if (Objects.isNull(validate)) {

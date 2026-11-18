@@ -92,9 +92,14 @@ public final class RuleJson {
         }
     }
 
+    /**
+     * 规则是否为空:没有请求 / 返回字段规则,也没有状态覆盖(只改了状态的接口不是空规则)
+     */
     public static boolean isEmpty(ParamGroupMethodProperty p) {
         return p == null
                 || ((p.getRequest() == null || p.getRequest().isEmpty())
-                && (p.getResponse() == null || p.getResponse().isEmpty()));
+                && (p.getResponse() == null || p.getResponse().isEmpty())
+                && p.getStatus() == null
+                && (p.getStatusNote() == null || p.getStatusNote().isEmpty()));
     }
 }

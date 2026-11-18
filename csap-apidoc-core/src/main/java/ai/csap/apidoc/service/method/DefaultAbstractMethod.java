@@ -263,11 +263,27 @@ public class DefaultAbstractMethod implements FilterData {
                 .paramType(paramType)
                 .build();
 
+        applyRuleExtras(csapDocParameter, hasRule ? paramDataValidate : null);
         csapDocParameter.setKey(getKey(csapDocParameter));
         csapDocModel.getParameters().add(csapDocParameter);
         return csapDocModel;
     }
 
+
+    /**
+     * 字段规则里的示例、Mock 带到文档参数上:示例不为空时优先于注解里的示例;Mock 原样透传(不解释)
+     */
+    private static void applyRuleExtras(CsapDocParameter parameter, ParamGroupMethodProperty.ParamDataValidate rule) {
+        if (rule == null) {
+            return;
+        }
+        if (!StrUtil.isEmpty(rule.getExample())) {
+            parameter.setExample(rule.getExample());
+        }
+        if (rule.getMock() != null) {
+            parameter.setMock(rule.getMock());
+        }
+    }
 
     /**
      * 获取方法可用字段
@@ -424,6 +440,7 @@ public class DefaultAbstractMethod implements FilterData {
                 getValidateFactory().addExcludes(docMethod.getKey(), docParameter.getName(), types.getModelClass());
             }
             if (responseGroup != null) {
+                applyRuleExtras(docParameter, responseGroup);
                 docParameter.setRequired(responseGroup.getRequired());
             } else {
                 docParameter.setRequired(property.required());
@@ -441,6 +458,7 @@ public class DefaultAbstractMethod implements FilterData {
                 boolean required = property.required();
                 List<Validate.ConstraintValidatorField> validate = null;
                 if (requestGroup != null) {
+                    applyRuleExtras(docParameter, requestGroup);
                     required = requestGroup.getRequired();
                     if (requestGroup.getParamType() != null) {
                         docParameter.setParamType(requestGroup.getParamType());
