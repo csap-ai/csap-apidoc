@@ -60,7 +60,7 @@ public class DemoApplication { ... }
 ## 6. 运行时过滤与校验(1.2.0 起,默认关闭)
 
 - 规则里的返回字段 `include` 和请求 `validate` 默认**只影响文档**。要让接口实际返回的 JSON 只含文档里的字段,配置 `csap.apidoc.runtime.filter.enabled: true`(`mode`:`path` 默认 / `csap` / `off`;`endpoints` 按接口覆盖);要在运行时校验请求参数,引入 `csap-validation-boot-starter` 并配置 `csap.validation.mode`(`observe` 只记录,`enforce` 拦截)。两者都建议先在少数接口上试用。说明见 <https://apidoc.csap.ai/guide/runtime-filter> 和 <https://apidoc.csap.ai/guide/validation>。
-- 只有必填字段(`required: true`)的校验规则会执行;校验规则在文档扫描完成后才生效。必填但没写任何规则的字段,开启校验后按"不能为空"检查。
+- 1.4.0 起,非必填字段上的规则在请求传了该字段时也会执行(与 Go 一致;`csap.validation.optional-field-rules=skip` 恢复 1.3.0 及以前"只执行必填字段规则"的行为);校验规则在文档扫描完成后才生效。必填但没写任何规则的字段,开启校验后按"不能为空"检查。
 - 只支持 Spring MVC(Servlet),不支持 WebFlux。
 - 项目还在用 1.1.x 时,这两项都不会执行。
 - 1.1.0 jar 里的文档页面是旧版构建,没有环境切换、全局请求头、鉴权、历史与重放、命名快照、中英文;这些从 1.1.1 起可用。

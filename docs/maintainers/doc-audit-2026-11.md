@@ -149,7 +149,7 @@
 
 | 项 | 结论 | 文档状态 |
 |---|---|---|
-| 1. Go / Java 非必填字段校验不一致 | 讨论中,倾向 Java 向 Go 对齐(非必填但传了值也校验,`Pattern` 本就对 null 放行),属行为变更,只能放 1.3.0 之后并先用 `observe`;未定方向 | 官网 Go 页已写明差别;对齐方向列入 1.4.0 前确定(见路线图) |
+| 1. Go / Java 非必填字段校验不一致 | 用户裁定(2026-11-18):**以 Go 为准**,Java 向 Go 对齐,非必填字段传了值就校验;`csap.validation.optional-field-rules=skip` 可恢复旧行为 | **1.4.0 已完成**(2026-11-18 发布):Java 改为必填或有规则的字段都登记;两边共用 71 条黄金用例(`docs/conformance/validation-cases.json`);官网校验页、Go 页、技能、FAQ、DevTools 页与 CHANGELOG 已同步 |
 | 2. `/devtools/hiddenMethod` 没作用 | 文档备注"目前没用" | 已写在 `api/rest.md`、`guide/devtools.md` |
 | 3. `AdvancedController` 演示方法级 `@ApiProperty` | 方法级写法按弃用处理,1.3.0 中示例改为参数级 | 文档保持"方法级不生效" |
 | 4. 示例配置与注释不符、示例里没有 `@Group` | 用户裁定:1.3.0 标为弃用,2.0 删除 | 已在 1.3.0 加 `@Deprecated` 与官网弃用提示;路线图新增"2.0(不兼容变更)" |
@@ -169,7 +169,7 @@
 
 ## 五、主会话执行记录(2026-11-18)
 
-1. 非必填字段的校验差别:暂不改代码,在官网 Go 页写明差别;是否对齐、以哪边为准,1.4.0 前确定。
+1. 非必填字段的校验差别:暂不改代码,在官网 Go 页写明差别;是否对齐、以哪边为准,1.4.0 前确定。(后续:已定以 Go 为准,1.4.0 已发布,见第三节第 1 项。)
 2. 方法级 `@ApiProperty` / `@ApiPropertys`:按已弃用处理。1.3.0 中示例改为参数级写法,`DefaultAbstractMethod` 的 javadoc 同步改正。
 3. `SECURITY.md`:只支持 1.2.x,1.1.x 标为已被取代,保持本次修改。
 4. GitHub 仓库描述与 topics:改为多语言口径,topics 增加 `go`、`golang`、`gin`(已在仓库设置中修改)。
@@ -193,7 +193,7 @@
 
 ### 拿不准的地方
 
-1. Go 页和技能里写了"非必填字段:Java 不执行,Go 传了值就执行,1.4.0 前确定方向",随裁定结果更新(技能差别表、`guide/validation.md` 提示框、`go/index.md`、`csap-apidoc-go/CHANGELOG.md`)。
+1. Go 页和技能里写了"非必填字段:Java 不执行,Go 传了值就执行,1.4.0 前确定方向",随裁定结果更新(技能差别表、`guide/validation.md` 提示框、`go/index.md`、`csap-apidoc-go/CHANGELOG.md`)。(已处理:1.4.0 发布后统一改为"1.4.0 起两边一致"。)
 2. `yaml-rules.md` 里 Go 的 YAML 键写法(请求体前缀 `request`、返回 `data.` 前缀)取自官网 Go 页和示例规则,未逐条用代码验证 Go 对 json 名 / 字段名的取键规则。
 3. 技能里"Go 配了返回规则的接口默认就会过滤"来自 `FilterMode` 默认 `ModePath`,没有单独开关;如果以后加开关需同步。
 4. `gateway-aggregation.md` 写了"聚合入口目前用 Java 版":Go 的 `model` 里有 `Resources` 字段,但 `Options` 没有配置项,所以 Go 暂不能当聚合入口。

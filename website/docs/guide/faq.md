@@ -147,7 +147,7 @@ DevTools 没有开启。确认当前生效的配置中有 `csap.apidoc.devtool.e
 
 ### 加了校验 starter，请求参数没有被校验
 
-1.2.0 起运行时校验默认关闭，需要在配置里开启：`csap.validation.mode: observe`（只记录不拦截）或 `enforce`（校验失败直接返回错误）；也可以只给个别接口在 `csap.validation.endpoints` 里写非 `off` 的模式。旧开关 `csap.validation.enabled: true` 仍然有效，等价于 `enforce`。另外，规则在文档扫描完成后才生效，并且只有必填字段的规则会执行，见 [参数校验](/guide/validation)。1.1.x 中没有组件在请求处理时执行规则，开启也没有效果。Spring 标准的 `@Valid` / `@Validated` 校验不受影响。
+1.2.0 起运行时校验默认关闭，需要在配置里开启：`csap.validation.mode: observe`（只记录不拦截）或 `enforce`（校验失败直接返回错误）；也可以只给个别接口在 `csap.validation.endpoints` 里写非 `off` 的模式。旧开关 `csap.validation.enabled: true` 仍然有效，等价于 `enforce`。另外，规则在文档扫描完成后才生效，非必填字段的规则在请求传了该字段时才执行（1.4.0 起；1.3.0 及以前只执行必填字段的规则），见 [参数校验](/guide/validation)。1.1.x 中没有组件在请求处理时执行规则，开启也没有效果。Spring 标准的 `@Valid` / `@Validated` 校验不受影响。
 
 ### 引入校验 starter 后，项目原有的参数错误返回格式变了
 

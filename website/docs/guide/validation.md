@@ -3,7 +3,7 @@
 本页介绍 `csap-validation-boot-starter` 的运行时请求参数校验（1.2.0）：怎么开启、三种模式、配置项、规则写法、失败时的返回格式，以及目前的限制。
 
 :::info 适用范围
-本页讲的是 **Java 版**的运行时参数校验。Go 版有对应功能(`validate` 包和 `RequestValidator` 中间件,默认关闭),见 [Go 版](/go/)。两者原来有一处行为差别:非必填字段上的规则,Java 1.2.0 / 1.3.0 不执行,Go 在请求传了该字段时会执行;1.4.0 起 Java 向 Go 对齐,见下面的预告。
+本页讲的是 **Java 版**的运行时参数校验。Go 版有对应功能(`validate` 包和 `RequestValidator` 中间件,默认关闭),见 [Go 版](/go/)。两者原来有一处行为差别:非必填字段上的规则,Java 1.2.0 / 1.3.0 不执行,Go 在请求传了该字段时会执行;1.4.0 起 Java 已向 Go 对齐,见下面的说明。
 :::
 
 :::warning 1.4.0 行为变化
@@ -165,18 +165,18 @@ com.example.controller.OrderController:
 | `Pattern` | 值不为 `null`，且 `toString()` 后不能**整串**匹配 `pattern`。值为 `null` 时不判定失败，需要非空请再加一条 `NotNull`。`pattern` 写错（无法编译）时这条规则被跳过并记 warn 日志 |
 
 :::warning YAML / SQLite 策略只校验规则文件里列出的字段
-这两种策略下，请求字段要在规则文件中出现（至少写 `required: true`）才会登记，字段上的约束注解也只在这时合并进来。
+这两种策略下，请求字段要在规则文件中出现（写了 `required: true` 或 `validate` 规则）才会登记，字段上的约束注解也只在这时合并进来。
 :::
 
-### 只有必填字段的规则会执行
+### 必填与非必填字段的规则
 
-:::warning required 决定规则是否生效
-生成文档时，框架只在字段**必填**时才把它的校验规则登记到 `IValidateFactory`：
+:::info 哪些字段的规则会执行
+生成文档时，字段**必填**或**写了校验规则**，就会把它登记到 `IValidateFactory`（1.4.0 起；1.3.0 及以前只登记必填字段）。是否必填按下面的来源取：
 
 - 实体字段：注解策略下取匹配 `@Group` 的 `@Request.required`（没有匹配的 `@Group` 而靠 `forceReq` 出现时取 `@ApiModelProperty.required`）；YAML / SQLite 策略下取规则中的 `required`；
 - 基础类型的方法参数：注解策略下取 `@ApiProperty.required`；YAML / SQLite 策略下，规则里有这个参数时取规则中的 `required`（规则说不必填时，`@ApiProperty(required = true)` 不再生效），没有这个参数的规则时取 `@ApiProperty.required`（1.3.0 起；1.2.x 中没有规则时不登记）。文档里显示的必填与此一致。
 
-非必填字段上的规则**仍会显示在文档里**，但运行时不会执行。
+运行时：必填字段始终按规则校验（没有规则时只检查非空）；非必填字段**没传值**（或值为 `null`）时跳过，**传了值**就按规则校验。设置 `csap.validation.optional-field-rules=skip` 时非必填字段一律不校验，即 1.3.0 及以前的行为。
 :::
 
 ### 只配了必填的字段
@@ -321,7 +321,7 @@ HTTP 状态码默认 **200**，可用 `csap.validation.http-status` 修改（例
 
 - 只支持 Spring MVC（Servlet），不支持 WebFlux；只校验带 `@ApiOperation` 的方法。
 - 规则在文档扫描完成后才生效；DevTools 重新生成规则的瞬间可能有请求未被校验。
-- 只有必填字段的规则会执行；必填但没有规则的字段只检查非空。
+- 非必填字段只在请求传了值时校验（1.4.0 起）；必填但没有规则的字段只检查非空。
 - 实体字段按字段名（`@ApiModelProperty.name`，未填时为 Java 字段名）找 getter 取值；`name` 与 Java 字段名不一致时取不到值（按 `null` 校验）。上线前请先用 `observe` 模式确认。
 - 约束注解的 `groups` 不参与判断；`ConstraintValidatorContext` 是简化实现，依赖完整上下文的自定义校验器可能被跳过（会记 warn 日志）。
 - 校验组件自身出错（非校验失败）时请求放行，并对每个接口记一次 warn 日志。

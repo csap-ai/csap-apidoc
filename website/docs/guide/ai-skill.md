@@ -29,7 +29,7 @@ cp -R /tmp/csap-apidoc/skills/csap-apidoc ~/.claude/skills/
 
 技能分共通部分和分语言的部分:
 
-- **共通**:先判断项目语言的方法;运行时生成文档、字段规则、返回过滤、请求校验、DevTools 的概念;两种语言共用的文档数据接口(`/csap/apidoc` 等)和 YAML 规则文件格式;两种语言的差别(例如非必填字段上的校验规则:Java 不执行,Go 传了值就执行);避免助手对用户做出不成立的承诺(返回过滤和校验是否默认开启等)。
+- **共通**:先判断项目语言的方法;运行时生成文档、字段规则、返回过滤、请求校验、DevTools 的概念;两种语言共用的文档数据接口(`/csap/apidoc` 等)和 YAML 规则文件格式;两种语言的差别(例如非必填字段上的校验规则:Go 传了值就执行,Java 1.4.0 起相同,1.3.0 及以前不执行);避免助手对用户做出不成立的承诺(返回过滤和校验是否默认开启等)。
 - **Java 版**:正确的 Maven 坐标和依赖(以及旧文档里错误坐标的识别)、`@EnableApidoc` 和各注解的写法、字段"默认不显示"的规则与 `forceReq` / `forceRep`、`@Group`、YAML 三种选择字段的方式、`csap.apidoc.*` 和 `csap.validation.*` 配置、DevTools。
 - **Go 版**:`go get` 和版本、`apidoc.New` 与 `Options`、gin / net/http 适配、`apidoc.Op` 声明接口、结构体标签、返回过滤(`FilterMode`、`FilterEndpoints`、`ShouldFilter`)、请求校验中间件、devtools 鉴权。
 - 接入后的检查步骤。
