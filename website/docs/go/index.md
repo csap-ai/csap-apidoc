@@ -160,6 +160,7 @@ example.UserController:          # 分组(Java 的 Controller 全名)
 - 目录下所有 `.yaml/.yml` 都会加载,文件名不要求与分组对应。`yaml.FS(fsys, dir)` 可以从 `go:embed` 只读加载。
 - Go 版新增的 `hidden`(只在文档隐藏)、`example` 字段,Java 读取时会忽略。
 - 多实例部署、需要在线修改时,可以换成 SQL 规则来源 `strategy/sql`(SQLite / PostgreSQL / MySQL),保存时版本号加 1,其他实例轮询或经 Redis 通知后重新加载。
+- **v0.2.0 计划**(随 Java 1.4.0 的[数据库模式](/guide/database-mode)):SQL 规则来源改用与 Java 共用的表(`csap_apidoc_rule` / `history` / `meta`,增加 `service` 列,用 `Options.Service` 指定服务名,列名沿用 `rules` / `before_rules` / `after_rules`),新增达梦、人大金仓方言,并提供 v0.1.x 旧表的迁移。当前 v0.1.1 的表结构没有 `service` 列。Redis 作为规则存储也在 1.4.0 规划中,尚未实现。
 
 规则来源按 **结构体标签 < YAML < SQL** 的顺序合并,后面的覆盖前面的。
 

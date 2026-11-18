@@ -47,6 +47,7 @@ public class DemoApplication { ... }
    - `ANNOTATION`(默认):`@ApiModelProperty(groups = @Group(value = "方法名", request = @Request(required = true), response = @Response))`。**1.3.0 起弃用,2.0 删除**;新代码请改用 YAML / SQLite 规则。
    - `YAML`:规则写在 `src/main/resources/csap-api-doc/method-field/<Controller简单类名>-method-field.yaml`,格式见 [yaml-rules.md](yaml-rules.md)
    - `SQL_LITE`:规则存 SQLite,通常用 DevTools 维护
+   - 数据库模式(MySQL / PostgreSQL / 达梦 / 人大金仓)和 Redis 模式:1.4.0 计划,当前版本没有,不要写 `paramType = DATABASE`。多实例共享规则目前 Java 做不到(YAML / SQLite 都是各实例一份)
 3. 返回字段在规则里要 `include: true` 才出现;请求字段只要规则里有就出现。
 4. 对象 / List / Map 字段:它自己出现了,子字段才会被处理。
 
