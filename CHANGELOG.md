@@ -61,6 +61,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   A `@PathVariable` parameter without a rule is shown as `PATH` under all
   strategies.
 
+### Deprecated
+
+- `@Group`, `@Request`, `@Response` and `@ApiModelProperty.groups` are
+  deprecated and will be removed in 2.0. Behavior is unchanged in 1.3.x. To
+  choose fields per endpoint, use `YAML` or `SQL_LITE` rules
+  (`@EnableApidoc(paramType = ...)`); for fields shown on every endpoint use
+  `forceReq` / `forceRep`.
+- Method-level `@ApiProperty` / `@ApiPropertys` (never read when generating
+  docs) are deprecated and will be removed in 2.0; put `@ApiProperty` on the
+  parameter instead.
+
 ### Fixed
 
 - DevTools frontend could not be built from source (`autoprefixer` missing

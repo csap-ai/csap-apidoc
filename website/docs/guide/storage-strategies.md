@@ -70,6 +70,10 @@ YAML 和 SQLite 的实现都已经包含在 `csap-apidoc-boot-starter` 中（它
 
 `paramType = ApiStrategyType.ANNOTATION`（默认）。规则写在 `@ApiModelProperty.groups` 里，每个 `@Group` 对应一个方法：
 
+:::warning 已弃用
+`@Group` / `@Request` / `@Response` / `groups` 自 1.3.0 起弃用，2.0 删除，1.3.0 中行为不变。按接口选择字段请改用下面的 YAML 或 SQLite 规则。
+:::
+
 ```java
 @ApiModelProperty(value = "用户名", groups = {
         @Group(value = "createUser", request = @Request(required = true)),

@@ -166,9 +166,13 @@
 | `ignoreRep` | `boolean` | `false` | 在所有返回参数中忽略 |
 | `group` | `String[]` | `"default"` | 分组；保持默认时继承所属实体 |
 | `version` | `String[]` | `"default"` | 版本；保持默认时继承所属实体 |
-| `groups` | `Group[]` | `{}` | 按方法声明的字段规则，只在注解策略下读取，见 [@Group](#group) |
+| `groups` | `Group[]` | `{}` | 按方法声明的字段规则，只在注解策略下读取，见 [@Group](#group)。1.3.0 起弃用，2.0 删除 |
 
 ## @Group
+
+:::warning 已弃用
+`@Group`、`@Request`、`@Response` 和 `@ApiModelProperty.groups` 自 1.3.0 起弃用，2.0 删除，1.3.0 中行为不变。按接口选择字段请改用 YAML / SQLite 规则（`@EnableApidoc(paramType = ...)`），所有接口都显示的字段用 `forceReq` / `forceRep`。
+:::
 
 只能作为其他注解的属性使用（`@Target(ANNOTATION_TYPE)`），用于 `@ApiModelProperty.groups`。
 

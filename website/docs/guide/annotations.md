@@ -193,6 +193,10 @@ public class Order {
 
 ## 按接口区分字段：groups
 
+:::warning 已弃用
+`@Group`、`@Request`、`@Response` 和 `@ApiModelProperty.groups` 自 1.3.0 起弃用，2.0 删除，1.3.0 中行为不变。按接口选择字段请改用 YAML / SQLite 规则（`@EnableApidoc(paramType = ...)`），所有接口都显示的字段用 `forceReq` / `forceRep`。
+:::
+
 同一个实体类往往在不同接口里需要不同的字段：创建时需要 `password`，查询时不能返回它。注解方式下，用 `@ApiModelProperty` 的 `groups` 为每个接口单独声明：
 
 ```java

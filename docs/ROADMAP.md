@@ -82,6 +82,11 @@
 - **接口上下线管理**:基于现有 `ApiStatus`(开发中 / 完成 / 过时),在文档和 MCP 中体现
 - **Java 与 Go 的校验行为对齐**:非必填字段上的规则,Java 1.2.0 不执行,Go 在传值时执行。1.4.0 前确定以哪边为准并统一
 
+### 2.0(不兼容变更)
+
+- 删除 `@Group` / `@Request` / `@Response` 与 `@ApiModelProperty.groups`(1.3.0 起弃用),按接口选择字段改用 YAML / SQLite 规则,全局显示用 `forceReq` / `forceRep`
+- 删除方法级 `@ApiProperty` / `@ApiPropertys`(1.3.0 起弃用,早已不读取),改为标在参数上
+
 ### 多语言
 
 按主流程度依次支持。每一门语言都实现同一份协议、读同一种规则文件、内嵌同一个文档页面。
