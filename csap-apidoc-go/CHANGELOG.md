@@ -7,6 +7,8 @@ csap-apidoc-go 的版本号独立于 Java 版,tag 格式为 `csap-apidoc-go/vX.Y
 ### 变更(不兼容)
 
 - **SQL 规则来源的表结构与 Java 1.4.0 数据库模式统一**:三张表都加了 `service` 列(`rule` 主键改为 `(service, rule_key)`,`history` 索引改为 `(service, rule_key, id)`,`meta` 由 `id=1` 单行改为每个服务一行);`updated_by` 去掉 `DEFAULT ''`,为空时写 `unknown`;大文本 MySQL 改用 `LONGTEXT`(原 `MEDIUMTEXT`)。旧表(v0.1.x)不能直接用:`EnsureSchema` 发现旧表会返回 `sql.ErrLegacySchema`,不会自动改动。升级步骤见下方"升级"和 [docs/SQL.md](docs/SQL.md)。
+- **OpenAPI 导出把 `Number` 按 number 处理**(原来当成 string),与 Java 和 Mock、JSON Schema 一致。
+- `model.Method` 新增可选的 `statusNote`、`model.Parameter` 新增可选的 `mock`(没有时不输出)。
 
 ### 新增
 
@@ -16,6 +18,12 @@ csap-apidoc-go 的版本号独立于 Java 版,tag 格式为 `csap-apidoc-go/vX.Y
 - `sql.ServiceNotifier`:带服务名的通知(可选,实现它就优先使用)。原 `Notifier` 接口不变。
 - **Redis 规则来源 `strategy/redis`**:与 Java 1.4.0 Redis 模式的数据约定一致(`docs/design/redis-mode.md`),Lua 保存脚本在 `strategy/redis/save.lua`。实现 Strategy / Saver / Historian / Watcher;订阅通知 + 轮询兜底;修改记录按 `HistoryLimit` 裁剪。主模块不依赖 Redis 客户端,使用方实现最小接口 `redis.Client`,go-redis v9 适配器见 [docs/REDIS.md](docs/REDIS.md)。
 - **`csap-apidoc-diff` 命令行工具(`cmd/csap-apidoc-diff`)**:比较两份 `/csap/apidoc` 文档(Java、Go 服务同一协议),输出新增 / 删除 / 修改的接口与字段(text / JSON / Markdown),按规则判定破坏性变更(删除接口、删除返回字段、请求字段可选变必填、字段类型变化、方法或路径变化、枚举取值减少等),有破坏性变更时退出码 1;`snapshot` 子命令保存稳定的基线快照;支持忽略清单和请求头。库在 `apidiff` 包。见 [docs/DIFF.md](docs/DIFF.md) 与仓库 `docs/design/1.4.0-api-diff.md`。
+- **接口状态**:规则里可选的 `status`(DEFAULT / FINISH / DEPRECATED)和 `statusNote`,各存储通用;有效状态 = 规则覆盖 > 代码声明 > DEFAULT,写入文档的 `status` / `statusNote`;OpenAPI 输出 `deprecated` 和 `x-csap-status`,Postman 过时接口加 `[过时] `;DevTools 新增 `POST /csap/yaml/setStatus`。**只有状态、没有字段规则的接口不再被当成空规则删除**(`MethodRules.IsEmpty` 的判定变了)。见 [docs/STATUS.md](docs/STATUS.md)。
+- **字段库与模板(`fieldlib` 包)**:内置 14 条常用字段模板 + 项目模板(数据库 / Redis 存在保留键 `@templates`,YAML 存在 `field-template/api-field-template.yaml`),预览 / 套用 / 与模板不一致判断 / 另存为模板;DevTools 新增 `GET|POST /csap/yaml/fieldTemplates`、`DELETE /csap/yaml/fieldTemplates/{name}`;规则字段新增 `template`、`mock`;**各规则来源加载时跳过以 `@` 开头的键**。见 [docs/FIELD-LIBRARY.md](docs/FIELD-LIBRARY.md)。
+- **Mock 服务**:`Options.Mock`,默认关闭;`/csap/mock/{原路径}`(任意方法)按文档返回结构生成可复现的数据(种子 + 路径派生,与 Java 输出一致),`/csap/mock-status`;规则里可用 `mock` 指定字段值(`@int` / `@oneOf` / `@uuid` 或字面值);字段名启发式可用 `DisableHeuristics` 关闭。
+- **JSON Schema**:`GET /csap/schema.json`、`GET /csap/schema/method?key=` 始终开启(2020-12,请求按位置分区,校验映射成标准关键字并无损保留在 `x-csap-validate`);`POST /csap/schema/import` 默认关闭(`Options.Schema.ImportEnabled`),只更新文档里已有字段的说明 / 必填 / 示例 / 校验,默认预览,`apply` 修改人 `schema-import`。见 [docs/MOCK.md](docs/MOCK.md)。
+- `Doc.MethodPaths()`:供适配器注册 Mock(任意方法)和 Schema 导入(POST)路由;gin、net/http 适配器已接入,自定义适配器需要照着注册。
+- 请求参数校验:接入 Java / Go 共用的黄金用例(`docs/conformance/validation-cases.json`,66 条)。Pattern 一直是整串匹配(与 Java `matches()` 一致),没有行为变化,新增断言防止回退。
 - **规则导入 `strategy.Import`**:把 YAML 等来源导入 SQL / Redis,默认不覆盖已有的不同规则并返回冲突列表,支持 dry-run,修改人 `migrate`。见 [docs/IMPORT.md](docs/IMPORT.md)。
 - `Options.ShouldFilterBody func(r, status, body) bool`:按响应体判断是否裁剪,用于"业务失败也返回 HTTP 200"的接口(Java 只过滤正常返回的对象)。在 `ShouldFilter` 返回 true 之后、裁剪之前调用,返回 false 原样输出;不设置时行为不变。gin、net/http 适配器都支持,自定义适配器调用 `Doc.ShouldFilterBody`。附现成判断 `apidoc.SuccessField("success", true)`。见 [docs/FILTER-BODY.md](docs/FILTER-BODY.md)。
 
