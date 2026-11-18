@@ -212,5 +212,6 @@ passthrough 模式下 `/csap/mcp` 本身也可以放行,接口的访问控制照
 | 工具列表里缺接口 | 写操作默认不暴露;接口在文档中隐藏;接口有文件上传参数 |
 | 调用超时、连接被拒绝 | 回环地址不通(HTTPS、只监听特定网卡、前置网关),配置 `base-url` |
 | 工具结果里少了字段 | 返回字段过滤生效,检查该接口的返回规则 |
+| 客户端报响应不是 JSON-RPC | 应用有对所有返回值生效的全局 `ResponseBodyAdvice`(统一包装 `{code, data}`),请在它的 `supports` 里排除 `/csap/mcp` 或 `ai.csap.apidoc.mcp` 包 |
 
 后续计划(不在 1.3.0):独立的 `csap-apidoc-mcp` 聚合服务(多服务、stdio)、Go 版 MCP。见 [路线图](https://github.com/csap-ai/csap-apidoc/blob/main/docs/ROADMAP.md)。
