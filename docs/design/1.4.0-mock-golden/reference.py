@@ -154,6 +154,8 @@ def gen_scalar(p, kind, path, ctx):
     r = rand(ctx["seed"], path)
     name = p.get("name") or ""
     low = name.lower().replace("_", "").replace("-", "")
+    if not ctx.get("heuristics", True):
+        name, low = "", ""  # 关闭启发式:所有按字段名的分支都不会命中
     # 1 mock
     if p.get("mock") is not None:
         return mock_value(p["mock"], kind, r)
@@ -291,7 +293,8 @@ def gen_field(p, path, depth, ctx):
 
 
 def generate(case):
-    ctx = {"seed": case.get("seed", "csap"), "arraySize": case.get("arraySize", 2), "maxDepth": case.get("maxDepth", 6)}
+    ctx = {"seed": case.get("seed", "csap"), "arraySize": case.get("arraySize", 2), "maxDepth": case.get("maxDepth", 6),
+           "heuristics": case.get("heuristics", True)}
     models = case.get("response") or []
     if not models:
         return None

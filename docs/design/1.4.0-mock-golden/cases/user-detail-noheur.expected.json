@@ -1,0 +1,42 @@
+{
+  "success": false,
+  "code": "string",
+  "message": "string",
+  "data": {
+    "id": 91,
+    "name": "string",
+    "email": "string",
+    "phone": "string",
+    "avatar": "string",
+    "age": 26,
+    "status": "ENABLED",
+    "score": 88.28,
+    "level": 2,
+    "token": "3ce02703-34dd-46d8-8d65-26614ca57e16",
+    "nickname": "stri",
+    "remark": "hello",
+    "grade": 5,
+    "birthday": "2026-11-15",
+    "createdAt": "2026-08-04T00:15:55Z",
+    "vip": true,
+    "tags": [
+      "string",
+      "string"
+    ],
+    "attrs": {},
+    "orders": [
+      {
+        "orderId": "string",
+        "amount": 12.5,
+        "paid": true,
+        "buyerId": 36
+      },
+      {
+        "orderId": "string",
+        "amount": 12.5,
+        "paid": true,
+        "buyerId": 95
+      }
+    ]
+  }
+}
