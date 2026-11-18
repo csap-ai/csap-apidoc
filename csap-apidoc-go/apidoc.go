@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"reflect"
 	"sort"
@@ -12,6 +13,7 @@ import (
 	"sync/atomic"
 
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/filter"
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/mock"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
 )
@@ -59,6 +61,10 @@ type Options struct {
 	// ShouldFilter 返回 false 时不会调用它。body 是业务 handler 写出的原始字节,只读,不要修改。
 	// 常用判断见 SuccessField。
 	ShouldFilterBody func(r *http.Request, status int, body []byte) bool
+	// Mock 是 Mock 服务的配置,默认关闭。开启后 /csap/mock/{原路径} 按文档里的返回结构生成可复现的假数据。
+	Mock MockOptions
+	// Schema 是 JSON Schema 导入导出的配置。导出(/csap/schema.json、/csap/schema/method)始终开启;导入默认关闭。
+	Schema SchemaOptions
 	// TypeNames 覆盖结构体类型在文档里的显示名(相当于 Java @ApiModel 的 value),
 	// 键为 reflect.TypeOf(T{}),指针类型按其元素类型处理。优先级:TypeNames > 类型的 ApidocName() 方法 > 类型名。
 	TypeNames map[reflect.Type]string
@@ -119,6 +125,9 @@ func New(opts Options) *Doc {
 			}
 		}
 		opts.TypeNames = names
+	}
+	if opts.Mock.Enabled {
+		slog.Warn("csap-apidoc mock is ENABLED, /csap/mock/** returns synthetic data; do not enable in production")
 	}
 	return &Doc{opts: opts, groups: map[string]GroupInfo{}, dirty: true}
 }
@@ -270,6 +279,9 @@ type Snapshot struct {
 	defs        map[string]*opDef                   // 规则的键 -> 接口声明(同名取第一个),devtools 生成完整字段用
 	types       map[string]reflect.Type             // 类型全名 -> 类型,devtools 按类名取字段用
 	doc         *Doc
+
+	mockOnce   sync.Once
+	mockRouter *mock.Router
 
 	dataOnce sync.Once
 	dataJSON []byte

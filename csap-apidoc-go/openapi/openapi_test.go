@@ -78,3 +78,12 @@ func TestStatusExport(t *testing.T) {
 		t.Fatalf("DEFAULT 不输出状态: %v", o)
 	}
 }
+
+// Number 按 number 处理(与 Java 及 Mock、JSON Schema 一致),不再当成 string。
+func TestNumberIsNumber(t *testing.T) {
+	for _, dt := range []string{"Number", "number", "java.lang.Number"} {
+		if got := primitive(dt)["type"]; got != "number" {
+			t.Errorf("%s -> %v", dt, got)
+		}
+	}
+}

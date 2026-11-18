@@ -605,3 +605,13 @@ func (s *Strategy) SaveRaw(_ context.Context, key, raw, _ string) (int64, error)
 	}
 	return 0, os.WriteFile(path, out, 0o644)
 }
+
+// Render 把一个接口的规则渲染成 method-field.yaml 格式的文本(分组 → 接口 → request / response),可直接粘贴进规则文件。
+// key 为 strategy.Key(分组, 接口名)。
+func Render(key string, rules strategy.MethodRules) ([]byte, error) {
+	i := strings.LastIndex(key, ".")
+	if i <= 0 || i == len(key)-1 {
+		return nil, fmt.Errorf("apidoc/yaml: invalid key %q", key)
+	}
+	return setMethod(nil, key[:i], key[i+1:], fromRules(rules))
+}

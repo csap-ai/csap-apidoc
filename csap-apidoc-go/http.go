@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/mock"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/model"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/openapi"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/postman"
@@ -23,10 +24,33 @@ func (d *Doc) Paths() []string {
 		"/csap/openapi.json",
 		"/csap/openapi/postman",
 	}
+	ps = append(ps, "/csap/schema.json", "/csap/schema/method")
+	if d.opts.Mock.Enabled {
+		ps = append(ps, "/csap/mock-status")
+	}
 	if !d.opts.DisableUI {
 		ps = append(ps, "/csap-api.html", "/favicon.ico", d.opts.UIPrefix+"/assets/*filepath")
 	}
 	return ps
+}
+
+// MethodPath 是需要按指定方法(或任意方法)挂到框架路由上的路径。
+type MethodPath struct {
+	Method string // "*" 表示任意 HTTP 方法
+	Path   string // gin 风格,*x 为通配
+}
+
+// MethodPaths 返回 Paths 之外、不是 GET 的路由:开启 Mock 时的 /csap/mock/*path(任意方法),
+// 开启 Schema 导入时的 POST /csap/schema/import。适配器按它注册 Handler。
+func (d *Doc) MethodPaths() []MethodPath {
+	var out []MethodPath
+	if d.opts.Mock.Enabled {
+		out = append(out, MethodPath{"*", mock.Prefix + "/*path"})
+	}
+	if d.opts.Schema.ImportEnabled {
+		out = append(out, MethodPath{http.MethodPost, "/csap/schema/import"})
+	}
+	return out
 }
 
 // Handler 返回处理全部文档路由的 http.Handler,按 URL 路径分发,可以直接挂到 http.ServeMux:
@@ -40,11 +64,33 @@ func (d *Doc) Handler() http.Handler {
 		uiHandler = ui.Handler(d.opts.UIPrefix)
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		// Mock(任意方法)和 Schema 导入(POST)先于下面的"只允许 GET":默认关闭时一律 404
+		switch {
+		case p == mock.Prefix || strings.HasPrefix(p, mock.Prefix+"/"):
+			if !d.opts.Mock.Enabled {
+				http.NotFound(w, r)
+				return
+			}
+			if d.docAuthOK(w, r) {
+				d.serveMock(w, r)
+			}
+			return
+		case p == "/csap/schema/import":
+			if !d.opts.Schema.ImportEnabled || r.Method != http.MethodPost {
+				http.NotFound(w, r)
+				return
+			}
+			if !d.docAuthOK(w, r) {
+				return
+			}
+			d.serveSchemaImport(w, r)
+			return
+		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		p := r.URL.Path
 		isUI := p == "/csap-api.html" || p == "/favicon.ico" || strings.HasPrefix(p, d.opts.UIPrefix+"/")
 		if isUI {
 			if uiHandler == nil {
@@ -54,11 +100,20 @@ func (d *Doc) Handler() http.Handler {
 			uiHandler.ServeHTTP(w, r)
 			return
 		}
-		if d.opts.DocAuth != nil && !d.opts.DocAuth(r) {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+		if !d.docAuthOK(w, r) {
 			return
 		}
 		switch {
+		case p == "/csap/mock-status":
+			if !d.opts.Mock.Enabled {
+				http.NotFound(w, r)
+				return
+			}
+			d.serveMockStatus(w, r)
+		case p == "/csap/schema.json":
+			d.serveSchemaCollection(w, r)
+		case p == "/csap/schema/method":
+			d.serveSchemaMethod(w, r)
 		case p == "/csap/apidoc":
 			d.serveDoc(w, r)
 		case p == "/csap/apidoc/parent":
