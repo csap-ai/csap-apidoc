@@ -1,6 +1,6 @@
 # 存储策略与返回过滤
 
-本页说明字段规则的来源（注解、YAML、SQLite，1.4.0 计划增加数据库模式和 Redis 模式）如何配置、文件格式是什么、怎样选择，以及这些规则如何决定接口文档里出现哪些请求和返回字段。
+本页说明字段规则的来源（注解、YAML、SQLite，1.4.0 起增加数据库模式和 Redis 模式）如何配置、文件格式是什么、怎样选择，以及这些规则如何决定接口文档里出现哪些请求和返回字段。
 
 :::info 适用范围
 注解策略、`@EnableApidoc` 和 SQLite 策略讲的是 **Java 版**。YAML 规则文件的格式两种语言通用；Go 版的规则来源(YAML、SQL)和合并顺序见 [Go 版](/go/)。
@@ -29,8 +29,8 @@ public class Application {
 | `ANNOTATION`（默认） | `@ApiModelProperty(groups = ...)` | 不能 |
 | `YAML` | classpath 下的 `*-method-field.yaml` 文件 | 能 |
 | `SQL_LITE` | classpath 下的 SQLite 数据库文件 | 能 |
-| `DATABASE`（1.4.0 计划） | 应用自己的关系数据库：MySQL / PostgreSQL / 达梦 / 人大金仓，见 [数据库模式](/guide/database-mode) | 能 |
-| `REDIS`（1.4.0 计划） | Redis，见 [Redis 模式](/guide/redis-mode)，尚未发布 | 能 |
+| `DATABASE`（1.4.0 起） | 应用自己的关系数据库：MySQL / PostgreSQL / 达梦 / 人大金仓，见 [数据库模式](/guide/database-mode) | 能 |
+| `REDIS`（1.4.0 起） | Redis，见 [Redis 模式](/guide/redis-mode) | 能 |
 
 YAML 和 SQLite 的实现都已经包含在 `csap-apidoc-boot-starter` 中（它传递依赖 `csap-apidoc-yaml`、`csap-apidoc-sqlite`），不需要额外引入。
 
@@ -283,14 +283,14 @@ DevTools 写 YAML 时，目标路径是把 classpath 根目录中的 `target/cla
 | `YAML` | 不能 | 规则文件在 jar 内。返回 `code = 1007` 的失败结果和说明，打一条 WARN |
 | `type = JSON`（导出文档） | 不能 | 同上 |
 | `SQL_LITE` | 能 | 写到 jar 外、启动目录下的 `<path>/<fileName>.db`（默认 `./csap-api-doc/apidoc.db`），重启后仍在 |
-| 数据库模式（MySQL / PostgreSQL / 达梦 / 人大金仓） | 1.4.0 计划，能保存 | 当前版本没有实现；规则存进应用自己的数据库，重启和重新部署后仍在，见 [数据库模式](/guide/database-mode) |
-| Redis 模式 | 1.4.0 计划，能保存 | 当前版本没有；规则存进 Redis（需开启持久化），见 [Redis 模式](/guide/redis-mode) |
+| 数据库模式（MySQL / PostgreSQL / 达梦 / 人大金仓） | 能（1.4.0 起） | 规则存进应用自己的数据库，重启和重新部署后仍在，见 [数据库模式](/guide/database-mode) |
+| Redis 模式 | 能（1.4.0 起） | 规则存进 Redis（需开启持久化），见 [Redis 模式](/guide/redis-mode) |
 
 推荐做法：
 
 - 规则主要在开发环境里维护：在 IDE 或 `mvn spring-boot:run` 中用 DevTools，YAML 文件写回 `src/main/resources`，随代码提交和打包；
 - 必须在打包后的环境里改规则时用 `SQL_LITE`，并确保启动目录可写。每个实例各有一份文件，互不同步；
-- 多实例共享规则请等 1.4.0 的[数据库模式](/guide/database-mode)（计划中）。
+- 多实例共享规则用 1.4.0 起的[数据库模式](/guide/database-mode)或 [Redis 模式](/guide/redis-mode)。
 
 返回给 DevTools 的提示原文见 [DevTools - 打包运行时能否在 DevTools 保存](/guide/devtools#打包运行时能否在-devtools-保存)。
 
@@ -310,9 +310,9 @@ DevTools 写 YAML 时，目标路径是把 classpath 根目录中的 `target/cla
 | 接口少、实体专用，规则很少变化 | 注解：规则跟着代码走，不需要额外文件 |
 | 实体被多个接口复用，需要按接口裁剪字段；希望用 DevTools 勾选字段并在代码评审中看到改动 | YAML：文本文件，便于 diff 和合并 |
 | 希望把规则集中在单个文件里，且团队不需要逐行审阅规则改动 | SQLite：单个二进制文件，不便于 diff |
-| 多实例部署、容器部署、规则要集中管理并有修改记录和回滚，或企业只允许使用已有的 MySQL / PostgreSQL / 达梦 / 人大金仓 | 数据库模式（1.4.0 计划，见 [数据库模式](/guide/database-mode)） |
+| 多实例部署、容器部署、规则要集中管理并有修改记录和回滚，或企业只允许使用已有的 MySQL / PostgreSQL / 达梦 / 人大金仓 | 数据库模式（1.4.0 起，见 [数据库模式](/guide/database-mode)） |
 
-各模式的特点对比（数据库模式、Redis 模式为 1.4.0 计划）：
+各模式的特点对比（数据库模式、Redis 模式为 1.4.0 起提供）：
 
 | | 注解 | YAML | SQLite | 数据库模式 | Redis 模式 |
 |---|---|---|---|---|---|
@@ -360,8 +360,8 @@ DevTools 写 YAML 时，目标路径是把 classpath 根目录中的 `target/cla
 
 ## 相关页面
 
-- [Redis 模式](/guide/redis-mode)：把规则存进 Redis（1.4.0 计划）
-- [数据库模式](/guide/database-mode)：把规则存进 MySQL / PostgreSQL / 达梦 / 人大金仓（1.4.0 计划）
+- [Redis 模式](/guide/redis-mode)：把规则存进 Redis（1.4.0 起）
+- [数据库模式](/guide/database-mode)：把规则存进 MySQL / PostgreSQL / 达梦 / 人大金仓（1.4.0 起）
 - [注解使用指南](/guide/annotations)
 - [参数校验](/guide/validation)：`validate` 规则如何执行
 - [DevTools](/guide/devtools)：可视化编辑 YAML / SQLite 规则

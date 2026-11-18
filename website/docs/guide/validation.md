@@ -6,19 +6,19 @@
 本页讲的是 **Java 版**的运行时参数校验。Go 版有对应功能(`validate` 包和 `RequestValidator` 中间件,默认关闭),见 [Go 版](/go/)。两者原来有一处行为差别:非必填字段上的规则,Java 1.2.0 / 1.3.0 不执行,Go 在请求传了该字段时会执行;1.4.0 起 Java 向 Go 对齐,见下面的预告。
 :::
 
-:::warning 1.4.0 行为变化预告
+:::warning 1.4.0 行为变化
 **以 Go 为准，Java 向 Go 对齐**：1.4.0 起，非必填字段上写了 `validate` 规则、请求里**传了该字段的值**时，Java 也会按规则校验；没传该字段时不校验。1.2.0、1.3.0 只执行必填字段上的规则。
 
-这是一个行为变化，升级到 1.4.0 前请检查：以前没有被执行的"非必填字段规则"（例如非必填字段上的 `@Pattern`、YAML 里写的 `Pattern`、`NotEmpty`）可能开始拦截请求（`enforce` 模式）。可以：
+这是一个行为变化，升级到 1.4.0 时请检查：以前没有被执行的"非必填字段规则"（例如非必填字段上的 `@Pattern`、YAML 里写的 `Pattern`、`NotEmpty`）可能开始拦截请求（`enforce` 模式）。可以：
 
 - 先用 `csap.validation.mode=observe` 观察违规日志，再切到 `enforce`；
 - 或临时设置开关 `csap.validation.optional-field-rules=skip`，恢复 1.3.0 及以前的行为（默认 `validate`，即新行为）。这个开关计划保留一个大版本，1.5.0 评估移除。
 
-具体取值和细节以 1.4.0 实现为准。判定规则（以 Go 为准）：
+判定规则（以 Go 为准；Java 与 Go 共用一份 71 条黄金用例，两边结果一致）：
 
 - 非必填、没传值：不校验；传了值（包括空字符串 `""`、空数组 `[]`、`0`、`false`）：按规则校验；
 - 请求体里值为 `null` 等同于没传；上级对象为 `null` 或不存在时不校验它的下级；
-- `Pattern` 统一为**全匹配**（整串匹配），自定义正则请按整串匹配来写；Go v0.2.0 随之调整。
+- `Pattern` 是**全匹配**（整串匹配，Java 的 `matcher.matches()`，Go 同样），自定义正则请按整串匹配来写。
 :::
 
 :::tip 1.2.0 之前
@@ -31,7 +31,7 @@
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-validation-boot-starter</artifactId>
-    <version>1.3.0</version>
+    <version>1.4.0</version>
 </dependency>
 ```
 

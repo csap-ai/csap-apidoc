@@ -8,7 +8,7 @@
 
 ## 模块
 
-仓库是一个 Maven 多模块工程，当前发布版本 `1.3.0`。除两个 starter 的 groupId 是 `ai.csap.apidoc.boot` 外，其余模块的 groupId 都是 `ai.csap.apidoc`。
+仓库是一个 Maven 多模块工程，当前发布版本 `1.4.0`。除两个 starter 的 groupId 是 `ai.csap.apidoc.boot` 外，其余模块的 groupId 都是 `ai.csap.apidoc`。
 
 | 模块 | 作用 | 直接依赖的本项目模块 |
 | --- | --- | --- |

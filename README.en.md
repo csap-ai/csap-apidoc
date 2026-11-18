@@ -25,8 +25,8 @@ The doc protocol, the rule file format and the docs page are shared across langu
 
 | Language | Status | Frameworks |
 |---|---|---|
-| **Java** | ✅ Released [1.3.0](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
-| **Go** | ✅ Released [v0.1.1](https://pkg.go.dev/github.com/csap-ai/csap-apidoc/csap-apidoc-go) (`go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.1`) | gin, net/http |
+| **Java** | ✅ Released [1.4.0](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
+| **Go** | ✅ Released [v0.2.0](https://pkg.go.dev/github.com/csap-ai/csap-apidoc/csap-apidoc-go) (`go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.2.0`) | gin, net/http |
 | **Rust** | 📋 Planned | axum, actix-web |
 | More | 📋 Coming | see the [roadmap](docs/ROADMAP.md) |
 
@@ -35,13 +35,14 @@ The doc protocol, the rule file format and the docs page are shared across langu
 These work in both Java and Go (see the [Go guide](https://apidoc.csap.ai/go/) for Go's filtering and validation); items marked "Java" exist only in the Java version for now.
 
 - **Runtime docs**: docs are generated from code at startup (Java scans annotations, Go reads routes and struct tags); open `/csap-api.html`.
-- **Field rules**: annotations (Java), struct tags (Go), YAML files or SQLite / SQL decide which request parameters and response fields each endpoint shows; one model can show different fields in different endpoints. A **database mode** is planned for 1.4.0 (rules stored in MySQL / PostgreSQL / DM / KingbaseES with multi-instance sync, change history and rollback; Java and Go share the same tables), see [Database mode](https://apidoc.csap.ai/guide/database-mode) (Chinese); a Redis mode and a YAML / SQLite migration tool are also in progress for 1.4.0.
+- **Field rules**: annotations (Java), struct tags (Go), YAML files or SQLite / SQL decide which request parameters and response fields each endpoint shows; one model can show different fields in different endpoints. Since 1.4.0 rules can also be stored in a **database** (MySQL / PostgreSQL / DM / KingbaseES, with multi-instance sync, change history and rollback; Java and Go share the same tables; DM and KingbaseES are experimental) or in **Redis**, see [Database mode](https://apidoc.csap.ai/guide/database-mode) and [Redis mode](https://apidoc.csap.ai/guide/redis-mode) (Chinese).
 - **Try it out**: send requests from the docs page with environments, global headers, auth, request history and replay, and named snapshots you can import and export.
 - **Export**: OpenAPI 3.0, Postman v2.1 and Markdown from the docs page, or copy as TypeScript types.
 - **DevTools**: in development, pick fields and configure validation rules in a UI that writes back to YAML.
 - **Gateway aggregation** (Java): browse several services' docs from one page.
 - **Response field filtering** (Java since 1.2.0, off by default; in Go, endpoints with response rules are filtered by default): endpoints with rules return only the fields the docs show; Jackson, fastjson and fastjson2. See [Response field filtering](https://apidoc.csap.ai/guide/runtime-filter).
 - **Request validation** (Java since 1.2.0, off by default; off by default in Go too): off / observe / enforce modes with per-endpoint overrides. See [Validation](https://apidoc.csap.ai/guide/validation).
+- **Mock, JSON Schema, field library, endpoint status, API diff** (since 1.4.0): reproducible mock data generated from the docs, JSON Schema export / import, field templates, deprecated / stable status, and a Go CLI (`csap-apidoc-diff`) that detects breaking changes in CI. See the [guides](https://apidoc.csap.ai/guide/mock) (Chinese).
 - **Docs as MCP** (Java since 1.3.0, off by default): the service embeds `/csap/mcp`; every documented endpoint becomes a tool AI agents can call, GET only by default, with token auth and audit. See [MCP](https://apidoc.csap.ai/guide/mcp).
 
 ## Quick start (Java)
@@ -52,7 +53,7 @@ These work in both Java and Go (see the [Go guide](https://apidoc.csap.ai/go/) f
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.3.0</version>
+    <version>1.4.0</version>
 </dependency>
 ```
 
@@ -97,7 +98,7 @@ Why `forceReq` / `forceRep`, and how to choose fields per endpoint: see [Quick s
 ## Quick start (Go)
 
 ```bash
-go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.1
+go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.2.0
 ```
 
 ```go

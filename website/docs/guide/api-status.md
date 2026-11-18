@@ -1,16 +1,16 @@
-# 接口上下线管理（1.4.0 计划）
+# 接口上下线管理
 
-:::warning 1.4.0 计划，以 1.4.0 实现为准
-接口状态管理计划随 **Java 1.4.0（2026-12-22）** 发布，**当前已发布的版本没有**。本页按已审定的约定编写（设计见仓库 `docs/design/1.4.0-api-status.md`），具体行为以 1.4.0 实现为准。
+:::tip 1.4.0 新增
+接口状态管理从 **Java 1.4.0、Go v0.2.0** 起提供。设计见仓库 `docs/design/1.4.0-api-status.md`。
 :::
 
 ## 它解决什么问题
 
-接口有"开发中、完成、过时"三种状态（`ApiStatus`：`DEFAULT`、`FINISH`、`DEPRECATED`，见 [注解参考](/api/annotations#apistatus)），但目前只是个字段，文档页、导出和 AI 调用都不用它，DevTools 也不能改。这个功能让状态在文档页、OpenAPI 和 [MCP](/guide/mcp) 里可见，并能在 DevTools 里修改。
+接口有"开发中、完成、过时"三种状态（`ApiStatus`：`DEFAULT`、`FINISH`、`DEPRECATED`，见 [注解参考](/api/annotations#apistatus)），但 1.4.0 之前只是个字段，文档页、导出和 AI 调用都不用它，DevTools 也不能改。现在状态会在文档页、OpenAPI 和 [MCP](/guide/mcp) 里体现，并能在 DevTools 里修改。
 
 ## 有效状态怎么定
 
-按顺序取第一个有值的：
+按顺序取第一个有值的（Go 版是：规则存储里的 `status` > 代码里声明的状态 `Op(...).Deprecated()` > `DEFAULT`）：
 
 1. 规则存储里该接口的 `status`（在 DevTools 里改出来的）；
 2. 方法上 `@ApiOperation.status`（不是 `DEFAULT` 时）；

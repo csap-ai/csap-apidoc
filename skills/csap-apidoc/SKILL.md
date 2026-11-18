@@ -9,8 +9,8 @@ CSAP Apidoc 是**多语言的运行时 API 文档框架**:服务启动时从代�
 
 | 语言 | 当前版本 | 框架 | 详细写法 |
 |---|---|---|---|
-| Java | 1.3.0 | Spring Boot 2.x / 3.x | [references/java.md](references/java.md) |
-| Go | v0.1.1 | gin、net/http | [references/go.md](references/go.md) |
+| Java | 1.4.0 | Spring Boot 2.x / 3.x | [references/java.md](references/java.md) |
+| Go | v0.2.0 | gin、net/http | [references/go.md](references/go.md) |
 | 其他语言 | 规划中 | | 见官网路线图,目前没有可用实现 |
 
 两种语言**共用**:文档数据协议(`/csap/apidoc*` 的 JSON)、文档页面 `/csap-api.html`、DevTools 前端、YAML 字段规则文件格式([references/yaml-rules.md](references/yaml-rules.md))。**接入方式、注解 / 标签、配置各不相同**,不要把一种语言的写法套到另一种上。
@@ -28,7 +28,7 @@ CSAP Apidoc 是**多语言的运行时 API 文档框架**:服务启动时从代�
 ## 共通概念
 
 - **运行时生成文档**:启动时扫描代码(Java 扫注解,Go 读路由、结构体和标签)生成文档,访问 `/csap-api.html` 查看,页面内可以直接调试接口(环境、全局请求头、鉴权、历史、快照)。
-- **字段规则**:同一个模型在不同接口里可以显示不同字段,所以字段默认不会出现在每个接口里,要被"选中"。选中的来源:代码里的标记(Java 的 `forceReq` / `forceRep`,Go 的 `doc_force`)、YAML 规则文件、SQL / SQLite(Java 的 SQLite;Go 的 SQLite / PostgreSQL / MySQL)。**数据库模式**(规则存进应用自己的 MySQL / PostgreSQL / 达梦 / 人大金仓,Java 与 Go 共用同一套表)计划随 Java 1.4.0 / Go v0.2.0 发布,Redis 模式也随 1.4.0 / Go v0.2.0 发布(当前版本没有):当前版本(Java 1.3.0、Go v0.1.1)没有,不要给用户写 `paramType = DATABASE` 之类的配置(Java 1.4.0 起才有);用户问多实例共享规则时,如实说明 1.4.0 计划提供,现在可用 Go 的 SQL 来源,Java 只有各实例各自的 YAML / SQLite。Java 另有注解策略下的 `@Group`(1.3.0 起弃用,2.0 删除,新代码不要用,改用 YAML / SQLite 规则)。
+- **字段规则**:同一个模型在不同接口里可以显示不同字段,所以字段默认不会出现在每个接口里,要被"选中"。选中的来源:代码里的标记(Java 的 `forceReq` / `forceRep`,Go 的 `doc_force`)、YAML 规则文件、SQL / SQLite(Java 的 SQLite;Go 的 SQLite / PostgreSQL / MySQL)。**数据库模式**(规则存进应用自己的 MySQL / PostgreSQL / 达梦 / 人大金仓,Java 与 Go 共用同一套表)和 **Redis 模式**从 Java 1.4.0 / Go v0.2.0 起提供;更早的版本没有,不要给 1.3.x 及以前的 Java 项目写 `paramType = DATABASE` / `REDIS`。达梦、人大金仓在 1.4.0 没有在真实库上验证(试用),Redis 集群 / 哨兵 / 认证未实测。用户问多实例共享规则时,1.4.0 起用数据库模式或 Redis 模式。Java 另有注解策略下的 `@Group`(1.3.0 起弃用,2.0 删除,新代码不要用,改用 YAML / SQLite 规则)。
 - **返回字段过滤**:让接口实际返回的 JSON 只含文档里显示的字段。Java 1.2.0 起可用,**默认关闭**(`csap.apidoc.runtime.filter.enabled`);Go 需要注册 `ResponseFilter` 中间件,注册后配了返回规则的接口才会过滤(默认路径白名单模式,`apidoc.Options.FilterMode` 可改)。
 - **请求参数校验**:按规则校验必填、正则、长度等。Java 1.2.0 起可用,**默认关闭**(`csap.validation.mode`);Go 的 `validate.Options.Mode` 默认也是 `Off`。都有 `observe`(只记录不拦截)和 `enforce`(拦截)两种开启方式,建议先观察。
 - **DevTools**:开发阶段的后台页面 `/devtools-ui`,勾选字段、配置校验规则并写回规则文件。**两种语言默认都不开启,不要在生产环境开启**;Go 必须配置鉴权才能创建。
@@ -63,7 +63,7 @@ CSAP Apidoc 是**多语言的运行时 API 文档框架**:服务启动时从代�
 
 两个要特别说清楚的差别:
 
-- **非必填字段的校验**:同一份 YAML 规则在 Go 上比当前 Java(1.2.0 / 1.3.0)更严格:非必填字段传了值,Go 也校验,Java 不校验。已定 **1.4.0 起 Java 向 Go 对齐**(以 Go 为准,Java 提供开关可恢复旧行为);对 1.3.0 及以前的 Java 项目,不要承诺两边一致。
+- **非必填字段的校验**:同一份 YAML 规则在 Go 上比 Java 1.2.0 / 1.3.0 更严格:非必填字段传了值,Go 也校验,Java 不校验。**Java 1.4.0 起已向 Go 对齐**(以 Go 为准,`csap.validation.optional-field-rules=skip` 可恢复旧行为);对 1.3.0 及以前的 Java 项目,不要承诺两边一致。
 - **YAML 文件名**:给 Java 项目写规则文件务必以 `-method-field.yaml` 结尾;只在 Go 项目里使用时 `.yml` 也行,但两边共用同一份文件时按 Java 的要求命名。
 
 ## 通过 MCP 查询和调试接口(Java 1.3.0 起,Go 暂无)

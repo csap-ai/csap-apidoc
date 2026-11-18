@@ -1,6 +1,6 @@
 # 常见问题
 
-本页收集使用 CSAP Apidoc 时的常见问题，当前版本 1.3.0；个别问题只出现在 1.1.0 或 1.1.1，会在问题里注明。每条答案都以当前代码为准。
+本页收集使用 CSAP Apidoc 时的常见问题，当前版本 1.4.0；个别问题只出现在 1.1.0 或 1.1.1，会在问题里注明。每条答案都以当前代码为准。
 
 :::info 适用范围
 本页的问题主要针对 **Java 版**。Go 版的接入见 [Go 版](/go/)。
@@ -10,7 +10,7 @@
 
 ### 需要引入哪些依赖？
 
-只需要 `ai.csap.apidoc.boot:csap-apidoc-boot-starter`，版本 `1.3.0`。`ai.csap.apidoc.boot:csap-validation-boot-starter` 是可选的，需要运行时参数校验、它的校验异常处理器或 `ValidationProperties` 时引入。文档页面、存储策略、DevTools 和返回字段过滤已经包含在文档 starter 中，不需要再单独引入 `csap-apidoc-ui`、`csap-apidoc-devtools` 或 `csap-apidoc-runtime`。见 [安装](/guide/installation)。
+只需要 `ai.csap.apidoc.boot:csap-apidoc-boot-starter`，版本 `1.4.0`。`ai.csap.apidoc.boot:csap-validation-boot-starter` 是可选的，需要运行时参数校验、它的校验异常处理器或 `ValidationProperties` 时引入。文档页面、存储策略、DevTools 和返回字段过滤已经包含在文档 starter 中，不需要再单独引入 `csap-apidoc-ui`、`csap-apidoc-devtools` 或 `csap-apidoc-runtime`。见 [安装](/guide/installation)。
 
 ### 只引入文档 starter，为什么接口出不来？
 
@@ -131,7 +131,7 @@ csap:
 
 - 在 IDE 或 `mvn spring-boot:run` 中运行，规则写回 `src/main/resources`；
 - 改用 `@EnableApidoc(paramType = ApiStrategyType.SQL_LITE)`：打包运行时规则保存在 jar 外、启动目录下的 `./csap-api-doc/apidoc.db`（随 `path`、`fileName` 变化），重启后仍在；
-- [数据库模式](/guide/database-mode)（MySQL / PostgreSQL / 达梦 / 人大金仓）计划在 1.4.0 提供，当前版本没有；1.4.0 还计划提供 [Redis 模式](/guide/redis-mode)（当前版本没有）。
+- 1.4.0 起可以用 [数据库模式](/guide/database-mode)（MySQL / PostgreSQL / 达梦 / 人大金仓）或 [Redis 模式](/guide/redis-mode)，规则存进应用自己的数据库或 Redis，多实例同步。
 
 各策略的实测结果见 [存储策略 - 打包运行时能否在 DevTools 保存](/guide/storage-strategies#打包运行时能否在-devtools-保存)。
 

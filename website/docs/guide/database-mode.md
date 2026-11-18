@@ -1,7 +1,7 @@
 # 数据库模式
 
-:::warning 1.4.0 计划中，实现进行中
-数据库模式计划随 **Java 1.4.0（2026-12-22）** 和 **Go v0.2.0** 发布，当前已发布的版本（Java 1.3.0、Go v0.1.1）**没有**这个功能。本页按已审定的方案编写，细节以发布时的代码为准。设计文档见 [database-mode.md](https://github.com/csap-ai/csap-apidoc/blob/main/docs/design/database-mode.md)。
+:::tip 1.4.0 新增
+数据库模式从 **Java 1.4.0、Go v0.2.0** 起提供。设计文档见 [database-mode.md](https://github.com/csap-ai/csap-apidoc/blob/main/docs/design/database-mode.md)。达梦、人大金仓在 1.4.0 **没有在真实数据库上验证**，属于试用；MySQL、PostgreSQL 有集成测试。
 :::
 
 数据库模式把字段规则存进业务**已有的关系数据库**，而不是 classpath 里的 YAML 文件或单机的 SQLite 文件。支持 MySQL / MariaDB、PostgreSQL、达梦（DM8）、人大金仓（KingbaseES），SQLite 保留用于单机和开发环境。**Java 与 Go 使用同一套表**，同一个库里两种语言的服务可以各存各的规则，DevTools 和后续的团队版读写的也是这套表。
@@ -310,10 +310,6 @@ DevTools 的侧栏有「规则记录」页（`/devtools-ui/rules`），页面语
 
 ## 迁移
 
-:::warning 1.4.0 计划
-迁移工具随 1.4.0 发布，当前版本没有。
-:::
-
 迁移工具在以下存储之间搬运规则，规则内容是同一种 JSON 结构，不做转换：
 
 | 方向 | 用途 |
@@ -326,7 +322,8 @@ DevTools 的侧栏有「规则记录」页（`/devtools-ui/rules`），页面语
 - **默认不覆盖**：目标里已有且内容相同的规则算"已一致"，内容不同的算"冲突"并跳过，在报告里列出；设置 `overwrite=true` 才覆盖。
 - **可以回滚**：导入按一次保存写入，修改人是 `migrate`，在修改记录里能看到、能回滚；内容相同的规则不写，不产生记录。
 - **其他实例同步**：导入完成后，当前实例立即重新加载，其他实例按轮询或订阅同步。
-- 空规则（没有任何字段）会被忽略。
+- 空规则（没有任何字段）会被忽略；
+- **不搬运字段库的项目模板**（保留键 `@templates`），项目模板需要另行迁移。
 
 ### Java
 
@@ -367,7 +364,7 @@ Go v0.2.0 的 SQL 规则来源改用上面这套表，Java 与 Go 的服务可�
 
 ## Redis 模式
 
-没有关系数据库、或希望规则跟随已有 Redis 时，见 [Redis 模式](/guide/redis-mode)（1.4.0 计划）。
+没有关系数据库、或希望规则跟随已有 Redis 时，见 [Redis 模式](/guide/redis-mode)。
 
 ## 相关页面
 

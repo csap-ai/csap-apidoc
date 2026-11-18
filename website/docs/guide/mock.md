@@ -1,7 +1,7 @@
-# Mock 服务（1.4.0 计划）
+# Mock 服务
 
-:::warning 1.4.0 计划，以 1.4.0 实现为准
-Mock 服务计划随 **Java 1.4.0（2026-12-22）** 发布，Go 同步实现，**当前已发布的版本没有**。本页按已审定的约定编写（设计见仓库 `docs/design/1.4.0-mock-schema.md`），具体行为以 1.4.0 实现为准，发布前会核对。
+:::tip 1.4.0 新增
+Mock 服务从 **Java 1.4.0、Go v0.2.0** 起提供。设计与黄金样本见仓库 `docs/design/1.4.0-mock-schema.md`。Mock 默认关闭，不要在生产环境开启。
 :::
 
 ## 它解决什么问题
@@ -26,6 +26,7 @@ csap:
       seed: csap         # 随机种子，默认 csap（结果可复现）；random = 每次请求都不同
       array-size: 2      # 数组默认长度，0~10
       max-depth: 6       # 对象嵌套深度上限，1~20
+      heuristics: true   # 字段名启发式，默认开启
       delay-ms: 0        # 每次响应前固定等待毫秒数，调试 loading 状态用
 ```
 
@@ -47,7 +48,7 @@ curl -X POST http://localhost:8080/csap/mock/api/users/42
 
 - **可复现**：同一个种子、同一个接口，每次生成的数据一样（按字段路径派生，与生成顺序无关）；Java 与 Go 的结果一致；
 - **取值优先级**：规则里的 `mock` → 字段示例 `example` → 默认值 → 枚举 → 数值约束（`Min` / `Max`）→ 按字段名的启发式 → 类型默认值；
-- **字段名启发式**：默认开启，按字段名生成更像样的数据（`email`、手机号、`name`、各类 id、`url`、页码、`age` 等）；有开关 `heuristics` 可以关闭（以实现为准）；
+- **字段名启发式**：默认开启，按字段名生成更像样的数据（`email`、手机号、`name`、各类 id、`url`、页码、`age` 等）；可以用 `csap.apidoc.mock.heuristics=false` 关闭；
 - 字符串长度、数组长度会按 `Length` / `Size` / `NotEmpty` 校验收紧；正则（`Pattern`）不参与生成，需要符合正则的值请用 `example` 或 `mock` 指定。
 
 ### 在规则里指定 Mock 值
@@ -71,6 +72,25 @@ demo.UserController:
 ## 在文档页里使用
 
 Mock 开启后，文档页的"在线调试"环境里会多一个预设环境"Mock"，选中后请求发往 Mock，响应上显示"Mock"标记；没开启时不显示。对应的探测接口是 `GET /csap/mock-status`。
+
+## Go
+
+Go 版用 `apidoc.Options.Mock`：
+
+```go
+doc := apidoc.New(apidoc.Options{
+    Mock: apidoc.MockOptions{
+        Enabled: true,
+        // Seed: "csap",             // "random" 每次请求用新种子
+        // ArraySize: mock.Size(2),  // 数组默认长度 0~10
+        // MaxDepth: 6,              // 嵌套深度上限 1~20
+        // DelayMs: 0,
+        // DisableHeuristics: false, // 关闭字段名启发式
+    },
+})
+```
+
+访问控制沿用 `Options.DocAuth`；规则里的 `mock` 键、取值规则、Java 与 Go 生成的数据一致。详见仓库 `csap-apidoc-go/docs/MOCK.md`。
 
 ## 相关页面
 

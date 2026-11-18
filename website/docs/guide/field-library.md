@@ -1,12 +1,12 @@
-# 字段库与模板（1.4.0 计划）
+# 字段库与模板
 
-:::warning 1.4.0 计划，以 1.4.0 实现为准
-字段库与模板计划随 **Java 1.4.0（2026-12-22）** 发布，Go 同步读取同一份模板，**当前已发布的版本没有**。本页按已审定的约定编写（设计见仓库 `docs/design/1.4.0-field-library.md`），具体行为以 1.4.0 实现为准。
+:::tip 1.4.0 新增
+字段库与模板从 **Java 1.4.0、Go v0.2.0**（`fieldlib` 包）起提供，两种语言读取同一份模板文件。设计见仓库 `docs/design/1.4.0-field-library.md`。
 :::
 
 ## 它解决什么问题
 
-现在只有内置的正则模板（`PATTERN_00` 起的校验正则）。但一个字段通常要同时配说明、示例、必填和一组校验规则（例如"手机号"），每个接口的每个字段都得重复配一遍，团队里写法也不一致。字段库把这一整套存成**模板**，在任何接口的任何字段上一键套用。
+1.4.0 之前只有内置的正则模板（`PATTERN_00` 起的校验正则）。但一个字段通常要同时配说明、示例、必填和一组校验规则（例如"手机号"），每个接口的每个字段都得重复配一遍，团队里写法也不一致。字段库把这一整套存成**模板**，在任何接口的任何字段上一键套用。
 
 ## 模板格式
 
@@ -35,7 +35,7 @@ templates:
 
 | 层 | 内容 | 位置 |
 |----|------|------|
-| 内置模板 | 随 jar 发布的常用字段（手机号、邮箱、身份证、URL、页码、日期、金额等） | jar 内 `META-INF/csap-apidoc/field-templates.yaml`；只读 |
+| 内置模板 | 随 jar 发布的 16 条常用字段（手机号、邮箱、身份证、URL、页码、日期、金额等），Go 内嵌同一份文件 | jar 内 `META-INF/csap-apidoc/field-templates.yaml`；只读 |
 | 项目模板 | 团队自己的模板 | 跟着规则存储走：数据库 / Redis 里保留键 `@templates`；YAML / JSON 文件放在 `{path}/field-template/api-field-template.yaml` |
 
 `ANNOTATION` 模式只有内置模板。内置与项目模板同名时，项目模板覆盖内置。以 `@` 开头的规则键不是接口规则，所有读取方会跳过它。项目模板跟随规则存储，所以多实例同步、修改记录、回滚、备份都不用另外做。
@@ -60,6 +60,14 @@ templates:
 :::warning 升级注意
 旧版本 Java DevTools 重写规则时会丢掉新增的 `template`、`example`；旧版本读到 `@templates` 会按"规则键格式不对"忽略并打一条警告。数据库、Redis 模式下多实例请一次全部升级。
 :::
+
+## Go
+
+Go 版在 `fieldlib` 包里：`fieldlib.Builtin()`（内置 16 条，与 Java 是同一份文件）、`fieldlib.Merge`（项目覆盖内置）、`fieldlib.Preview` / `fieldlib.Apply`（套用）。DevTools 接口相同。详见仓库 `csap-apidoc-go/docs/FIELD-LIBRARY.md`。
+
+## 已知限制
+
+- 迁移工具（`csap-apidoc-migrate`）**不搬运** `@templates`，项目模板需要另行迁移（例如导出模板文件后手工放到目标位置）；
 
 ## 相关页面
 
