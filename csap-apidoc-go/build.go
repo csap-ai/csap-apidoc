@@ -55,9 +55,13 @@ func (b *builder) method(info GroupInfo, op *Operation, httpMethod, rawPath, nam
 	if title == "" {
 		title = name
 	}
-	status := op.status
-	if status == "" {
-		status = model.StatusDefault
+	// 有效状态:规则存储里的覆盖 > 代码里的声明(不是 DEFAULT 时)> DEFAULT。DEFAULT 的声明视为"没标"。
+	status := model.StatusDefault
+	switch {
+	case strategy.ValidStatus(mr.Status):
+		status = mr.Status
+	case op.status != "" && op.status != model.StatusDefault:
+		status = op.status
 	}
 	tags := op.tags
 	if tags == nil {
@@ -84,6 +88,7 @@ func (b *builder) method(info GroupInfo, op *Operation, httpMethod, rawPath, nam
 		Search:        uniq(op.description, title),
 		SimpleName:    simpleName(info.Name),
 		Status:        status,
+		StatusNote:    mr.StatusNote,
 		Tags:          tags,
 		Value:         title,
 		Version:       []string{model.Default},

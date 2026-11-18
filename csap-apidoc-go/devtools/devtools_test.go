@@ -474,3 +474,38 @@ func TestUIAndRoutes(t *testing.T) {
 		t.Fatalf("ui disabled: %d", rec.Code)
 	}
 }
+
+func TestSetStatus(t *testing.T) {
+	mem := strategy.NewMemory(nil)
+	doc, dt := newTools(t, mem)
+	status := func() (string, string) {
+		m := doc.Snapshot().Method(group, group+".get")
+		return m.Status, m.StatusNote
+	}
+	ok(t, dt, "POST", "/csap/yaml/setStatus", map[string]any{"className": group, "methodName": "get", "status": "DEPRECATED", "statusNote": "请改用 /v2"}, nil)
+	if s, n := status(); s != "DEPRECATED" || n != "请改用 /v2" {
+		t.Fatalf("%s %s", s, n)
+	}
+	// 只有状态的规则保存后还在(不当空规则删除),并留修改记录
+	rs, _ := mem.Load(context.Background())
+	if rs[group+".get"].Status != "DEPRECATED" {
+		t.Fatalf("%+v", rs)
+	}
+	// 再保存字段规则不丢状态
+	ok(t, dt, "POST", "/csap/yaml/addResponseParam", map[string]any{
+		"className": group, "methodName": "get",
+		"returnType": map[string]any{"appendName": "", "modelType": "T_OBJECT", "packageName": "x", "fields": []any{map[string]any{"name": "code", "dataType": "String"}}},
+	}, nil)
+	if s, _ := status(); s != "DEPRECATED" {
+		t.Fatalf("保存字段规则丢了状态: %s", s)
+	}
+	// null 清除覆盖
+	ok(t, dt, "POST", "/csap/yaml/setStatus", map[string]any{"className": group, "methodName": "get", "status": nil}, nil)
+	if s, n := status(); s != "DEFAULT" || n != "" {
+		t.Fatalf("%s %s", s, n)
+	}
+	// 非法状态
+	if rec, res := call(t, dt, "POST", "/csap/yaml/setStatus", map[string]any{"className": group, "methodName": "get", "status": "BOGUS"}); rec.Code != 200 || res.Success {
+		t.Fatalf("非法状态应失败: %s", rec.Body.String())
+	}
+}

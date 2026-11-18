@@ -70,6 +70,7 @@ func (d *Devtools) serveAPI(w http.ResponseWriter, r *http.Request) {
 		"/csap/yaml/writeFieldMethod":        {http.MethodPost, d.writeFieldMethod},
 		"/csap/yaml/history":                 {http.MethodGet, d.history},
 		"/csap/yaml/rollback":                {http.MethodPost, d.rollback},
+		"/csap/yaml/setStatus":               {http.MethodPost, d.setStatus},
 		"/devtools/getFields":                {http.MethodPost, d.getFields},
 		"/devtools/hiddenMethod":             {http.MethodPost, d.hiddenMethod},
 	}
@@ -333,6 +334,41 @@ func (d *Devtools) rollback(_ http.ResponseWriter, r *http.Request) (any, error)
 	}
 	d.refresh(r.Context())
 	return map[string]int64{"version": v}, nil
+}
+
+// POST /csap/yaml/setStatus {"className","methodName","status","statusNote"}:设置接口状态(DEFAULT / FINISH / DEPRECATED)
+// 和备注,写进规则存储(有修改记录、可回滚)。status 传 null 表示清除覆盖,回到代码里的声明或默认。
+// 接口 1.4.0 新增,见 docs/design/1.4.0-api-status.md。
+func (d *Devtools) setStatus(_ http.ResponseWriter, r *http.Request) (any, error) {
+	var req struct {
+		ClassName  string  `json:"className"`
+		MethodName string  `json:"methodName"`
+		Status     *string `json:"status"`
+		StatusNote string  `json:"statusNote"`
+	}
+	if err := decodeBody(r, &req); err != nil {
+		return nil, err
+	}
+	if req.ClassName == "" || req.MethodName == "" {
+		return nil, errors.New("className、methodName 必填")
+	}
+	if req.Status != nil && !strategy.ValidStatus(*req.Status) {
+		return nil, fmt.Errorf("status 只能是 DEFAULT / FINISH / DEPRECATED,当前 %q", *req.Status)
+	}
+	key := strategy.Key(req.ClassName, req.MethodName)
+	rules, err := d.storeRules(r.Context(), key)
+	if err != nil {
+		return nil, err
+	}
+	if req.Status == nil {
+		rules.Status, rules.StatusNote = "", ""
+	} else {
+		rules.Status, rules.StatusNote = *req.Status, req.StatusNote
+	}
+	if err := d.save(r, key, rules); err != nil {
+		return nil, err
+	}
+	return true, nil
 }
 
 // ---------- 写入 ----------

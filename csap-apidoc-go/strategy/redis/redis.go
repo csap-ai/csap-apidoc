@@ -122,6 +122,9 @@ func (s *Strategy) Load(ctx context.Context) (strategy.Rules, error) {
 	out := strategy.Rules{}
 	var errs []error
 	for key, raw := range all {
+		if strategy.ReservedKey(key) {
+			continue // @templates 等保留键不是接口规则
+		}
 		var mr strategy.MethodRules
 		if err := json.Unmarshal([]byte(raw), &mr); err != nil {
 			errs = append(errs, fmt.Errorf("apidoc/redis: rule %s: %w", key, err))

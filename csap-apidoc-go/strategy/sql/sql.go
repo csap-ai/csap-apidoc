@@ -393,6 +393,9 @@ func (s *Strategy) Load(ctx context.Context) (strategy.Rules, error) {
 		if err := rows.Scan(&key, &raw); err != nil {
 			return nil, err
 		}
+		if strategy.ReservedKey(key) {
+			continue // @templates 等保留键不是接口规则
+		}
 		var mr strategy.MethodRules
 		if err := json.Unmarshal([]byte(raw), &mr); err != nil {
 			errs = append(errs, fmt.Errorf("apidoc/sql: rule %s: %w", key, err))
@@ -428,7 +431,7 @@ func (s *Strategy) Save(ctx context.Context, key string, rules strategy.MethodRu
 	if by == "" {
 		by = "unknown" // 达梦 / Oracle 兼容模式会把空串当成 NULL
 	}
-	empty := len(rules.Request) == 0 && len(rules.Response) == 0
+	empty := rules.IsEmpty()
 	var after []byte
 	if !empty {
 		var err error

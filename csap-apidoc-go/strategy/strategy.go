@@ -3,6 +3,7 @@ package strategy
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 )
 
@@ -32,11 +33,31 @@ type FieldRule struct {
 	Validate    []ValidateRule `json:"validate,omitempty" yaml:"validate,omitempty"`
 }
 
-// MethodRules 是一个接口的全部字段规则。
+// MethodRules 是一个接口的全部字段规则,以及可选的上下线状态(见 docs/design/1.4.0-api-status.md)。
 type MethodRules struct {
 	Request  map[string]FieldRule `json:"request,omitempty" yaml:"request,omitempty"`
 	Response map[string]FieldRule `json:"response,omitempty" yaml:"response,omitempty"`
+	// Status 是接口状态的覆盖值:DEFAULT(开发中)/ FINISH(完成)/ DEPRECATED(过时)。
+	// 空表示没有覆盖;不认识的值按没有处理(向前兼容)。
+	Status string `json:"status,omitempty" yaml:"status,omitempty"`
+	// StatusNote 是状态备注,如替代接口、下线时间。
+	StatusNote string `json:"statusNote,omitempty" yaml:"statusNote,omitempty"`
 }
+
+// 接口状态,与 Java ApiStatus 的名字一致(大小写敏感)。
+const (
+	StatusDefault    = "DEFAULT"
+	StatusFinish     = "FINISH"
+	StatusDeprecated = "DEPRECATED"
+)
+
+// ValidStatus 判断是不是认识的状态值。
+func ValidStatus(s string) bool {
+	return s == StatusDefault || s == StatusFinish || s == StatusDeprecated
+}
+
+// ReservedKey 判断规则键是不是保留键:以 @ 开头的不是接口规则(如 @templates),各规则来源加载时跳过。
+func ReservedKey(key string) bool { return strings.HasPrefix(key, "@") }
 
 // Rules 的键为 Key(group, name)。
 type Rules map[string]MethodRules
@@ -68,6 +89,12 @@ func Merge(all ...Rules) Rules {
 			cur := out[k]
 			cur.Request = mergeFields(cur.Request, mr.Request)
 			cur.Response = mergeFields(cur.Response, mr.Response)
+			if ValidStatus(mr.Status) {
+				cur.Status = mr.Status
+			}
+			if mr.StatusNote != "" {
+				cur.StatusNote = mr.StatusNote
+			}
 			out[k] = cur
 		}
 	}

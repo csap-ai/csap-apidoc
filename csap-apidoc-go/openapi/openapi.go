@@ -62,11 +62,21 @@ func operation(m *model.Method, tag, verb string) map[string]any {
 		"summary":     m.Value,
 		"tags":        []string{tag},
 	}
-	if m.Description != "" {
-		op["description"] = m.Description
+	desc := m.Description
+	if m.StatusNote != "" {
+		if desc != "" {
+			desc += "\n\n"
+		}
+		desc += m.StatusNote
+	}
+	if desc != "" {
+		op["description"] = desc
 	}
 	if m.Status == model.StatusDeprecated {
 		op["deprecated"] = true
+	}
+	if m.Status == model.StatusFinish || m.Status == model.StatusDeprecated {
+		op["x-csap-status"] = m.Status // DEFAULT(开发中)不输出
 	}
 	var params []any
 	body := map[string]any{}  // 属性名 -> schema

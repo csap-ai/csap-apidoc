@@ -156,9 +156,11 @@ type Method struct {
 	Search            []string           `json:"search"`
 	SimpleName        string             `json:"simpleName"`
 	Status            string             `json:"status"`
-	Tags              []string           `json:"tags"`
-	Value             string             `json:"value"`
-	Version           []string           `json:"version"`
+	// StatusNote 是接口状态的备注(如替代接口),没有时不输出。
+	StatusNote string   `json:"statusNote,omitempty"`
+	Tags       []string `json:"tags"`
+	Value      string   `json:"value"`
+	Version    []string `json:"version"`
 }
 
 // GlobalHeaderHint 对应 Java CsapDocGlobalHeaderHint(@DocGlobalHeader):
