@@ -1,12 +1,12 @@
 # 常见问题
 
-本页收集使用 CSAP Apidoc 1.1.x 时的常见问题。每条答案都以当前代码为准。
+本页收集使用 CSAP Apidoc 时的常见问题，当前版本 1.2.0；个别问题只出现在 1.1.0 或 1.1.1，会在问题里注明。每条答案都以当前代码为准。
 
 ## 安装与依赖
 
 ### 需要引入哪些依赖？
 
-只需要 `ai.csap.apidoc.boot:csap-apidoc-boot-starter`，版本 `1.1.1`。`ai.csap.apidoc.boot:csap-validation-boot-starter` 是可选的，只在需要它的校验异常处理器或 `ValidationProperties` 时引入。文档页面、存储策略和 DevTools 已经包含在文档 starter 中，不需要再单独引入 `csap-apidoc-ui` 或 `csap-apidoc-devtools`。见 [安装](/guide/installation)。
+只需要 `ai.csap.apidoc.boot:csap-apidoc-boot-starter`，版本 `1.2.0`。`ai.csap.apidoc.boot:csap-validation-boot-starter` 是可选的，需要运行时参数校验、它的校验异常处理器或 `ValidationProperties` 时引入。文档页面、存储策略、DevTools 和返回字段过滤已经包含在文档 starter 中，不需要再单独引入 `csap-apidoc-ui`、`csap-apidoc-devtools` 或 `csap-apidoc-runtime`。见 [安装](/guide/installation)。
 
 ### 只引入文档 starter，为什么接口出不来？
 
@@ -18,7 +18,7 @@
 
 ### 支持 Spring Boot 3 吗？
 
-支持。Spring Boot 2.x 和 3.x 使用同一套构件和版本号。仓库中有 `example/example-spring-boot2`（Spring Boot 2.7.18）和 `example/example-spring-boot3`（Spring Boot 3.2.0）两个示例。Spring Boot 3 需要 JDK 17 及以上，框架本身（1.1.1）需要 JDK 11 及以上。
+支持。Spring Boot 2.x 和 3.x 使用同一套构件和版本号。仓库中有 `example/example-spring-boot2`（Spring Boot 2.7.18）和 `example/example-spring-boot3`（Spring Boot 3.2.0）两个示例。Spring Boot 3 需要 JDK 17 及以上，框架本身（1.1.1 起）需要 JDK 11 及以上。
 
 1.1.0 在 Spring Boot 3 上不会注册 DevTools 的 HTTP 代理（`csap.apidoc.devtools.proxy.*`），1.1.1 已修复，见 [配置参考](/guide/configuration)。
 
@@ -108,11 +108,11 @@ DevTools 没有开启。确认当前生效的配置中有 `csap.apidoc.devtool.e
 
 ### 加了校验 starter，请求参数没有被校验
 
-运行时校验的拦截器只有在配置中**明确写了** `csap.validation.enabled: true` 时才会注册（条件是 `@ConditionalOnProperty(havingValue = "true")`，不写时不成立）。另外，1.1.x 中没有组件在请求处理时调用这个拦截器，即使开启，CSAP 规则校验也不会执行（计划 1.2.0 补上），需要自己接入，见 [参数校验](/guide/validation)。Spring 标准的 `@Valid` / `@Validated` 校验不受影响。
+1.2.0 起运行时校验默认关闭，需要在配置里开启：`csap.validation.mode: observe`（只记录不拦截）或 `enforce`（校验失败直接返回错误）；也可以只给个别接口在 `csap.validation.endpoints` 里写非 `off` 的模式。旧开关 `csap.validation.enabled: true` 仍然有效，等价于 `enforce`。另外，规则在文档扫描完成后才生效，并且只有必填字段的规则会执行，见 [参数校验](/guide/validation)。1.1.x 中没有组件在请求处理时执行规则，开启也没有效果。Spring 标准的 `@Valid` / `@Validated` 校验不受影响。
 
 ### 引入校验 starter 后，项目原有的参数错误返回格式变了
 
-校验 starter 会注册全局异常处理 `ValidateExceptionHandler`（`@ControllerAdvice`，`@Order(1)`），处理 `BindException`、`MethodArgumentNotValidException`、`MethodArgumentTypeMismatchException`、`ConstraintViolationException` 和 `ValidateException`，以 HTTP 200 返回 `ApidocResult` 格式。如果需要保留原有格式，声明一个你自己的 `ValidateExceptionHandler` 类型的 Bean 即可替换它（它带有 `@ConditionalOnMissingBean`）。
+校验 starter 会注册全局异常处理 `ValidateExceptionHandler`（`@ControllerAdvice`，`@Order(1)`），处理 `BindException`、`MethodArgumentNotValidException`、`MethodArgumentTypeMismatchException`、`ConstraintViolationException` 和 `ValidateException`，默认以 HTTP 200 返回 `ApidocResult` 格式（状态码可用 `csap.validation.http-status` 修改）。如果需要保留原有格式，声明一个你自己的 `ValidateExceptionHandler` 类型的 Bean 即可替换它（它带有 `@ConditionalOnMissingBean`）。
 
 ## 访问与安全
 

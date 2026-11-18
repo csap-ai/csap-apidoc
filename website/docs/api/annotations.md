@@ -1,6 +1,6 @@
 # 注解参考
 
-本页列出 CSAP Apidoc 1.1.1 全部注解及其属性，内容按 `csap-apidoc-annotation` 模块的源码整理。用法和示例见 [注解使用指南](/guide/annotations)。
+本页列出 CSAP Apidoc 1.2.0 全部注解及其属性，内容按 `csap-apidoc-annotation` 模块的源码整理。用法和示例见 [注解使用指南](/guide/annotations)。
 
 注解都在 `ai.csap.apidoc.annotation` 包下（`@EnableApidoc` 除外）。表格「说明」一栏标注「未读取」的属性，目前没有代码使用它，设置后不影响文档。
 
@@ -106,7 +106,7 @@
 | `hidden` | `boolean` | `false` | 标记为隐藏 |
 | `example` | `String` | `""` | 示例值 |
 | `defaultValue` | `String` | `""` | 默认值 |
-| `required` | `boolean` | `false` | 是否必填。注解策略下，为 `true` 时参数的校验规则才会登记到运行时校验；YAML / SQLite 策略下以规则中的 `required` 为准。见 [参数校验](/guide/validation) |
+| `required` | `boolean` | `false` | 是否必填。注解策略下，为 `true` 时参数的校验规则才会登记到运行时校验；文档里显示的必填取规则中的 `required` 与 `@ApiProperty.required` 的「或」；是否登记到运行时校验只看规则的 `required`（YAML / SQLite 策略下）。见 [参数校验](/guide/validation) |
 | `paramType` | `ParamType` | `QUERY` | 参数位置。参数带 `@PathVariable` 时为 `PATH` |
 | `group` | `String[]` | `"default"` | 分组；保持默认时继承方法 |
 | `version` | `String[]` | `"default"` | 版本；保持默认时继承方法 |
@@ -220,7 +220,7 @@
 | `example` | `String` | `""` | 示例值，UI 用作输入框默认值 |
 | `required` | `boolean` | `false` | 是否必填，UI 高亮提示 |
 
-合并规则：包、类、方法三处声明合并，同名按 方法 > 类 > 包 覆盖。结果输出在接口数据的 `globalHeaderHints` 字段。
+合并规则：包、类、方法三处声明合并，同名按 方法 > 类 > 包 覆盖。这两个注解不继承：写在接口、父类上不会生效；包级只读 Controller 所在包本身的 `package-info.java`。结果输出在接口数据的 `globalHeaderHints` 字段。
 
 ## @DocAuth
 
@@ -255,7 +255,7 @@
 
 ## @DataTypeValidate
 
-标注位置：字段、参数。由 `csap-validation-boot-starter` 中的异常处理器读取。
+标注位置：字段、参数。由 `csap-validation-boot-starter` 注册的 `ValidateExceptionHandler`（类在 `csap-validation-core`）读取。
 
 | 属性 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|

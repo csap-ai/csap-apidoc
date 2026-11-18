@@ -1,6 +1,6 @@
 # csap-apidoc-go
 
-CSAP Apidoc 的 Go 实现,协议为 Apache-2.0。与 Java 版(1.1.x)协议兼容。
+CSAP Apidoc 的 Go 实现,协议为 Apache-2.0。与 Java 版(1.1.x、1.2.0)协议兼容,返回过滤和校验的行为对齐 Java 1.2.0。
 
 - **运行时生成接口文档**:启动时从路由、结构体和字段规则生成文档,规则改了不用重启。文档页面与 Java 版是同一份。
 - **控制文档里显示哪些字段**:每个接口的请求参数和返回字段都可以单独设成显示或隐藏。
@@ -70,6 +70,7 @@ ginadapter.MountDevtools(r, devtools.MustNew(doc, devtools.Options{
 ## 用法(标准库 net/http)
 
 ```go
+// doc、v(validate.New)、dt(devtools.New)的创建方式同上面的 gin 示例
 import nethttpadapter "github.com/csap-ai/csap-apidoc/csap-apidoc-go/adapter/nethttp"
 
 mux := http.NewServeMux()
@@ -86,7 +87,7 @@ go run ./examples/gin-basic      # http://localhost:8080/csap-api.html、/devtoo
 go run ./examples/nethttp-basic  # http://localhost:8081/csap-api.html、/devtools-ui
 ```
 
-示例的后台默认只允许本机访问;设置 `CSAP_DEVTOOLS_PASSWORD` 后改为 Basic 认证(用户名 admin)。标签说明、请求参数位置的推断规则见 [docs/DESIGN.md](docs/DESIGN.md) 第 3.1 节。
+示例的后台默认只允许本机访问;设置 `CSAP_DEVTOOLS_PASSWORD` 后改为 Basic 认证(用户名 admin)。标签说明、请求参数位置的推断规则见 [docs/DESIGN.md](docs/DESIGN.md) 第 3.1.1、3.1.2 节。
 
 ## 接口
 

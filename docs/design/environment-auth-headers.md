@@ -1,7 +1,7 @@
 # Feature: Environment + Global Headers + Auth Schemes + Try-it-out
 
 > Branch: `feat/environment-auth-headers`
-> Status: **APPROVED — ready for M1**
+> Status: **IMPLEMENTED** — shipped in 1.1.1 (environments, global headers, auth schemes, try-it-out v2). User-facing docs: <https://apidoc.csap.ai/guide/testing>. The text below is the original design; where it differs from the website, the website wins.
 > Owner: yangchengfu
 > Last updated: 2026-04-18 (v2 — major rewrite after architecture clarification)
 

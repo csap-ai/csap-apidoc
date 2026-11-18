@@ -1,7 +1,6 @@
 # csap-apidoc-ui
 
 > 面向 **前端开发 / QA** 的多服务 API 文档工作台。
-> 当前分支:`feat/environment-auth-headers`(M1–M6 已落地,M8 测试 + 文档收尾中)。
 
 ---
 
@@ -29,7 +28,7 @@
   - `basic` — HTTP Basic
   - `apikey` — API Key(可放 header / query / cookie)
   - `oauth2_client` — OAuth2 Client Credentials(带 token 缓存)
-- **试运行 v2**(`<TryItOutPanel />`,API 详情页 `⚡ 试运行 v2` 标签):
+- **试运行 v2**(`<TryItOutPanel />`,API 详情页 「试运行 v2」标签):
   浏览器直发请求,显示真实状态码、耗时、响应头和响应体。
 - **凭据加密保险箱**(`<SettingsButton />` → 设置抽屉):PBKDF2-SHA256
   (200k iter)派生密钥 + AES-GCM 256 加密敏感字段,主密码模式可选,
@@ -39,17 +38,18 @@
 
 ## 3. 快速开始
 
-包管理器:**pnpm**(也支持 npm)。Node ≥ 18。
+包管理器:npm(仓库提供 `package-lock.json`)。
 
 ```bash
-pnpm install
-pnpm dev          # 默认 http://localhost:5173
-pnpm build        # tsc --noEmit + vite build,产物输出 dist/
-pnpm preview      # 预览构建产物
+npm install
+npm run dev              # 开发服务器(未设置 VITE_PORT 时为 Vite 默认端口 5173)
+npm run build            # tsc --noEmit + vite build,产物输出 dist/
+npm run preview          # 预览构建产物
+npm test                 # vitest 单元测试
+npm run test:e2e         # Playwright E2E(首次先运行 npm run test:e2e:install)
 ```
 
-> 当前 `package.json` 仅声明了 `dev` / `build` / `preview` 三个脚本。
-> M8a 之后会追加 `test` 等脚本,届时更新本节。
+`build.sh` 会构建前端、把 `dist/index.html` 重命名为 `csap-api.html`,并复制到 `src/main/resources/static` 后执行 `mvn clean install`,即后端引入的内嵌文档页。
 
 ### 环境变量
 
@@ -58,7 +58,8 @@ pnpm preview      # 预览构建产物
 
 | 变量 | 必填 | 用途 |
 |---|---|---|
-| `VITE_API_URL` | 是 | 默认指向的业务服务地址,如 `http://localhost:8080`。文档拉取 (`/csap/apidoc/*`) 与试运行均默认走这个值,可在运行时被「环境管理」里的 `baseUrl` 覆盖。 |
+| `VITE_API_URL` | 是 | 文档拉取(`/csap/apidoc/*`)与试运行默认使用的地址前缀,可在运行时被「环境管理」里的 `baseUrl` 覆盖。开发环境(`.env.development`)为 `/api`,由 `vite.config.ts` 代理到 `http://localhost:9281` 并去掉 `/api` 前缀,请把代理 `target` 改成你的业务服务地址;生产环境(`.env.production`)为空字符串,即与页面同源。 |
+| `VITE_PORT` | 否 | 开发服务器端口 |
 
 ---
 
@@ -78,7 +79,7 @@ pnpm preview      # 预览构建产物
 
 ### 4.2 配置全局请求头
 
-点顶栏 `Headers`(`<HeadersButton />`)打开三标签抽屉:
+点顶栏「请求头」(`<HeadersButton />`)打开三标签抽屉:
 
 | 作用域 | 何时生效 |
 |---|---|
@@ -92,7 +93,7 @@ header。**后者覆盖前者,同名键大小写不敏感**(`Authorization` 与
 
 ### 4.3 配置认证
 
-点顶栏 `Auth`(`<AuthButton />`)打开方案管理抽屉。每个方案绑定到
+点顶栏「认证」(`<AuthButton />`)打开方案管理抽屉。每个方案绑定到
 某个 `serviceUrl`,可选地按环境 ID(`envBindings`)切换凭据。
 
 | 类型 | 必填字段 |
@@ -109,14 +110,13 @@ header。**后者覆盖前者,同名键大小写不敏感**(`Authorization` 与
 
 ### 4.4 试运行
 
-进入任意接口详情页 → 切到 `⚡ 试运行 v2` 标签:
+进入任意接口详情页 → 切到「试运行 v2」标签:
 
 - **请求构造区**:从 API 定义自动生成路径参数 / 查询参数 / 请求头 /
   Body 表单,并用 doc 中的 `example` 预填。
 - **自动注入**:当前环境 `baseUrl`、合并后的全局请求头、绑定到本服务
-  的认证方案会在发送时自动拼装,Send 按钮上方的「Active context」
-  标签会显示 `Dev · 3 headers · Bearer` 这类小标。
-- **Body 类型**:JSON / Text / Binary 三选一(JSON 自动序列化)。
+  的认证方案会在发送时自动拼装。
+- **Body 类型**:无 Body / JSON / Plain Text 三选一。二进制响应不会在页面内展示。
 - **响应区**:三个子标签 — `Body`(按 Content-Type 自动美化)、
   `Headers`(键值表)、`Raw`(原始 HTTP 响应)。状态码徽章、耗时、
   响应大小一并显示。
@@ -125,13 +125,13 @@ header。**后者覆盖前者,同名键大小写不敏感**(`Authorization` 与
 
 ### 4.5 主密码与保险箱锁
 
-点顶栏 `Settings`(`<SettingsButton />`)→「保险箱」段:
+点顶栏「设置」(`<SettingsButton />`)→「Vault 加密」段:
 
-1. 切换「加密模式」→ 输入主密码 → UI 把当前 vault 中所有明文条目重
+1. 开启加密 → 输入主密码 → UI 把当前 vault 中所有明文条目重
    新加密落盘。
 2. 闲置自动锁:窗口 `mousemove` / `keydown` / `click` 事件超过
-   `vaultLockTimeoutMin`(默认见 `settingsStore`,可在设置面板调整)
-   分钟未触发 → 锁定 → 派生密钥从内存清除。
+   `vaultLockTimeoutMin`(默认 30 分钟,可在设置面板「空闲自动锁定」调整)
+   未触发 → 锁定 → 派生密钥从内存清除。
 3. 锁定状态下,试运行的认证字段会取不到值,Send 按钮上方有
    `<VaultLockBanner />` 提示。
 4. 忘记主密码无法恢复:设置面板「重置全部」是唯一出路(会清空所有
@@ -145,7 +145,7 @@ header。**后者覆盖前者,同名键大小写不敏感**(`Authorization` 与
 
 **所有偏好都只落在浏览器 `localStorage`**,命名空间 `csap-apidoc:*`,
 没有任何服务端持久化、没有账号、没有 telemetry。设备之间不会自动同
-步,但可以通过设置面板的「导出 / 导入」按下 JSON 备份文件手动迁移。
+步,但可以通过设置面板的「导出 JSON / 导入 JSON」手动迁移。
 
 敏感凭据(token / password / API key value / OAuth2 secret)默认明文
 存在 `csap-apidoc:vault`;启用主密码后迁移到 `csap-apidoc:vault.encrypted`
@@ -165,15 +165,11 @@ header。**后者覆盖前者,同名键大小写不敏感**(`Authorization` 与
 
 ---
 
-## 7. 后续路线图
+## 7. 国际化与测试
 
-- **M7** — `csap-apidoc-devtools` 的 `@DocGlobalHeader` / `@DocAuth`
-  注解 hint(后端开发可在代码里声明默认 header / auth 模板,UI 把它
-  们渲染成「一键预设」)。已在设计文档 §9 D-6 标记为延后到下一个 release。
-- **M8.1** — i18n 双语(zh-CN / en-US)。当前 UI 文案以中文为主。
-- **M8.2** — Playwright E2E,覆盖试运行 happy path。
-- **可选 IndexedDB 迁移** — 若用户数据接近 4MB localStorage 上限再做,
-  接口已通过 `KeyValueStore` 抽象预留(详见设计文档 §5.6)。
+- 界面支持 zh-CN / en-US 两种语言(`src/i18n/locales`),语言选择记在 `csap-apidoc:locale`
+- 单元测试用 vitest(`npm test`),E2E 用 Playwright(`e2e/`,见 `e2e/README.md`)
+- 后端侧的 `@DocGlobalHeader` / `@DocAuth` 注解 hint 由 UI 渲染成「一键预设」(`src/services/docHints.ts`)
 
 ---
 

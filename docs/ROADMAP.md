@@ -22,7 +22,7 @@
 | 产品 | 状态 |
 |---|---|
 | Java(Spring Boot 2.x / 3.x) | **1.2.0 已发布到 Maven Central**(1.1.0 是首个发布到 Central 的版本,但实际是 Java 17 字节码,请使用 1.1.1 及以上) |
-| Go(gin、net/http) | **v0.1.0 已发布**(GitHub tag `csap-apidoc-go/v0.1.0`) |
+| Go(gin、net/http) | **v0.1.1 已发布**(GitHub tag `csap-apidoc-go/v0.1.1`;首发 v0.1.0) |
 | 文档页面 | 中英文;在线调试(环境、全局请求头、鉴权、历史与重放、命名快照),1.1.1 起随 jar 发布 |
 
 1.2.0 补上了 1.1.x 的主要缺口:运行时的返回字段过滤和参数校验重新由开源版执行(默认关闭)。
@@ -87,7 +87,7 @@
 | 顺序 | 语言 | 计划 | 首批适配框架 |
 |---|---|---|---|
 | — | Java | 已发布 | Spring Boot 2.x / 3.x(Spring MVC) |
-| — | Go | 2026-12-04 发布 v0.1.0 | gin、net/http;echo、chi、fiber 随后 |
+| — | Go | v0.1.0 已于 2026-11-17 发布(当前 v0.1.1) | gin、net/http;echo、chi、fiber 随后 |
 | 1 | Rust | 2027 Q1 | axum、actix-web |
 | 2 | Python | 2027 Q1–Q2 | FastAPI、Flask |
 | 3 | Node.js / TypeScript | 2027 Q2 | NestJS、Express |

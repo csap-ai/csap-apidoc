@@ -6,7 +6,7 @@ export default defineConfig({
   root: 'docs',
   base: '/',
   title: 'CSAP Apidoc',
-  description: '多语言的运行时 API 文档框架(Java 已发布,Go 开发中):服务启动即生成文档,按接口控制显示字段,文档页内在线调试',
+  description: '多语言的运行时 API 文档框架(Java、Go 已发布):服务启动即生成文档,按接口控制显示字段,文档页内在线调试',
   lang: 'zh',
   icon: '/favicon.ico',
   logo: '/images/logo.png',
@@ -23,7 +23,7 @@ export default defineConfig({
       { text: '发布说明', link: '/changelog' },
       { text: '下载', link: '/download/' },
       {
-        text: 'v1.1.1',
+        text: 'v1.2.0',
         items: [
           { text: 'GitHub Releases', link: `${repo}/releases` },
           { text: 'Maven Central', link: 'https://central.sonatype.com/namespace/ai.csap.apidoc' },

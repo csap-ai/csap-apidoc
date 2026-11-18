@@ -27,7 +27,7 @@ CSAP Apidoc 是一个多语言的运行时 API 文档框架,以 Apache-2.0 协�
 
 - 在启动类上加 `@EnableApidoc` 并指定要扫描的包，框架会找出同时带有 `@Controller`（或 `@RestController`）和 `@Api` 的类。
 - 类中带有 `@ApiOperation` 和请求映射注解的方法会成为一个接口文档。
-- 模型字段用 `@ApiModelProperty` 描述；字段上的 `jakarta.validation` 约束（如 `@NotBlank`、`@Min`）会作为校验规则显示在文档中。
+- 模型字段用 `@ApiModelProperty` 描述；字段上的 `javax.validation` / `jakarta.validation` 约束（如 `@NotBlank`、`@Min`）会作为校验规则显示在文档中。
 - 枚举可以用 `@EnumValue` / `@EnumMessage` 标出取值和说明，文档里会列出枚举值。
 
 ### 同一个模型，在不同接口里显示不同字段
@@ -53,7 +53,8 @@ CSAP Apidoc 是一个多语言的运行时 API 文档框架,以 Apache-2.0 协�
 
 ### 其他模块
 
-- **参数校验**：可选的 `csap-validation-boot-starter` 提供统一的校验异常处理和 `csap.validation.*` 配置。按文档规则在运行时校验请求参数，在 1.1.x 中还不执行（计划 1.2.0），见 [参数校验](/guide/validation)。
+- **参数校验**：可选的 `csap-validation-boot-starter` 提供统一的校验异常处理和 `csap.validation.*` 配置。1.2.0 起可以按文档规则在运行时校验请求参数，支持观察和拦截两种模式，默认关闭；1.1.x 中不执行，见 [参数校验](/guide/validation)。
+- **返回字段过滤**：1.2.0 起，`csap.apidoc.runtime.filter.enabled=true` 后，接口实际返回的 JSON 只保留文档里显示的字段，默认关闭，见 [返回字段过滤](/guide/runtime-filter)。
 - **DevTools**：开发阶段的可视化工具，用来扫描接口、勾选每个接口的请求 / 返回字段并写回 YAML 或 SQLite。只有显式开启 `csap.apidoc.devtool.enabled=true` 时才会注册。见 [DevTools](/guide/devtools)。
 - **网关聚合**：通过 `csap.apidoc.resources` 把多个服务的文档汇总到一个页面。见 [网关聚合](/guide/gateway-aggregation)。
 
@@ -73,9 +74,9 @@ Swagger 系列工具（如 springdoc-openapi、springfox）以 OpenAPI 规范为
 | 方面 | CSAP Apidoc |
 | --- | --- |
 | 注解 | 使用自己的注解（包名 `ai.csap.apidoc.annotation`）。`@Api`、`@ApiOperation`、`@ApiModel`、`@ApiModelProperty` 与 Swagger 2 注解同名，但包名和属性不同，Swagger 注解不会被识别。 |
-| 文档数据 | 通过自己的接口（如 `/csap/apidoc`）提供文档数据，格式不是 OpenAPI。需要 OpenAPI 时，在文档页面导出 OpenAPI 3.0 文件。 |
+| 文档数据 | 通过自己的接口（如 `/csap/apidoc`）提供文档数据，格式不是 OpenAPI。需要 OpenAPI 时，在文档页面导出 OpenAPI 3.0 文件，或者访问 `GET /csap/openapi.json`（1.2.0 起）。 |
 | 字段粒度 | 字段可以按接口选择显示，规则可以放在注解、YAML 或 SQLite 中。 |
-| 校验 | 文档展示的校验规则会登记到校验模块，供运行时校验使用；1.1.x 中运行时校验还不执行，计划 1.2.0 提供。 |
+| 校验 | 文档展示的校验规则会登记到校验模块，1.2.0 起可以在运行时按这些规则校验请求参数（默认关闭，先观察后拦截）。 |
 | 界面 | 文档页面由 `csap-apidoc-ui` 提供，随 starter 一起引入，访问 `/csap-api.html`。 |
 
 如果你的项目已经在用 Swagger 注解，迁移时需要把 import 换成 `ai.csap.apidoc.annotation.*`，并逐个核对属性名；不能直接复用。

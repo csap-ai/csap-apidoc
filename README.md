@@ -104,12 +104,13 @@ public class User {
 
 | 坐标 | 说明 |
 |---|---|
-| `ai.csap.apidoc.boot:csap-apidoc-boot-starter` | Spring Boot starter,包含核心、文档页面、YAML/SQLite 策略、DevTools |
-| `ai.csap.apidoc.boot:csap-validation-boot-starter` | 参数校验 starter,可选:只在需要它的校验异常处理器或 `ValidationProperties` 时引入 |
+| `ai.csap.apidoc.boot:csap-apidoc-boot-starter` | Spring Boot starter,包含核心、文档页面、YAML/SQLite 策略、DevTools、返回字段过滤 |
+| `ai.csap.apidoc.boot:csap-validation-boot-starter` | 参数校验 starter,可选:需要运行时参数校验、它的校验异常处理器或 `ValidationProperties` 时引入 |
 | `ai.csap.apidoc:csap-apidoc-annotation` | 注解 |
 | `ai.csap.apidoc:csap-apidoc-core` | 扫描与文档生成 |
 | `ai.csap.apidoc:csap-apidoc-ui` | 文档页面 |
 | `ai.csap.apidoc:csap-apidoc-devtools` | DevTools 后台 |
+| `ai.csap.apidoc:csap-apidoc-runtime` | 返回字段过滤(1.2.0 起) |
 | `ai.csap.apidoc:csap-apidoc-yaml` / `csap-apidoc-sqlite` / `csap-apidoc-standard` | 规则存储策略 |
 | `ai.csap.apidoc:csap-validation-core` | 校验引擎 |
 

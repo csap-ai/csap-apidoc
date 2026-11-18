@@ -12,7 +12,7 @@ csap:
         enabled: true
 ```
 
-不需要其他改动。Spring Boot 2 和 3 使用同一个 jar。
+不需要其他改动。Spring Boot 2 和 3 使用同一个 jar。只支持 Servlet 栈的 Spring MVC；WebFlux 应用里开启也不会生效，也不会报错。
 
 ## 哪些接口会被过滤
 
@@ -105,7 +105,7 @@ Jackson 下，过滤使用消息转换器 ObjectMapper 的一个副本，原 Obj
 
 - 文档对 `Map` 类型字段不展开值的字段，所以 Map 字段放行后整个值输出。
 - fastjson / fastjson2 下，放行字段的值如果是对象或集合，字段上的 `@JSONField(serializeUsing / format)` 不再生效（对象所属类上的配置仍然生效）。
-- 有规则的接口序列化会稍慢：过滤不再打开 JSON 库的逐字段过滤器，而是按规则节点和类型预编译只含放行字段的序列化器并复用。100 行、约 17 KB 的返回体（JDK 17）：典型规则下三种 JSON 库的耗时与不过滤基本相同（只放行部分字段时输出变小，可能更快）；规则放行全部字段时多 25%～35%。没有规则的接口不受影响。
+- 有规则的接口序列化会稍慢：过滤不再打开 JSON 库的逐字段过滤器，而是按规则节点和类型预编译只含放行字段的序列化器并复用。100 行、约 17 KB 的返回体（JDK 17）：典型规则下三种 JSON 库的耗时与不过滤基本相同（只放行部分字段时输出变小，可能更快）；规则放行全部字段时约多 24%～32%。没有规则的接口不受影响。
 - 以下情况整次响应改用较慢的逐字段过滤器（输出相同）：消息转换器配置了其他过滤器；fastjson2 开启了 ReferenceDetection、WriteClassName、BeanToArray、PrettyFormat 或 WriteNullListAsEmpty 等空值写法特性；fastjson 1.x 开启了 WriteClassName、BeanToArray、PrettyFormat。由自定义序列化器写出的值也按原来的方式过滤。
 
 ## 相关页面

@@ -1,14 +1,14 @@
 # 跨域(CORS)排错
 
-> 适用于 `csap-apidoc-ui` 的 `⚡ 试运行 v2` 面板。
+> 适用于文档页面 `csap-api.html` 里的「试运行 v2」面板。
 > 完整设计上下文见 [设计文档 environment-auth-headers.md](https://github.com/csap-ai/csap-apidoc/blob/main/docs/design/environment-auth-headers.md) §6。
 
 ---
 
 ## 1. 为什么会撞到 CORS
 
-试运行 v2 不走任何后端代理,而是 **浏览器直接** 用 `fetch` / `xhr`
-把请求发到目标业务服务。当业务服务的域名与 `csap-apidoc-ui` 自身的
+试运行 v2 默认不走任何后端代理,而是 **浏览器直接** 用 `fetch` / `xhr`
+把请求发到目标业务服务(可选的转发方式见下面的 3.2、3.4)。当业务服务的域名与 `csap-apidoc-ui` 自身的
 域名不同(包括协议 / 端口任一不同)时,浏览器会先检查目标响应头
 里的 `Access-Control-Allow-*` 系列字段,不满足就拦截响应。
 
@@ -162,11 +162,10 @@ UI 会把 try-it-out 请求 POST 到该端点,由宿主应用代为发起到目�
 - 浏览器侧请求必须 `withCredentials: true`(`fetch` 对应
   `credentials: 'include'`)。
 
-> **当前实现说明**:`csap-apidoc-ui/src/services/tryItOutClient.ts`
-> 走的是 `csap-axios`,默认 **没有** 显式置 `withCredentials`,即默
-> 认不带跨域 Cookie。如果你的鉴权完全依赖 Cookie,目前需要靠
-> §3.1 / §3.2 的 header / token 走通,或等待后续在 Settings 加
-> 「跨域携带 Cookie」开关(M8.x 跟进项)。
+> **页面侧的开关**:试运行默认 **不** 带跨域 Cookie(`withCredentials`
+> 为 `false`)。需要时在文档页面顶部「设置」抽屉的「试运行」一栏打开
+> 「跨域请求附带 Cookie (withCredentials)」,见[在线调试](/guide/testing#跨域与设置)。
+> 这个开关是浏览器本地设置,打开后目标服务仍必须满足上面两条响应头要求。
 
 ---
 

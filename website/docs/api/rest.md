@@ -14,7 +14,7 @@
 | GET | `/csap/openapi/postman` | 导出 Postman Collection | 同上 |
 | GET | `/csap/openapi.json` | 导出 OpenAPI 3.0（1.2.0 起） | 同上 |
 | GET / POST | `/csap/yaml/*` | DevTools：读写 YAML / JSON 文档 | `csap.apidoc.devtool.enabled=true` |
-| POST | `/devtools/*` | DevTools：字段查询、隐藏接口 | `csap.apidoc.devtool.enabled=true` |
+| POST | `/devtools/*` | DevTools：字段查询 | `csap.apidoc.devtool.enabled=true` |
 | GET | `/devtools-ui`、`/devtools-ui/**` | DevTools 页面 | `csap.apidoc.devtool.enabled=true` |
 | POST | `/csap/apidoc/devtools/proxy` | 调试用服务端转发 | `csap.apidoc.devtools.proxy.enabled=true` |
 
@@ -333,7 +333,7 @@ curl -o openapi.json http://localhost:8080/csap/openapi.json
 | GET | `/csap/yaml/getMethodValidateFields` | `className`、`methodName`、`fieldName` | 字段的校验配置 |
 | GET | `/csap/yaml/validatePatternTypes` | 无 | 可用的正则校验类型 |
 | POST | `/devtools/getFields` | Body：`GetFieldExcled` | 取类的字段，可按方法参数 / 返回值解析泛型 |
-| POST | `/devtools/hiddenMethod` | Body：`MethodModel` | 隐藏接口 |
+| POST | `/devtools/hiddenMethod` | Body：`MethodModel` | 目前直接返回 `true`，没有实际作用 |
 
 `write`、`writeSelect`、`writeFieldMethod` 要求 `@EnableApidoc` 的 `type` 是 `YAML` 或 `JSON`，否则返回错误「当前配置不支持yaml或者/json形式的文档」。
 

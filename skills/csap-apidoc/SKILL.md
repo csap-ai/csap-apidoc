@@ -5,7 +5,7 @@ description: 为 Java Spring Boot 项目接入和维护 CSAP Apidoc(运行时 AP
 
 # CSAP Apidoc
 
-CSAP Apidoc 在服务启动时扫描注解生成接口文档,页面地址 `/csap-api.html`。官网 <https://apidoc.csap.ai>,仓库 <https://github.com/csap-ai/csap-apidoc>。本技能对应 **Java 1.1.x**;Go 版尚未发布,不要给 Go 项目套用下面的 Java 写法。
+CSAP Apidoc 在服务启动时扫描注解生成接口文档,页面地址 `/csap-api.html`。官网 <https://apidoc.csap.ai>,仓库 <https://github.com/csap-ai/csap-apidoc>。本技能对应 **Java 1.2.x**。Go 版(v0.1.1)是独立实现,接入方式见 <https://apidoc.csap.ai/go/>,不要给 Go 项目套用下面的 Java 写法。
 
 动手前先看项目现状:`pom.xml` / `build.gradle` 里有没有 `ai.csap.apidoc`、启动类上有没有 `@EnableApidoc`、`src/main/resources/csap-api-doc/method-field/` 下有没有 YAML 规则。已有接入时沿用项目现有的策略和写法。
 
@@ -15,14 +15,14 @@ CSAP Apidoc 在服务启动时扫描注解生成接口文档,页面地址 `/csap
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.1.1</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
 - 坐标只有 `ai.csap.apidoc(.boot)`。旧文档里的 `com.csap.framework.boot:csap-framework-apidoc-boot-starter` **不存在**,看到要改掉。
-- starter 已包含文档页面、YAML/SQLite 策略、DevTools,不要另加。
-- `ai.csap.apidoc.boot:csap-validation-boot-starter` 是可选的,只在需要它的校验异常处理器(`ValidateExceptionHandler`)或 `csap.validation.*` 配置(`ValidationProperties`)时引入。
-- JDK 11+;Spring Boot 3 需要 JDK 17+。1.1.0 的 jar 实际是 Java 17 字节码,Java 11 上无法加载;项目还在用 1.1.0 时建议升级到 1.1.1。
+- starter 已包含文档页面、YAML/SQLite 策略、DevTools、返回字段过滤(`csap-apidoc-runtime`),不要另加。
+- `ai.csap.apidoc.boot:csap-validation-boot-starter` 是可选的,需要运行时参数校验(1.2.0 起)、它的校验异常处理器(`ValidateExceptionHandler`)或 `csap.validation.*` 配置(`ValidationProperties`)时引入。
+- JDK 11+;Spring Boot 3 需要 JDK 17+。1.1.0 的 jar 实际是 Java 17 字节码,Java 11 上无法加载;项目还在用 1.1.0 时建议升级到 1.1.1 及以上。
 
 ## 2. 开启
 
@@ -41,6 +41,7 @@ public class DemoApplication { ... }
 - 基础类型参数:`@ApiProperty(value = "说明", required = true)`,总会出现在请求参数里。
 - 模型类:`@ApiModel(description = "...")`(只能用在类上,不能用在参数上)。
 - 模型字段:`@ApiModelProperty(value = "...")`。**没有这个注解的字段永远不出现。**
+- 其他:`@DocGlobalHeader` / `@DocAuth`(调试界面预填请求头和鉴权建议,不继承)、`@ApiResponseCode`(返回码表)、`@EnumValue` / `@EnumMessage`(枚举字段说明),详见 <https://apidoc.csap.ai/guide/annotations>。
 
 ## 4. 字段为什么"不显示"(最常见的问题)
 
@@ -65,6 +66,7 @@ public class DemoApplication { ... }
 | `GET /csap/apidoc/parent` | 文档树 |
 | `GET /csap/apidoc/method?name=<Controller全名>&key=<Controller全名>.<方法名>` | 单个接口详情 |
 | `GET /csap/openapi/postman` | Postman Collection |
+| `GET /csap/openapi.json` | OpenAPI 3.0(1.2.0 起) |
 
 需要了解一个服务有哪些接口、参数是什么时,优先读 `/csap/apidoc`,不要去猜。
 
@@ -72,9 +74,11 @@ public class DemoApplication { ... }
 
 开发环境开启 `csap.apidoc.devtool.enabled: true`(默认关闭),访问 `/devtools-ui` 勾选字段、配置校验规则并写回 YAML。**不要在生产环境开启**。
 
-## 7. 1.1.x 的限制(写代码和回答问题时要说清楚)
+## 7. 运行时过滤与校验(1.2.0 起,默认关闭)
 
-- 规则里的返回字段 `include` 和请求 `validate` **只影响文档**;运行时的返回字段过滤和参数校验在开源版 1.1.x 中不执行,计划 1.2.0 提供。不要向用户承诺"配了 include 接口就不会返回这个字段"。
+- 规则里的返回字段 `include` 和请求 `validate` 默认**只影响文档**。要让接口实际返回的 JSON 只含文档里的字段,需要配置 `csap.apidoc.runtime.filter.enabled: true`;要在运行时校验请求参数,需要引入 `csap-validation-boot-starter` 并配置 `csap.validation.mode`(`observe` 只记录,`enforce` 拦截)。两者都建议先在少数接口上试用(`endpoints` 按接口覆盖)。说明见 <https://apidoc.csap.ai/guide/runtime-filter> 和 <https://apidoc.csap.ai/guide/validation>。
+- 开启前不要向用户承诺"配了 include 接口就不会返回这个字段"。项目还在用 1.1.x 时,这两项都不会执行。
+- 只有必填字段的校验规则会执行;校验规则在文档扫描完成后才生效。
 - 1.1.0 jar 里的文档页面是旧版构建,没有环境切换、全局请求头、鉴权、历史与重放、命名快照、中英文;这些从 1.1.1 起可用。
 - 手工改 YAML 后需要重启;DevTools 修改会即时生效。
 

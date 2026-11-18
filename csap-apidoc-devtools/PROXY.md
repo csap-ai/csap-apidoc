@@ -9,10 +9,12 @@ origin from the target service and the target service does not return
 "Failed to fetch" with no useful diagnostics. See
 [the CORS guide](https://apidoc.csap.ai/guide/cors) for the full landscape.
 
-This module exposes a small same-origin reverse proxy the UI can call
-instead of going direct. Because the proxy runs inside the host application
-(same origin as the doc UI's API endpoints), no CORS preflight is involved —
-the host's own CORS rules already permit the call.
+This module exposes a small reverse proxy inside the host application. The UI
+calls the proxy instead of the target service directly; the proxy forwards the
+request server-side, so the target service does not need to return CORS
+headers. (The browser still talks to the host application, so the host must
+allow the UI's origin if the UI is served from a different one.) The
+`csap-apidoc-devtools` module is pulled in by `csap-apidoc-boot-starter`.
 
 ---
 
@@ -38,7 +40,7 @@ the host's own CORS rules already permit the call.
 |---|---|
 | `enabled=false` default | Bean is not registered. Endpoint returns 404. |
 | `allowed-hosts` mandatory | Empty list with proxy on → every request fails with HTTP 502 / `host_not_allowed`. Fail-closed. |
-| Hostname-only allowlist | No regex; literal hostnames + `*.example.com` prefix wildcards only. Case-insensitive. Port ignored. Matching is auditable. |
+| Hostname-only allowlist | No regex; literal hostnames + `*.example.com` prefix wildcards only (the wildcard does not match the bare apex `example.com`). Case-insensitive. Port ignored. Matching is auditable. |
 | `Cookie`, `X-Forwarded-For`, `X-Real-IP` stripped | Defaults; configurable via `strip-headers`. Prevents the proxy from leaking the doc UI user's session into upstream. |
 | `Set-Cookie` stripped from response | Cross-origin cookies wouldn't be honoured by the browser anyway, and forwarding them leaks server state. |
 | `max-body-bytes` cap | Inbound request bodies over the cap → `body_too_large` (415). Upstream responses over the cap are truncated and tagged with header `X-Csap-Apidoc-Proxy-Truncated: 1`. |
@@ -131,6 +133,7 @@ unreachable): HTTP **502** with a JSON envelope:
 
 ```bash
 # 1. Enable in your application.yml (see above), restart the host app.
+#    (example-spring-boot3 ships a commented-out block in application.yml, port 8083.)
 
 # 2. Confirm the endpoint exists.
 curl -i -X POST http://localhost:8083/csap/apidoc/devtools/proxy \
@@ -159,6 +162,6 @@ curl -i -X POST http://localhost:8083/csap/apidoc/devtools/proxy \
 - All proxy decisions are logged at INFO with host / method / status /
   latency. Headers are logged at DEBUG. Bodies are off by default; set
   `log-bodies=true` to turn them on temporarily and remember to roll back.
-- The `csap-apidoc-ui` UI auto-detects this header and surfaces "via
-  devtools proxy" in the response viewer so users always know whether the
-  request went direct or through the proxy.
+- To use it from `csap-apidoc-ui`, set the Try-it-out proxy URL in the
+  settings drawer to `<host>/csap/apidoc/devtools/proxy`; a URL ending in that
+  path is called with the JSON protocol described above.

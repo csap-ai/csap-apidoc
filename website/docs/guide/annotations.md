@@ -130,7 +130,7 @@ public ApidocResult<List<Order>> listOrders(OrderQuery query) { ... }
 :::
 
 :::warning
-带 `@ApiOperation` 的方法必须同时带 `@RequestMapping` 系列注解。`@RequestMapping` 没有指定 `method` 时，文档里会列出 `POST`、`DELETE`、`GET` 三种方法。
+带 `@ApiOperation` 的方法必须同时带 `@RequestMapping` 系列注解。`@RequestMapping` 没有指定 `method` 时，文档里会按 `GET`、`POST`、`PUT`、`DELETE` 四种方法列出（第一个 `GET` 作为主请求方式）。
 :::
 
 ## 方法参数：@ApiProperty
@@ -395,6 +395,10 @@ public class OrderController {
 | `@JsonFieldFilter` / `@JsonFieldFilters` | 目前没有任何代码读取，标注无效果 |
 | `@Description` | 目前没有任何代码读取 |
 | `@RequestParamBody` | 目前没有任何代码读取 |
+
+## `@DocGlobalHeader`、`@DocAuth` 不继承
+
+这两个注解只读当前 Controller 类和方法本身：写在接口、父类的类或方法上，不会被实现类继承；包级只读 Controller 所在那一个包的 `package-info.java`，不会向上查找父包。需要多个 Controller 共用时，写在各自所在包的 `package-info.java` 里。
 
 ## 相关页面
 

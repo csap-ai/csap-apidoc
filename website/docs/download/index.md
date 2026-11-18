@@ -1,6 +1,6 @@
 # 获取方式
 
-本页列出获取 CSAP Apidoc 的三种方式：从 Maven Central 引入依赖、从 GitHub 获取发布版本，以及从源码构建。当前版本是 **1.2.0**。1.1.0 是第一个发布到 Maven Central 的版本，但它的 jar 实际是 Java 17 字节码，需要 JDK 17 才能运行，请使用 1.1.1 及以上（Java 11 字节码）。
+本页列出获取 CSAP Apidoc 的方式：从 Maven Central 引入依赖、从 GitHub 获取发布版本、从源码构建，以及 Go 版的安装。Java 版当前版本是 **1.2.0**。1.1.0 是第一个发布到 Maven Central 的版本，但它的 jar 实际是 Java 17 字节码，需要 JDK 17 才能运行，请使用 1.1.1 及以上（Java 11 字节码）。
 
 ## Maven Central
 
@@ -18,7 +18,7 @@
 implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.2.0'
 ```
 
-参数校验 starter `csap-validation-boot-starter` 是可选的，只在需要它的校验异常处理器或 `ValidationProperties` 时引入，见 [安装](/guide/installation)。
+参数校验 starter `csap-validation-boot-starter` 是可选的，需要运行时参数校验（1.2.0 起）、它的校验异常处理器或 `ValidationProperties` 时引入，见 [安装](/guide/installation)。
 
 ### 全部构件
 
@@ -31,6 +31,7 @@ implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.2.0'
 | `ai.csap.apidoc` | `csap-apidoc-common` | 公共模型与工具 |
 | `ai.csap.apidoc` | `csap-apidoc-ui` | 文档页面 `/csap-api.html` |
 | `ai.csap.apidoc` | `csap-apidoc-devtools` | DevTools 可视化工具 |
+| `ai.csap.apidoc` | `csap-apidoc-runtime` | 返回字段过滤（1.2.0 起），默认关闭 |
 | `ai.csap.apidoc` | `csap-apidoc-yaml` | YAML 存储策略 |
 | `ai.csap.apidoc` | `csap-apidoc-sqlite` | SQLite 存储策略 |
 | `ai.csap.apidoc` | `csap-apidoc-standard` | 存储策略共用的文件处理 |
@@ -64,7 +65,7 @@ git checkout v1.2.0
 
 ### 构建并安装到本地仓库
 
-在仓库根目录执行，与 CI 使用的命令一致：
+在仓库根目录执行（CI 使用同一条命令并加上 `-DskipTests=false`）：
 
 ```bash
 mvn -B clean install
@@ -106,6 +107,16 @@ mvn spring-boot:run
 启动后访问 `http://localhost:8083/csap-api.html`。这个示例默认开启了 DevTools，可以访问 `http://localhost:8083/devtools-ui`。
 
 Spring Boot 2 示例在 `example/example-spring-boot2`（端口 8082），启动方式相同。1.1.0 中它的 `pom.xml` 里 `mainClass` 写错（`ai.csap.apidoc.example.ExampleApplication`），1.1.1 已改为实际启动类 `ai.csap.example.ExampleApplication`。
+
+## Go 版
+
+Go 版是仓库里独立的 Go module（路径 `csap-apidoc-go/`），当前版本 **v0.1.1**，要求 Go 1.22 及以上，不走 Maven Central：
+
+```bash
+go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.1.1
+```
+
+它的版本标签带模块目录前缀，格式是 `csap-apidoc-go/vX.Y.Z`（例如 `csap-apidoc-go/v0.1.1`），和 Java 版的 `vX.Y.Z` 标签互不影响。接入方式见 [Go 版](/go/)，API 文档见 [pkg.go.dev](https://pkg.go.dev/github.com/csap-ai/csap-apidoc/csap-apidoc-go)。
 
 ## 许可证
 

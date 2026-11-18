@@ -22,10 +22,10 @@
 Gradle 写法：
 
 ```groovy
-implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.1.1'
+implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.2.0'
 ```
 
-`csap-apidoc-boot-starter` 已经包含文档页面（`csap-apidoc-ui`）、YAML / SQLite 存储策略和 DevTools，不需要再单独引入。参数校验 starter `csap-validation-boot-starter` 是可选的，只在需要它的校验异常处理器或 `csap.validation.*` 配置时引入。各模块的说明见 [安装](/guide/installation)。
+`csap-apidoc-boot-starter` 已经包含文档页面（`csap-apidoc-ui`）、YAML / SQLite 存储策略、DevTools 和返回字段过滤（`csap-apidoc-runtime`），不需要再单独引入。参数校验 starter `csap-validation-boot-starter` 是可选的，需要运行时参数校验（1.2.0 起）、它的校验异常处理器或 `csap.validation.*` 配置时引入。各模块的说明见 [安装](/guide/installation)。
 
 ## 第 2 步：开启文档
 

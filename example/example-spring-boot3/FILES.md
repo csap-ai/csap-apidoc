@@ -1,253 +1,87 @@
-# Example Project Files
+# 示例项目文件说明
 
-## 📁 Project Structure
+## 目录结构
 
 ```
-example-apidoc-spring-boot/
+example-spring-boot3/
 ├── src/
 │   ├── main/
-│   │   ├── java/com/csap/framework/example/
-│   │   │   ├── ExampleApplication.java                 # Main application class
+│   │   ├── java/ai/csap/example/
+│   │   │   ├── ExampleApplication.java      # 启动类,@EnableApidoc
 │   │   │   ├── controller/
-│   │   │   │   ├── UserController.java                 # User management APIs
-│   │   │   │   └── ProductController.java              # Product management APIs
-│   │   │   └── model/
-│   │   │       ├── User.java                           # User entity
-│   │   │       ├── UserStatus.java                     # User status enum
-│   │   │       ├── Product.java                        # Product entity
-│   │   │       └── Response.java                       # Common response wrapper
+│   │   │   │   ├── UserController.java      # 用户接口
+│   │   │   │   ├── ProductApi.java          # 产品接口定义(Spring MVC 映射 + 文档注解)
+│   │   │   │   ├── ProductController.java   # 实现 ProductApi
+│   │   │   │   ├── AdvancedController.java  # @ApiProperty / @ApiPropertys 用法
+│   │   │   │   ├── AuthController.java      # /auth/login、/auth/whoami(JWT 示例)
+│   │   │   │   ├── BaseCrudController.java  # 泛型 CRUD 基类
+│   │   │   │   ├── UserCrudController.java  # 继承基类,验证泛型解析
+│   │   │   │   └── GenericTestController.java  # 泛型请求体示例
+│   │   │   ├── model/
+│   │   │       ├── User.java
+│   │   │       ├── UserStatus.java          # 枚举
+│   │   │       ├── Product.java
+│   │   │       ├── ProductCategory.java     # 枚举
+│   │   │       ├── Response.java            # 统一响应包装
+│   │   │       ├── BaseRequest.java         # 泛型请求基类
+│   │   │       └── UserRequest.java         # BaseRequest<User> 的子类
+│   │   │   └── security/                    # 可选 JWT 安全层(默认关闭)
+│   │   │       ├── SecurityConfig.java / SecurityProperties.java
+│   │   │       ├── JwtService.java / JwtAuthenticationFilter.java
+│   │   │       └── InMemoryUserStore.java
 │   │   └── resources/
-│   │       ├── application.yml                         # Default configuration
-│   │       ├── application-sqlite.yml                  # SQLite strategy config
-│   │       └── application-yaml.yml                    # YAML strategy config
-│   └── test/
-│       └── java/                                       # Test directory
-├── api-test.http                                       # HTTP test file (IntelliJ/VS Code)
-├── test-api.sh                                         # Automated test script
-├── run.sh                                              # Run application script
-├── pom.xml                                             # Maven configuration
-├── README.md                                           # Project documentation
-├── STRATEGIES.md                                       # Strategy comparison guide
-├── FILES.md                                            # This file
-└── .gitignore                                          # Git ignore rules
+│   │       ├── application.yml              # 默认配置
+│   │       ├── application-sqlite.yml       # profile 样例(不切换策略,见 STRATEGIES.md)
+│   │       ├── application-yaml.yml         # profile 样例(同上)
+│   │       └── application-gateway.yml      # 网关聚合多个服务文档的配置样例
+│   └── test/                                # 校验、泛型字段、字段过滤的测试
+├── api-test.http                            # HTTP Client 请求集合(IntelliJ / VS Code)
+├── test-api.sh                              # curl 脚本(需要 jq)
+├── run.sh                                   # 打包并运行
+├── pom.xml
+├── README.md
+├── ANNOTATIONS.md
+├── SECURITY.md
+├── STRATEGIES.md
+└── FILES.md                                 # 本文件
 ```
 
-## 📝 File Descriptions
+## 源码
 
-### Source Code
+- `ExampleApplication.java`: `@EnableApidoc(value = "ai.csap.example", paramType = ApiStrategyType.YAML)`
+- `UserController.java`: 用户的列表(分页)、详情、创建、更新、删除、状态更新(PATCH),演示查询参数、路径参数与请求体
+- `ProductApi.java` / `ProductController.java`: 产品的增删改查、库存更新、批量删除,含 `BigDecimal` 价格;接口与实现分离
+- `AuthController.java` 与 `security/`: 可选的 JWT 示例,见 [SECURITY.md](./SECURITY.md)
+- `BaseCrudController.java` / `UserCrudController.java` / `GenericTestController.java`: 泛型场景下的字段解析示例
+- `AdvancedController.java`: 方法级 `@ApiProperty` / `@ApiPropertys`
+- `User.java` / `Product.java`: 实体,演示 `@ApiModelProperty` 与 JSR-303 校验(`@NotBlank`、`@Email`、`@Size`、`@Pattern`、`@Min` / `@Max`、`@Digits`、`@DecimalMin` 等)
+- `UserStatus.java` / `ProductCategory.java`: 在字段上使用 `@EnumValue` 与 `@EnumMessage` 的枚举
+- `Response.java`: 统一响应包装
 
-#### `ExampleApplication.java`
-- Main Spring Boot application class
-- Configured with `@EnableApidoc` annotation
-- Demonstrates basic annotation usage
+## 配置文件
 
-#### `UserController.java`
-- Complete CRUD operations for users
-- Demonstrates:
-  - GET (list and details)
-  - POST (create)
-  - PUT (update)
-  - PATCH (partial update)
-  - DELETE (remove)
-  - Query parameters
-  - Path variables
-  - Request body
+- `application.yml`: 端口 8083、`csap.apidoc.*`、校验模式、示例 JWT 开关(`csap.example.security.*`)、Actuator 与日志
+- `application-sqlite.yml` / `application-yaml.yml`: 日志与应用名样例;存储策略以启动类上的 `@EnableApidoc` 为准
+- `application-gateway.yml`: 演示用 `csap.apidoc.resources` 聚合多个服务的 `/csap/apidoc/parent`
 
-#### `ProductController.java`
-- Complete CRUD operations for products
-- Additional features:
-  - Complex filtering
-  - BigDecimal for prices
-  - Batch operations
-  - Stock management
+## 测试与脚本
 
-#### `User.java`
-- User entity with validation
-- Demonstrates:
-  - `@ApiModelProperty` annotations
-  - JSR-303 validations (@NotBlank, @Email, @Size, etc.)
-  - Enum fields
-  - DateTime fields
+- `api-test.http`、`test-api.sh`: 覆盖主要接口。脚本里的 `BASE_URL` 默认是 `http://localhost:8080`,请按实际端口(8083)修改
+- `src/test/`: 参数校验、泛型字段测试与 Jackson / Fastjson / Fastjson2 下的字段过滤 E2E 测试
+- `run.sh`: 检查 Maven、打包后执行 `mvn spring-boot:run`
 
-#### `Product.java`
-- Product entity with validation
-- Demonstrates:
-  - BigDecimal for monetary values
-  - @Digits validation
-  - Boolean fields
-
-#### `UserStatus.java`
-- Enum with `@EnumValue` and `@EnumMessage` on fields
-- Demonstrates correct enum usage:
-  - `@EnumValue` on code field (database value)
-  - `@EnumMessage` on message field (display text)
-- Example: ACTIVE(1, "激活")
-
-#### `ProductCategory.java`
-- Another enum example
-- Shows category enumeration with code and name
-
-#### `Response.java`
-- Generic response wrapper
-- Provides consistent API responses
-
-### Configuration Files
-
-#### `application.yml`
-- Default configuration
-- ANNOTATION strategy (default)
-- DevTools enabled
-
-#### `application-sqlite.yml`
-- SQLite strategy configuration
-- Custom database path
-- For dynamic parameter management
-
-#### `application-yaml.yml`
-- YAML strategy configuration
-- Custom YAML file path
-- For version-controlled documentation
-
-### Testing Files
-
-#### `api-test.http`
-- HTTP test requests
-- Can be used with:
-  - IntelliJ IDEA HTTP Client
-  - VS Code REST Client extension
-- Covers all API endpoints
-
-#### `test-api.sh`
-- Automated test script using curl
-- Tests major API operations
-- Requires jq for JSON formatting
-
-### Scripts
-
-#### `run.sh`
-- Builds and runs the application
-- Checks for Maven installation
-- Shows startup information
-
-### Documentation
-
-#### `README.md`
-- Complete project documentation
-- Quick start guide
-- API examples
-- Configuration examples
-
-#### `STRATEGIES.md`
-- Detailed strategy comparison
-- Usage examples for each strategy
-- Best practices
-- Migration guide
-
-#### `FILES.md`
-- This file
-- Project structure overview
-- File descriptions
-
-### Other Files
-
-#### `.gitignore`
-- Git ignore rules
-- Excludes target/, IDE files, and generated databases
-
-#### `pom.xml`
-- Maven project configuration
-- Dependencies declaration
-- Spring Boot plugin configuration
-
-## 🎯 Key Features Demonstrated
-
-### ✅ Annotations
-- `@EnableApidoc` - Enable API documentation
-- `@Api` - Controller-level documentation
-- `@ApiOperation` - Method-level documentation
-- `@ApiProperty` - Parameter documentation
-- `@ApiModel` - Entity documentation
-- `@ApiModelProperty` - Field documentation
-- `@EnumMessage` & `@EnumValue` - Enum documentation
-
-### ✅ Validation
-- `@NotBlank` - Not blank validation
-- `@NotNull` - Not null validation
-- `@Email` - Email format validation
-- `@Pattern` - Regex pattern validation
-- `@Size` - String length validation
-- `@Min` & `@Max` - Numeric range validation
-- `@Digits` - Decimal precision validation
-- `@DecimalMin` - Decimal minimum value
-
-### ✅ HTTP Methods
-- GET - Retrieve resources
-- POST - Create resources
-- PUT - Update resources (full)
-- PATCH - Update resources (partial)
-- DELETE - Delete resources
-
-### ✅ Parameter Types
-- Path Variables - `@PathVariable`
-- Query Parameters - `@RequestParam`
-- Request Body - `@RequestBody`
-- Headers - (can be added)
-
-### ✅ Data Types
-- String
-- Integer/Long
-- BigDecimal
-- Boolean
-- LocalDateTime
-- Enum
-- List/Array
-
-## 🚀 Quick Commands
+## 常用命令
 
 ```bash
-# Build project
-mvn clean package
-
-# Run with default (ANNOTATION) strategy
-mvn spring-boot:run
-
-# Run with SQLite strategy
-mvn spring-boot:run -Dspring-boot.run.profiles=sqlite
-
-# Run with YAML strategy
-mvn spring-boot:run -Dspring-boot.run.profiles=yaml
-
-# Run tests
-./test-api.sh
-
-# Make scripts executable
-chmod +x run.sh test-api.sh
+mvn clean package            # 构建
+mvn spring-boot:run          # 运行
+mvn test                     # 单元测试
 ```
 
-## 📚 Generated Files
+## 相关文档
 
-When running with different strategies:
-
-### ANNOTATION Strategy
-- No external files generated
-- Everything in memory
-
-### SQLite Strategy
-- `./csap-sqlite-data/example-sqlite-db.db` - SQLite database file
-
-### YAML Strategy
-- `./csap-yaml-docs/*.yaml` - YAML configuration files
-
-## 🔗 Related Links
-
-- [Main Documentation](../../README.md)
-- [Quick Start Guide](../../QUICK_START.md)
-- [Example README](./README.md)
-- [Strategy Guide](./STRATEGIES.md)
-
----
-
-**Total Files Created**: 17 files
-**Lines of Code**: ~1500+ lines
-**Test Cases**: 15+ HTTP test cases
-
+- [示例总览](../README.md)
+- [README](./README.md)
+- [注解使用指南](./ANNOTATIONS.md)
+- [存储策略](./STRATEGIES.md)
+- [JWT 安全层](./SECURITY.md)
