@@ -184,6 +184,7 @@ export interface Change {
   status: ChangeStatus;
   author: UserRef;
   createdAt: number;
+  updatedAt?: number;
   submittedAt: number | null;
   decidedBy: UserRef | null;
   decidedAt: number | null;
