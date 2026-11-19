@@ -28,6 +28,11 @@ public class McpAuditService {
         this.db = db;
     }
 
+    /** 清除"表是否存在"的缓存(测试用)。 */
+    public void resetCache() {
+        checkedAt = 0;
+    }
+
     public boolean available() {
         long now = System.currentTimeMillis();
         if (now - checkedAt > CACHE_MS) {
