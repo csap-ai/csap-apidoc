@@ -37,7 +37,7 @@ Content-Type: application/json
 | `language` | 是 | `java` / `go`(以后的语言用小写名) |
 | `frameworkVersion` | 是 | csap-apidoc 版本,Java 取构建时写入的版本,Go 取模块常量 |
 
-响应 `200 {"heartbeatSeconds": 30}`。客户端按返回值(限制在 10–300 之间,无效时用 30)周期性**重复发送同一个请求**作为心跳。
+响应 `200 {"heartbeatSeconds": 30}`。客户端按返回值周期性**重复发送同一个请求**作为心跳。取值规则(两边一致):`heartbeatSeconds` 是正整数时取值并限制到 10–300(小于 10 取 10,大于 300 取 300);缺失、不是数字、不是整数、小于等于 0 时用 30。
 
 ### 1.2 注销
 
