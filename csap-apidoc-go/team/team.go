@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"net/url"
 	"strings"
@@ -279,10 +280,10 @@ func (r *Registration) registerOnce(ctx context.Context) (heartbeat, status int,
 	return clampHeartbeat(resp.HeartbeatSeconds), 0, nil
 }
 
-// clampHeartbeat:无法解析或不是正数 → 30;超出 10–300 的取最近的边界。
+// clampHeartbeat:无法解析、不是整数或不是正数 → 30;超出 10–300 的取最近的边界。
 func clampHeartbeat(n json.Number) int {
 	f, err := n.Float64()
-	if err != nil || f <= 0 {
+	if err != nil || f <= 0 || f != math.Trunc(f) || math.IsInf(f, 0) {
 		return defaultHeartbeat
 	}
 	switch {

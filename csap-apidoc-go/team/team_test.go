@@ -199,7 +199,7 @@ func TestHeartbeatIntervalFromResponse(t *testing.T) {
 }
 
 func TestClampHeartbeat(t *testing.T) {
-	cases := map[string]int{"30": 30, "10": 10, "300": 300, "5": 10, "9999": 300, "0": 30, "-3": 30, "abc": 30, "": 30}
+	cases := map[string]int{"30": 30, "10": 10, "300": 300, "5": 10, "9999": 300, "0": 30, "-3": 30, "abc": 30, "": 30, "12.5": 30, "30.5": 30, "900": 300, "30.0": 30}
 	for in, want := range cases {
 		if got := clampHeartbeat(json.Number(in)); got != want {
 			t.Errorf("clamp(%q) = %d, want %d", in, got, want)
