@@ -140,6 +140,11 @@ route('delete', '/projects/:id', ({ params }) => {
   return undefined;
 });
 route('get', '/projects/:id/members', ({ params }) => { const u = M.currentUser(); const p = proj(params.id); M.requireRole(u, p.id, ['ADMIN', 'MAINTAINER', 'DEVELOPER', 'VIEWER']); return M.members(p.id); });
+route('get', '/projects/:id/candidates', ({ params }) => {
+  const u = M.currentUser(); const p = proj(params.id); M.requireRole(u, p.id, ['ADMIN', 'MAINTAINER']);
+  const inProject = db.members.filter((m) => m.projectId === p.id).map((m) => m.userId);
+  return db.users.filter((x) => x.status === 'ACTIVE' && !inProject.includes(x.id)).map(({ id, username, displayName }) => ({ id, username, displayName }));
+});
 route('put', '/projects/:id/members/:userId', ({ params, body }) => {
   const u = M.currentUser(); const p = proj(params.id); M.requireRole(u, p.id, ['ADMIN', 'MAINTAINER']);
   const target = db.users.find((x) => x.id === Number(params.userId));
@@ -387,8 +392,19 @@ function filterAudit(q: URLSearchParams, u: ReturnType<typeof M.currentUser>) {
     .filter((a) => !q.get('action') || a.action.startsWith(q.get('action')!))
     .filter((a) => !q.get('source') || a.source === q.get('source'));
 }
-route('get', '/audit', ({ q }) => paged(filterAudit(q, M.currentUser()), q));
-route('get', '/audit/export', ({ q }) => {
+route('get', '/audit', ({ q }) => {
+  const r = paged(filterAudit(q, M.currentUser()), q);
+  return { ...r, items: r.items.map(({ beforeValue: _b, afterValue: _a, diff: _d, ...rest }) => rest) }; // 列表省略大字段
+});
+route('get', '/audit/mcp', ({ q }) => mcpList(q));
+route('get', '/audit/export', ({ q }) => exportAudit(q));
+route('get', '/audit/:id', ({ params }) => {
+  const u = M.currentUser();
+  const rec = filterAudit(new URLSearchParams(), u).find((a) => a.id === Number(params.id));
+  if (!rec) throw new HttpErr(404, 'NOT_FOUND', '审计记录不存在');
+  return rec;
+});
+function exportAudit(q: URLSearchParams) {
   const u = M.currentUser();
   if (u.orgRole !== 'ADMIN' && !db.members.some((m) => m.userId === u.id && m.role === 'MAINTAINER')) throw new HttpErr(403, 'FORBIDDEN', '当前角色不能导出审计');
   const rows = filterAudit(q, u);
@@ -398,8 +414,8 @@ route('get', '/audit/export', ({ q }) => {
   const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const csv = '﻿' + [cols.join(','), ...rows.map((r) => cols.map((c) => esc(r[c])).join(','))].join('\n');
   return { __res: new Response(csv, { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="audit.csv"' } }) };
-});
-route('get', '/audit/mcp', ({ q }) => {
+}
+function mcpList(q: URLSearchParams) {
   const u = M.currentUser();
   if (!db.mcpAvailable) return { available: false, items: [], total: 0 };
   const ok = db.services.filter((s) => svcVisible(u, s)).map((s) => s.service);
@@ -410,7 +426,7 @@ route('get', '/audit/mcp', ({ q }) => {
     .filter((r) => !q.get('from') || r.at >= Number(q.get('from')))
     .filter((r) => !q.get('to') || r.at <= Number(q.get('to')));
   return { available: true, ...paged(rows, q) };
-});
+}
 
 // ---------- Webhook ----------
 const hook = (id: string) => { const w = db.webhooks.find((x) => x.id === Number(id)); if (!w) throw new HttpErr(404, 'NOT_FOUND', 'Webhook 不存在'); return w; };

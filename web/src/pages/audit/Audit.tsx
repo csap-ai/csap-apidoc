@@ -10,6 +10,7 @@ import { Forbidden, PageTitle } from '@/components/common';
 import DiffView, { CodeBlock } from '@/components/DiffView';
 import { useLoad } from '@/utils/useLoad';
 import { fmtTime, prettyJson } from '@/utils/format';
+import { showError } from '@/utils/errors';
 import { t, tDyn } from '@/i18n';
 
 const SOURCES = ['CONSOLE', 'OPEN_API', 'SERVICE', 'MCP', 'MIGRATE', 'SYSTEM'];
@@ -75,7 +76,7 @@ function Records() {
         loading={list.loading}
         dataSource={list.data?.items ?? []}
         pagination={{ current: page, pageSize: size, total: list.data?.total ?? 0, showSizeChanger: true, onChange: (p, s) => { setPage(p); setSize(s); } }}
-        onRow={(r) => ({ onClick: () => setDetail(r), style: { cursor: 'pointer' } })}
+        onRow={(r) => ({ onClick: () => { setDetail(r); auditApi.get(r.id).then(setDetail).catch(showError); }, style: { cursor: 'pointer' } })}
         columns={[
           { title: t('common.time'), dataIndex: 'at', width: 170, render: fmtTime },
           { title: t('audit.actor'), dataIndex: 'actorName', width: 110, render: (n: string, r) => <span>{n} <Tag>{tDyn('audit.actorType', r.actorType)}</Tag></span> },

@@ -94,7 +94,7 @@ export function seedDemo(adminDisplay = '管理员') {
     });
   });
   db.tokens.push({ id: nid(), name: '订单服务注册', prefix: 'csapt_Ab', scope: 'REGISTER', projectId: pOrder.id, createdBy: '管理员', createdAt: t0 - 86400000, lastUsedAt: t0 - 30000, revoked: false });
-  db.webhooks.push({ id: nid(), projectId: pOrder.id, name: '订单群通知', kind: 'WECOM', url: 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=***', hasSecret: false, events: 'change.submitted,change.published', enabled: true });
+  db.webhooks.push({ id: nid(), projectId: pOrder.id, name: '订单群通知', kind: 'WECOM', url: 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=***', hasSecret: false, events: ['change.submitted', 'change.published'], enabled: true });
   db.mcp.push(
     { id: nid(), service: 'order-service', at: t0 - 600000, caller: 'ide-agent', remoteAddress: '10.0.0.8', tool: 'search_api', target: '/api/orders/create', arguments: '{"q":"订单"}', status: 200, success: true, result: '命中 3 条', durationMs: 42 },
     { id: nid(), service: 'user-service', at: t0 - 300000, caller: 'ide-agent', remoteAddress: '10.0.0.8', tool: 'try_api', target: '/api/users/profile', arguments: '{}', status: 401, success: false, result: '未登录', durationMs: 18 },
@@ -251,5 +251,5 @@ export function deliver(w: Webhook, event: string): WebhookDelivery {
   return d;
 }
 export function fireEvent(event: string, projectId: number) {
-  db.webhooks.filter((w) => w.enabled && (w.projectId == null || w.projectId === projectId) && w.events.split(',').includes(event)).forEach((w) => deliver(w, event));
+  db.webhooks.filter((w) => w.enabled && (w.projectId == null || w.projectId === projectId) && w.events.includes(event)).forEach((w) => deliver(w, event));
 }

@@ -25,7 +25,7 @@ export default function WebhooksTab() {
   const open = (w: Webhook | 'new') => {
     setEditing(w);
     form.resetFields();
-    form.setFieldsValue(w === 'new' ? { kind: 'GENERIC', enabled: true, events: EVENTS.slice(0, 4).join(',') } : { ...w, secret: undefined });
+    form.setFieldsValue(w === 'new' ? { kind: 'GENERIC', enabled: true, events: EVENTS.slice(0, 4) } : { ...w, secret: undefined });
   };
   const save = async (v: WebhookInput) => {
     try {
@@ -51,7 +51,7 @@ export default function WebhooksTab() {
           { title: t('common.name'), dataIndex: 'name', width: 160 },
           { title: t('webhook.kind'), dataIndex: 'kind', width: 110, render: (k: string) => <Tag>{tDyn('webhook.kind', k)}</Tag> },
           { title: t('common.project'), dataIndex: 'projectId', width: 110, render: (id: number | null) => (id ? projects.data?.find((p) => p.id === id)?.name ?? id : t('webhook.global')) },
-          { title: t('webhook.events'), dataIndex: 'events', render: (e: string) => e.split(',').filter(Boolean).map((x) => <Tag key={x}>{tDyn('event', x)}</Tag>) },
+          { title: t('webhook.events'), dataIndex: 'events', render: (e: string[]) => e.map((x) => <Tag key={x}>{tDyn('event', x)}</Tag>) },
           { title: t('webhook.secret'), dataIndex: 'hasSecret', width: 90, render: (s: boolean) => (s ? t('webhook.hasSecret') : '-') },
           { title: t('common.enabled'), dataIndex: 'enabled', width: 80, render: (en: boolean, w) => <Switch size="small" checked={en} onChange={async (v) => { try { await webhookApi.update(w.id, { enabled: v }); void hooks.reload(); } catch (e) { showError(e); } }} /> },
           { title: t('common.operation'), width: 250, render: (_, w) => (
@@ -71,7 +71,7 @@ export default function WebhooksTab() {
           <Form.Item name="url" label={t('webhook.url')} rules={[{ required: true, type: 'url', message: t('common.required') }]}><Input /></Form.Item>
           <Form.Item name="secret" label={t('webhook.secret')} extra={t('webhook.secretHint')}><Input.Password autoComplete="new-password" /></Form.Item>
           <Form.Item name="projectId" label={t('common.project')}><Select allowClear placeholder={t('webhook.global')} disabled={!isAdmin(me) && false} options={(projects.data ?? []).map((p) => ({ value: p.id, label: p.name }))} /></Form.Item>
-          <Form.Item name="events" label={t('webhook.events')} getValueProps={(v: string) => ({ value: v ? v.split(',') : [] })} getValueFromEvent={(v: string[]) => v.join(',')}>
+          <Form.Item name="events" label={t('webhook.events')}>
             <Select mode="multiple" options={EVENTS.map((e) => ({ value: e, label: tDyn('event', e) }))} />
           </Form.Item>
           <Form.Item name="enabled" label={t('common.enabled')} valuePropName="checked"><Switch /></Form.Item>

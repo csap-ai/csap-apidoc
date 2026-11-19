@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Card, Col, Form, Input, List, Modal, Popconfirm, Row, Select, Space, Switch, Table, Typography } from 'antd';
 import { message } from '@/utils/notify';
-import { projectApi, userApi } from '@/api/endpoints';
+import { projectApi } from '@/api/endpoints';
 import type { Member, ProjectRole } from '@/api/types';
 import { useAuth } from '@/auth/AuthContext';
 import { canManageProject, isAdmin } from '@/auth/permissions';
@@ -66,7 +66,7 @@ function ProjectDetail({ id, onChanged, onDeleted }: { id: number; onChanged: ()
   const manage = canManageProject(me, id);
   const project = useLoad(() => projectApi.get(id), [id]);
   const members = useLoad(() => projectApi.members(id), [id]);
-  const users = useLoad(() => userApi.list(), [], { silent: true });
+  const users = useLoad(() => projectApi.candidates(id), [id], { silent: true, skip: !manage });
   const [addUser, setAddUser] = useState<number | undefined>();
   const [addRole, setAddRole] = useState<ProjectRole>('DEVELOPER');
   const [form] = Form.useForm();
@@ -79,9 +79,9 @@ function ProjectDetail({ id, onChanged, onDeleted }: { id: number; onChanged: ()
     try { await projectApi.setMember(id, userId, role); void members.reload(); } catch (e) { showError(e); }
   };
   const remove = async (userId: number) => {
-    try { await projectApi.removeMember(id, userId); void members.reload(); } catch (e) { showError(e); }
+    try { await projectApi.removeMember(id, userId); void members.reload(); void users.reload(); } catch (e) { showError(e); }
   };
-  const candidates = (users.data ?? []).filter((u) => !(members.data ?? []).some((m) => m.userId === u.id));
+  const candidates = users.data ?? [];
 
   return (
     <Space direction="vertical" style={{ width: '100%' }} size="middle">
@@ -124,7 +124,7 @@ function ProjectDetail({ id, onChanged, onDeleted }: { id: number; onChanged: ()
           <Space style={{ marginTop: 12 }} wrap>
             <Select showSearch optionFilterProp="label" style={{ width: 220 }} placeholder={t('project.user')} value={addUser} onChange={setAddUser} options={candidates.map((u) => ({ value: u.id, label: `${u.displayName}(${u.username})` }))} />
             <Select style={{ width: 120 }} value={addRole} onChange={setAddRole} options={ROLES.map((x) => ({ value: x, label: tDyn('role', x) }))} />
-            <Button type="primary" disabled={!addUser} onClick={async () => { await setRole(addUser!, addRole); setAddUser(undefined); }}>{t('project.addMember')}</Button>
+            <Button type="primary" disabled={!addUser} onClick={async () => { await setRole(addUser!, addRole); setAddUser(undefined); void users.reload(); }}>{t('project.addMember')}</Button>
           </Space>
         ))}
       </Card>

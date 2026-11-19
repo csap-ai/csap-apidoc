@@ -33,6 +33,7 @@ export const projectApi = {
   update: (id: number, b: Partial<{ name: string; description: string; requireApproval: boolean }>) =>
     request<T.Project>(`/projects/${id}`, { method: 'PATCH', body: b }),
   remove: (id: number) => request<void>(`/projects/${id}`, { method: 'DELETE' }),
+  candidates: (id: number) => request<T.Candidate[]>(`/projects/${id}/candidates`),
   members: (id: number) => request<T.Member[]>(`/projects/${id}/members`),
   setMember: (id: number, userId: number, role: T.ProjectRole) =>
     request<T.Member>(`/projects/${id}/members/${userId}`, { method: 'PUT', body: { role } }),
@@ -99,6 +100,7 @@ export interface AuditQuery {
 }
 export const auditApi = {
   list: (q: AuditQuery & { page?: number; size?: number }) => request<T.Paged<T.AuditRecord>>('/audit', { query: q as Q }),
+  get: (id: number) => request<T.AuditRecord>(`/audit/${id}`),
   exportUrl: (format: 'csv' | 'json', q: AuditQuery) => url('/audit/export', { ...(q as Q), format }),
   mcp: (q: { from?: number; to?: number; service?: string; caller?: string; tool?: string; page?: number; size?: number }) =>
     request<T.McpAuditPage>('/audit/mcp', { query: q as Q }),

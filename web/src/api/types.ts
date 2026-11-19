@@ -206,6 +206,12 @@ export interface ConflictItem {
   currentRules: string | null;
 }
 
+export interface Candidate {
+  id: number;
+  username: string;
+  displayName: string;
+}
+
 export interface Paged<T> {
   items: T[];
   total: number;
@@ -257,8 +263,10 @@ export interface Webhook {
   kind: WebhookKind;
   url: string;
   hasSecret: boolean;
-  events: string;
+  events: string[];
   enabled: boolean;
+  createdAt?: number;
+  updatedAt?: number;
 }
 export interface WebhookInput {
   projectId?: number | null;
@@ -266,7 +274,7 @@ export interface WebhookInput {
   kind: WebhookKind;
   url: string;
   secret?: string;
-  events: string;
+  events: string[];
   enabled: boolean;
 }
 export interface WebhookDelivery {
