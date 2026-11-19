@@ -219,6 +219,17 @@ class UnitTests {
         List<DocsService.Entry> bare = (List<DocsService.Entry>) index.invoke(null, "svc",
                 Json.read("{\"apiList\":[{\"methodList\":[{\"name\":\"x\",\"paths\":[\"/a\",\"/b\"],\"methods\":[\"GET\",\"POST\"]}]}]}"));
         assertEquals(4, bare.size(), "每个路径 × 方法一条");
+        // 完整路径 = 控制器 path[i] + 方法 paths[j];标题优先取方法 value
+        @SuppressWarnings("unchecked")
+        List<DocsService.Entry> full = (List<DocsService.Entry>) index.invoke(null, "svc", Json.read("{\"data\":{\"apiList\":["
+                + "{\"path\":[\"/api/v1/users\",\"/api/v2/users/\"],\"methodList\":["
+                + "{\"name\":\"get\",\"value\":\"查询用户\",\"paths\":[\"/{id}\",\"/by-name\"],\"methods\":[\"GET\",\"HEAD\"]},"
+                + "{\"name\":\"list\",\"value\":\"\",\"paths\":[],\"methods\":[\"GET\"]}]}]}}"));
+        assertEquals(8 + 2, full.size());
+        assertTrue(full.stream().anyMatch(e -> e.path().equals("/api/v1/users/{id}") && e.method().equals("GET") && e.title().equals("查询用户")));
+        assertTrue(full.stream().anyMatch(e -> e.path().equals("/api/v2/users/by-name") && e.method().equals("HEAD")));
+        assertTrue(full.stream().anyMatch(e -> e.path().equals("/api/v1/users") && e.title().equals("list")), "方法 paths 为空 = 控制器 path,value 为空取 name");
+        assertTrue(full.stream().anyMatch(e -> e.path().equals("/api/v2/users/")));
     }
 
     // ---- 授权 ----

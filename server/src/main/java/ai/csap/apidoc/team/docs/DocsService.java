@@ -79,7 +79,7 @@ public class DocsService {
         return cache.get(service);
     }
 
-    @Scheduled(initialDelay = 5_000, fixedDelayString = "${csap.team.docs.refresh-seconds:60}", timeUnit = TimeUnit.SECONDS)
+    @Scheduled(initialDelayString = "5", fixedDelayString = "${csap.team.docs.refresh-seconds:60}", timeUnit = TimeUnit.SECONDS)
     public void refreshAll() {
         try {
             List<ServiceService.Row> rows = services.all();
@@ -201,36 +201,49 @@ public class DocsService {
                 if (methods == null || !methods.isArray()) {
                     continue;
                 }
+                List<String> controllerPaths = strings(c.get("path"));
                 for (JsonNode m : methods) {
-                    addMethod(out, service, m);
+                    addMethod(out, service, controllerPaths, m);
                 }
             }
         }
         return out;
     }
 
-    private static void addMethod(List<Entry> out, String service, JsonNode m) {
-        String title = firstText(m, "name", "simpleName", "value");
+    private static void addMethod(List<Entry> out, String service, List<String> controllerPaths, JsonNode m) {
+        // 标题优先取方法的 value(中文说明),为空再取 name / simpleName
+        String title = firstText(m, "value", "name", "simpleName");
         String desc = text(m, "description");
         List<String[]> fields = new ArrayList<>();
         collectModels(m.get("request"), fields, 0);
         collectModels(m.get("response"), fields, 0);
-        List<String> paths = strings(m.get("paths"));
-        if (paths.isEmpty()) {
-            paths = strings(m.get("apiPath"));
-        }
+        List<String> methodPaths = strings(m.get("paths"));
         List<String> verbs = strings(m.get("methods"));
         if (verbs.isEmpty()) {
             verbs = List.of("ANY");
         }
-        if (paths.isEmpty()) {
-            paths = List.of("");
+        // 完整路径 = 控制器 path[i] + 方法 paths[j];任一为空时只取另一个
+        List<String> paths = new ArrayList<>();
+        for (String cp : controllerPaths.isEmpty() ? List.of("") : controllerPaths) {
+            for (String mp : methodPaths.isEmpty() ? List.of("") : methodPaths) {
+                paths.add(join(cp, mp));
+            }
         }
         for (String p : paths) {
             for (String v : verbs) {
                 out.add(new Entry(service, v, p, title, desc, fields));
             }
         }
+    }
+
+    static String join(String a, String b) {
+        if (a.isEmpty()) {
+            return b;
+        }
+        if (b.isEmpty()) {
+            return a;
+        }
+        return a.replaceAll("/+$", "") + (b.startsWith("/") ? b : "/" + b);
     }
 
     private static void collectModels(JsonNode models, List<String[]> out, int depth) {
