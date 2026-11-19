@@ -106,6 +106,10 @@ func New(opts Options) *Strategy {
 	return &Strategy{opts: opts, t: tables{rule: p + "rule", history: p + "history", meta: p + "meta"}}
 }
 
+// Service 返回生效的服务名(Options.Service 为空时是 DefaultService)。
+// 向团队版注册时可以直接传给 team.Options.Service,保持两处服务名一致。
+func (s *Strategy) Service() string { return s.opts.Service }
+
 func (s *Strategy) Name() string { return "sql:" + s.opts.TablePrefix + "[" + s.opts.Service + "]" }
 
 func (s *Strategy) checkService() error {
