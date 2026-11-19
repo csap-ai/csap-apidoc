@@ -64,11 +64,10 @@ export function changeActions(me: Me | null, c: Change): { visible: ChangeAction
   const visible: ChangeAction[] = [];
   const author = isAuthor(me, c);
   const write = canWrite(me, c.projectId);
-  if (c.status === 'DRAFT' && author && write) visible.push('edit', 'submit', 'withdraw');
-  if (c.status === 'PENDING') {
-    if (canApprove(me, c)) visible.push('approve', 'reject');
-    if (author && write) visible.push('withdraw');
-  }
-  if (c.status === 'CONFLICT' && author && write) visible.push('rebase', 'withdraw');
+  // 编辑 / 提交 / 更新到最新版本:仅作者;撤回:作者、项目维护者、管理员(仅草稿 / 待审批)
+  if (c.status === 'DRAFT' && author && write) visible.push('edit', 'submit');
+  if (c.status === 'PENDING' && canApprove(me, c)) visible.push('approve', 'reject');
+  if ((c.status === 'DRAFT' || c.status === 'PENDING') && (author || canManageProject(me, c.projectId))) visible.push('withdraw');
+  if (c.status === 'CONFLICT' && author && write) visible.push('rebase');
   return { visible, approveBlockedSelf: c.status === 'PENDING' && approveBlockedBySelf(me, c) };
 }

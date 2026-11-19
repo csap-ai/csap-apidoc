@@ -351,6 +351,7 @@ route('post', '/changes/:id/reject', ({ params, body }) => {
   const r = M.projectRole(u, c.projectId);
   if (r !== 'ADMIN' && !(r === 'MAINTAINER' && c.author.id !== u.id)) throw new HttpErr(403, 'FORBIDDEN', '没有审批权限');
   if (c.status !== 'PENDING') throw bad('只有待审批的修改单可以驳回');
+  if (!String(body.note ?? '').trim()) throw bad('驳回必须填写意见');
   c.decidedBy = M.userRef(u); c.decidedAt = Date.now(); c.decisionNote = body.note ?? '';
   M.setStatus(c, 'REJECTED', 'change.reject', u, body.note);
   M.fireEvent('change.rejected', c.projectId);
@@ -358,8 +359,9 @@ route('post', '/changes/:id/reject', ({ params, body }) => {
 });
 route('post', '/changes/:id/withdraw', ({ params }) => {
   const u = M.currentUser(); const c = M.findChange(Number(params.id));
-  if (c.author.id !== u.id) throw new HttpErr(403, 'FORBIDDEN', '只有作者可以撤回');
-  if (!['DRAFT', 'PENDING', 'CONFLICT'].includes(c.status)) throw bad('当前状态不能撤回');
+  const wr = M.projectRole(u, c.projectId);
+  if (c.author.id !== u.id && wr !== 'ADMIN' && wr !== 'MAINTAINER') throw new HttpErr(403, 'FORBIDDEN', '只有作者、项目维护者或管理员可以撤回');
+  if (!['DRAFT', 'PENDING'].includes(c.status)) throw bad('当前状态不能撤回');
   M.setStatus(c, 'WITHDRAWN', 'change.withdraw', u);
   return M.decorate(c);
 });
@@ -389,7 +391,7 @@ function filterAudit(q: URLSearchParams, u: ReturnType<typeof M.currentUser>) {
     .filter((a) => !q.get('projectId') || a.projectId === Number(q.get('projectId')))
     .filter((a) => !q.get('service') || a.service === q.get('service'))
     .filter((a) => !q.get('ruleKey') || (a.ruleKey ?? '').includes(q.get('ruleKey')!))
-    .filter((a) => !q.get('action') || a.action.startsWith(q.get('action')!))
+    .filter((a) => { const f = q.get('action'); return !f || (f.endsWith('*') ? a.action.startsWith(f.slice(0, -1)) : a.action === f); })
     .filter((a) => !q.get('source') || a.source === q.get('source'));
 }
 route('get', '/audit', ({ q }) => {
@@ -437,7 +439,8 @@ function mcpList(q: URLSearchParams): { available: boolean; items: any[]; total:
 // ---------- Webhook ----------
 const hook = (id: string) => { const w = db.webhooks.find((x) => x.id === Number(id)); if (!w) throw new HttpErr(404, 'NOT_FOUND', 'Webhook 不存在'); return w; };
 const hookAccess = (u: ReturnType<typeof M.currentUser>, pid: number | null) => { if (pid == null) M.requireAdmin(u); else M.requireRole(u, pid, ['ADMIN', 'MAINTAINER']); };
-const outHook = ({ secret: _s, ...w }: Webhook & { secret?: string }) => w;
+const maskUrl = (u: string) => { try { const x = new URL(u); return `${x.origin}/***`; } catch { return '***'; } };
+const outHook = ({ secret: _s, ...w }: Webhook & { secret?: string }) => ({ ...w, url: maskUrl(w.url) });
 route('get', '/webhooks', ({ q }) => {
   const u = M.currentUser();
   if (u.orgRole !== 'ADMIN' && !db.members.some((m) => m.userId === u.id && m.role === 'MAINTAINER')) throw new HttpErr(403, 'FORBIDDEN', '当前角色不能管理 Webhook');

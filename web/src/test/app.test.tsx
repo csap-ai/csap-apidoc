@@ -49,11 +49,11 @@ describe('修改单状态按钮按角色显示', () => {
     return within(screen.getByTestId('change-actions'));
   };
 
-  it('待审批:非作者维护者能通过 / 驳回,不能撤回', async () => {
+  it('待审批:非作者维护者能通过 / 驳回 / 撤回', async () => {
     const a = await actionsOf('zhangsan', 'lisi', 'PENDING');
     expect(a.getByRole('button', { name: /通过并发布/ })).toBeEnabled();
     expect(a.getByRole('button', { name: /驳\s*回/ })).toBeEnabled();
-    expect(a.queryByRole('button', { name: /撤\s*回/ })).toBeNull();
+    expect(a.getByRole('button', { name: /撤\s*回/ })).toBeInTheDocument();
   });
 
   it('待审批:作者(开发)只能撤回,看不到审批', async () => {
@@ -67,6 +67,11 @@ describe('修改单状态按钮按角色显示', () => {
     const a = await actionsOf('zhangsan', 'zhangsan', 'PENDING');
     expect(a.getByRole('button', { name: /通过并发布/ })).toBeDisabled();
     expect(a.queryByRole('button', { name: /驳\s*回/ })).toBeNull();
+  });
+
+  it('待审批:同项目开发者(非作者)看不到撤回', async () => {
+    const a = await actionsOf('lisi', 'zhangsan', 'PENDING');
+    expect(a.queryAllByRole('button')).toHaveLength(0);
   });
 
   it('待审批:管理员可以审批他人和自己的', async () => {
