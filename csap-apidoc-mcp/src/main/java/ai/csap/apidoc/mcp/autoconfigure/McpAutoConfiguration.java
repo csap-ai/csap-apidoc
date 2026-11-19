@@ -6,6 +6,7 @@ import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -26,6 +27,7 @@ import ai.csap.apidoc.autoconfigure.EnableApidocConfig;
 import ai.csap.apidoc.event.ApidocRulesRefreshedEvent;
 import ai.csap.apidoc.mcp.McpService;
 import ai.csap.apidoc.mcp.audit.AuditLog;
+import ai.csap.apidoc.mcp.audit.AuditSink;
 import ai.csap.apidoc.mcp.config.McpSettingsStore;
 import ai.csap.apidoc.mcp.config.McpSettingsStores;
 import ai.csap.apidoc.mcp.invoke.LoopbackInvoker;
@@ -70,17 +72,43 @@ public class McpAutoConfiguration {
 
     @Bean(destroyMethod = "close")
     @ConditionalOnMissingBean
-    public AuditLog csapMcpAuditLog(McpProperties properties) {
+    public AuditLog csapMcpAuditLog(McpProperties properties, ObjectProvider<EnableApidocConfig> enableApidocConfig,
+                                    BeanFactory beanFactory, Environment environment) {
         McpProperties.Audit a = properties.getAudit();
-        File file = null;
-        if (a.isPersist()) {
-            if (ClassUtils.isPresent("org.sqlite.JDBC", getClass().getClassLoader())) {
-                file = new File(a.getSqliteFile());
-            } else {
+        switch (a.effectiveStore()) {
+            case SQLITE:
+                if (ClassUtils.isPresent("org.sqlite.JDBC", getClass().getClassLoader())) {
+                    return new AuditLog(a.getCapacity(), new File(a.getSqliteFile()), a.getMaxRows());
+                }
                 LOG.warn("csap-apidoc MCP: 审计落盘需要 sqlite-jdbc,改为只记录在内存");
-            }
+                break;
+            case DATABASE:
+                AuditSink sink = databaseSink(a, enableApidocConfig.getIfAvailable(), beanFactory, environment);
+                if (sink != null) {
+                    return new AuditLog(a.getCapacity(), sink);
+                }
+                break;
+            default:
+                break;
         }
-        return new AuditLog(a.getCapacity(), file, a.getMaxRows());
+        return new AuditLog(a.getCapacity(), (File) null, a.getMaxRows());
+    }
+
+    /**
+     * csap.apidoc.mcp.audit.store=database:需要数据库模式已启用;不满足时 warn 并返回 null(退回内存)。
+     */
+    private AuditSink databaseSink(McpProperties.Audit audit, EnableApidocConfig cfg, BeanFactory beanFactory,
+                                   Environment environment) {
+        if (cfg == null || cfg.getParamType() != ApiStrategyType.DATABASE) {
+            LOG.warn("csap-apidoc MCP: csap.apidoc.mcp.audit.store=database 需要启用数据库模式"
+                    + "(@EnableApidoc(paramType = ApiStrategyType.DATABASE)),改为只记录在内存");
+            return null;
+        }
+        if (!ClassUtils.isPresent("ai.csap.apidoc.database.autoconfigure.DatabaseTarget", getClass().getClassLoader())) {
+            LOG.warn("csap-apidoc MCP: csap.apidoc.mcp.audit.store=database 需要 csap-apidoc-database 模块,改为只记录在内存");
+            return null;
+        }
+        return DatabaseAuditFactory.create(audit, beanFactory, environment);
     }
 
     @Bean

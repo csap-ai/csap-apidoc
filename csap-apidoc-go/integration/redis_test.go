@@ -369,3 +369,26 @@ func TestRedisHistoryUnlimited(t *testing.T) {
 		t.Fatalf("最早的记录仍可回滚: %v", err)
 	}
 }
+
+// SaveRaw 与 Java RedisRuleStore.save 一致:内容语义相同(空白、键顺序不同)时不写,返回当前版本号。
+func TestRedisSaveRawSemanticUnchanged(t *testing.T) {
+	rdb, prefix := redisEnv(t)
+	ctx := context.Background()
+	s := newRedis(rdb, prefix, "order-service", 0, -1)
+	if v, err := s.SaveRaw(ctx, "G.raw", `{"response":{"a":{"include":true},"b":{"include":false}}}`, "x"); err != nil || v != 1 {
+		t.Fatalf("首次 %d %v", v, err)
+	}
+	if v, err := s.SaveRaw(ctx, "G.raw", ` { "response" : { "b" : {"include":false}, "a" : {"include": true} } } `, "x"); err != nil || v != 1 {
+		t.Fatalf("键序/空白不同应视为相同: %d %v", v, err)
+	}
+	if v, err := s.SaveRaw(ctx, "G.raw", `{"response":{"a":{"include":false}}}`, "x"); err != nil || v != 2 {
+		t.Fatalf("真改动: %d %v", v, err)
+	}
+	if v, err := s.SaveRaw(ctx, "G.none", "", "x"); err != nil || v != 2 {
+		t.Fatalf("删除不存在: %d %v", v, err)
+	}
+	recs, err := s.History(ctx, "", 100)
+	if err != nil || len(recs) != 2 {
+		t.Fatalf("记录应 2 条: %d %v", len(recs), err)
+	}
+}

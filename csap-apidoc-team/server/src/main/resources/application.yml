@@ -1,0 +1,37 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: csap-apidoc-team
+  datasource:
+    # 默认用本地文件 H2(仅供本地体验 / 测试);生产请改成与服务共用的 MySQL / PostgreSQL / 达梦 / 人大金仓
+    url: ${CSAP_TEAM_DB_URL:jdbc:h2:file:./data/csap-team;DB_CLOSE_ON_EXIT=FALSE}
+    username: ${CSAP_TEAM_DB_USER:sa}
+    password: ${CSAP_TEAM_DB_PASSWORD:}
+  autoconfigure:
+    # 开源 database 模块带的自动配置是给服务端用的,团队版不需要
+    exclude: ai.csap.apidoc.database.autoconfigure.DatabaseAutoConfiguration
+  mvc:
+    async:
+      request-timeout: 10m
+  jackson:
+    default-property-inclusion: always
+
+csap:
+  team:
+    public-url: ${CSAP_TEAM_PUBLIC_URL:}
+    rule-table-prefix: ${CSAP_TEAM_RULE_TABLE_PREFIX:csap_apidoc_}
+    database:
+      create-tables: true
+    docs:
+      refresh-seconds: 60
+    sync:
+      history-seconds: 10
+    audit:
+      retention-days: 0
+    trusted-proxies: []
+
+logging:
+  level:
+    root: INFO

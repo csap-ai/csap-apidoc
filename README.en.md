@@ -133,7 +133,7 @@ The Go version is a single Go module, `github.com/csap-ai/csap-apidoc/csap-apido
 | `ai.csap.apidoc:csap-apidoc-yaml` / `csap-apidoc-sqlite` / `csap-apidoc-standard` | Rule storage strategies |
 | `ai.csap.apidoc:csap-validation-core` | Validation engine |
 
-Java modules live at the repository root, the Go implementation in `csap-apidoc-go/`, and the website in `website/`.
+Java modules live at the repository root, the Go implementation in `csap-apidoc-go/`, the team edition (multi-service doc center, members and review, audit; free and open source) in `csap-apidoc-team/`, and the website in `website/`.
 
 ## AI coding assistants
 

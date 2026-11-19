@@ -1,0 +1,8 @@
+{
+  "service": "order-service",
+  "instanceId": "10.0.0.5:8080",
+  "baseUrl": "http://10.0.0.5:8080",
+  "docPath": "/csap/apidoc",
+  "language": "go",
+  "frameworkVersion": "0.3.0"
+}

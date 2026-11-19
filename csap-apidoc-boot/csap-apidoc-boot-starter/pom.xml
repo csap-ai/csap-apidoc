@@ -70,6 +70,12 @@
             <artifactId>csap-apidoc-mock</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 向团队版注册服务,默认关闭(csap.apidoc.team.enabled) -->
+        <dependency>
+            <groupId>ai.csap.apidoc</groupId>
+            <artifactId>csap-apidoc-team-client</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- test:Redis 模式的迁移端到端测试用 -->
         <dependency>
             <groupId>org.springframework.data</groupId>

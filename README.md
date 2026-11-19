@@ -138,7 +138,7 @@ Go 版是单个 Go 模块 `github.com/csap-ai/csap-apidoc/csap-apidoc-go`,见上
 | `ai.csap.apidoc:csap-apidoc-yaml` / `csap-apidoc-sqlite` / `csap-apidoc-standard` | 规则存储策略 |
 | `ai.csap.apidoc:csap-validation-core` | 校验引擎 |
 
-源码目录:Java 各模块在仓库根目录;Go 实现在 `csap-apidoc-go/`;官网在 `website/`。
+源码目录:Java 各模块在仓库根目录;Go 实现在 `csap-apidoc-go/`;团队版(多服务文档中心、成员与审批、审计,免费开源)在 `csap-apidoc-team/`;官网在 `website/`。
 
 ## AI 编码助手
 

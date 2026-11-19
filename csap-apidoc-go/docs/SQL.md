@@ -44,6 +44,7 @@ if err := s.EnsureSchema(ctx); err != nil { ... } // 建表;发现旧表返回 s
 - `EnsureSchema` 逐表探测(`SELECT service FROM <表> WHERE 1 = 0`),不存在才建,已存在不动;发现 v0.1.x 的旧表(没有 `service` 列)时返回 `ErrLegacySchema`,**不会自动改旧表**。
 - `Schema()` 返回建表语句,想自己执行(或交给 DBA)时用。
 - 同一个库里各服务的规则、版本号、修改记录、回滚互不影响;回滚别的服务的修改记录会返回 `strategy.ErrNoChange`。
+- 保存内容与库里现有的语义相同(按 JSON 比较,忽略空白和键顺序;删除不存在的规则同理)时,`Save` / `SaveRaw` 什么都不写、不通知,返回当前版本号。Java 的 `DatabaseRuleStore.save` 此时返回 -1,Go 与 `strategy/redis` 保持一致返回当前版本号。
 - `Notifier`(如 Redis Pub/Sub)接口保持 v0.1.x 的签名,消息不带服务名;多个服务共用一个通知频道时,收到通知的实例多查一次本服务的版本号(版本没变就不重新加载),结果正确。想避免多余的查询,让通知实现同时实现 `ServiceNotifier`(`PublishService` / `SubscribeService`,消息带服务名),策略会优先使用它并忽略其他服务的消息。
 
 ## 从 v0.1.x 升级到 v0.2.0

@@ -1,0 +1,169 @@
+-- CSAP Apidoc 团队版 建表脚本 / schema for the team edition (dm)
+-- 团队版自己的表;开源数据库模式的三张表(rule / history / meta)由开源建表脚本创建。
+-- 由 server/generate-schema.sh 从 server/schema-template.sql 生成,不要手工修改。
+-- 未在真实库验证的方言:dm、kingbase(按开源版同样的类型约定编写)。
+
+CREATE TABLE csap_team_setting (
+    name VARCHAR(128) NOT NULL PRIMARY KEY,
+    setting_value CLOB NOT NULL
+);
+
+CREATE TABLE csap_team_user (
+    id BIGINT IDENTITY(1, 1) PRIMARY KEY,
+    username VARCHAR(64) NOT NULL,
+    display_name VARCHAR(128) NOT NULL,
+    password_hash VARCHAR(100) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    org_role VARCHAR(16) NOT NULL,
+    created_at BIGINT NOT NULL,
+    updated_at BIGINT NOT NULL
+);
+
+CREATE UNIQUE INDEX csap_team_user_name ON csap_team_user (username);
+
+CREATE TABLE csap_team_project (
+    id BIGINT IDENTITY(1, 1) PRIMARY KEY,
+    name VARCHAR(128) NOT NULL,
+    description VARCHAR(1000),
+    require_approval SMALLINT NOT NULL,
+    created_at BIGINT NOT NULL,
+    updated_at BIGINT NOT NULL
+);
+
+CREATE UNIQUE INDEX csap_team_project_name ON csap_team_project (name);
+
+CREATE TABLE csap_team_project_service (
+    service VARCHAR(128) NOT NULL PRIMARY KEY,
+    project_id BIGINT,
+    base_url VARCHAR(512),
+    doc_path VARCHAR(256) NOT NULL,
+    language VARCHAR(32),
+    framework_version VARCHAR(64),
+    source VARCHAR(16) NOT NULL,
+    last_seen_at BIGINT,
+    created_at BIGINT NOT NULL
+);
+
+CREATE INDEX csap_team_project_service_pid ON csap_team_project_service (project_id);
+
+CREATE TABLE csap_team_service_instance (
+    service VARCHAR(128) NOT NULL,
+    instance_id VARCHAR(128) NOT NULL,
+    base_url VARCHAR(512) NOT NULL,
+    last_seen_at BIGINT NOT NULL,
+    PRIMARY KEY (service, instance_id)
+);
+
+CREATE TABLE csap_team_member (
+    project_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    role VARCHAR(16) NOT NULL,
+    created_at BIGINT NOT NULL,
+    PRIMARY KEY (project_id, user_id)
+);
+
+CREATE TABLE csap_team_token (
+    id BIGINT IDENTITY(1, 1) PRIMARY KEY,
+    name VARCHAR(128) NOT NULL,
+    token_hash VARCHAR(64) NOT NULL,
+    prefix VARCHAR(16) NOT NULL,
+    scope VARCHAR(16) NOT NULL,
+    project_id BIGINT,
+    created_by BIGINT NOT NULL,
+    created_at BIGINT NOT NULL,
+    last_used_at BIGINT,
+    revoked SMALLINT NOT NULL
+);
+
+CREATE UNIQUE INDEX csap_team_token_hash ON csap_team_token (token_hash);
+
+CREATE TABLE csap_team_change (
+    id BIGINT IDENTITY(1, 1) PRIMARY KEY,
+    project_id BIGINT NOT NULL,
+    title VARCHAR(256) NOT NULL,
+    reason CLOB,
+    author_id BIGINT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    created_at BIGINT NOT NULL,
+    updated_at BIGINT NOT NULL,
+    submitted_at BIGINT,
+    decided_by BIGINT,
+    decided_at BIGINT,
+    decision_note VARCHAR(1000),
+    published_at BIGINT,
+    kind VARCHAR(16) NOT NULL
+);
+
+CREATE INDEX csap_team_change_project ON csap_team_change (project_id, id);
+
+CREATE TABLE csap_team_change_item (
+    id BIGINT IDENTITY(1, 1) PRIMARY KEY,
+    change_id BIGINT NOT NULL,
+    service VARCHAR(128) NOT NULL,
+    rule_key VARCHAR(512) NOT NULL,
+    base_version BIGINT NOT NULL,
+    before_rules CLOB,
+    after_rules CLOB,
+    published_version BIGINT,
+    published_history_id BIGINT
+);
+
+CREATE INDEX csap_team_change_item_change ON csap_team_change_item (change_id);
+CREATE INDEX csap_team_change_item_hist ON csap_team_change_item (published_history_id);
+
+CREATE TABLE csap_team_audit (
+    id BIGINT IDENTITY(1, 1) PRIMARY KEY,
+    at BIGINT NOT NULL,
+    actor_type VARCHAR(16) NOT NULL,
+    actor_id BIGINT,
+    actor_name VARCHAR(128),
+    source VARCHAR(16) NOT NULL,
+    ip VARCHAR(64),
+    action VARCHAR(64) NOT NULL,
+    project_id BIGINT,
+    service VARCHAR(128),
+    rule_key VARCHAR(512),
+    change_id BIGINT,
+    before_value CLOB,
+    after_value CLOB,
+    diff CLOB,
+    reason VARCHAR(1000),
+    oss_history_id BIGINT,
+    prev_hash VARCHAR(64),
+    hash VARCHAR(64)
+);
+
+CREATE INDEX csap_team_audit_at ON csap_team_audit (at);
+CREATE INDEX csap_team_audit_service ON csap_team_audit (service, at);
+CREATE INDEX csap_team_audit_project ON csap_team_audit (project_id, at);
+
+CREATE TABLE csap_team_webhook (
+    id BIGINT IDENTITY(1, 1) PRIMARY KEY,
+    project_id BIGINT,
+    name VARCHAR(128) NOT NULL,
+    kind VARCHAR(16) NOT NULL,
+    url VARCHAR(1000) NOT NULL,
+    secret VARCHAR(256),
+    events VARCHAR(512) NOT NULL,
+    enabled SMALLINT NOT NULL,
+    created_at BIGINT NOT NULL,
+    updated_at BIGINT NOT NULL
+);
+
+CREATE TABLE csap_team_webhook_delivery (
+    id BIGINT IDENTITY(1, 1) PRIMARY KEY,
+    webhook_id BIGINT NOT NULL,
+    event VARCHAR(64) NOT NULL,
+    at BIGINT NOT NULL,
+    attempt INT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    http_status INT,
+    error VARCHAR(1000)
+);
+
+CREATE INDEX csap_team_webhook_delivery_wh ON csap_team_webhook_delivery (webhook_id, id);
+
+CREATE TABLE csap_team_cursor (
+    name VARCHAR(128) NOT NULL PRIMARY KEY,
+    cursor_value VARCHAR(512) NOT NULL
+);

@@ -159,8 +159,27 @@ passthrough 模式下 `/csap/mcp` 本身也可以放行,接口的访问控制照
 每次工具调用和每次鉴权失败记一条:时间、调用方(令牌名称;passthrough 模式为来源 IP)、工具、实际请求(方法和路径)、参数摘要、状态码、结果摘要、耗时。
 
 - 参数和结果按 JSON 处理,字段名包含 `password`、`pwd`、`secret`、`token`、`authorization`、`apikey`、`credential`、`cookie`、`session`、`privatekey` 等的值替换为 `***`;用 `audit.mask-fields` 追加字段名。摘要截断到 `audit.max-summary-chars`。请求头从不记录。
-- 默认只保存在内存(最近 `audit.capacity` 条);`audit.persist: true` 时同时写入 SQLite(`audit.sqlite-file`)。
+- 默认只保存在内存(最近 `audit.capacity` 条)。`audit.store` 可选:`memory`(默认)、`sqlite`(同时写入 `audit.sqlite-file`,等同旧的 `audit.persist: true`)、`database`(1.5.0 起,同时写入[数据库模式](/guide/database-mode)的库)。
+- 在 DevTools 的 MCP 页面查看审计日志时,始终读内存里最近的记录;写入数据库的完整记录供团队版等外部系统查询。
 - 在 DevTools 的 MCP 页面"审计日志"标签查看,或调用 `GET /devtools/mcp/audit?limit=&tool=&caller=`。
+
+### 审计写入数据库
+
+```yaml
+csap:
+  apidoc:
+    mcp:
+      audit:
+        store: database
+        max-rows: 10000     # 按 service 保留最新的这么多条
+```
+
+- 需要启用数据库模式(`@EnableApidoc(paramType = ApiStrategyType.DATABASE)`):审计使用数据库模式的 DataSource、方言、表前缀和 `service`(`csap.apidoc.database.*`),写入表 `{前缀}mcp_audit`,默认 `csap_apidoc_mcp_audit`。
+- 表的列:`id`、`service`、`at`(毫秒)、`caller`、`remote_address`、`tool`、`target`、`arguments`、`status`、`success`(0/1)、`result`、`duration_ms`,索引 `(service, at)` 和 `(at)`。MySQL、PostgreSQL、达梦、人大金仓、SQLite、H2 的建表脚本在 jar 内 `META-INF/csap-apidoc/database/{方言}.sql`。
+- `csap.apidoc.database.init-schema` 为 `true`(默认)且不是只读模式时自动建表;否则请先执行脚本。表不存在、数据库模式未启用或连不上数据库时,启动日志 warn 并退回只记录在内存,不影响应用启动。
+- 写库在后台线程进行,使用有界队列(1 万条):写库变慢或失败时新记录会被丢弃并在日志里计数,**不会阻塞 MCP 请求**,内存审计不受影响。脱敏规则(`mask-fields` 和内置敏感字段)在写库之前已经生效。
+- 每 10 分钟按 `service` 删除超出 `max-rows` 的最旧记录。
+- 达梦、人大金仓在 1.5.0 没有在真实数据库上验证,与数据库模式一样属于试用。
 
 ## 配置项
 
@@ -182,9 +201,10 @@ passthrough 模式下 `/csap/mcp` 本身也可以放行,接口的访问控制照
 | `csap.apidoc.mcp.auth.upstream-headers` | 空 | 每次回环调用附加的请求头 |
 | `csap.apidoc.mcp.audit.enabled` | `true` | 是否记录审计 |
 | `csap.apidoc.mcp.audit.capacity` | `500` | 内存保留条数 |
-| `csap.apidoc.mcp.audit.persist` | `false` | 是否写入 SQLite |
+| `csap.apidoc.mcp.audit.store` | `memory` | `memory` / `sqlite` / `database`(1.5.0 起);不设置时 `persist: true` 等同 `sqlite` |
+| `csap.apidoc.mcp.audit.persist` | `false` | 是否写入 SQLite(兼容,等同 `store: sqlite`) |
 | `csap.apidoc.mcp.audit.sqlite-file` | `csap-mcp-audit.db` | 审计 SQLite 文件(相对工作目录) |
-| `csap.apidoc.mcp.audit.max-rows` | `10000` | SQLite 最多保留条数 |
+| `csap.apidoc.mcp.audit.max-rows` | `10000` | SQLite / 数据库最多保留条数 |
 | `csap.apidoc.mcp.audit.max-summary-chars` | `512` | 参数 / 结果摘要最大长度 |
 | `csap.apidoc.mcp.audit.mask-fields` | 空 | 追加的打码字段名 |
 
@@ -200,7 +220,7 @@ passthrough 模式下 `/csap/mcp` 本身也可以放行,接口的访问控制照
 2. **写操作逐个打开**,打开前想清楚 AI 误调用的后果;优先暴露幂等、可回滚的接口。
 3. **生产环境用 token 模式**,或 passthrough + 接口自身鉴权;令牌放在环境变量或密钥管理里,定期轮换。
 4. **不要把端点直接暴露在公网**;放在内网或网关之后。
-5. **定期看审计日志**,开启 `audit.persist` 保留历史。
+5. **定期看审计日志**,开启 `audit.store: sqlite` 或 `database` 保留历史。
 6. 返回数据里有敏感字段时,开启 [返回字段过滤](/guide/runtime-filter) 并配置返回规则,AI 只能看到规则允许的字段。
 7. 浏览器里的页面不应直接调用 MCP 端点;确需跨域时才配置 `allowed-origins`。
 
