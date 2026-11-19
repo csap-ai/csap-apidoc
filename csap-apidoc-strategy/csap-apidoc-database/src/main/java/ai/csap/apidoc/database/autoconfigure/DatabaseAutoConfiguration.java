@@ -87,12 +87,31 @@ public class DatabaseAutoConfiguration {
 
     static DatabaseRuleStore createStore(DatabaseProperties properties, ObjectProvider<DataSource> dataSources,
                                          BeanFactory beanFactory, Environment environment) {
+        DatabaseTarget t = resolveTarget(properties, dataSources, beanFactory, environment);
+        return new DatabaseRuleStore(t.getDataSource(), t.getDialect(), t.getTablePrefix(), t.getService());
+    }
+
+    /**
+     * 解析数据库模式使用的 DataSource、方言、表前缀和服务标识(不连接规则表、不建表;识别方言时会取一次连接)。
+     * csap-apidoc-mcp 把审计写进同一个库时用它,保证与数据库模式用的是同一份配置。
+     *
+     * @param properties  数据库模式配置
+     * @param dataSources 容器中的 DataSource
+     * @param beanFactory Bean 工厂
+     * @param environment 环境
+     * @return 解析结果
+     * @throws IllegalStateException 找不到(或无法确定)DataSource、识别不了方言
+     * @since 1.5.0
+     */
+    public static DatabaseTarget resolveTarget(DatabaseProperties properties, ObjectProvider<DataSource> dataSources,
+                                               BeanFactory beanFactory, Environment environment) {
         DataSource dataSource = resolveDataSource(properties, dataSources, beanFactory);
         DatabaseDialect dialect = DatabaseDialect.parse(properties.getDialect());
         if (dialect == null) {
             dialect = detect(dataSource);
         }
-        return new DatabaseRuleStore(dataSource, dialect, properties.getTablePrefix(), resolveService(properties, environment));
+        return new DatabaseTarget(dataSource, dialect, properties.getTablePrefix(),
+                resolveService(properties, environment), properties.isInitSchema(), properties.isReadOnly());
     }
 
     static String resolveService(DatabaseProperties properties, Environment environment) {
