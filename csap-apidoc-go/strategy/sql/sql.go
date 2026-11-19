@@ -6,13 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/internal/rulejson"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
 )
 
@@ -541,20 +541,7 @@ var errUnchanged = errors.New("apidoc/sql: unchanged")
 // sameContent 判断新内容(after,空串表示删除)与库里现有的是否相同。
 // 与 Java RuleJson.sameJson 一致:按 JSON 语义比较,忽略空白和键顺序。
 func sameContent(before sql.NullString, after string) bool {
-	if after == "" {
-		return !before.Valid
-	}
-	if !before.Valid {
-		return false
-	}
-	if before.String == after {
-		return true
-	}
-	var a, b any
-	if json.Unmarshal([]byte(before.String), &a) != nil || json.Unmarshal([]byte(after), &b) != nil {
-		return false
-	}
-	return reflect.DeepEqual(a, b)
+	return rulejson.Same(before.String, before.Valid, after)
 }
 
 func (s *Strategy) tx(ctx context.Context, fn func(*sql.Tx) (int64, error)) (int64, error) {
