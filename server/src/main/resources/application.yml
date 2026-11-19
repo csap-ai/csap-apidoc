@@ -6,7 +6,7 @@ spring:
     name: csap-apidoc-team
   datasource:
     # 试用默认用本地文件 H2;生产请改成与服务共用的 MySQL / PostgreSQL / 达梦 / 人大金仓
-    url: ${CSAP_TEAM_DB_URL:jdbc:h2:file:./data/csap-team;DB_CLOSE_ON_EXIT=FALSE}
+    url: ${CSAP_TEAM_DB_URL:jdbc:h2:file:./data/csap-team;DB_CLOSE_ON_EXIT=FALSE;NON_KEYWORDS=VALUE}
     username: ${CSAP_TEAM_DB_USER:sa}
     password: ${CSAP_TEAM_DB_PASSWORD:}
   autoconfigure:

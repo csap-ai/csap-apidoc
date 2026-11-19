@@ -54,6 +54,24 @@ public class RulePublisher {
         return out;
     }
 
+    /**
+     * 确保这些服务在 {prefix}meta 里有版本号行(与开源 ensureMetaRow 一致,version=0)。
+     * 必须在发布事务<b>之外</b>调用:并发插入同一行时,PostgreSQL 的唯一键冲突会让所在事务进入中止状态,
+     * 放在自动提交里就只是一条失败的语句。
+     */
+    public void ensureMeta(java.util.Collection<String> services) {
+        for (String service : new TreeSet<>(services)) {
+            Long v = db.one("SELECT version FROM " + db.metaTable() + " WHERE service = ?", (rs, i) -> rs.getLong(1), service);
+            if (v == null) {
+                try {
+                    db.update("INSERT INTO " + db.metaTable() + " (service, version) VALUES (?, ?)", service, 0L);
+                } catch (DuplicateKeyException e) {
+                    // 别的请求刚插入
+                }
+            }
+        }
+    }
+
     public Result publish(List<Pub> items, String updatedBy) {
         String by = updatedBy == null || updatedBy.isEmpty() ? "unknown" : updatedBy;
         // 固定加锁顺序,避免两个发布互相等待

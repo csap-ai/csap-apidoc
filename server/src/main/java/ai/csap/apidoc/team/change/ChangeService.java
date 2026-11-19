@@ -375,6 +375,7 @@ public class ChangeService {
         List<Item> items = items(id);
         Pending pending = new Pending();
         List<RulePublisher.Conflict> pre = publisher.check(pubs(items));
+        publisher.ensureMeta(items.stream().map(Item::service).toList());
         db.inTx(() -> {
             if (!pre.isEmpty()) {
                 transition(c, "DRAFT", "CONFLICT");
@@ -408,6 +409,7 @@ public class ChangeService {
         Project p = project(c.projectId());
         List<Item> items = items(id);
         Pending pending = new Pending();
+        publisher.ensureMeta(items.stream().map(Item::service).toList());
         db.inTx(() -> {
             transition(c, "PENDING", "PUBLISHED");
             if (!publishInTx(c, p, items, who, pending)) {
