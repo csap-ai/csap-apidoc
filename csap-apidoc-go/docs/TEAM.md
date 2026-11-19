@@ -50,7 +50,7 @@ reg := team.Register(ctx, team.Options{URL: u, Token: t, BaseURL: b, Service: sq
 ## 行为
 
 - **后台进行**:注册、心跳在单个 goroutine 里;`Register` 立即返回,团队版不可达或返回错误既不阻止启动,也不会 panic 到调用方。
-- **请求**:`POST {URL}/api/open/v1/services/register`,`Authorization: Bearer {Token}`,JSON 体 `service`、`instanceId`、`baseUrl`、`docPath`、`language`、`frameworkVersion`。响应 `{"heartbeatSeconds": 30}`;之后按该间隔重复发送同一个请求作为心跳。间隔小于 10 / 大于 300 取边界值,缺失或无法解析按 30。
+- **请求**:`POST {URL}/api/open/v1/services/register`,`Authorization: Bearer {Token}`,JSON 体 `service`、`instanceId`、`baseUrl`、`docPath`、`language`、`frameworkVersion`。响应 `{"heartbeatSeconds": 30}`;之后按该间隔重复发送同一个请求作为心跳。正整数时限制在 10–300(超出取边界值);缺失、不是数字、不是整数、≤0 按 30。
 - **超时**:每次请求 3 秒。
 - **失败**:按当前心跳周期继续重试。日志降噪:首次失败 `warn`,之后每 10 次连续失败 `warn` 一次,恢复时 `info` 一次。
 - **401 / 403**:`warn` 一次"令牌无效或权限不足",之后按 300 秒周期重试;令牌修好后恢复正常并 `info`。
