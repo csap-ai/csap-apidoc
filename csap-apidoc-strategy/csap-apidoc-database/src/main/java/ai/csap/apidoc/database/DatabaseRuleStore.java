@@ -81,6 +81,10 @@ public class DatabaseRuleStore implements RuleStore {
         return dialect;
     }
 
+    public DataSource dataSource() {
+        return dataSource;
+    }
+
     @Override
     public String service() {
         return service;
@@ -119,7 +123,41 @@ public class DatabaseRuleStore implements RuleStore {
         for (String sql : schema(dialect, tablePrefix)) {
             sb.append(sql).append(";\n\n");
         }
+        sb.append("-- MCP 审计表:只有 csap.apidoc.mcp.audit.store=database 时才使用,规则存储不依赖它\n")
+          .append("-- MCP audit table: used only when csap.apidoc.mcp.audit.store=database\n\n");
+        for (String sql : mcpAuditSchema(dialect, tablePrefix)) {
+            sb.append(sql).append(";\n\n");
+        }
         return sb.toString();
+    }
+
+    /**
+     * MCP 审计表 {prefix}mcp_audit 的建表语句(表 + 两个索引),每条不带分号。
+     * 规则存储本身不建这张表,由 csap-apidoc-mcp 在 {@code csap.apidoc.mcp.audit.store=database} 时按需创建。
+     *
+     * @param dialect     方言
+     * @param tablePrefix 表名前缀
+     * @return 语句列表
+     */
+    public static List<String> mcpAuditSchema(DatabaseDialect dialect, String tablePrefix) {
+        String p = tablePrefix == null ? "csap_apidoc_" : tablePrefix;
+        String text = dialect.textType();
+        return Arrays.asList("CREATE TABLE " + p + "mcp_audit (\n"
+                + "    " + dialect.idColumn() + ",\n"
+                + "    service VARCHAR(128) NOT NULL,\n"
+                + "    at BIGINT NOT NULL,\n"
+                + "    caller VARCHAR(128),\n"
+                + "    remote_address VARCHAR(64),\n"
+                + "    tool VARCHAR(128),\n"
+                + "    target VARCHAR(512),\n"
+                + "    arguments " + text + ",\n"
+                + "    status INT NOT NULL,\n"
+                + "    success SMALLINT NOT NULL,\n"
+                + "    result " + text + ",\n"
+                + "    duration_ms BIGINT NOT NULL\n"
+                + ")" + dialect.tableOptions(),
+                "CREATE INDEX " + p + "mcp_audit_service_at ON " + p + "mcp_audit (service, at)",
+                "CREATE INDEX " + p + "mcp_audit_at ON " + p + "mcp_audit (at)");
     }
 
     /**

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>ai.csap.apidoc</groupId>
+        <artifactId>csap-apidoc-build</artifactId>
+        <version>1.4.0</version>
+        <relativePath>../csap-apidoc-build</relativePath>
+    </parent>
+
+    <artifactId>csap-apidoc-team-client</artifactId>
+    <name>CSAP Apidoc Team Client</name>
+    <description>Service registration client for the CSAP Apidoc team edition: reports this service's address to the team
+        server and keeps a heartbeat (Spring Boot 2 and 3). Disabled by default.</description>
+
+    <build>
+        <resources>
+            <!-- 构建时把版本号写进 csap-apidoc-team-client.properties,注册时作为 frameworkVersion -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>csap-apidoc-team-client.properties</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>csap-apidoc-team-client.properties</exclude>
+                </excludes>
+            </resource>
+        </resources>
+    </build>
+
+    <dependencies>
+        <!-- 只依赖 Spring Boot 的自动配置和 JDK 自带的 HTTP 客户端,不引入 Web 容器 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+    </dependencies>
+</project>

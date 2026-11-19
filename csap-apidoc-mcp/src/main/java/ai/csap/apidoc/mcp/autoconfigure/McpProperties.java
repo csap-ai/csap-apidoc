@@ -206,6 +206,24 @@ public class McpProperties {
     }
 
     /**
+     * 审计存储方式
+     */
+    public enum AuditStore {
+        /**
+         * 只记录在内存环形缓冲
+         */
+        MEMORY,
+        /**
+         * 同时写本地 SQLite 文件
+         */
+        SQLITE,
+        /**
+         * 同时写入数据库模式的库
+         */
+        DATABASE
+    }
+
+    /**
      * 审计配置
      */
     public static class Audit {
@@ -218,7 +236,13 @@ public class McpProperties {
          */
         private int capacity = 500;
         /**
-         * 是否同时写入 SQLite。
+         * 审计存储:memory(默认,只在内存环形缓冲)、sqlite(同时写本地 SQLite 文件)、
+         * database(同时写入数据库模式的库,表 {前缀}mcp_audit,需要 @EnableApidoc(paramType = DATABASE))。
+         * 不设置时由 persist 决定。
+         */
+        private AuditStore store;
+        /**
+         * 是否同时写入 SQLite;等同 store=sqlite(兼容 1.3.0 的配置)。
          */
         private boolean persist = false;
         /**
@@ -226,7 +250,7 @@ public class McpProperties {
          */
         private String sqliteFile = "csap-mcp-audit.db";
         /**
-         * SQLite 中最多保留的条数。
+         * SQLite / 数据库中最多保留的条数(数据库按 service 区分)。
          */
         private int maxRows = 10000;
         /**
@@ -252,6 +276,24 @@ public class McpProperties {
 
         public void setCapacity(int capacity) {
             this.capacity = capacity;
+        }
+
+        public AuditStore getStore() {
+            return store;
+        }
+
+        public void setStore(AuditStore store) {
+            this.store = store;
+        }
+
+        /**
+         * 实际使用的存储:显式配置的 store 优先,否则 persist=true 为 sqlite,其余为 memory。
+         */
+        public AuditStore effectiveStore() {
+            if (store != null) {
+                return store;
+            }
+            return persist ? AuditStore.SQLITE : AuditStore.MEMORY;
         }
 
         public boolean isPersist() {

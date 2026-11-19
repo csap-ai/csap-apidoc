@@ -53,6 +53,7 @@
         <module>csap-apidoc-runtime</module>
         <module>csap-apidoc-mcp</module>
         <module>csap-apidoc-mock</module>
+        <module>csap-apidoc-team-client</module>
         <module>csap-apidoc-boot</module>
         <module>csap-apidoc-ui</module>
     </modules>

@@ -64,3 +64,16 @@ logging:
     ai.csap.apidoc: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# 与团队版对接(1.5.0 起,默认关闭;需要时取消注释)
+# csap:
+#   apidoc:
+#     team:
+#       enabled: true
+#       url: http://team.example.com:8090
+#       token: ${CSAP_TEAM_TOKEN}        # 团队版控制台创建的 REGISTER 令牌
+#       service: example-service          # 省略时依次取 csap.apidoc.database.service、spring.application.name
+#       # base-url: http://10.0.0.5:8080  # 省略时自动推断;容器 / 网关后面时请显式配置
+#     mcp:
+#       audit:
+#         store: database                 # MCP 审计写入数据库模式的库(需要 paramType = DATABASE)

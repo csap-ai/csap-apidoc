@@ -22,7 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 审计日志:内存环形缓冲,可选异步写入 SQLite
+ * 审计日志:内存环形缓冲,可选异步写入 SQLite,或写入数据库({@link AuditSink},1.5.0 起)。
+ * 写入数据库时 DevTools 的审计页仍从内存读取。
  *
  * @author ycf
  * @since 1.3.0
@@ -42,6 +43,7 @@ public class AuditLog implements AutoCloseable {
     private final int maxRows;
     private final ExecutorService writer;
     private volatile boolean sqliteReady;
+    private final AuditSink sink;
 
     /**
      * @param capacity   内存条数
@@ -53,6 +55,7 @@ public class AuditLog implements AutoCloseable {
         this.ring = new ArrayDeque<>(this.capacity);
         this.sqliteFile = sqliteFile;
         this.maxRows = Math.max(100, maxRows);
+        this.sink = null;
         if (sqliteFile != null) {
             this.writer = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(10000),
                     r -> {
@@ -64,6 +67,22 @@ public class AuditLog implements AutoCloseable {
         } else {
             this.writer = null;
         }
+    }
+
+    /**
+     * 内存环形缓冲 + 写入数据库。
+     *
+     * @param capacity 内存条数
+     * @param sink     落库目标(已初始化);null 表示只记录在内存
+     * @since 1.5.0
+     */
+    public AuditLog(int capacity, AuditSink sink) {
+        this.capacity = Math.max(1, capacity);
+        this.ring = new ArrayDeque<>(this.capacity);
+        this.sqliteFile = null;
+        this.maxRows = 0;
+        this.writer = null;
+        this.sink = sink;
     }
 
     private void initSqlite() {
@@ -93,7 +112,7 @@ public class AuditLog implements AutoCloseable {
     }
 
     public boolean isPersistent() {
-        return sqliteReady;
+        return sqliteReady || sink != null;
     }
 
     public String getSqliteFile() {
@@ -115,6 +134,14 @@ public class AuditLog implements AutoCloseable {
         }
         if (sqliteReady && writer != null) {
             writer.execute(() -> write(entry));
+        }
+        if (sink != null) {
+            try {
+                sink.offer(entry);
+            } catch (RuntimeException e) {
+                // 落库永远不能影响 MCP 请求
+                LOG.debug("csap-apidoc MCP: 审计提交到数据库失败: {}", e.getMessage());
+            }
         }
     }
 
@@ -237,6 +264,9 @@ public class AuditLog implements AutoCloseable {
 
     @Override
     public void close() {
+        if (sink != null) {
+            sink.close();
+        }
         if (writer != null) {
             writer.shutdown();
             try {

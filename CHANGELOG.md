@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Planned for Java 1.5.0 / Go v0.3.0 (the Go side is tracked separately). Both features are
+**off by default**; without configuration behavior is identical to 1.4.0.
+
+### Added
+
+- **Team edition service registration** (`csap-apidoc-team-client`, pulled in by
+  `csap-apidoc-boot-starter`; Spring Boot 2 and 3, Java 11 bytecode). With
+  `csap.apidoc.team.enabled=true` and `csap.apidoc.team.url` the service registers itself
+  (`POST {url}/api/open/v1/services/register`, Bearer token) from a background daemon
+  thread, repeats the same request as a heartbeat at the interval the server returns
+  (10-300 s, default 30 s), and sends a deregister on shutdown. An unreachable team server
+  never blocks startup; failures are logged with throttling, `401` / `403` back off to
+  300 s, and the token never appears in logs. `service` defaults to
+  `csap.apidoc.team.service` -> `csap.apidoc.database.service` -> `spring.application.name`
+  -> `default`; `base-url` is inferred from the first non-loopback IPv4, the server port
+  and the context path. See `docs/design/team-integration.md`.
+- **MCP audit in the database** (`csap.apidoc.mcp.audit.store: memory | sqlite | database`).
+  `database` writes audit rows to `{prefix}mcp_audit` in the database-mode database
+  (same DataSource, dialect, table prefix and `service`), asynchronously through a bounded
+  queue (a full queue drops and counts, never blocks MCP requests), and trims to
+  `csap.apidoc.mcp.audit.max-rows` per service every 10 minutes. Create-table scripts for
+  MySQL, PostgreSQL, DM, KingbaseES, SQLite and H2 are added to
+  `META-INF/csap-apidoc/database/`. Without database mode, or when the table is not
+  available, it logs a warning and falls back to `memory`. `persist: true` keeps working
+  and means `store: sqlite`. `csap-apidoc-mcp` only has an optional dependency on
+  `csap-apidoc-database`.
+
 ## [1.4.0] - 2026-11-18
 
 Java 1.4.0 and Go v0.2.0 are released together and share the rule tables, the Redis
