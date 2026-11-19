@@ -60,13 +60,18 @@ export default function TokensTab() {
         closable={false}
         maskClosable={false}
         keyboard={false}
+        destroyOnClose
         footer={<Button type="primary" onClick={() => setCreated(null)}>{t('token.copyAndClose')}</Button>}
       >
-        <Alert type="warning" showIcon message={t('token.onceWarn')} style={{ marginBottom: 12 }} />
-        <Typography.Paragraph data-testid="token-plain" copyable={false} className="mono" style={{ wordBreak: 'break-all', padding: 10, border: '1px solid rgba(128,128,128,0.3)', borderRadius: 6 }}>
-          {created?.token}
-        </Typography.Paragraph>
-        <Button icon={<CopyOutlined />} onClick={copy}>{t('common.copy')}</Button>
+        {created && (
+          <>
+            <Alert type="warning" showIcon message={t('token.onceWarn')} style={{ marginBottom: 12 }} />
+            <Typography.Paragraph data-testid="token-plain" className="mono" style={{ wordBreak: 'break-all', padding: 10, border: '1px solid rgba(128,128,128,0.3)', borderRadius: 6 }}>
+              {created.token}
+            </Typography.Paragraph>
+            <Button icon={<CopyOutlined />} onClick={copy}>{t('common.copy')}</Button>
+          </>
+        )}
       </Modal>
     </Card>
   );

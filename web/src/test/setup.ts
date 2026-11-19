@@ -15,3 +15,7 @@ if (!window.matchMedia) {
   window.matchMedia = ((q: string) => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, onchange: null, dispatchEvent: () => false })) as any;
 }
 Object.defineProperty(window, 'getComputedStyle', { value: window.getComputedStyle, writable: true });
+
+if (!(globalThis as any).ResizeObserver) {
+  (globalThis as any).ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+}
