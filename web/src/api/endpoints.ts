@@ -102,6 +102,8 @@ export const auditApi = {
   list: (q: AuditQuery & { page?: number; size?: number }) => request<T.Paged<T.AuditRecord>>('/audit', { query: q as Q }),
   get: (id: number) => request<T.AuditRecord>(`/audit/${id}`),
   exportUrl: (format: 'csv' | 'json', q: AuditQuery) => url('/audit/export', { ...(q as Q), format }),
+  exportMcpUrl: (format: 'csv' | 'json', q: { from?: number; to?: number; service?: string; caller?: string; tool?: string }) =>
+    url('/audit/export', { ...(q as Q), kind: 'mcp', format }),
   mcp: (q: { from?: number; to?: number; service?: string; caller?: string; tool?: string; page?: number; size?: number }) =>
     request<T.McpAuditPage>('/audit/mcp', { query: q as Q }),
 };

@@ -41,7 +41,7 @@ export default function Login() {
       navigate(redirect, { replace: true });
     } catch (e) {
       if (e instanceof ApiError) {
-        setErr(e.status === 429 || /锁/.test(e.body.message || '') ? t('login.locked') : e.body.message || t('login.failed'));
+        setErr(e.code === 'LOCKED' ? t('login.locked') : e.body.message || t('login.failed'));
       } else setErr(t('err.network'));
     } finally {
       setBusy(false);

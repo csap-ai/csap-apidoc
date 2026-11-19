@@ -56,7 +56,7 @@ const fails = new Map<string, { n: number; until: number }>();
 route('post', '/auth/login', ({ body }) => {
   if (!db.initialized) throw new HttpErr(412, 'SETUP_REQUIRED', '系统尚未初始化');
   const f = fails.get(body.username) ?? { n: 0, until: 0 };
-  if (f.until > Date.now()) throw new HttpErr(429, 'FORBIDDEN', '连续失败次数过多,账号已被暂时锁定,请 15 分钟后再试');
+  if (f.until > Date.now()) throw new HttpErr(429, 'LOCKED', '连续失败次数过多,账号已被暂时锁定,请 15 分钟后再试');
   const u = db.users.find((x) => x.username === body.username);
   if (!u || u.password !== body.password) {
     f.n++;
@@ -407,6 +407,12 @@ route('get', '/audit/:id', ({ params }) => {
 function exportAudit(q: URLSearchParams) {
   const u = M.currentUser();
   if (u.orgRole !== 'ADMIN' && !db.members.some((m) => m.userId === u.id && m.role === 'MAINTAINER')) throw new HttpErr(403, 'FORBIDDEN', '当前角色不能导出审计');
+  if (q.get('kind') === 'mcp') {
+    const rows = mcpList(q).items;
+    M.logAudit({ ...M.auditBy(u), action: 'audit.export', reason: `MCP ${rows.length} 条` });
+    const body = q.get('format') === 'json' ? JSON.stringify(rows, null, 2) : '\ufeff' + ['id,service,at,caller,tool,target,success', ...(rows as any[]).map((r) => [r.id, r.service, r.at, r.caller, r.tool, r.target, r.success].join(','))].join('\n');
+    return { __res: new Response(body, { headers: { 'Content-Type': q.get('format') === 'json' ? 'application/json' : 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="mcp-audit.${q.get('format') === 'json' ? 'json' : 'csv'}"` } }) };
+  }
   const rows = filterAudit(q, u);
   M.logAudit({ ...M.auditBy(u), action: 'audit.export', reason: `${rows.length} 条` });
   if (q.get('format') === 'json') return { __res: new Response(JSON.stringify(rows, null, 2), { headers: { 'Content-Type': 'application/json', 'Content-Disposition': 'attachment; filename="audit.json"' } }) };
@@ -415,7 +421,7 @@ function exportAudit(q: URLSearchParams) {
   const csv = '﻿' + [cols.join(','), ...rows.map((r) => cols.map((c) => esc(r[c])).join(','))].join('\n');
   return { __res: new Response(csv, { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="audit.csv"' } }) };
 }
-function mcpList(q: URLSearchParams) {
+function mcpList(q: URLSearchParams): { available: boolean; items: any[]; total: number } {
   const u = M.currentUser();
   if (!db.mcpAvailable) return { available: false, items: [], total: 0 };
   const ok = db.services.filter((s) => svcVisible(u, s)).map((s) => s.service);

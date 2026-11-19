@@ -122,6 +122,9 @@ function Mcp() {
   const [expanded, setExpanded] = useState<McpAuditRecord | null>(null);
   const services = useLoad(() => serviceApi.list(), []);
   const [r, setR] = useState<Range>(null);
+  const { me } = useAuth();
+  const exportable = canExportAudit(me);
+  const doExport = (format: 'csv' | 'json') => { window.location.href = auditApi.exportMcpUrl(format, { ...f, ...toRange(r) }); };
   const list = useLoad(() => auditApi.mcp({ ...f, ...toRange(r), page, size }), [JSON.stringify(f), JSON.stringify(toRange(r)), page, size]);
 
   if (list.data && !list.data.available) return <Alert type="info" showIcon message={t('audit.mcp.unavailable')} data-testid="mcp-unavailable" />;
@@ -133,6 +136,13 @@ function Mcp() {
         <Input style={{ width: 130 }} placeholder={t('audit.mcp.caller')} value={draft.caller} onChange={(e) => setDraft({ ...draft, caller: e.target.value })} allowClear />
         <Input style={{ width: 130 }} placeholder={t('audit.mcp.tool')} value={draft.tool} onChange={(e) => setDraft({ ...draft, tool: e.target.value })} allowClear />
         <Button type="primary" onClick={() => { setF(draft); setR(range); setPage(1); }}>{t('common.search')}</Button>
+        {exportable ? (
+          <Dropdown menu={{ items: [{ key: 'csv', label: t('audit.exportCsv'), onClick: () => doExport('csv') }, { key: 'json', label: t('audit.exportJson'), onClick: () => doExport('json') }] }}>
+            <Button icon={<DownloadOutlined />}>{t('audit.export')}</Button>
+          </Dropdown>
+        ) : (
+          <Tooltip title={t('audit.viewerNoExport')}><span><Button icon={<DownloadOutlined />} disabled>{t('audit.export')}</Button></span></Tooltip>
+        )}
       </Space>
       <Table<McpAuditRecord>
         rowKey="id"

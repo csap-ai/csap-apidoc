@@ -46,6 +46,7 @@ const zh = {
   'err.VALIDATION': '提交的内容有误',
   'err.CONFLICT': '内容已被他人修改,存在冲突',
   'err.LICENSE_LIMIT': '已达授权人数上限,无法新增或启用用户。请在「管理 → 授权」中上传更高人数的授权文件',
+  'err.LOCKED': '连续失败次数过多,账号已被暂时锁定,请 15 分钟后再试',
   'err.SETUP_REQUIRED': '系统尚未初始化',
   'err.INTERNAL': '服务器开小差了,请稍后再试',
   'err.network': '无法连接服务器,请检查网络或服务是否已启动',
