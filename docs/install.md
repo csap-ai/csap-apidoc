@@ -221,7 +221,7 @@ csap:
 
 1. **配置 `public-url`**:填用户访问控制台的外部地址,例如 `https://team.example.com`。
 2. **配置 `trusted-proxies`**:填代理的 IP 或网段,审计里才会记录真实客户端 IP。不信任的来源发来的 `X-Forwarded-For` 一律忽略,防止伪造。
-3. **让 Cookie 带上 `Secure`**:登录 Cookie 的 `Secure` 属性取决于团队版看到的请求是不是 HTTPS。代理终止 TLS 后,团队版看到的是 HTTP,需要让它识别 `X-Forwarded-Proto`:设置 `SERVER_FORWARD_HEADERS_STRATEGY=native`(标准 Spring Boot 配置 `server.forward-headers-strategy=native`),并确保代理传递 `X-Forwarded-Proto`。
+3. **让 Cookie 带上 `Secure`(代理终止 TLS 时必做)**:登录 Cookie 的 `Secure` 属性取决于团队版看到的请求是不是 HTTPS。代理终止 TLS 后,团队版看到的是 HTTP,需要让它识别 `X-Forwarded-Proto`:设置 `SERVER_FORWARD_HEADERS_STRATEGY=native`(标准 Spring Boot 配置 `server.forward-headers-strategy=native`),并确保代理传递 `X-Forwarded-Proto`。
 
 `trusted-proxies` 示例(代理在 `10.0.0.0/8` 内):
 
@@ -353,7 +353,7 @@ docker run -d --name csap-team -p 8090:8090 \
 | `VALIDATION` | 400 | 提交的内容有误 |
 | `CONFLICT` | 409 | 版本冲突或重名 |
 | `SETUP_REQUIRED` | 412 | 系统尚未初始化 |
-| `LOCKED` | 429 | 登录失败过多,账号锁定 15 分钟 |
+| `LOCKED` | 429 | 登录失败过多,账号暂时锁定 15 分钟 |
 | `INTERNAL` | 500 | 服务器内部错误 |
 
 日志输出到标准输出,级别 `INFO`;日志里不打印密码、令牌和 Webhook 密钥。
