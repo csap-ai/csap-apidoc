@@ -1,6 +1,6 @@
 # CSAP Apidoc 团队版 1.0 设计与契约
 
-状态:契约冻结(2026-11-18,主会话制定;同日修订两次:错误码 HTTP 状态与 `LOCKED`、`setting_value`/`cursor_value` 列名、MCP 导出参数;补 `/auth/me` 的 license、成员与候选人、审计/MCP/Webhook/用户/令牌的返回字段)。实现会话按本文开发;要改契约先找主会话,不要各自改。
+状态:契约冻结(2026-11-18,主会话制定;同日修订三次:PostgreSQL 12+、修改单操作权限、登录锁定按账号+IP、Webhook 地址隐藏;错误码 HTTP 状态与 `LOCKED`、`setting_value`/`cursor_value` 列名、MCP 导出参数;补 `/auth/me` 的 license、成员与候选人、审计/MCP/Webhook/用户/令牌的返回字段)。实现会话按本文开发;要改契约先找主会话,不要各自改。
 
 发布目标:2026-12-31。
 
@@ -34,7 +34,7 @@ csap-apidoc-team/
 
 ### 2.1 支持范围
 
-与开源数据库模式一致:MySQL 5.7+/8、PostgreSQL 11+、达梦 DM8、人大金仓;另支持 H2(仅试用 / 测试)。方言识别复用开源 `DatabaseDialect`。
+与开源数据库模式一致:MySQL 5.7+/8、PostgreSQL 12+、达梦 DM8、人大金仓;另支持 H2(仅试用 / 测试)。方言识别复用开源 `DatabaseDialect`。
 
 - 团队版连的是**服务共用的那个库**(服务的 `csap.apidoc.database` 指向同一个库、同一个前缀)。
 - 建表:启动时检查,缺表按方言执行 `META-INF/csap-team/schema/{dialect}.sql`(风格同开源:不写 `DEFAULT ''`,时间用毫秒 BIGINT,字符串列值都由程序显式写入)。`csap.team.database.create-tables`(默认 true)。
@@ -163,7 +163,7 @@ DRAFT --withdraw--> WITHDRAWN
 |---|---|---|
 | GET | `/setup/status` | `{"initialized":bool}`;未初始化时除 setup 外的接口返回 `SETUP_REQUIRED` |
 | POST | `/setup` | `{"orgName","username","password","displayName"}`,仅在没有用户时可用,创建管理员 |
-| POST | `/auth/login` | `{"username","password"}` → 用户信息;连续失败 5 次锁 15 分钟,锁定期间返回 `LOCKED`(429) |
+| POST | `/auth/login` | `{"username","password"}` → 用户信息;同一账号 + 同一来源 IP 连续失败 5 次锁 15 分钟,锁定期间返回 `LOCKED`(429) |
 | POST | `/auth/logout` | |
 | GET | `/auth/me` | `{"id","username","displayName","orgRole","projects":[{"id","name","role"}],"license":{"status","maxMembers","activeMembers","expiresAt"}}`;`license` 对所有登录用户返回(用于授权提示条,不含 `licensee`) |
 | POST | `/auth/password` | `{"oldPassword","newPassword"}` |
@@ -198,7 +198,7 @@ DRAFT --withdraw--> WITHDRAWN
 - `GET /changes?projectId=&status=&mine=true&page=&size=`
 - `POST /changes {"projectId","title","reason","items":[{"service","ruleKey","baseVersion","afterRules"}]}` → 修改单(DRAFT)。`before_rules` 由服务端按当前库取。
 - `GET /changes/{id}` → 修改单 + `items[]`,每项附 `currentVersion`、`conflict`(bool)、`diff`
-- `PATCH /changes/{id}`(仅 DRAFT,仅作者)body 同创建
+- `PATCH /changes/{id}`(仅 DRAFT,仅作者)body 同创建;`submit`、`rebase` 也仅作者;`withdraw` 作者、该项目维护者、管理员均可(仅 DRAFT / PENDING);`reject` 的 `note` 必填(空则 `VALIDATION`)
 - `POST /changes/{id}/submit`、`/approve {"note"}`、`/reject {"note"}`、`/withdraw`、`/rebase {"items":[{"service","ruleKey","afterRules"}]}`
 - 冲突时 HTTP 409:`{"code":"CONFLICT","message","items":[{"service","ruleKey","baseVersion","currentVersion","currentRules"}]}`
 
@@ -210,7 +210,7 @@ DRAFT --withdraw--> WITHDRAWN
 - `GET /audit/export?format=csv|json&...`(同上筛选);`kind=mcp` 时导出 MCP 调用,筛选参数同 `/audit/mcp`
 - `GET /audit/mcp?from=&to=&service=&caller=&tool=&page=&size=` → `{"available":bool,"items":[...],"total"}`(表不存在时 `available=false`);项为表列驼峰 `{"id","service","at","caller","remoteAddress","tool","target","arguments","status","success","result","durationMs"}`
 
-**Webhook**:`GET /webhooks?projectId=`、`POST /webhooks`、`PATCH /webhooks/{id}`、`DELETE /webhooks/{id}`、`POST /webhooks/{id}/test`(同步发送一次,返回这条投递记录)、`GET /webhooks/{id}/deliveries`。Webhook 项 `{"id","projectId","name","kind","url","hasSecret","events":["change.published",...],"enabled","createdAt","updatedAt"}`,创建/修改 body 同字段但用 `secret` 代替 `hasSecret`;投递项 `{"id","webhookId","event","at","attempt","status","httpStatus","error"}`。`secret` 只写不回显(返回 `"hasSecret":true`)。
+**Webhook**:`GET /webhooks?projectId=`、`POST /webhooks`、`PATCH /webhooks/{id}`、`DELETE /webhooks/{id}`、`POST /webhooks/{id}/test`(同步发送一次,返回这条投递记录)、`GET /webhooks/{id}/deliveries`。Webhook 项 `{"id","projectId","name","kind","url","hasSecret","events":["change.published",...],"enabled","createdAt","updatedAt"}`,创建/修改 body 同字段但用 `secret` 代替 `hasSecret`;投递项 `{"id","webhookId","event","at","attempt","status","httpStatus","error"}`。`secret` 只写不回显(返回 `"hasSecret":true`);`url` 在列表和详情中部分隐藏(保留协议与主机,路径与查询串用 `***`),修改时不传 `url` 则保持原值。
 
 **令牌(管理员)**:`GET /tokens` → `[{"id","name","prefix","scope","projectId","createdBy","createdAt","lastUsedAt","revoked"}]`、`POST /tokens {"name","scope","projectId"?}` → 含一次性明文 `token`(格式 `csapt_` + 40 位随机 base62)、`DELETE /tokens/{id}`(撤销)。
 
