@@ -135,7 +135,7 @@ curl -s http://localhost:8090/api/v1/setup/status
 
 仓库 `docker/` 目录有 `Dockerfile` 和两个 docker-compose 示例(MySQL 8、PostgreSQL 16)。
 
-构建镜像(先在仓库根目录构建 jar):
+构建镜像(先在 `csap-apidoc-team/` 目录构建 jar):
 
 ```bash
 mvn -B -pl server -am package -DskipTests
