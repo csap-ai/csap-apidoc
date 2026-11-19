@@ -365,8 +365,8 @@ route('post', '/changes/:id/withdraw', ({ params }) => {
 });
 route('post', '/changes/:id/rebase', ({ params, body }) => {
   const u = M.currentUser(); const c = M.findChange(Number(params.id));
-  if (c.author.id !== u.id) throw new HttpErr(403, 'FORBIDDEN', '只有作者可以 Rebase');
-  if (c.status !== 'CONFLICT') throw bad('只有冲突状态的修改单可以 Rebase');
+  if (c.author.id !== u.id) throw new HttpErr(403, 'FORBIDDEN', '只有作者可以重新编辑');
+  if (c.status !== 'CONFLICT') throw bad('只有冲突状态的修改单可以更新到最新版本');
   const after = new Map<string, string | null>((body.items ?? []).map((i: any) => [`${i.service}\u0000${i.ruleKey}`, i.afterRules]));
   c.items.forEach((i) => {
     const k = `${i.service}\u0000${i.ruleKey}`;

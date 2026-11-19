@@ -42,6 +42,7 @@ export default function WebhooksTab() {
     <Card size="small">
       <Button type="primary" style={{ marginBottom: 12 }} onClick={() => open('new')}>{t('webhook.new')}</Button>
       <Table<Webhook>
+        scroll={{ x: 1000 }}
         rowKey="id"
         size="small"
         loading={hooks.loading}
@@ -79,6 +80,7 @@ export default function WebhooksTab() {
       </Modal>
       <Drawer open={!!logFor} width={620} title={`${t('webhook.deliveries')}:${logFor?.name ?? ''}`} onClose={() => setLogFor(null)}>
         <Table<WebhookDelivery>
+          scroll={{ x: 600 }}
           rowKey="id"
           size="small"
           loading={deliveries.loading}

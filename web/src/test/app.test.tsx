@@ -108,7 +108,7 @@ describe('冲突处理', () => {
     expect(within(panel).getByTestId('conflict-current')).toHaveTextContent('"min": 5');
     expect(screen.getByTestId('change-status')).toHaveTextContent('冲突');
 
-    await user.click(within(panel).getByRole('button', { name: /Rebase/ }));
+    await user.click(within(panel).getByRole('button', { name: /更新到最新版本/ }));
     await waitFor(() => expect(screen.getByTestId('change-status')).toHaveTextContent('草稿'));
     expect(screen.queryByTestId('conflict-panel')).toBeNull();
     expect(db.changes.find((x) => x.id === c.id)!.items[0].baseVersion).toBe(2);
@@ -124,8 +124,8 @@ describe('冲突处理', () => {
     const dlg = await screen.findByRole('dialog');
     await user.click(within(dlg).getByRole('button', { name: /确\s*定/ }));
     const panel = await screen.findByTestId('conflict-panel');
-    expect(within(panel).queryByRole('button', { name: /Rebase/ })).toBeNull();
-    expect(within(panel).getByText('只有作者可以 Rebase')).toBeInTheDocument();
+    expect(within(panel).queryByRole('button', { name: /更新到最新版本/ })).toBeNull();
+    expect(within(panel).getByText('只有作者可以基于最新内容重新编辑')).toBeInTheDocument();
   });
 });
 
@@ -134,7 +134,7 @@ describe('令牌明文只显示一次', () => {
     loginAs('admin');
     renderApp('/admin/tokens');
     const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: /新建令牌/ }));
+    await user.click(await screen.findByRole('button', { name: /新建令牌/ }, { timeout: 10000 }));
     await user.type(await screen.findByLabelText('令牌名称'), '网关注册');
     await user.click(screen.getByRole('button', { name: /新\s*建$/ }));
     const plain = await screen.findByTestId('token-plain');

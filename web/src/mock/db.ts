@@ -218,7 +218,7 @@ export function tryPublish(c: Change, by: UserRow): void {
     c.status = 'CONFLICT';
     c.updatedAt = now();
     logAudit({ ...auditBy(by), action: 'change.conflict', projectId: c.projectId, changeId: c.id, reason: '发布时版本不符' });
-    throw new HttpErr(409, 'CONFLICT', '规则已被他人修改,请 Rebase 后再提交', { items: conflicts });
+    throw new HttpErr(409, 'CONFLICT', '规则已被他人修改,请先同步最新内容', { items: conflicts });
   }
   c.items.forEach((i) => {
     if (sameJson(curRule(i.service, i.ruleKey)?.rules ?? null, i.afterRules)) return; // 内容相同跳过

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Alert, Button, Dropdown, Layout, Menu, Space, Tooltip } from 'antd';
+import { Alert, Spin, Button, Dropdown, Layout, Menu, Space, Tooltip } from 'antd';
 import { AuditOutlined, BulbFilled, BulbOutlined, FileTextOutlined, FormOutlined, SettingOutlined, UserOutlined, ApiOutlined } from '@ant-design/icons';
 import { useAuth } from '@/auth/AuthContext';
 import { canManageProject, canViewAudit, isAdmin } from '@/auth/permissions';
@@ -87,7 +87,9 @@ export default function AppLayout() {
         </Header>
         <LicenseBanner />
         <Content style={{ padding: 24 }}>
-          <Outlet />
+          <Suspense fallback={<Spin style={{ display: 'block', margin: '20vh auto' }} />}>
+            <Outlet />
+          </Suspense>
         </Content>
       </Layout>
     </Layout>

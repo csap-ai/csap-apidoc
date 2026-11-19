@@ -16,7 +16,19 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    chunkSizeWarningLimit: 1500,
+    chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      output: {
+        // 稳定的第三方依赖单独分包,利于缓存;页面代码由路由懒加载拆开
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (/node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//.test(id)) return 'vendor-react';
+          if (/node_modules\/(diff|dayjs)\//.test(id)) return 'vendor-misc';
+          if (/node_modules\/(@ant-design\/icons|@ant-design\/icons-svg)\//.test(id)) return 'vendor-icons';
+          return undefined;
+        },
+      },
+    },
   },
   test: {
     environment: 'jsdom',

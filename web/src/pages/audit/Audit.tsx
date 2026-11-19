@@ -71,6 +71,7 @@ function Records() {
         )}
       </Space>
       <Table<AuditRecord>
+        scroll={{ x: 1000 }}
         rowKey="id"
         size="small"
         loading={list.loading}
@@ -80,14 +81,14 @@ function Records() {
         columns={[
           { title: t('common.time'), dataIndex: 'at', width: 170, render: fmtTime },
           { title: t('audit.actor'), dataIndex: 'actorName', width: 110, render: (n: string, r) => <span>{n} <Tag>{tDyn('audit.actorType', r.actorType)}</Tag></span> },
-          { title: t('audit.action'), dataIndex: 'action', width: 170, render: (a: string) => <span className="mono">{a}</span> },
+          { title: t('audit.action'), dataIndex: 'action', width: 170, render: (a: string) => <Tooltip title={a}><span>{tDyn('audit.act', a)}</span></Tooltip> },
           { title: t('common.service'), dataIndex: 'service', width: 130 },
           { title: t('audit.ruleKey'), dataIndex: 'ruleKey', ellipsis: true, render: (k?: string) => <span className="mono">{k}</span> },
           { title: t('audit.source'), dataIndex: 'source', width: 100, render: (s: string) => tDyn('audit.source', s) },
           { title: t('audit.reason'), dataIndex: 'reason', ellipsis: true },
         ]}
       />
-      <Drawer open={!!detail} width={640} title={detail?.action} onClose={() => setDetail(null)}>
+      <Drawer open={!!detail} width={640} title={detail ? `${tDyn('audit.act', detail.action)}(${detail.action})` : ''} onClose={() => setDetail(null)}>
         {detail && (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <Descriptions size="small" column={1}>
@@ -145,6 +146,7 @@ function Mcp() {
         )}
       </Space>
       <Table<McpAuditRecord>
+        scroll={{ x: 950 }}
         rowKey="id"
         size="small"
         loading={list.loading}

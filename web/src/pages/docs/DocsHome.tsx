@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Empty, Input, Select, Space, Table, Tag } from 'antd';
+import { Card, Empty, Input, Select, Space, Table, Tag, Tooltip } from 'antd';
 import { docApi, projectApi, serviceApi } from '@/api/endpoints';
 import type { SearchHit, ServiceInfo } from '@/api/types';
 import { PageTitle, ServiceStatusTag } from '@/components/common';
@@ -65,6 +65,7 @@ export default function DocsHome() {
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('docs.searchEmpty')} />
           ) : (
             <Table
+              scroll={{ x: 860 }}
               size="small"
               rowKey={(r) => `${r.service}${r.method}${r.path}`}
               pagination={false}
@@ -84,6 +85,7 @@ export default function DocsHome() {
       )}
       <Card size="small">
         <Table<ServiceInfo>
+          scroll={{ x: 900 }}
           rowKey="service"
           loading={services.loading}
           dataSource={services.data ?? []}
@@ -91,12 +93,12 @@ export default function DocsHome() {
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('docs.noService')} /> }}
           onRow={(r) => ({ onClick: () => open(r.service), style: { cursor: 'pointer' } })}
           columns={[
-            { title: t('docs.service'), dataIndex: 'service', render: (s: string) => <b>{s}</b> },
+            { title: t('docs.service'), dataIndex: 'service', width: 190, ellipsis: { showTitle: false }, render: (s: string) => <Tooltip title={s}><b>{s}</b></Tooltip> },
             { title: t('docs.status'), dataIndex: 'status', width: 130, render: (s) => <ServiceStatusTag status={s} /> },
             { title: t('docs.language'), dataIndex: 'language', width: 90, render: (l: string) => <Tag>{l}</Tag> },
             { title: t('docs.version'), dataIndex: 'frameworkVersion', width: 110 },
             { title: t('docs.instances'), dataIndex: 'instances', width: 90 },
-            { title: t('svc.owner'), dataIndex: 'projectName', render: (n: string | null) => n ?? <Tag>{t('common.noProject')}</Tag> },
+            { title: t('svc.owner'), dataIndex: 'projectName', width: 130, render: (n: string | null) => n ?? <Tag>{t('common.noProject')}</Tag> },
             { title: t('docs.lastSeen'), dataIndex: 'lastSeenAt', width: 180, render: fmtTime },
             { title: t('common.operation'), width: 120, render: (_, r) => <Space><a onClick={(e) => { e.stopPropagation(); open(r.service); }}>{t('docs.viewDoc')}</a></Space> },
           ]}

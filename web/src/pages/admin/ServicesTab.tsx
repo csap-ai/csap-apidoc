@@ -33,6 +33,7 @@ export default function ServicesTab() {
         <Button type="primary" onClick={() => setAdding(true)}>{t('svc.add')}</Button>
       </Space>
       <Table<ServiceInfo>
+        scroll={{ x: 1000 }}
         rowKey="service"
         size="small"
         loading={services.loading}
