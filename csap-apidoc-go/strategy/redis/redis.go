@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/internal/rulejson"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
 )
 
@@ -169,10 +170,18 @@ func (s *Strategy) LoadRaw(ctx context.Context, key string) (string, bool, error
 }
 
 // SaveRaw 保存规则 Hash 里一个字段的原始 JSON(用于 @templates 等保留键),raw 为空表示删除。
-// 与 Save 走同一段脚本:版本号加 1、写修改记录、发布通知;内容(文本)相同时不加版本号。
+// 与 Save 走同一段脚本:版本号加 1、写修改记录、发布通知;内容语义相同(按 JSON 比较,忽略空白和键顺序)时什么都不写,返回当前版本号。
 func (s *Strategy) SaveRaw(ctx context.Context, key, raw, by string) (int64, error) {
 	if by == "" {
 		by = "unknown"
+	}
+	// 与 Java RedisRuleStore.save 一致:调脚本前先按 JSON 语义比较(忽略空白和键顺序)
+	cur, ok, err := s.opts.Client.HGet(ctx, s.k.rules, key)
+	if err != nil {
+		return 0, fmt.Errorf("apidoc/redis: save %s: %w", key, err)
+	}
+	if rulejson.Same(cur, ok, raw) {
+		return s.Version(ctx)
 	}
 	return s.eval(ctx, key, raw, by)
 }

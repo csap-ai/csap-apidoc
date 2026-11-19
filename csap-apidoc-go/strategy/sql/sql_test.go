@@ -1,6 +1,7 @@
 package sql
 
 import (
+	"database/sql"
 	"strings"
 	"testing"
 )
@@ -65,5 +66,29 @@ func TestMigrationSQL(t *testing.T) {
 	}
 	if !strings.Contains(strings.Join(New(Options{Dialect: MySQL}).MigrationSQL(), "\n"), "DROP INDEX csap_apidoc_history_key ON csap_apidoc_history") {
 		t.Error("MySQL 删索引要带 ON 表名")
+	}
+}
+
+func TestSameContent(t *testing.T) {
+	valid := func(s string) sql.NullString { return sql.NullString{String: s, Valid: true} }
+	cases := []struct {
+		name   string
+		before sql.NullString
+		after  string
+		want   bool
+	}{
+		{"完全相同", valid(`{"a":1}`), `{"a":1}`, true},
+		{"键顺序和空白不同", valid(`{"b":[1, 2],"a":{"x":true}}`), "{ \"a\": {\"x\": true},\n \"b\": [1,2] }", true},
+		{"内容不同", valid(`{"a":1}`), `{"a":2}`, false},
+		{"数组顺序不同", valid(`[1,2]`), `[2,1]`, false},
+		{"不存在 + 新增", sql.NullString{}, `{"a":1}`, false},
+		{"不存在 + 删除", sql.NullString{}, ``, true},
+		{"存在 + 删除", valid(`{"a":1}`), ``, false},
+		{"库里不是 JSON", valid(`oops`), `{"a":1}`, false},
+	}
+	for _, c := range cases {
+		if got := sameContent(c.before, c.after); got != c.want {
+			t.Errorf("%s: got %v want %v", c.name, got, c.want)
+		}
 	}
 }

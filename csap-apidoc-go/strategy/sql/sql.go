@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/internal/rulejson"
 	"github.com/csap-ai/csap-apidoc/csap-apidoc-go/strategy"
 )
 
@@ -425,6 +426,9 @@ func (s *Strategy) Version(ctx context.Context) (int64, error) {
 }
 
 // Save 保存一个接口的规则(空规则表示删除),全局版本号加 1,并写一条修改记录。返回新版本号。
+// 新内容与库里的语义相同(按 JSON 比较,忽略空白和键顺序;删除不存在的规则同理)时
+// 什么都不写、不通知,返回当前版本号(与 Java DatabaseRuleStore.save 返回 -1 的"未修改"同义,
+// Go 沿用 strategy/redis 的约定:返回当前版本号而不是 -1)。
 func (s *Strategy) Save(ctx context.Context, key string, rules strategy.MethodRules, by string) (int64, error) {
 	var after []byte
 	if !rules.IsEmpty() {
@@ -449,7 +453,7 @@ func (s *Strategy) LoadRaw(ctx context.Context, key string) (string, bool, error
 }
 
 // SaveRaw 保存一条规则行的原始 JSON(用于 @templates 等保留键),raw 为空表示删除。
-// 与 Save 走同一条路径:版本号加 1、写修改记录、通知其他实例。
+// 与 Save 走同一条路径:版本号加 1、写修改记录、通知其他实例;内容语义相同时不写,返回当前版本号。
 func (s *Strategy) SaveRaw(ctx context.Context, key, raw, by string) (int64, error) {
 	return s.saveRaw(ctx, key, raw, by)
 }
@@ -479,6 +483,9 @@ func (s *Strategy) saveRaw(ctx context.Context, key, after, by string) (int64, e
 		err := tx.QueryRowContext(ctx, s.q("SELECT rules FROM "+s.t.rule+" WHERE service = ? AND rule_key = ?"), s.opts.Service, key).Scan(&before)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return 0, err
+		}
+		if sameContent(before, after) {
+			return 0, errUnchanged // 回滚:上面的版本号加 1 一并撤销,什么都不写
 		}
 		now := time.Now().UnixMilli()
 		switch {
@@ -511,6 +518,9 @@ func (s *Strategy) saveRaw(ctx context.Context, key, after, by string) (int64, e
 		}
 		return v, nil
 	})
+	if errors.Is(err, errUnchanged) {
+		return s.Version(ctx)
+	}
 	if err != nil {
 		return 0, fmt.Errorf("apidoc/sql: save %s: %w", key, err)
 	}
@@ -523,6 +533,15 @@ func (s *Strategy) saveRaw(ctx context.Context, key, after, by string) (int64, e
 		}
 	}
 	return v, nil
+}
+
+// errUnchanged 让事务回滚:内容没有变化,不加版本号、不写记录。
+var errUnchanged = errors.New("apidoc/sql: unchanged")
+
+// sameContent 判断新内容(after,空串表示删除)与库里现有的是否相同。
+// 与 Java RuleJson.sameJson 一致:按 JSON 语义比较,忽略空白和键顺序。
+func sameContent(before sql.NullString, after string) bool {
+	return rulejson.Same(before.String, before.Valid, after)
 }
 
 func (s *Strategy) tx(ctx context.Context, fn func(*sql.Tx) (int64, error)) (int64, error) {

@@ -250,3 +250,60 @@ func TestWatchSeesChangeBeforeStart(t *testing.T) {
 		})
 	}
 }
+
+// 内容语义相同(忽略空白和键顺序)时什么都不写:版本号不变,不留修改记录;删除不存在的规则同理。
+func TestSQLSaveUnchangedWritesNothing(t *testing.T) {
+	for _, c := range cases(t) {
+		t.Run(c.name, func(t *testing.T) {
+			ctx := context.Background()
+			db := c.open(t)
+			s := newSvc(db, c, prefix(t, db), "order")
+			if err := s.EnsureSchema(ctx); err != nil {
+				t.Fatal(err)
+			}
+			state := func() (int64, int) {
+				v, err := s.Version(ctx)
+				if err != nil {
+					t.Fatal(err)
+				}
+				h, err := s.History(ctx, "", 100)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return v, len(h)
+			}
+			expect := func(what string, v int64, err error, wantV int64, wantH int) {
+				t.Helper()
+				if err != nil {
+					t.Fatalf("%s: %v", what, err)
+				}
+				gotV, gotH := state()
+				if v != wantV || gotV != wantV || gotH != wantH {
+					t.Fatalf("%s: 返回 %d,版本 %d,记录 %d 条;期望 %d / %d 条", what, v, gotV, gotH, wantV, wantH)
+				}
+			}
+			r := rr("data.id")
+			v, err := s.Save(ctx, "G.m", r, "alice")
+			expect("首次保存", v, err, 1, 1)
+			v, err = s.Save(ctx, "G.m", r, "alice")
+			expect("同内容再存", v, err, 1, 1)
+
+			// 键顺序、空白不同的等价 JSON(模拟别的语言写入的文本)
+			v, err = s.SaveRaw(ctx, "G.raw", `{"response":{"a":{"include":true},"b":{"include":false}},"request":{}}`, "x")
+			expect("raw 首次", v, err, 2, 2)
+			v, err = s.SaveRaw(ctx, "G.raw", ` { "request" : { } ,
+				"response" : { "b" : { "include" : false } , "a" : { "include" : true } } } `, "x")
+			expect("raw 键顺序/空白不同", v, err, 2, 2)
+			v, err = s.SaveRaw(ctx, "G.raw", `{"response":{"a":{"include":false},"b":{"include":false}},"request":{}}`, "x")
+			expect("raw 真的改了", v, err, 3, 3)
+
+			// 删除不存在的规则:什么都不写;删除存在的规则:正常写
+			v, err = s.Save(ctx, "G.none", strategy.MethodRules{}, "x")
+			expect("删除不存在", v, err, 3, 3)
+			v, err = s.Save(ctx, "G.m", strategy.MethodRules{}, "x")
+			expect("删除存在", v, err, 4, 4)
+			v, err = s.Save(ctx, "G.m", strategy.MethodRules{}, "x")
+			expect("再次删除", v, err, 4, 4)
+		})
+	}
+}
