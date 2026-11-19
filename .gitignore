@@ -1,0 +1,11 @@
+target/
+node_modules/
+web/dist/
+*.iml
+.idea/
+.vscode/
+.DS_Store
+data/
+*.pem
+*.key
+!server/src/main/resources/META-INF/csap-team/license-public.pem
