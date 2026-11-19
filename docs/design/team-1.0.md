@@ -1,6 +1,6 @@
 # CSAP Apidoc 团队版 1.0 设计与契约
 
-状态:契约冻结(2026-11-18,主会话制定)。实现会话按本文开发;要改契约先找主会话,不要各自改。
+状态:契约冻结(2026-11-18,主会话制定;同日修订一次:补 `/auth/me` 的 license、成员与候选人、审计/MCP/Webhook/用户/令牌的返回字段)。实现会话按本文开发;要改契约先找主会话,不要各自改。
 
 发布目标:2026-12-31。
 
@@ -165,14 +165,14 @@ DRAFT --withdraw--> WITHDRAWN
 | POST | `/setup` | `{"orgName","username","password","displayName"}`,仅在没有用户时可用,创建管理员 |
 | POST | `/auth/login` | `{"username","password"}` → 用户信息;连续失败 5 次锁 15 分钟 |
 | POST | `/auth/logout` | |
-| GET | `/auth/me` | `{"id","username","displayName","orgRole","projects":[{"id","name","role"}]}` |
+| GET | `/auth/me` | `{"id","username","displayName","orgRole","projects":[{"id","name","role"}],"license":{"status","maxMembers","activeMembers","expiresAt"}}`;`license` 对所有登录用户返回(用于授权提示条,不含 `licensee`) |
 | POST | `/auth/password` | `{"oldPassword","newPassword"}` |
 
-**用户(管理员)**:`GET /users`、`POST /users {"username","displayName","password","orgRole"}`、`PATCH /users/{id} {"displayName"?,"status"?,"orgRole"?,"password"?}`。
+**用户(管理员)**:`GET /users` → `[{"id","username","displayName","status","orgRole","createdAt"}]`、`POST /users {"username","displayName","password","orgRole"}`、`PATCH /users/{id} {"displayName"?,"status"?,"orgRole"?,"password"?}`。
 
 **项目**:`GET /projects`(当前用户可见的)、`POST /projects`(管理员)、`GET /projects/{id}`、`PATCH /projects/{id} {"name"?,"description"?,"requireApproval"?}`、`DELETE /projects/{id}`(无服务时)。
 
-**成员**:`GET /projects/{id}/members`、`PUT /projects/{id}/members/{userId} {"role"}`、`DELETE /projects/{id}/members/{userId}`。
+**成员**:`GET /projects/{id}/members` → `[{"userId","username","displayName","role","createdAt"}]`、`GET /projects/{id}/candidates`(管理员、该项目维护者)→ 不在本项目的启用用户 `[{"id","username","displayName"}]`、`PUT /projects/{id}/members/{userId} {"role"}`、`DELETE /projects/{id}/members/{userId}`。
 
 **服务**:
 
@@ -206,13 +206,13 @@ DRAFT --withdraw--> WITHDRAWN
 
 **审计**:
 
-- `GET /audit?from=&to=&actor=&projectId=&service=&ruleKey=&action=&source=&page=&size=`
+- `GET /audit?from=&to=&actor=&projectId=&service=&ruleKey=&action=&source=&page=&size=` → 分页,审计项为表列驼峰:`{"id","at","actorType","actorId","actorName","source","ip","action","projectId","service","ruleKey","changeId","beforeValue","afterValue","diff","reason"}`(列表页可省略 `beforeValue`/`afterValue`/`diff`,详情 `GET /audit/{id}` 返回完整)
 - `GET /audit/export?format=csv|json&...`(同上筛选)
-- `GET /audit/mcp?from=&to=&service=&caller=&tool=&page=&size=` → `{"available":bool,"items":[...],"total"}`(表不存在时 `available=false`)
+- `GET /audit/mcp?from=&to=&service=&caller=&tool=&page=&size=` → `{"available":bool,"items":[...],"total"}`(表不存在时 `available=false`);项为表列驼峰 `{"id","service","at","caller","remoteAddress","tool","target","arguments","status","success","result","durationMs"}`
 
-**Webhook**:`GET /webhooks?projectId=`、`POST /webhooks`、`PATCH /webhooks/{id}`、`DELETE /webhooks/{id}`、`POST /webhooks/{id}/test`、`GET /webhooks/{id}/deliveries`。`secret` 只写不回显(返回 `"hasSecret":true`)。
+**Webhook**:`GET /webhooks?projectId=`、`POST /webhooks`、`PATCH /webhooks/{id}`、`DELETE /webhooks/{id}`、`POST /webhooks/{id}/test`(同步发送一次,返回这条投递记录)、`GET /webhooks/{id}/deliveries`。Webhook 项 `{"id","projectId","name","kind","url","hasSecret","events":["change.published",...],"enabled","createdAt","updatedAt"}`,创建/修改 body 同字段但用 `secret` 代替 `hasSecret`;投递项 `{"id","webhookId","event","at","attempt","status","httpStatus","error"}`。`secret` 只写不回显(返回 `"hasSecret":true`)。
 
-**令牌(管理员)**:`GET /tokens`、`POST /tokens {"name","scope","projectId"?}` → 含一次性明文 `token`(格式 `csapt_` + 40 位随机 base62)、`DELETE /tokens/{id}`(撤销)。
+**令牌(管理员)**:`GET /tokens` → `[{"id","name","prefix","scope","projectId","createdBy","createdAt","lastUsedAt","revoked"}]`、`POST /tokens {"name","scope","projectId"?}` → 含一次性明文 `token`(格式 `csapt_` + 40 位随机 base62)、`DELETE /tokens/{id}`(撤销)。
 
 **授权(管理员)**:`GET /license` → `{"status":"TRIAL|VALID|EXPIRED|INVALID","licensee","maxMembers","expiresAt","activeMembers"}`;`POST /license {"license":"<文本>"}`。
 
