@@ -188,6 +188,24 @@ if err := s.EnsureSchema(ctx); err != nil { /* ... */ }
 2. 用 `Options.Service` 指定服务名(没填是 `default`),旧数据全部归到它名下;
 3. 执行 `s.Migrate(ctx)`,可以重复执行;或者用 `s.MigrationSQL()` 取出 SQL 交给 DBA 手工执行(各方言的 SQL 见 [SQL.md](https://github.com/csap-ai/csap-apidoc/blob/main/csap-apidoc-go/docs/SQL.md))。SQLite / PostgreSQL / 金仓的 DDL 在事务里,失败整体回滚;MySQL 和达梦的 DDL 会隐式提交,中途失败要手工处理。
 
+## 注册到团队版(v0.3.0)
+
+团队版(商业版)把多个服务的文档汇聚到文档中心。Go 服务用 `team` 包把自己的地址注册过去;默认关闭,`URL` 为空时不启动 goroutine、不发请求:
+
+```go
+import "github.com/csap-ai/csap-apidoc/csap-apidoc-go/team"
+
+reg := team.Register(ctx, team.Options{
+    URL:     "http://team.example.com:8090",
+    Token:   os.Getenv("CSAP_TEAM_TOKEN"), // 团队版控制台创建的 REGISTER 令牌
+    Service: "order-service",              // 默认 default;用数据库模式时传 sqlStrategy.Service()
+    BaseURL: "http://10.0.0.5:8080",       // 必填:团队版能访问到的服务地址
+})
+defer reg.Close() // 发送注销并停止心跳
+```
+
+后台注册并按团队版返回的间隔心跳,团队版不可达不影响业务,日志里不会出现令牌。Go 版没有 MCP,所以只有注册客户端。完整说明见 [TEAM.md](https://github.com/csap-ai/csap-apidoc/blob/main/csap-apidoc-go/docs/TEAM.md)。
+
 ## 返回字段过滤
 
 接口配置了返回规则后,`ResponseFilter` 只输出放行的字段;没有返回规则的接口不过滤、不缓冲。模式(`apidoc.Options.FilterMode`):
