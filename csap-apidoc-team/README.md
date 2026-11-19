@@ -42,7 +42,7 @@ CSAP Apidoc 团队版,免费开源(Apache-2.0),企业自部署。面向多服务
 ```bash
 mvn -B verify                       # 全部测试(含 Testcontainers:需要本机 Docker)
 mvn -B -pl server -am package -DskipTests
-java -jar server/target/csap-apidoc-team-server-1.0.0-SNAPSHOT.jar
+java -jar server/target/csap-apidoc-team-server-1.0.0.jar
 ```
 
 - `web/dist` 存在时会被打进 jar 的 `static/`;不存在时后端构建照常通过(只是没有控制台页面)。前端先执行 `cd web && npm ci && npm run build`。
