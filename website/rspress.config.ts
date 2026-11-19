@@ -55,6 +55,7 @@ export default defineConfig({
             { text: '参数校验', link: '/guide/validation' },
             { text: 'DevTools', link: '/guide/devtools' },
             { text: 'MCP(AI 调用接口)', link: '/guide/mcp' },
+            { text: '与团队版对接', link: '/guide/team-integration' },
           ],
         },
         {

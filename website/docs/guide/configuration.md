@@ -184,11 +184,26 @@ public class DemoApplication {
 | `csap.apidoc.mcp.auth.upstream-headers` | `Map<String,String>` | 空 | 每次工具调用附加的请求头,例如服务账号凭据 |
 | `csap.apidoc.mcp.audit.enabled` | `boolean` | `true` | 是否记录审计日志 |
 | `csap.apidoc.mcp.audit.capacity` | `int` | `500` | 内存中保留的条数 |
-| `csap.apidoc.mcp.audit.persist` | `boolean` | `false` | 是否同时写入 SQLite |
+| `csap.apidoc.mcp.audit.store` | `AuditStore` | `memory` | 审计存储(1.5.0 起):`memory` 只在内存、`sqlite` 同时写 SQLite 文件、`database` 同时写入数据库模式的库(表 `{前缀}mcp_audit`,需要 `paramType = DATABASE`,否则 warn 并退回内存)。不设置时由 `persist` 决定 |
+| `csap.apidoc.mcp.audit.persist` | `boolean` | `false` | 同时写入 SQLite,等同 `store: sqlite`(兼容) |
 | `csap.apidoc.mcp.audit.sqlite-file` | `String` | `csap-mcp-audit.db` | 审计 SQLite 文件,相对路径相对工作目录 |
-| `csap.apidoc.mcp.audit.max-rows` | `int` | `10000` | SQLite 中最多保留的条数 |
+| `csap.apidoc.mcp.audit.max-rows` | `int` | `10000` | SQLite / 数据库中最多保留的条数(数据库按 `service` 区分,每 10 分钟清理一次) |
 | `csap.apidoc.mcp.audit.max-summary-chars` | `int` | `512` | 参数 / 结果摘要的最大长度 |
 | `csap.apidoc.mcp.audit.mask-fields` | `List<String>` | 空 | 在内置敏感字段(password、token、secret 等)之外追加打码的字段名 |
+
+## csap.apidoc.team
+
+对应 `ai.csap.apidoc.team.autoconfigure.TeamProperties`(1.5.0 起,模块 `csap-apidoc-team-client`,starter 已引入)。把本服务注册到团队版的文档中心,默认关闭,不配置时没有任何线程和网络请求。用法见 [与团队版对接](/guide/team-integration)。
+
+| 配置项 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `csap.apidoc.team.enabled` | `boolean` | `false` | 是否向团队版注册 |
+| `csap.apidoc.team.url` | `String` | 空 | 团队版地址,例如 `http://team.example.com:8090`;为空时不注册 |
+| `csap.apidoc.team.token` | `String` | 空 | 团队版控制台创建的 REGISTER 令牌,建议用环境变量;不会出现在日志里 |
+| `csap.apidoc.team.service` | `String` | 空 | 服务名。依次取本项、`csap.apidoc.database.service`、`spring.application.name`,都没有时为 `default` |
+| `csap.apidoc.team.base-url` | `String` | 空 | 团队版能访问到的本服务地址(含 context-path,不带末尾 `/`);为空时推断为 `http://{本机首个非回环 IPv4}:{端口}{context-path}`,推断不出时 warn 并不注册 |
+| `csap.apidoc.team.instance-id` | `String` | 空 | 实例标识,同一服务内唯一;默认 `base-url` 的 `host:port` |
+| `csap.apidoc.team.doc-path` | `String` | `/csap/apidoc` | 文档接口路径 |
 
 ## csap.validation
 
