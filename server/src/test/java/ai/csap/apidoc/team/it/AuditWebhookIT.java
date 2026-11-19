@@ -319,6 +319,10 @@ class AuditWebhookIT extends AbstractIT {
         assertEquals(400, admin.post("/api/v1/webhooks", Map.of("projectId", project, "name", "n", "kind", "GENERIC", "url", "http://h:1", "events", List.of("nope"))).status());
         JsonNode list = maintainer.api().get("/api/v1/webhooks?projectId=" + project).json();
         assertEquals(1, list.size());
+        assertEquals("http://127.0.0.1:1/***", list.get(0).get("url").asText(), "url 只保留协议和主机");
+        assertEquals("http://127.0.0.1:1/***", maintainer.api().patch("/api/v1/webhooks/" + mine, Map.of("name", "改")).json().get("url").asText());
+        assertEquals("http://127.0.0.1:1/x", jdbc.queryForObject("SELECT url FROM csap_team_webhook WHERE id = ?", String.class, mine), "PATCH 不传 url 保持原值");
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM csap_team_audit WHERE action LIKE 'webhook.%' AND reason LIKE '%127.0.0.1%'", Integer.class), "审计不记完整 url");
         assertNull(list.get(0).get("secret"));
         assertTrue(list.get(0).get("hasSecret").asBoolean());
         // 更新:不传 secret 保持;传空串清除

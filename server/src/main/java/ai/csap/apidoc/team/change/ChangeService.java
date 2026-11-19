@@ -303,7 +303,7 @@ public class ChangeService {
 
     public Map<String, Object> update(Who who, long id, String title, String reason, List<ItemInput> inputs) {
         Change c = load(id);
-        authorOrAdmin(who, c);
+        authorOnly(who, c);
         requireStatus(c, "DRAFT");
         String t = title != null ? title(title) : c.title();
         String r = reason != null ? reason : c.reason();
@@ -320,9 +320,9 @@ public class ChangeService {
         return toJson(load(id), true);
     }
 
-    private void authorOrAdmin(Who who, Change c) {
-        if (who.user().id() != c.authorId() && !who.user().isAdmin()) {
-            throw ApiException.forbidden("只有作者或管理员可以操作这张修改单");
+    private void authorOnly(Who who, Change c) {
+        if (who.user().id() != c.authorId()) {
+            throw ApiException.forbidden("只有作者可以操作这张修改单");
         }
         checkWriteScope(who, c);
     }
@@ -369,7 +369,7 @@ public class ChangeService {
 
     public Map<String, Object> submit(Who who, long id) {
         Change c = load(id);
-        authorOrAdmin(who, c);
+        authorOnly(who, c);
         requireStatus(c, "DRAFT");
         Project p = project(c.projectId());
         List<Item> items = items(id);
@@ -428,6 +428,9 @@ public class ChangeService {
     public Map<String, Object> reject(Who who, long id, String note) {
         Change c = load(id);
         checkDecide(who, c);
+        if (note == null || note.isBlank()) {
+            throw ApiException.validation("驳回必须填写原因(note)");
+        }
         requireStatus(c, "PENDING");
         Project p = project(c.projectId());
         Pending pending = new Pending();
@@ -461,7 +464,7 @@ public class ChangeService {
 
     public Map<String, Object> rebase(Who who, long id, List<ItemInput> edits) {
         Change c = load(id);
-        authorOrAdmin(who, c);
+        authorOnly(who, c);
         requireStatus(c, "CONFLICT");
         Map<String, ItemInput> byKey = new HashMap<>();
         if (edits != null) {

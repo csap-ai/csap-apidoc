@@ -86,7 +86,7 @@ public class AuthController {
             throw ApiException.validation("用户名和密码不能为空");
         }
         Actor anon = new Actor(Actor.USER, null, username.length() > 128 ? username.substring(0, 128) : username, "CONSOLE", ip);
-        if (guard.isLocked(username, now)) {
+        if (guard.isLocked(username, ip, now)) {
             audit.logAs(anon, "auth.login.failed").reason("账号已锁定").save();
             throw ApiException.locked("登录失败次数过多,账号已锁定 15 分钟");
         }
@@ -97,11 +97,11 @@ public class AuthController {
             passwords.burn(password);
         }
         if (!ok) {
-            guard.fail(username, now);
+            guard.fail(username, ip, now);
             audit.logAs(anon, "auth.login.failed").reason(u != null && !"ACTIVE".equals(u.status()) ? "账号已停用" : "用户名或密码错误").save();
             throw ApiException.unauthorized("用户名或密码错误");
         }
-        guard.success(username);
+        guard.success(username, ip);
         startSession(req, res, u);
         audit.logAs(Actor.user(u.id(), u.username(), "CONSOLE", ip), "auth.login").save();
         return meInfo(u);

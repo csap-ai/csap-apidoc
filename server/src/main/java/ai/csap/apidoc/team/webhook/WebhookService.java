@@ -64,13 +64,23 @@ public class WebhookService {
             m.put("projectId", projectId);
             m.put("name", name);
             m.put("kind", kind);
-            m.put("url", url);
+            m.put("url", maskUrl(url));
             m.put("hasSecret", secret != null && !secret.isEmpty());
             m.put("events", events == null || events.isBlank() ? List.of() : List.of(events.split(",")));
             m.put("enabled", enabled);
             m.put("createdAt", createdAt);
             m.put("updatedAt", updatedAt);
             return m;
+        }
+    }
+
+    /** 列表 / 详情里隐藏地址的路径和查询串(常含机器人密钥):保留协议与主机,其余换成 ***。 */
+    public static String maskUrl(String url) {
+        try {
+            URI u = URI.create(url);
+            return u.getScheme() + "://" + u.getRawAuthority() + "/***";
+        } catch (RuntimeException e) {
+            return "***";
         }
     }
 
