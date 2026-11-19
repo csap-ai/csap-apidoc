@@ -24,7 +24,7 @@ csap-apidoc/csap-apidoc-team/   # 开源仓库里的子目录,不进根 pom 的�
   docs/                   # 设计、部署、使用文档(中文)
 ```
 
-- `server` 依赖开源 `ai.csap.apidoc:csap-apidoc-database:1.4.0`(Maven Central),复用 `DatabaseDialect`、`DatabaseRuleStore`、`RuleJson`。不要复制开源代码。
+- `server` 依赖同仓库的 `ai.csap.apidoc:csap-apidoc-database`(版本与根 pom 一致,1.0 发布时为 1.5.0;未发布到 Maven Central 时先在仓库根目录 `mvn install -pl csap-apidoc-strategy/csap-apidoc-database -am`),复用 `DatabaseDialect`、`DatabaseRuleStore`、`RuleJson`。不要复制开源代码。
 - 构建:`mvn -pl server -am package` 产出单个可执行 jar,`web` 的构建产物打进 `server` 的 `static/`(用 frontend-maven-plugin 或在 `server` 打包前执行 `npm ci && npm run build`,由后端会话决定,前端会话保证 `npm run build` 输出到 `web/dist`)。
 - 前端开发时 Vite 代理 `/api` 到 `http://localhost:8090`。
 - 默认端口 `8090`。配置前缀 `csap.team.*`。

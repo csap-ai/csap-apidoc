@@ -9,8 +9,8 @@ CSAP Apidoc 是**多语言的运行时 API 文档框架**:服务启动时从代�
 
 | 语言 | 当前版本 | 框架 | 详细写法 |
 |---|---|---|---|
-| Java | 1.4.0 | Spring Boot 2.x / 3.x | [references/java.md](references/java.md) |
-| Go | v0.2.0 | gin、net/http | [references/go.md](references/go.md) |
+| Java | 1.5.0 | Spring Boot 2.x / 3.x | [references/java.md](references/java.md) |
+| Go | v0.3.0 | gin、net/http | [references/go.md](references/go.md) |
 | 其他语言 | 规划中 | | 见官网路线图,目前没有可用实现 |
 
 两种语言**共用**:文档数据协议(`/csap/apidoc*` 的 JSON)、文档页面 `/csap-api.html`、DevTools 前端、YAML 字段规则文件格式([references/yaml-rules.md](references/yaml-rules.md))。**接入方式、注解 / 标签、配置各不相同**,不要把一种语言的写法套到另一种上。

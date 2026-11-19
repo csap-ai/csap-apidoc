@@ -51,5 +51,10 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
-          cache-dependency-path: csap-apidoc-team/**/pom.xml
+          cache-dependency-path: '**/pom.xml'
+      # 团队版依赖同仓库的 csap-apidoc-database(版本 = 根 pom 版本),先从源码装到本地仓库,
+      # 这样未发布到 Maven Central 的版本也能构建
+      - name: Install csap-apidoc-database from source
+        working-directory: .
+        run: mvn -B -q install -DskipTests -Dcheckstyle.skip -pl csap-apidoc-strategy/csap-apidoc-database -am
       - run: mvn -B verify

@@ -37,6 +37,8 @@ CSAP Apidoc 团队版,免费开源(Apache-2.0),企业自部署。面向多服务
 
 需要 JDK 17 和 Maven 3.9。
 
+依赖同仓库的 `csap-apidoc-database`(版本与仓库根 pom 一致)。该版本已在 Maven Central 时直接构建即可;从未发布的源码构建时,先在仓库根目录执行 `mvn -B install -DskipTests -pl csap-apidoc-strategy/csap-apidoc-database -am`。
+
 ```bash
 mvn -B verify                       # 全部测试(含 Testcontainers:需要本机 Docker)
 mvn -B -pl server -am package -DskipTests

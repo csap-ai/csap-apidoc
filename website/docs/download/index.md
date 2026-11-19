@@ -1,6 +1,6 @@
 # 获取方式
 
-本页列出获取 CSAP Apidoc 的方式：从 Maven Central 引入依赖、从 GitHub 获取发布版本、从源码构建，以及 Go 版的安装。Java 版当前版本是 **1.4.0**。1.1.0 是第一个发布到 Maven Central 的版本，但它的 jar 实际是 Java 17 字节码，需要 JDK 17 才能运行，请使用 1.1.1 及以上（Java 11 字节码）。
+本页列出获取 CSAP Apidoc 的方式：从 Maven Central 引入依赖、从 GitHub 获取发布版本、从源码构建，以及 Go 版的安装。Java 版当前版本是 **1.5.0**。1.1.0 是第一个发布到 Maven Central 的版本，但它的 jar 实际是 Java 17 字节码，需要 JDK 17 才能运行，请使用 1.1.1 及以上（Java 11 字节码）。
 
 ## Maven Central
 
@@ -10,12 +10,12 @@
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.4.0</version>
+    <version>1.5.0</version>
 </dependency>
 ```
 
 ```groovy
-implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.4.0'
+implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.5.0'
 ```
 
 参数校验 starter `csap-validation-boot-starter` 是可选的，需要运行时参数校验（1.2.0 起）、它的校验异常处理器或 `ValidationProperties` 时引入，见 [安装](/guide/installation)。
@@ -46,13 +46,13 @@ implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.4.0'
 ## GitHub
 
 - 源码仓库：[github.com/csap-ai/csap-apidoc](https://github.com/csap-ai/csap-apidoc)，`main` 是唯一的开发分支。
-- 发布页面：[GitHub Releases](https://github.com/csap-ai/csap-apidoc/releases)。每个版本对应一个 `vX.Y.Z` 标签（1.4.0 对应 `v1.4.0`），发布说明列出该版本的主要变化。
+- 发布页面：[GitHub Releases](https://github.com/csap-ai/csap-apidoc/releases)。每个版本对应一个 `vX.Y.Z` 标签（1.5.0 对应 `v1.5.0`），发布说明列出该版本的主要变化。
 - 发布页面不附带 jar 包，jar 请从 Maven Central 获取；需要源码时可以下载该标签的源码压缩包，或用 git 检出该标签。
 
 ```bash
 git clone https://github.com/csap-ai/csap-apidoc.git
 cd csap-apidoc
-git checkout v1.4.0
+git checkout v1.5.0
 ```
 
 ## 从源码构建
@@ -71,7 +71,7 @@ git checkout v1.4.0
 mvn -B clean install
 ```
 
-完成后，所有模块以根 `pom.xml` 中的版本（检出 `v1.4.0` 时为 `1.4.0`）安装到本地 Maven 仓库（`~/.m2/repository/ai/csap/apidoc/`），其他项目可以直接引用。
+完成后，所有模块以根 `pom.xml` 中的版本（检出 `v1.5.0` 时为 `1.5.0`）安装到本地 Maven 仓库（`~/.m2/repository/ai/csap/apidoc/`），其他项目可以直接引用。
 
 :::tip 关于测试
 根 `pom.xml` 中 `skipTests` 默认是 `true`，上面的命令不会运行单元测试。需要运行测试时显式打开：
@@ -110,10 +110,10 @@ Spring Boot 2 示例在 `example/example-spring-boot2`（端口 8082），启动
 
 ## Go 版
 
-Go 版是仓库里独立的 Go module（路径 `csap-apidoc-go/`），当前版本 **v0.2.0**，要求 Go 1.22 及以上，不走 Maven Central：
+Go 版是仓库里独立的 Go module（路径 `csap-apidoc-go/`），当前版本 **v0.3.0**，要求 Go 1.22 及以上，不走 Maven Central：
 
 ```bash
-go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.2.0
+go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.3.0
 ```
 
 它的版本标签带模块目录前缀，格式是 `csap-apidoc-go/vX.Y.Z`（例如 `csap-apidoc-go/v0.2.0`），和 Java 版的 `vX.Y.Z` 标签互不影响。接入方式见 [Go 版](/go/)，API 文档见 [pkg.go.dev](https://pkg.go.dev/github.com/csap-ai/csap-apidoc/csap-apidoc-go)。
