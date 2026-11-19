@@ -73,7 +73,8 @@ class AuthAndAdminIT extends AbstractIT {
         }
         // 第 6 次即使密码正确也被锁
         Api.Resp r = anon.post("/api/v1/auth/login", Map.of("username", u.username(), "password", "Passw0rd!!"));
-        assertEquals(401, r.status());
+        assertEquals(429, r.status());
+        assertEquals("LOCKED", r.code());
         assertTrue(r.json().get("message").asText().contains("锁定"));
         assertTrue(auditList(admin, "action=auth.login.failed&actor=" + u.username()).get("total").asInt() >= 5);
     }

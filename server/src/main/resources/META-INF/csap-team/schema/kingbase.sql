@@ -5,7 +5,7 @@
 
 CREATE TABLE csap_team_setting (
     name VARCHAR(128) NOT NULL PRIMARY KEY,
-    value TEXT NOT NULL
+    setting_value TEXT NOT NULL
 );
 
 CREATE TABLE csap_team_user (
@@ -165,5 +165,5 @@ CREATE INDEX csap_team_webhook_delivery_wh ON csap_team_webhook_delivery (webhoo
 
 CREATE TABLE csap_team_cursor (
     name VARCHAR(128) NOT NULL PRIMARY KEY,
-    value VARCHAR(512) NOT NULL
+    cursor_value VARCHAR(512) NOT NULL
 );

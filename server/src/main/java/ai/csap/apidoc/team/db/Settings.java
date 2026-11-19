@@ -13,15 +13,15 @@ public class Settings {
     }
 
     public String get(String name) {
-        return db.one("SELECT value FROM csap_team_setting WHERE name = ?", (rs, i) -> rs.getString(1), name);
+        return db.one("SELECT setting_value FROM csap_team_setting WHERE name = ?", (rs, i) -> rs.getString(1), name);
     }
 
     public void set(String name, String value) {
-        if (db.update("UPDATE csap_team_setting SET value = ? WHERE name = ?", value, name) == 0) {
+        if (db.update("UPDATE csap_team_setting SET setting_value = ? WHERE name = ?", value, name) == 0) {
             try {
-                db.update("INSERT INTO csap_team_setting (name, value) VALUES (?, ?)", name, value);
+                db.update("INSERT INTO csap_team_setting (name, setting_value) VALUES (?, ?)", name, value);
             } catch (org.springframework.dao.DuplicateKeyException e) {
-                db.update("UPDATE csap_team_setting SET value = ? WHERE name = ?", value, name);
+                db.update("UPDATE csap_team_setting SET setting_value = ? WHERE name = ?", value, name);
             }
         }
     }
@@ -31,16 +31,16 @@ public class Settings {
     }
 
     public Long cursor(String name) {
-        String v = db.one("SELECT value FROM csap_team_cursor WHERE name = ?", (rs, i) -> rs.getString(1), name);
+        String v = db.one("SELECT cursor_value FROM csap_team_cursor WHERE name = ?", (rs, i) -> rs.getString(1), name);
         return v == null ? null : Long.parseLong(v);
     }
 
     public void setCursor(String name, long value) {
-        if (db.update("UPDATE csap_team_cursor SET value = ? WHERE name = ?", String.valueOf(value), name) == 0) {
+        if (db.update("UPDATE csap_team_cursor SET cursor_value = ? WHERE name = ?", String.valueOf(value), name) == 0) {
             try {
-                db.update("INSERT INTO csap_team_cursor (name, value) VALUES (?, ?)", name, String.valueOf(value));
+                db.update("INSERT INTO csap_team_cursor (name, cursor_value) VALUES (?, ?)", name, String.valueOf(value));
             } catch (org.springframework.dao.DuplicateKeyException e) {
-                db.update("UPDATE csap_team_cursor SET value = ? WHERE name = ?", String.valueOf(value), name);
+                db.update("UPDATE csap_team_cursor SET cursor_value = ? WHERE name = ?", String.valueOf(value), name);
             }
         }
     }

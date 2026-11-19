@@ -33,7 +33,6 @@ java -jar server/target/csap-apidoc-team-server-1.0.0-SNAPSHOT.jar
   MySQL、PostgreSQL 的驱动随包;达梦、人大金仓的驱动放进一个目录,用 PropertiesLauncher 加载:
   `java -Dloader.path=./drivers -cp app.jar org.springframework.boot.loader.launch.PropertiesLauncher`,同时设置
   `csap.team.database.dialect`(`dm` / `kingbase`)。这两种库未在真实环境验证。
-- H2 的 JDBC URL 需要带 `NON_KEYWORDS=VALUE`(`csap_team_setting.value` 在 H2 2.x 里是保留字),默认 URL 已带。
 - 完整配置项见契约第 10 节;另有 `csap.team.heartbeat-seconds`(注册心跳,默认 30)、`csap.team.session-hours`(默认 12)、
   `csap.team.license-public-key-file`(自行编译、替换发行公钥时用)。
 - 建表脚本:`server/src/main/resources/META-INF/csap-team/schema/{mysql,postgresql,dm,kingbase,h2}.sql`

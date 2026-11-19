@@ -32,6 +32,7 @@ public class ApiException extends RuntimeException {
     public static ApiException validation(String msg) { return new ApiException(HttpStatus.BAD_REQUEST, "VALIDATION", msg); }
     public static ApiException conflict(String msg) { return new ApiException(HttpStatus.CONFLICT, "CONFLICT", msg); }
     public static ApiException licenseLimit(String msg) { return new ApiException(HttpStatus.FORBIDDEN, "LICENSE_LIMIT", msg); }
+    public static ApiException locked(String msg) { return new ApiException(HttpStatus.TOO_MANY_REQUESTS, "LOCKED", msg); }
     public static ApiException setupRequired() {
         return new ApiException(HttpStatus.PRECONDITION_FAILED, "SETUP_REQUIRED", "系统尚未初始化,请先完成初始化设置");
     }

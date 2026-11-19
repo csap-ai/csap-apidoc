@@ -88,7 +88,7 @@ public class AuthController {
         Actor anon = new Actor(Actor.USER, null, username.length() > 128 ? username.substring(0, 128) : username, "CONSOLE", ip);
         if (guard.isLocked(username, now)) {
             audit.logAs(anon, "auth.login.failed").reason("账号已锁定").save();
-            throw ApiException.unauthorized("登录失败次数过多,账号已锁定 15 分钟");
+            throw ApiException.locked("登录失败次数过多,账号已锁定 15 分钟");
         }
         UserService.UserRow u = users.byUsername(username);
         // 用户不存在时也做一次哈希比较,避免通过耗时枚举用户名
