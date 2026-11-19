@@ -106,6 +106,29 @@ class AuthAndAdminIT extends AbstractIT {
     }
 
     @Test
+    void meCarriesLicenseCandidatesAndAuditDetail() {
+        Api admin = admin();
+        U u = newUser(admin, "MEMBER");
+        JsonNode lic = u.api().get("/api/v1/auth/me").json().get("license");
+        assertEquals("VALID", lic.get("status").asText());
+        assertTrue(lic.has("maxMembers") && lic.has("activeMembers") && lic.has("expiresAt"));
+        assertFalse(lic.has("licensee"));
+        long project = newProject(admin, true);
+        U m = newUser(admin, "MEMBER");
+        member(admin, project, m, "MAINTAINER");
+        JsonNode cands = m.api().get("/api/v1/projects/" + project + "/candidates").json();
+        for (JsonNode c : cands) {
+            assertTrue(c.has("id") && c.has("username") && c.has("displayName"));
+            assertTrue(c.get("id").asLong() != m.id());
+        }
+        assertTrue(cands.size() >= 1);
+        assertEquals(403, u.api().get("/api/v1/projects/" + project + "/candidates").status());
+        long aid = auditList(admin, "action=project.create&projectId=" + project).get("items").get(0).get("id").asLong();
+        assertEquals(aid, admin.get("/api/v1/audit/" + aid).json().get("id").asLong());
+        assertEquals(403, u.api().get("/api/v1/audit/" + aid).status());
+    }
+
+    @Test
     void userAdministrationIsAdminOnly() {
         Api admin = admin();
         U u = newUser(admin, "MEMBER");

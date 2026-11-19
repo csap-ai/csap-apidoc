@@ -190,6 +190,7 @@ public class WebhookService {
         }
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("id", id);
+        m.put("webhookId", webhookId);
         m.put("event", event);
         m.put("at", now);
         m.put("attempt", attempt);
@@ -213,6 +214,7 @@ public class WebhookService {
                 + " WHERE webhook_id = ? ORDER BY id DESC", (rs, i) -> {
                     Map<String, Object> m = new LinkedHashMap<>();
                     m.put("id", rs.getLong(1));
+                    m.put("webhookId", webhookId);
                     m.put("event", rs.getString(2));
                     m.put("at", rs.getLong(3));
                     m.put("attempt", rs.getInt(4));

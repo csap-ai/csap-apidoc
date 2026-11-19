@@ -169,6 +169,20 @@ public class ProjectController {
                 }, id);
     }
 
+    @GetMapping("/{id}/candidates")
+    public List<Map<String, Object>> candidates(@PathVariable long id) {
+        exists(id);
+        access.requireRole(id, Role.MAINTAINER);
+        return db.query("SELECT id, username, display_name FROM csap_team_user WHERE status = 'ACTIVE' AND id NOT IN"
+                + " (SELECT user_id FROM csap_team_member WHERE project_id = ?) ORDER BY id", (rs, i) -> {
+                    Map<String, Object> r = new LinkedHashMap<>();
+                    r.put("id", rs.getLong(1));
+                    r.put("username", rs.getString(2));
+                    r.put("displayName", rs.getString(3));
+                    return r;
+                }, id);
+    }
+
     @PutMapping("/{id}/members/{userId}")
     public Map<String, Object> putMember(@PathVariable long id, @PathVariable long userId, @RequestBody Map<String, Object> body) {
         exists(id);

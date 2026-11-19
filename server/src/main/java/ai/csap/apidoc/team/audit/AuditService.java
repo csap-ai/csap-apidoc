@@ -163,6 +163,10 @@ public class AuditService {
         return rs.wasNull() ? null : v;
     }
 
+    public Map<String, Object> get(long id) {
+        return db.one("SELECT " + COLS + " FROM csap_team_audit WHERE id = ?", ROW, id);
+    }
+
     public Map<String, Object> list(Filter f, int page, int size) {
         Map<String, Object> out = new LinkedHashMap<>();
         if (f.empty()) {

@@ -89,6 +89,17 @@ public class AuditController {
                 Math.max(1, Math.min(size, 200)));
     }
 
+    @GetMapping("/{id:[0-9]+}")
+    public Map<String, Object> get(@org.springframework.web.bind.annotation.PathVariable long id) {
+        SessionUser u = access.user();
+        Set<Long> visible = projects(u, Role.DEVELOPER);
+        Map<String, Object> m = audit.get(id);
+        if (m == null || (visible != null && (m.get("projectId") == null || !visible.contains((Long) m.get("projectId"))))) {
+            throw ApiException.notFound("审计记录不存在或无权查看");
+        }
+        return m;
+    }
+
     private Set<String> visibleServices(Set<Long> projects) {
         if (projects == null) {
             return null;

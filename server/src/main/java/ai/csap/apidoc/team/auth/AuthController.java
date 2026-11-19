@@ -34,9 +34,11 @@ public class AuthController {
     private final Settings settings;
     private final Access access;
     private final Db db;
+    private final ai.csap.apidoc.team.license.LicenseService license;
 
     public AuthController(UserService users, PasswordService passwords, SessionTokens sessions, LoginGuard guard,
-                          AuthFilter filter, AuditService audit, Settings settings, Access access, Db db) {
+                          AuthFilter filter, AuditService audit, Settings settings, Access access, Db db, ai.csap.apidoc.team.license.LicenseService license) {
+        this.license = license;
         this.users = users;
         this.passwords = passwords;
         this.sessions = sessions;
@@ -160,6 +162,13 @@ public class AuthController {
             }
         }
         m.put("projects", projects);
+        ai.csap.apidoc.team.license.LicenseService.Info li = license.current();
+        Map<String, Object> lm = new LinkedHashMap<>();
+        lm.put("status", li.status());
+        lm.put("maxMembers", li.maxMembers());
+        lm.put("activeMembers", li.activeMembers());
+        lm.put("expiresAt", li.expiresAt());
+        m.put("license", lm);
         return m;
     }
 
