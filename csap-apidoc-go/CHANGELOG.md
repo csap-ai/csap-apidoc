@@ -2,6 +2,14 @@
 
 csap-apidoc-go 的版本号独立于 Java 版,tag 格式为 `csap-apidoc-go/vX.Y.Z`。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### 新增
+
+- **团队版服务注册 `team` 包**:`team.Register(ctx, team.Options{...})` 把服务地址注册到团队版文档中心,后台 goroutine 注册、按响应的 `heartbeatSeconds`(限制 10–300,无效用 30)心跳、`Close()` 时注销(2 秒超时)。默认关闭(`URL` 为空不启动 goroutine、不发请求),团队版不可达不影响业务,日志降噪且不含令牌。协议见仓库 `docs/design/team-integration.md` 第 1 节,用法见 [docs/TEAM.md](docs/TEAM.md)。
+- `sql.Strategy.Service()`:返回生效的服务名,可直接传给 `team.Options.Service`。
+- `internal/version.Version`:模块版本常量,注册时作为 `frameworkVersion` 上报。**发布流程:打 tag 前要把它改成将发布的版本号。**
+
 ## [0.2.0] - 2026-11-18
 
 ### 变更(不兼容)

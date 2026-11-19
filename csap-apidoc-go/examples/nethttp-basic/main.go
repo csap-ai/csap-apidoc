@@ -107,6 +107,17 @@ func main() {
 	}
 
 	log.Printf("文档: http://%s/csap-api.html", hostPort(*addr))
+
+	// 向团队版文档中心注册(默认不开启,见 docs/TEAM.md)。取消注释,并 import
+	// "github.com/csap-ai/csap-apidoc/csap-apidoc-go/team":
+	//
+	//	reg := team.Register(context.Background(), team.Options{
+	//		URL:     os.Getenv("CSAP_TEAM_URL"),   // 为空则不启用
+	//		Token:   os.Getenv("CSAP_TEAM_TOKEN"),
+	//		Service: "user-service",
+	//		BaseURL: "http://10.0.0.5:8080",        // 团队版能访问到的地址
+	//	})
+	//	defer reg.Close() // 注意:log.Fatal 不会执行 defer,优雅关闭时再调用 Close
 	srv := &http.Server{Addr: *addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	log.Fatal(srv.ListenAndServe())
 }

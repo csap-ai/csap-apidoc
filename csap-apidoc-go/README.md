@@ -101,6 +101,20 @@ go run ./examples/nethttp-basic  # http://localhost:8081/csap-api.html、/devtoo
 | `/csap/yaml/*`、`/devtools/*` | 后台管理接口,与 Java DevTools 前端兼容 |
 | `/csap/yaml/history`、`/csap/yaml/rollback` | 修改记录与回滚(Go 版新增) |
 
+## 注册到团队版(可选)
+
+团队版把多个服务的文档汇聚到文档中心。服务启动后用 `team.Register` 把自己的地址报过去(默认关闭,Go 没有 MCP,只有注册):
+
+```go
+reg := team.Register(ctx, team.Options{
+    URL: os.Getenv("CSAP_TEAM_URL"), Token: os.Getenv("CSAP_TEAM_TOKEN"),
+    Service: "order-service", BaseURL: "http://10.0.0.5:8080", // BaseURL 必填
+})
+defer reg.Close() // 发送注销并停止心跳
+```
+
+详见 [docs/TEAM.md](docs/TEAM.md)。
+
 ## 与 Java 版的关系
 
 | Java | Go |
