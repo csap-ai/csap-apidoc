@@ -35,6 +35,7 @@ export default defineConfig(({ mode }) => ({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     css: false,
-    testTimeout: 15000,
+    // CI 机器比本机慢一倍左右,antd 弹窗在 jsdom 里渲染较慢
+    testTimeout: 30000,
   },
 }));

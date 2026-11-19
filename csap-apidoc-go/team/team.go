@@ -86,7 +86,11 @@ type Registration struct {
 
 	mu         sync.Mutex
 	closed     bool
-	registered bool // 至少成功注册过一次,Close 才发注销
+	registered bool // 至少成功注册过一次
+	// firstInFlight:首次注册请求已发出、还没结束。此时关闭也发注销(请求可能已到达团队版,
+	// 否则团队版会留下一条过期实例);之后的心跳以 registered 为准。
+	firstInFlight bool
+	attempted     bool // 已有注册请求结束过(不论结果)
 }
 
 // registerRequest 是注册/心跳请求体;字段顺序与契约一致。
@@ -190,7 +194,7 @@ func (r *Registration) Close() {
 	<-r.done // 进行中的请求已被取消,很快返回
 
 	r.mu.Lock()
-	registered := r.registered
+	registered := r.registered || r.firstInFlight
 	r.mu.Unlock()
 	if !registered {
 		return
@@ -264,7 +268,17 @@ func (r *Registration) loop(ctx context.Context) {
 func (r *Registration) registerOnce(ctx context.Context) (heartbeat, status int, err error) {
 	ctx, cancel := context.WithTimeout(ctx, r.tm.timeout)
 	defer cancel()
+	r.mu.Lock()
+	r.firstInFlight = !r.attempted
+	r.mu.Unlock()
 	body, err := r.post(ctx, registerPath, r.reg)
+	// 请求结束时若已在关闭,保留 firstInFlight,让 Close 决定是否注销
+	r.mu.Lock()
+	if !r.closed {
+		r.firstInFlight = false
+		r.attempted = true
+	}
+	r.mu.Unlock()
 	if err != nil {
 		if se, ok := err.(*statusError); ok {
 			return 0, se.status, err

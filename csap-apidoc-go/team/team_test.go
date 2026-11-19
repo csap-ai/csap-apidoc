@@ -401,3 +401,22 @@ func TestWriteRequestFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// 注册请求已到达团队版但还没收到响应时关闭:也要发注销,否则团队版留下一条过期实例。
+func TestCloseWhileRegisterInFlightStillDeregisters(t *testing.T) {
+	release := make(chan struct{})
+	srv := newFake(t, func(path string, _ int) (int, string) {
+		if strings.HasSuffix(path, "/register") {
+			<-release
+		}
+		return 200, `{"heartbeatSeconds":30}`
+	})
+	defer close(release)
+	r := Register(context.Background(), Options{URL: srv.URL, BaseURL: "http://h:1", timing: fast})
+	srv.waitFor(t, 1)
+	r.Close()
+	got := srv.snapshot()
+	if last := got[len(got)-1]; last.path != "/api/open/v1/services/deregister" {
+		t.Fatalf("注册在途时关闭应发注销,实际请求:%v", got)
+	}
+}

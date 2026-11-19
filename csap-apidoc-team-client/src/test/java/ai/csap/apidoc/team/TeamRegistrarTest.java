@@ -151,6 +151,27 @@ class TeamRegistrarTest {
         assertEquals(60, TeamRegistrar.parseHeartbeat("{\"heartbeatSeconds\":60}"));
     }
 
+    /** 首次注册请求已到达团队版但还没收到响应时关闭:也要发注销,否则团队版留下一条过期实例。 */
+    @Test
+    void closeWhileFirstRegisterInFlightStillDeregisters() throws Exception {
+        server.respond(r -> {
+            if (r.path.endsWith("/register")) {
+                try {
+                    Thread.sleep(800);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            return new TeamTestServer.Resp(200, "{\"heartbeatSeconds\":30}");
+        });
+        registrar = new TeamRegistrar(registration(server.url()), SCALE);
+        registrar.start();
+        await(() -> server.count("/api/open/v1/services/register") >= 1, 3000);
+        registrar.close();
+        await(() -> server.count("/api/open/v1/services/deregister") >= 1, 3000);
+        assertEquals(1, server.count("/api/open/v1/services/deregister"));
+    }
+
     @Test
     void deregisterOnClose() throws Exception {
         registrar = new TeamRegistrar(registration(server.url()), SCALE);

@@ -102,7 +102,14 @@ public class TeamRegistrar implements AutoCloseable {
     private volatile int heartbeatSeconds = DEFAULT_HEARTBEAT_SECONDS;
     private int failures;
     private boolean authWarned;
-    private boolean registered;
+    private volatile boolean registered;
+    /**
+     * 首次注册请求已发出、还没结束。此时关闭也发注销(请求可能已到达团队版,否则团队版会留下一条过期实例);
+     * 之后的心跳以 {@link #registered} 为准。
+     */
+    private volatile boolean firstInFlight;
+    /** 已有注册请求结束过(不论结果)。 */
+    private volatile boolean attempted;
 
     public TeamRegistrar(Registration registration) {
         this(registration, 1000L);
@@ -164,6 +171,16 @@ public class TeamRegistrar implements AutoCloseable {
     }
 
     /**
+     * 注册请求正常结束(不论结果)。已在关闭时保留 firstInFlight,由 close() 决定是否注销。
+     */
+    private void requestFinished() {
+        if (!closed) {
+            firstInFlight = false;
+            attempted = true;
+        }
+    }
+
+    /**
      * 发送一次注册 / 心跳请求。
      *
      * @return 下次发送前等待的秒数
@@ -171,16 +188,20 @@ public class TeamRegistrar implements AutoCloseable {
     private long sendRegister() {
         int status;
         String responseBody = null;
+        firstInFlight = !attempted;
         try {
             HttpResponse<String> resp = post(REGISTER_PATH, registerBody, REQUEST_TIMEOUT_MILLIS);
             status = resp.statusCode();
             responseBody = resp.body();
         } catch (InterruptedException e) {
+            // 被 close() 打断:保留 firstInFlight,由 close() 决定是否注销
             Thread.currentThread().interrupt();
             return heartbeatSeconds;
         } catch (IOException | RuntimeException e) {
+            requestFinished();
             return onFailure("连接团队版失败: " + describe(e));
         }
+        requestFinished();
         if (status >= 200 && status < 300) {
             heartbeatSeconds = parseHeartbeat(responseBody);
             if (failures > 0 || authWarned) {
@@ -265,7 +286,13 @@ public class TeamRegistrar implements AutoCloseable {
             return;
         }
         s.shutdownNow();
-        if (!registered) {
+        try {
+            // 在途请求会被中断,很快结束;等它把 registered 写好再判断
+            s.awaitTermination(1, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        if (!registered && !firstInFlight) {
             return;
         }
         try {
