@@ -31,7 +31,7 @@
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-validation-boot-starter</artifactId>
-    <version>1.4.0</version>
+    <version>1.5.0</version>
 </dependency>
 ```
 

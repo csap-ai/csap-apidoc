@@ -22,7 +22,7 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <csap.apidoc.version>1.4.0</csap.apidoc.version>
+        <csap.apidoc.version>1.5.0</csap.apidoc.version>
     </properties>
 
     <dependencies>

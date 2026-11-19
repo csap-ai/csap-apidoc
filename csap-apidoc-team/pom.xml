@@ -19,7 +19,7 @@
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.3.5</spring-boot.version>
-        <csap-apidoc.version>1.4.0</csap-apidoc.version>
+        <csap-apidoc.version>1.5.0</csap-apidoc.version>
         <!-- 新版 Docker 引擎要求较新的 docker-java,这里覆盖 Boot 管理的版本 -->
         <testcontainers.version>1.21.4</testcontainers.version>
     </properties>

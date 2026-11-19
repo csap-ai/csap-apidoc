@@ -4,6 +4,10 @@ csap-apidoc-go 的版本号独立于 Java 版,tag 格式为 `csap-apidoc-go/vX.Y
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-19
+
+与 Java 1.5.0、团队版 1.0 同期发布。
+
 ### 修复
 
 - **SQL 规则来源 `Save` / `SaveRaw`:内容没有变化时不再写任何东西**。此前新内容与库里完全相同时仍会让全局版本号加 1、写一条 before 与 after 相同的修改记录并通知重载(与 Java `DatabaseRuleStore.save` 不一致)。现在按 JSON 语义比较(忽略空白和键顺序),相同则什么都不写、不通知,返回当前版本号(Java 返回 -1,Go 沿用 `strategy/redis` 的约定返回当前版本号);删除原本不存在的规则同理。`strategy/redis` 的 `SaveRaw` 同样在调用脚本前做语义比较(与 `Save`、Java `RedisRuleStore.save` 一致),脚本 `save.lua` 未改动。

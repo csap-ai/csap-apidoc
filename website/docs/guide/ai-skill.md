@@ -2,7 +2,7 @@
 
 本页介绍 `csap-apidoc` 技能:安装后,Claude Code 等支持 Agent Skills 的 AI 编码助手就知道如何给 Java(Spring Boot)或 Go(gin、net/http)项目接入 CSAP Apidoc、写注解或结构体标签和 YAML 规则、排查"文档里看不到字段"。技能会先判断项目是什么语言,再按对应语言的写法处理,不会把 Java 的写法套到 Go 项目上。
 
-技能源文件在仓库的 [`skills/csap-apidoc/`](https://github.com/csap-ai/csap-apidoc/tree/main/skills/csap-apidoc),随版本一起维护。当前对应 Java 1.4.0 和 Go v0.2.0;后续语言发布后会陆续加入。
+技能源文件在仓库的 [`skills/csap-apidoc/`](https://github.com/csap-ai/csap-apidoc/tree/main/skills/csap-apidoc),随版本一起维护。当前对应 Java 1.5.0 和 Go v0.3.0;后续语言发布后会陆续加入。
 
 ## 安装
 

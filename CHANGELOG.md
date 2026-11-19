@@ -7,10 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Planned for Java 1.5.0 / Go v0.3.0 (the Go side is tracked separately). Both features are
-**off by default**; without configuration behavior is identical to 1.4.0.
+## [1.5.0] - 2026-11-19
+
+Java 1.5.0, Go v0.3.0 and the **team edition 1.0** are released together. The team edition
+is free and open source (Apache-2.0) and lives in this repository under
+`csap-apidoc-team/`. The service-side features below are **off by default**; without
+configuration behavior is identical to 1.4.0.
 
 ### Added
+
+- **Team edition 1.0** (`csap-apidoc-team/`, a separate Spring Boot 3 / Java 17 application
+  with a React console; not part of the root Maven reactor). For teams running several
+  services: a doc center that aggregates `/csap/apidoc` from registered services in any
+  language, members and roles per project, change requests (draft, conflict detection,
+  review, publish), an audit trail (including rule edits made directly in a service and
+  MCP calls) and webhook notifications. It reads and writes the database-mode tables
+  (`{prefix}rule` / `history` / `meta`) without changing their schema, so Java and Go
+  services pick up published changes through their existing version polling. No license
+  file and no user limit. Runs as a single jar or Docker image (MySQL / PostgreSQL compose
+  examples). See `csap-apidoc-team/README.md` and `csap-apidoc-team/docs/`.
 
 - **Team edition service registration** (`csap-apidoc-team-client`, pulled in by
   `csap-apidoc-boot-starter`; Spring Boot 2 and 3, Java 11 bytecode). With
@@ -33,6 +48,13 @@ Planned for Java 1.5.0 / Go v0.3.0 (the Go side is tracked separately). Both fea
   available, it logs a warning and falls back to `memory`. `persist: true` keeps working
   and means `store: sqlite`. `csap-apidoc-mcp` only has an optional dependency on
   `csap-apidoc-database`.
+- Go v0.3.0: the `team` registration package (same protocol and defaults as Java) and
+  `sql.Strategy.Service()`; see `csap-apidoc-go/CHANGELOG.md`.
+
+### Fixed
+
+- Go SQL / Redis rule stores no longer write a new version when the saved content is
+  unchanged (now consistent with Java `DatabaseRuleStore.save`).
 
 ## [1.4.0] - 2026-11-18
 

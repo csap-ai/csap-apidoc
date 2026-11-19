@@ -1,13 +1,13 @@
 # Go 版(gin、net/http)
 
-当前版本 v0.2.0,最低 Go 1.22。本文件只适用于 Go 项目;Java 项目见 [java.md](java.md)。共用的 YAML 规则格式见 [yaml-rules.md](yaml-rules.md)。Go 版是仓库 `csap-apidoc-go/` 下的独立 Go 模块,不走 Maven Central。完整说明以官网 <https://apidoc.csap.ai/go/> 和仓库里的 `csap-apidoc-go/examples/`(`gin-basic`、`nethttp-basic`)为准。
+当前版本 v0.3.0,最低 Go 1.22。本文件只适用于 Go 项目;Java 项目见 [java.md](java.md)。共用的 YAML 规则格式见 [yaml-rules.md](yaml-rules.md)。Go 版是仓库 `csap-apidoc-go/` 下的独立 Go 模块,不走 Maven Central。完整说明以官网 <https://apidoc.csap.ai/go/> 和仓库里的 `csap-apidoc-go/examples/`(`gin-basic`、`nethttp-basic`)为准。
 
 动手前先看项目现状:`go.mod` 里有没有 `github.com/csap-ai/csap-apidoc/csap-apidoc-go`、有没有 `apidoc.New`。
 
 ## 1. 安装
 
 ```bash
-go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.2.0
+go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.3.0
 ```
 
 根包只依赖标准库;用到 gin 适配、YAML 规则时才会编译对应依赖。SQL 规则来源不引入任何数据库驱动,由项目自己 import。tag 格式是 `csap-apidoc-go/vX.Y.Z`,与 Java 的版本号互相独立。
