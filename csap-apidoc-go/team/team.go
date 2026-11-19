@@ -68,8 +68,8 @@ type Options struct {
 	timing *timing // 仅测试用:缩短时间单位
 }
 
-// timing 让测试把"秒"换成毫秒,避免等 10 秒起步的心跳。
-type timing struct{ second time.Duration }
+// timing 让测试把"秒"换成毫秒(避免等 10 秒起步的心跳),并单独指定请求超时。
+type timing struct{ second, timeout time.Duration }
 
 // Registration 是注册器,Close 发送注销并停止心跳。零值和 nil 都可以安全地 Close。
 type Registration struct {
@@ -154,7 +154,7 @@ func Register(ctx context.Context, opts Options) (r *Registration) {
 	if cli == nil {
 		cli = &http.Client{}
 	}
-	tm := timing{second: time.Second}
+	tm := timing{second: time.Second, timeout: requestTimeout}
 	if opts.timing != nil {
 		tm = *opts.timing
 	}
@@ -261,7 +261,7 @@ func (r *Registration) loop(ctx context.Context) {
 
 // registerOnce 发一次注册/心跳请求,成功时返回响应里的心跳秒数(已限制范围)。
 func (r *Registration) registerOnce(ctx context.Context) (heartbeat, status int, err error) {
-	ctx, cancel := context.WithTimeout(ctx, requestTimeout*r.tm.second/time.Second)
+	ctx, cancel := context.WithTimeout(ctx, r.tm.timeout)
 	defer cancel()
 	body, err := r.post(ctx, registerPath, r.reg)
 	if err != nil {

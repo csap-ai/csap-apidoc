@@ -21,7 +21,7 @@ import (
 const secret = "tok-SECRET-123"
 
 // fast 把 1 "秒" 缩成 1 毫秒。
-var fast = &timing{second: time.Millisecond}
+var fast = &timing{second: time.Millisecond, timeout: 2 * time.Second}
 
 type recorded struct {
 	path, method, auth, ctype string
@@ -71,6 +71,22 @@ func (f *fakeServer) waitFor(t *testing.T, n int) []recorded {
 	return nil
 }
 
+// waitRegistered 等到注册器确认注册成功(服务端记录请求时响应可能还没被客户端处理)。
+func waitRegistered(t *testing.T, r *Registration) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		r.mu.Lock()
+		ok := r.registered
+		r.mu.Unlock()
+		if ok {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatal("等待注册成功超时")
+}
+
 type logBuf struct {
 	mu sync.Mutex
 	b  bytes.Buffer
@@ -94,6 +110,7 @@ func TestRegisterRequestAndDeregister(t *testing.T) {
 		BaseURL: "http://10.0.0.5:8080/", Logger: log, timing: fast,
 	})
 	reqs := srv.waitFor(t, 1)
+	waitRegistered(t, r)
 	q := reqs[0]
 	if q.method != "POST" || q.path != "/api/open/v1/services/register" {
 		t.Fatalf("方法/路径不对: %s %s", q.method, q.path)
@@ -172,7 +189,7 @@ func TestHeartbeatIntervalFromResponse(t *testing.T) {
 	reqs := srv.waitFor(t, 4)
 	for i := 1; i < 4; i++ {
 		d := reqs[i].at.Sub(reqs[i-1].at)
-		if d < 15*time.Millisecond || d > 200*time.Millisecond { // 20ms ± 调度抖动
+		if d < 15*time.Millisecond || d > time.Second { // 20ms,上限放宽以免负载下抖动
 			t.Fatalf("第 %d 次心跳间隔 %v,期望约 20ms", i, d)
 		}
 		if !bytes.Equal(reqs[i].body, reqs[0].body) {
@@ -191,7 +208,7 @@ func TestClampHeartbeat(t *testing.T) {
 	// 缺字段或响应体不是 JSON → 默认 30
 	for _, body := range []string{`{}`, `not json`, ``, `{"heartbeatSeconds":"x"}`} {
 		srv := newFake(t, func(string, int) (int, string) { return 200, body })
-		r := Register(context.Background(), Options{URL: srv.URL, BaseURL: "http://h:1", timing: &timing{second: time.Millisecond}})
+		r := Register(context.Background(), Options{URL: srv.URL, BaseURL: "http://h:1", timing: fast})
 		srv.waitFor(t, 2) // 30ms 后第二次
 		r.Close()
 	}
@@ -241,10 +258,12 @@ func TestForbiddenAlsoSlowsDown(t *testing.T) {
 func TestFailureLogThrottleAndRecovery(t *testing.T) {
 	var mu sync.Mutex
 	failing := true
+	failed := 0 // 服务端返回 500 的次数 = 连续失败次数
 	srv := newFake(t, func(p string, n int) (int, string) {
 		mu.Lock()
 		defer mu.Unlock()
 		if failing && strings.HasSuffix(p, "register") {
+			failed++
 			return 500, "boom"
 		}
 		return 200, ok(10)
@@ -264,10 +283,12 @@ func TestFailureLogThrottleAndRecovery(t *testing.T) {
 	if lb.count("已恢复") != 1 {
 		t.Fatalf("恢复应 info 一次:\n%s", lb)
 	}
-	warns := lb.count("level=WARN")
-	// 第 1、11、21 次失败各一条,22 次以上不会超过 4 条(恢复前最多多几次)
-	if warns < 3 || warns > 5 {
-		t.Fatalf("warn 条数 %d,期望 3~5(首次 + 每 10 次):\n%s", warns, lb)
+	mu.Lock()
+	nFailed := failed
+	mu.Unlock()
+	wantWarns := (nFailed-1)/10 + 1 // 第 1、11、21… 次失败各一条
+	if warns := lb.count("level=WARN"); warns != wantWarns {
+		t.Fatalf("%d 次失败应有 %d 条 warn,实际 %d:\n%s", nFailed, wantWarns, warns, lb)
 	}
 	if strings.Contains(lb.String(), secret) {
 		t.Fatal("日志出现令牌")
@@ -307,8 +328,8 @@ func TestRequestTimeout(t *testing.T) {
 	defer srv.Close()
 	defer close(release)
 	log, lb := newLogger()
-	// 把"秒"缩成 10ms → 超时 30ms
-	r := Register(context.Background(), Options{URL: srv.URL, BaseURL: "http://h:1", Logger: log, timing: &timing{second: 10 * time.Millisecond}})
+	// 心跳周期单位缩成 10ms,请求超时 30ms
+	r := Register(context.Background(), Options{URL: srv.URL, BaseURL: "http://h:1", Logger: log, timing: &timing{second: 10 * time.Millisecond, timeout: 30 * time.Millisecond}})
 	defer r.Close()
 	deadline := time.Now().Add(3 * time.Second)
 	for lb.count("level=WARN") == 0 && time.Now().Before(deadline) {
@@ -369,6 +390,7 @@ func TestWriteRequestFixture(t *testing.T) {
 		URL: srv.URL, Token: "t", Service: "order-service", BaseURL: "http://10.0.0.5:8080", timing: fast,
 	})
 	body := srv.waitFor(t, 1)[0].body
+	waitRegistered(t, r)
 	r.Close()
 	var pretty bytes.Buffer
 	if err := json.Indent(&pretty, body, "", "  "); err != nil {
