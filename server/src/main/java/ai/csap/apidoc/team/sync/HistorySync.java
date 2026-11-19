@@ -42,7 +42,7 @@ public class HistorySync {
         this.props = props;
     }
 
-    @Scheduled(initialDelay = 3_000, fixedDelayString = "${csap.team.sync.history-seconds:10}", timeUnit = TimeUnit.SECONDS)
+    @Scheduled(initialDelayString = "3", fixedDelayString = "${csap.team.sync.history-seconds:10}", timeUnit = TimeUnit.SECONDS)
     public void tick() {
         try {
             syncOnce();
