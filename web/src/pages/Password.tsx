@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Button, Card, Form, Input, message } from 'antd';
+import { Button, Card, Form, Input } from 'antd';
+import { message } from '@/utils/notify';
 import { authApi } from '@/api/endpoints';
 import { PageTitle } from '@/components/common';
 import { showError } from '@/utils/errors';

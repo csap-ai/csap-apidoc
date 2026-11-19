@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Button, Card, Col, Empty, Form, Input, Modal, Row, Select, Space, Table, Tabs, Tag, Typography, message } from 'antd';
+import { Button, Card, Col, Empty, Form, Input, Modal, Row, Select, Space, Table, Tabs, Tag, Typography } from 'antd';
+import { message } from '@/utils/notify';
 import { ruleApi, serviceApi } from '@/api/endpoints';
 import type { RuleHistory, RuleListItem } from '@/api/types';
 import { useAuth } from '@/auth/AuthContext';

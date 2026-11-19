@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Button, Card, Form, Input, Typography, message } from 'antd';
+import { Button, Card, Form, Input, Typography } from 'antd';
+import { message } from '@/utils/notify';
 import { setupApi } from '@/api/endpoints';
 import { useAuth } from '@/auth/AuthContext';
 import { showError } from '@/utils/errors';
@@ -9,7 +10,7 @@ import { AuthShell } from './Login';
 
 export default function Setup() {
   const navigate = useNavigate();
-  const { initialized, loading } = useAuth();
+  const { initialized, loading, recheckSetup } = useAuth();
   const [busy, setBusy] = useState(false);
   if (!loading && initialized === true) return <Navigate to="/login" replace />;
   const submit = async (v: { orgName: string; displayName: string; username: string; password: string }) => {
@@ -17,8 +18,8 @@ export default function Setup() {
     try {
       await setupApi.init({ orgName: v.orgName, displayName: v.displayName, username: v.username, password: v.password });
       message.success(t('setup.success'));
-      window.location.assign('/login'); // 重新读取初始化状态
-      void navigate;
+      await recheckSetup();
+      navigate('/login', { replace: true });
     } catch (e) {
       showError(e);
     } finally {

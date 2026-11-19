@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Card, Col, Form, Input, List, Modal, Popconfirm, Row, Select, Space, Switch, Table, Typography, message } from 'antd';
+import { Alert, Button, Card, Col, Form, Input, List, Modal, Popconfirm, Row, Select, Space, Switch, Table, Typography } from 'antd';
+import { message } from '@/utils/notify';
 import { projectApi, userApi } from '@/api/endpoints';
 import type { Member, ProjectRole } from '@/api/types';
 import { useAuth } from '@/auth/AuthContext';

@@ -1,4 +1,4 @@
-import { message } from 'antd';
+import { message } from '@/utils/notify';
 import { ApiError } from '@/api/client';
 import { t, type MsgKey } from '@/i18n';
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Button, Card, Descriptions, Input, Modal, Popconfirm, Space, Tag, Timeline, Tooltip, Typography, message } from 'antd';
+import { Button, Card, Descriptions, Input, Modal, Popconfirm, Space, Tag, Timeline, Tooltip, Typography } from 'antd';
+import { message } from '@/utils/notify';
 import { changeApi, ruleApi } from '@/api/endpoints';
 import { ApiError } from '@/api/client';
 import type { ConflictItem } from '@/api/types';

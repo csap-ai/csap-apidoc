@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, Button, Card, Col, Input, Row, Space, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Col, Input, Row, Space, Tag, Typography } from 'antd';
+import { message } from '@/utils/notify';
 import { changeApi } from '@/api/endpoints';
 import type { Change, ConflictItem } from '@/api/types';
 import DiffView, { CodeBlock } from '@/components/DiffView';

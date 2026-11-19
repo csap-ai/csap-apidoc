@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Button, Card, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tag, message } from 'antd';
+import { Button, Card, Drawer, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tag } from 'antd';
+import { message } from '@/utils/notify';
 import { projectApi, webhookApi } from '@/api/endpoints';
 import type { Webhook, WebhookDelivery, WebhookInput, WebhookKind } from '@/api/types';
 import { useAuth } from '@/auth/AuthContext';
@@ -47,7 +48,7 @@ export default function WebhooksTab() {
         pagination={false}
         dataSource={hooks.data ?? []}
         columns={[
-          { title: t('common.name'), dataIndex: 'name' },
+          { title: t('common.name'), dataIndex: 'name', width: 160 },
           { title: t('webhook.kind'), dataIndex: 'kind', width: 110, render: (k: string) => <Tag>{tDyn('webhook.kind', k)}</Tag> },
           { title: t('common.project'), dataIndex: 'projectId', width: 110, render: (id: number | null) => (id ? projects.data?.find((p) => p.id === id)?.name ?? id : t('webhook.global')) },
           { title: t('webhook.events'), dataIndex: 'events', render: (e: string) => e.split(',').filter(Boolean).map((x) => <Tag key={x}>{tDyn('event', x)}</Tag>) },

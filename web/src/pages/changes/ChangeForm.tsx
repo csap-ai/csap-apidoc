@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Alert, AutoComplete, Button, Card, Checkbox, Form, Input, Select, Space, Typography, message } from 'antd';
+import { Alert, AutoComplete, Button, Card, Checkbox, Form, Input, Select, Space, Typography } from 'antd';
+import { message } from '@/utils/notify';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { changeApi, projectApi, ruleApi, serviceApi } from '@/api/endpoints';
 import type { ServiceInfo } from '@/api/types';
@@ -172,7 +173,7 @@ function RuleItemEditor({ it, svcOptions, disabledService, error, onPatch, onLoa
         <Button size="small" onClick={() => onLoad()} disabled={!it.service || !it.ruleKey}>{t('changes.form.loadCurrent')}</Button>
         <Typography.Text type="secondary">{t('changes.baseVersion')} v{it.baseVersion}</Typography.Text>
       </Space>
-      <Checkbox checked={it.del} onChange={(e) => onPatch({ del: e.target.checked })} style={{ marginBottom: 8, display: 'block' }}>{t('changes.form.deleteRule')}</Checkbox>
+      <Checkbox checked={it.del} onChange={(e) => onPatch({ del: e.target.checked })} style={{ marginBottom: 8 }}>{t('changes.form.deleteRule')}</Checkbox>
       {!it.del && (
         <>
           <Input.TextArea

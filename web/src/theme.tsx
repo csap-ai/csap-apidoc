@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ConfigProvider, theme as antdTheme } from 'antd';
+import { App as AntApp, ConfigProvider, theme as antdTheme } from 'antd';
+import { NotifyHolder } from '@/utils/notify';
 import zhCN from 'antd/locale/zh_CN';
 
 type Mode = 'light' | 'dark';
@@ -38,7 +39,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           token: { colorPrimary: '#1668dc', borderRadius: 6 },
         }}
       >
-        {children}
+        <AntApp>
+          <NotifyHolder />
+          {children}
+        </AntApp>
       </ConfigProvider>
     </ThemeCtx.Provider>
   );

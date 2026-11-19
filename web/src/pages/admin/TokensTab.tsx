@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, Button, Card, Form, Input, Modal, Popconfirm, Select, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Form, Input, Modal, Popconfirm, Select, Table, Tag, Typography } from 'antd';
+import { message } from '@/utils/notify';
 import { CopyOutlined } from '@ant-design/icons';
 import { projectApi, tokenApi } from '@/api/endpoints';
 import type { TokenCreated, TokenInfo, TokenScope } from '@/api/types';

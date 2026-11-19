@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Alert, Button, Card, Descriptions, Input, Space, Tag, Upload, message } from 'antd';
+import { Alert, Button, Card, Descriptions, Input, Space, Tag, Upload } from 'antd';
+import { message } from '@/utils/notify';
 import { licenseApi } from '@/api/endpoints';
 import { useLoad } from '@/utils/useLoad';
 import { showError } from '@/utils/errors';

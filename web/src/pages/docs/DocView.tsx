@@ -41,11 +41,12 @@ function ParamTable({ params }: { params?: DocParam[] }) {
       pagination={false}
       dataSource={rows}
       defaultExpandAllRows
+      scroll={{ x: 760 }}
       columns={[
-        { title: t('docs.col.name'), dataIndex: 'name', render: (n: string) => <span className="mono">{n}</span> },
+        { title: t('docs.col.name'), dataIndex: 'name', width: 160, render: (n: string) => <span className="mono">{n}</span> },
         { title: t('docs.col.type'), dataIndex: 'dataType', width: 170, render: (d?: string) => <Tag>{d}</Tag> },
         { title: t('docs.col.required'), dataIndex: 'required', width: 70, render: (r?: boolean) => (r ? <Tag color="red">{t('common.yes')}</Tag> : '') },
-        { title: t('docs.col.desc'), dataIndex: 'description', render: (d, r) => d || r.value },
+        { title: t('docs.col.desc'), dataIndex: 'description', width: 140, render: (d, r) => d || r.value },
         { title: t('docs.col.rules'), width: 200, render: (_, r) => rulesOf(r).map((x) => <Tag key={x} color="gold">{x}</Tag>) },
         { title: t('docs.col.example'), dataIndex: 'example', width: 110, render: (e?: string) => <span className="mono">{e}</span> },
       ]}
@@ -84,7 +85,7 @@ export default function DocView() {
       {error && !loading && <Alert type="info" showIcon message={t('docs.noDoc')} style={{ marginTop: 12 }} />}
       {!error && (
         <Layout style={{ background: 'transparent', marginTop: 12, gap: 16, flexDirection: 'row' }}>
-          <Card size="small" loading={loading} style={{ width: 300, flex: 'none', maxHeight: 'calc(100vh - 220px)', overflow: 'auto' }}>
+          <Card size="small" loading={loading} style={{ width: 250, flex: 'none', maxHeight: 'calc(100vh - 220px)', overflow: 'auto' }}>
             <Input allowClear placeholder={t('docs.filterApi')} value={filter} onChange={(e) => setFilter(e.target.value)} style={{ marginBottom: 8 }} />
             {controllers.map((c) => {
               const ms = c.methodList.filter((m) => !kw || `${m.value}${m.name}${fullPath(m.apiPath, m.paths)}`.toLowerCase().includes(kw));

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Modal } from 'antd';
+import { modal } from '@/utils/notify';
 import { ApiError, setErrorHandlers } from '@/api/client';
 import { authApi, setupApi } from '@/api/endpoints';
 import type { Me } from '@/api/types';
@@ -12,6 +12,8 @@ interface AuthState {
   initialized: boolean | null;
   loading: boolean;
   refresh: () => Promise<Me | null>;
+  /** 重新读取初始化状态(初始化完成后调用) */
+  recheckSetup: () => Promise<void>;
   login: (username: string, password: string) => Promise<Me>;
   logout: () => Promise<void>;
 }
@@ -45,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         navigate('/setup', { replace: true });
       },
       licenseLimit: () => {
-        Modal.warning({ title: t('err.LICENSE_LIMIT'), okText: t('common.ok') });
+        modal.warning({ title: t('err.LICENSE_LIMIT'), okText: t('common.ok') });
       },
     });
   }, [navigate, location.pathname, location.search]);
@@ -83,6 +85,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const recheckSetup = useCallback(async () => {
+    const s = await setupApi.status();
+    setInitialized(s.initialized);
+  }, []);
+
   const login = useCallback(async (username: string, password: string) => {
     const m = await authApi.login({ username, password });
     setMe(m);
@@ -98,6 +105,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [navigate]);
 
-  const value = useMemo(() => ({ me, initialized, loading, refresh, login, logout }), [me, initialized, loading, refresh, login, logout]);
+  const value = useMemo(() => ({ me, initialized, loading, refresh, recheckSetup, login, logout }), [me, initialized, loading, refresh, recheckSetup, login, logout]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
