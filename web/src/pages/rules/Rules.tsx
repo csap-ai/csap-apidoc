@@ -115,6 +115,7 @@ function RuleDetail({ service, ruleKey, projectId }: { service: string; ruleKey:
             key: 'history', label: t('rules.history'),
             children: (
               <Table<RuleHistory>
+                scroll={{ x: 680 }}
                 size="small"
                 rowKey="id"
                 loading={history.loading}

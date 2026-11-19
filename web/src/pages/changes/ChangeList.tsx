@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Card, Select, Space, Switch, Table } from 'antd';
+import { Card, Select, Space, Switch, Table, Tooltip } from 'antd';
 import { changeApi, projectApi } from '@/api/endpoints';
 import type { Change, ChangeStatus } from '@/api/types';
 import { useAuth } from '@/auth/AuthContext';
@@ -36,13 +36,14 @@ export default function ChangeList() {
           <span><Switch checked={mine} onChange={(v) => { setMine(v); setPage(1); }} /> {t('changes.mine')}</span>
         </Space>
         <Table<Change>
+          scroll={{ x: 860 }}
           rowKey="id"
           loading={list.loading}
           dataSource={list.data?.items ?? []}
           pagination={{ current: page, pageSize: size, total: list.data?.total ?? 0, showSizeChanger: true, onChange: (p, s) => { setPage(p); setSize(s); } }}
           columns={[
             { title: '#', dataIndex: 'id', width: 70 },
-            { title: t('changes.title.col'), dataIndex: 'title', render: (v: string, r) => <Link to={`/changes/${r.id}`}>{v}</Link> },
+            { title: t('changes.title.col'), dataIndex: 'title', width: 260, ellipsis: { showTitle: false }, render: (v: string, r) => <Tooltip title={v}><Link to={`/changes/${r.id}`}>{v}</Link></Tooltip> },
             { title: t('common.project'), dataIndex: 'projectName', width: 120 },
             { title: t('changes.status'), dataIndex: 'status', width: 100, render: (s: ChangeStatus) => <ChangeStatusTag status={s} /> },
             { title: '类型', dataIndex: 'kind', width: 70, render: (k: string) => tDyn('changes.kind', k) },

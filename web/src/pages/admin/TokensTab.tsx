@@ -31,6 +31,7 @@ export default function TokensTab() {
     <Card size="small">
       <Button type="primary" style={{ marginBottom: 12 }} onClick={() => setCreating(true)}>{t('token.new')}</Button>
       <Table<TokenInfo>
+        scroll={{ x: 900 }}
         rowKey="id"
         size="small"
         loading={tokens.loading}

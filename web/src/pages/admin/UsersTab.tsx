@@ -25,6 +25,7 @@ export default function UsersTab() {
     <Card size="small">
       <Button type="primary" style={{ marginBottom: 12 }} onClick={() => setCreating(true)}>{t('user.new')}</Button>
       <Table<User>
+        scroll={{ x: 760 }}
         rowKey="id"
         size="small"
         loading={users.loading}

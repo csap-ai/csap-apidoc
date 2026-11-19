@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { afterAll, afterEach, beforeAll } from 'vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { server } from '@/mock/server';
 import { setApiBase } from '@/api/client';
 
@@ -19,3 +19,6 @@ Object.defineProperty(window, 'getComputedStyle', { value: window.getComputedSty
 if (!(globalThis as any).ResizeObserver) {
   (globalThis as any).ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
 }
+
+// 路由页面是懒加载的,首次渲染需要多等一会
+configure({ asyncUtilTimeout: 5000 });

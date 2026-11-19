@@ -103,6 +103,7 @@ function ProjectDetail({ id, onChanged, onDeleted }: { id: number; onChanged: ()
       </Card>
       <Card size="small" title={t('project.members')}>
         <Table<Member>
+          scroll={{ x: 460 }}
           size="small"
           rowKey="userId"
           loading={members.loading}

@@ -1,3 +1,4 @@
+import { lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Result } from 'antd';
 import { AuthProvider } from '@/auth/AuthContext';
@@ -5,16 +6,17 @@ import RequireAuth from '@/auth/RequireAuth';
 import AppLayout from '@/layout/AppLayout';
 import Setup from '@/pages/Setup';
 import Login from '@/pages/Login';
-import Password from '@/pages/Password';
-import DocsHome from '@/pages/docs/DocsHome';
-import DocView from '@/pages/docs/DocView';
-import Rules from '@/pages/rules/Rules';
-import ChangeList from '@/pages/changes/ChangeList';
-import ChangeForm from '@/pages/changes/ChangeForm';
-import ChangeDetail from '@/pages/changes/ChangeDetail';
-import Audit from '@/pages/audit/Audit';
-import Admin from '@/pages/admin/Admin';
 import { t } from '@/i18n';
+
+const Password = lazy(() => import('@/pages/Password'));
+const DocsHome = lazy(() => import('@/pages/docs/DocsHome'));
+const DocView = lazy(() => import('@/pages/docs/DocView'));
+const Rules = lazy(() => import('@/pages/rules/Rules'));
+const ChangeList = lazy(() => import('@/pages/changes/ChangeList'));
+const ChangeForm = lazy(() => import('@/pages/changes/ChangeForm'));
+const ChangeDetail = lazy(() => import('@/pages/changes/ChangeDetail'));
+const Audit = lazy(() => import('@/pages/audit/Audit'));
+const Admin = lazy(() => import('@/pages/admin/Admin'));
 
 export default function App() {
   return (
