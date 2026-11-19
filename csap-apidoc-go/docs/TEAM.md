@@ -1,6 +1,6 @@
 # 注册到团队版
 
-团队版(商业产品,独立部署)把多个服务的文档集中到"文档中心",据此拉取各服务的 `/csap/apidoc`。`team` 包是 Go 侧的**服务注册客户端**:服务启动后把自己的地址报给团队版,定时心跳,关闭时注销。协议由仓库 `docs/design/team-integration.md` 第 1 节定义,Java 与 Go 一致。Go 版没有 MCP,所以没有审计相关功能。
+团队版(免费开源,同在本仓库 `csap-apidoc-team/` 目录,独立部署)把多个服务的文档集中到"文档中心",据此拉取各服务的 `/csap/apidoc`。`team` 包是 Go 侧的**服务注册客户端**:服务启动后把自己的地址报给团队版,定时心跳,关闭时注销。协议由仓库 `docs/design/team-integration.md` 第 1 节定义,Java 与 Go 一致。Go 版没有 MCP,所以没有审计相关功能。
 
 **默认关闭**:`Options.URL` 为空时 `Register` 不启动 goroutine、不发任何请求,行为与不引入此包完全相同。不依赖团队版的任何代码。
 
