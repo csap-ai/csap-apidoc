@@ -134,14 +134,18 @@ class TeamRegistrarTest {
     }
 
     @Test
-    void heartbeatOutOfRangeFallsBackTo30() {
+    void heartbeatIsClampedOrFallsBackTo30() {
         assertEquals(30, TeamRegistrar.parseHeartbeat(null));
         assertEquals(30, TeamRegistrar.parseHeartbeat(""));
         assertEquals(30, TeamRegistrar.parseHeartbeat("not json"));
         assertEquals(30, TeamRegistrar.parseHeartbeat("{}"));
         assertEquals(30, TeamRegistrar.parseHeartbeat("{\"heartbeatSeconds\":\"x\"}"));
-        assertEquals(30, TeamRegistrar.parseHeartbeat("{\"heartbeatSeconds\":5}"));
-        assertEquals(30, TeamRegistrar.parseHeartbeat("{\"heartbeatSeconds\":301}"));
+        assertEquals(10, TeamRegistrar.parseHeartbeat("{\"heartbeatSeconds\":5}"));
+        assertEquals(300, TeamRegistrar.parseHeartbeat("{\"heartbeatSeconds\":900}"));
+        assertEquals(30, TeamRegistrar.parseHeartbeat("{\"heartbeatSeconds\":0}"));
+        assertEquals(30, TeamRegistrar.parseHeartbeat("{\"heartbeatSeconds\":-1}"));
+        assertEquals(30, TeamRegistrar.parseHeartbeat("{\"heartbeatSeconds\":30.5}"));
+        assertEquals(30, TeamRegistrar.parseHeartbeat("{\"heartbeatSeconds\":\"abc\"}"));
         assertEquals(10, TeamRegistrar.parseHeartbeat("{\"heartbeatSeconds\":10}"));
         assertEquals(300, TeamRegistrar.parseHeartbeat("{\"heartbeatSeconds\":300}"));
         assertEquals(60, TeamRegistrar.parseHeartbeat("{\"heartbeatSeconds\":60}"));

@@ -227,7 +227,7 @@ public class TeamRegistrar implements AutoCloseable {
     }
 
     /**
-     * 解析响应里的 heartbeatSeconds,限制在 10–300 之间,无效时用 30。
+     * 解析响应里的 heartbeatSeconds,正整数时限制在 10–300(超出取边界),缺失 / 非整数 / 小于等于 0 时用 30。
      */
     static int parseHeartbeat(String body) {
         if (body == null || body.trim().isEmpty()) {
@@ -239,10 +239,10 @@ public class TeamRegistrar implements AutoCloseable {
                 return DEFAULT_HEARTBEAT_SECONDS;
             }
             long v = n.asLong();
-            if (v < MIN_HEARTBEAT_SECONDS || v > MAX_HEARTBEAT_SECONDS) {
+            if (v <= 0) {
                 return DEFAULT_HEARTBEAT_SECONDS;
             }
-            return (int) v;
+            return (int) Math.max(MIN_HEARTBEAT_SECONDS, Math.min(MAX_HEARTBEAT_SECONDS, v));
         } catch (IOException | RuntimeException e) {
             return DEFAULT_HEARTBEAT_SECONDS;
         }
