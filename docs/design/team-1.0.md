@@ -1,6 +1,6 @@
 # CSAP Apidoc 团队版 1.0 设计与契约
 
-状态:契约冻结(2026-11-18,主会话制定;同日修订一次:补 `/auth/me` 的 license、成员与候选人、审计/MCP/Webhook/用户/令牌的返回字段)。实现会话按本文开发;要改契约先找主会话,不要各自改。
+状态:契约冻结(2026-11-18,主会话制定;同日修订两次:错误码 HTTP 状态与 `LOCKED`、`setting_value`/`cursor_value` 列名、MCP 导出参数;补 `/auth/me` 的 license、成员与候选人、审计/MCP/Webhook/用户/令牌的返回字段)。实现会话按本文开发;要改契约先找主会话,不要各自改。
 
 发布目标:2026-12-31。
 
@@ -46,7 +46,7 @@ csap-apidoc-team/
 
 | 表 | 主要列 | 说明 |
 |---|---|---|
-| `csap_team_setting` | `name` PK, `value` | 系统设置:schema 版本、令牌签名密钥(首次启动随机生成)、授权文本等 |
+| `csap_team_setting` | `name` PK, `setting_value` | 系统设置:schema 版本、令牌签名密钥(首次启动随机生成)、授权文本等 |
 | `csap_team_user` | `id`, `username` 唯一, `display_name`, `password_hash`(BCrypt), `status`(ACTIVE/DISABLED), `org_role`(ADMIN/MEMBER), `created_at`, `updated_at` | 1.0 单组织:组织信息存 setting `org.name`;`org_role=ADMIN` 即"管理员" |
 | `csap_team_project` | `id`, `name` 唯一, `description`, `require_approval`(0/1,默认 1), `created_at`, `updated_at` | 项目 = 一组服务 |
 | `csap_team_project_service` | `service` PK, `project_id`(可空=未分配), `base_url`, `doc_path`, `language`, `framework_version`, `source`(REGISTERED/MANUAL), `last_seen_at`, `created_at` | 一个服务只属于一个项目 |
@@ -58,7 +58,7 @@ csap-apidoc-team/
 | `csap_team_audit` | `id`, `at`, `actor_type`(USER/TOKEN/SERVICE/SYSTEM), `actor_id`, `actor_name`, `source`, `ip`, `action`, `project_id`, `service`, `rule_key`, `change_id`, `before_value`, `after_value`, `diff`, `reason`, `oss_history_id`, `prev_hash`(可空), `hash`(可空) | **只追加**,代码里不得有 UPDATE/DELETE(保留期清理除外,见 6.4);哈希链列 1.1 才填 |
 | `csap_team_webhook` | `id`, `project_id`(可空=全部), `name`, `kind`(GENERIC/WECOM/DINGTALK/FEISHU), `url`, `secret`(可空), `events`(逗号分隔), `enabled`, `created_at`, `updated_at` | |
 | `csap_team_webhook_delivery` | `id`, `webhook_id`, `event`, `at`, `attempt`, `status`(SUCCESS/FAILED), `http_status`, `error` | 保留最近 1000 条/每个 webhook |
-| `csap_team_cursor` | `name` PK, `value` | 同步游标,例如 `oss.history` 最后处理的 history id、`oss.mcp_audit` |
+| `csap_team_cursor` | `name` PK, `cursor_value` | 同步游标,例如 `oss.history` 最后处理的 history id、`oss.mcp_audit` |
 
 ### 2.3 读写开源的表
 
@@ -139,7 +139,7 @@ DRAFT --withdraw--> WITHDRAWN
 
 ## 7. 接口
 
-通用约定:JSON;时间为毫秒数;分页参数 `page`(从 1)、`size`(默认 20,最大 200),分页响应 `{"items":[...],"total":n}`;错误响应 HTTP 4xx/5xx + `{"code":"...","message":"中文说明"}`。错误码:`UNAUTHORIZED`、`FORBIDDEN`、`NOT_FOUND`、`VALIDATION`、`CONFLICT`、`LICENSE_LIMIT`、`SETUP_REQUIRED`、`INTERNAL`。
+通用约定:JSON;时间为毫秒数;分页参数 `page`(从 1)、`size`(默认 20,最大 200),分页响应 `{"items":[...],"total":n}`;错误响应 HTTP 4xx/5xx + `{"code":"...","message":"中文说明"}`。错误码与 HTTP 状态:`UNAUTHORIZED` 401、`FORBIDDEN` 403、`LICENSE_LIMIT` 403、`NOT_FOUND` 404、`VALIDATION` 400、`CONFLICT` 409、`SETUP_REQUIRED` 412、`LOCKED` 429(登录失败次数过多,账号暂时锁定)、`INTERNAL` 500。客户端以 `code` 为准。列名避开各库保留字(例如不用 `value`)。
 
 ### 7.1 开放接口 `/api/open/v1`(令牌鉴权 `Authorization: Bearer <token>`)
 
@@ -163,7 +163,7 @@ DRAFT --withdraw--> WITHDRAWN
 |---|---|---|
 | GET | `/setup/status` | `{"initialized":bool}`;未初始化时除 setup 外的接口返回 `SETUP_REQUIRED` |
 | POST | `/setup` | `{"orgName","username","password","displayName"}`,仅在没有用户时可用,创建管理员 |
-| POST | `/auth/login` | `{"username","password"}` → 用户信息;连续失败 5 次锁 15 分钟 |
+| POST | `/auth/login` | `{"username","password"}` → 用户信息;连续失败 5 次锁 15 分钟,锁定期间返回 `LOCKED`(429) |
 | POST | `/auth/logout` | |
 | GET | `/auth/me` | `{"id","username","displayName","orgRole","projects":[{"id","name","role"}],"license":{"status","maxMembers","activeMembers","expiresAt"}}`;`license` 对所有登录用户返回(用于授权提示条,不含 `licensee`) |
 | POST | `/auth/password` | `{"oldPassword","newPassword"}` |
@@ -207,7 +207,7 @@ DRAFT --withdraw--> WITHDRAWN
 **审计**:
 
 - `GET /audit?from=&to=&actor=&projectId=&service=&ruleKey=&action=&source=&page=&size=` → 分页,审计项为表列驼峰:`{"id","at","actorType","actorId","actorName","source","ip","action","projectId","service","ruleKey","changeId","beforeValue","afterValue","diff","reason"}`(列表页可省略 `beforeValue`/`afterValue`/`diff`,详情 `GET /audit/{id}` 返回完整)
-- `GET /audit/export?format=csv|json&...`(同上筛选)
+- `GET /audit/export?format=csv|json&...`(同上筛选);`kind=mcp` 时导出 MCP 调用,筛选参数同 `/audit/mcp`
 - `GET /audit/mcp?from=&to=&service=&caller=&tool=&page=&size=` → `{"available":bool,"items":[...],"total"}`(表不存在时 `available=false`);项为表列驼峰 `{"id","service","at","caller","remoteAddress","tool","target","arguments","status","success","result","durationMs"}`
 
 **Webhook**:`GET /webhooks?projectId=`、`POST /webhooks`、`PATCH /webhooks/{id}`、`DELETE /webhooks/{id}`、`POST /webhooks/{id}/test`(同步发送一次,返回这条投递记录)、`GET /webhooks/{id}/deliveries`。Webhook 项 `{"id","projectId","name","kind","url","hasSecret","events":["change.published",...],"enabled","createdAt","updatedAt"}`,创建/修改 body 同字段但用 `secret` 代替 `hasSecret`;投递项 `{"id","webhookId","event","at","attempt","status","httpStatus","error"}`。`secret` 只写不回显(返回 `"hasSecret":true`)。
