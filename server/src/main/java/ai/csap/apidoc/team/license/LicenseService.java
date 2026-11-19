@@ -129,6 +129,12 @@ public class LicenseService {
         }
     }
 
+    /** 测试用:校验授权文本,返回 payload JSON 文本,无效返回 null。 */
+    public String verifyForTest(String text) {
+        JsonNode p = verify(text);
+        return p == null ? null : p.toString();
+    }
+
     public Info current() {
         long active = activeMembers();
         String text = text();

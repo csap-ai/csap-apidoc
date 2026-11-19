@@ -63,6 +63,9 @@ public class ClientIp {
         }
 
         static Cidr parse(String s) {
+            if (!s.matches("[0-9a-fA-F:.]+(/[0-9]{1,3})?")) {
+                throw new IllegalArgumentException("csap.team.trusted-proxies 配置无效(只接受 IP 或 CIDR): " + s);
+            }
             try {
                 String[] p = s.split("/");
                 byte[] addr = InetAddress.getByName(p[0]).getAddress();

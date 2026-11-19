@@ -1,0 +1,332 @@
+package ai.csap.apidoc.team.it;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+
+import ai.csap.apidoc.team.audit.AuditRetention;
+import ai.csap.apidoc.team.audit.McpAuditService;
+import ai.csap.apidoc.team.config.TeamProperties;
+import ai.csap.apidoc.team.support.AbstractIT;
+import ai.csap.apidoc.team.support.Api;
+import ai.csap.apidoc.team.support.LocalHttp;
+import com.fasterxml.jackson.databind.JsonNode;
+
+/** 契约 6、8:审计导出 / 保留期 / MCP 调用审计 / Webhook(四种格式、签名、重试)。 */
+class AuditWebhookIT extends AbstractIT {
+
+    @DynamicPropertySource
+    static void db(DynamicPropertyRegistry r) {
+        H2Db.register(r);
+        r.add("csap.team.public-url", () -> "https://team.example.com/");
+    }
+
+    @Autowired
+    AuditRetention retention;
+    @Autowired
+    TeamProperties props;
+    @Autowired
+    McpAuditService mcp;
+
+    // ---------- 审计导出 ----------
+
+    @Test
+    void exportCsvHasBomAndJsonIsAnArray() throws Exception {
+        Api admin = admin();
+        long project = newProject(admin, true);
+        String svc = newService(admin, project);
+        U dev = newUser(admin, "MEMBER");
+        member(admin, project, dev, "DEVELOPER");
+        long id = changeId(createChange(dev.api(), project, item(svc, "Ex.key", 0L, rules("导出,逗号"))));
+        dev.api().post("/api/v1/changes/" + id + "/submit", null);
+        admin.post("/api/v1/changes/" + id + "/approve", Map.of("note", "ok"));
+
+        java.net.http.HttpClient c = java.net.http.HttpClient.newHttpClient();
+        // 复用 admin 的 Cookie:用 Api 取原始字节
+        Api.Resp csv = admin.get("/api/v1/audit/export?format=csv&service=" + svc);
+        assertEquals(200, csv.status());
+        assertTrue(csv.header("Content-Type").startsWith("text/csv"));
+        assertTrue(csv.header("Content-Disposition").contains("attachment"));
+        assertTrue(csv.text().startsWith("﻿"), "UTF-8 BOM");
+        String[] lines = csv.text().substring(1).split("\r\n");
+        assertTrue(lines[0].startsWith("id,time,actorType,actorName,source,ip,action,projectId,service,ruleKey"));
+        assertTrue(csv.text().contains("change.publish"));
+        assertTrue(csv.text().contains("Ex.key"));
+        assertFalse(csv.text().contains("\n---"), "diff 以 --- 开头的单元格必须被引号/前缀保护");
+
+        Api.Resp json = admin.get("/api/v1/audit/export?format=json&service=" + svc + "&action=change.publish");
+        assertEquals(200, json.status());
+        JsonNode arr = json.json();
+        assertTrue(arr.isArray());
+        assertEquals(1, arr.size());
+        assertEquals("change.publish", arr.get(0).get("action").asText());
+        assertTrue(arr.get(0).get("afterValue").asText().contains("导出"));
+        // 导出本身也被审计
+        assertTrue(auditList(admin, "action=audit.export").get("total").asInt() >= 2);
+        // 无结果时仍是合法 JSON
+        assertEquals(0, admin.get("/api/v1/audit/export?format=json&service=nonexistent-" + unique("x")).json().size());
+        assertNotNull(c);
+    }
+
+    @Test
+    void retentionPurgesOldEntriesAndRecordsThePurge() {
+        Api admin = admin();
+        long now = System.currentTimeMillis();
+        jdbc.update("INSERT INTO csap_team_audit (at, actor_type, actor_name, source, action) VALUES (?, 'SYSTEM', 'old', 'SYSTEM', 'old.entry')",
+                now - 40L * 86_400_000L);
+        jdbc.update("INSERT INTO csap_team_audit (at, actor_type, actor_name, source, action) VALUES (?, 'SYSTEM', 'new', 'SYSTEM', 'new.entry')",
+                now - 1L * 86_400_000L);
+        assertEquals(0, retention.purge(now), "默认 0 = 永久,不清理");
+        assertEquals(1, auditList(admin, "action=old.entry").get("total").asInt());
+        props.getAudit().setRetentionDays(30);
+        try {
+            assertTrue(retention.purge(now) >= 1);
+        } finally {
+            props.getAudit().setRetentionDays(0);
+        }
+        assertEquals(0, auditList(admin, "action=old.entry").get("total").asInt());
+        assertEquals(1, auditList(admin, "action=new.entry").get("total").asInt());
+        JsonNode purge = auditList(admin, "action=audit.purge");
+        assertTrue(purge.get("total").asInt() >= 1);
+        assertEquals("SYSTEM", purge.get("items").get(0).get("source").asText());
+    }
+
+    // ---------- MCP 调用审计 ----------
+
+    @Test
+    void mcpAuditAvailableOnlyWhenTableExists() {
+        Api admin = admin();
+        jdbc.execute("DROP TABLE IF EXISTS csap_apidoc_mcp_audit");
+        mcp.resetCache();
+        JsonNode none = admin.get("/api/v1/audit/mcp").json();
+        assertFalse(none.get("available").asBoolean());
+        assertEquals(0, none.get("items").size());
+
+        jdbc.execute("CREATE TABLE csap_apidoc_mcp_audit (id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY, service VARCHAR(128) NOT NULL,"
+                + " at BIGINT NOT NULL, caller VARCHAR(128), remote_address VARCHAR(64), tool VARCHAR(128), target VARCHAR(512),"
+                + " arguments CLOB, status INT, success SMALLINT, result CLOB, duration_ms BIGINT)");
+        try {
+            mcp.resetCache();
+            long project = newProject(admin, true);
+            String mine = newService(admin, project);
+            String foreign = newService(admin, newProject(admin, true));
+            long now = System.currentTimeMillis();
+            insertMcp(mine, now - 1000, "token-a", "list_apis", 1);
+            insertMcp(mine, now - 500, "token-b", "get_api", 0);
+            insertMcp(foreign, now, "token-a", "list_apis", 1);
+
+            JsonNode all = admin.get("/api/v1/audit/mcp?service=" + mine).json();
+            assertTrue(all.get("available").asBoolean());
+            assertEquals(2, all.get("total").asInt());
+            assertEquals("get_api", all.get("items").get(0).get("tool").asText(), "最新在前");
+            assertFalse(all.get("items").get(0).get("success").asBoolean());
+            assertEquals(1, admin.get("/api/v1/audit/mcp?service=" + mine + "&caller=token-a").json().get("total").asInt());
+            assertEquals(1, admin.get("/api/v1/audit/mcp?service=" + mine + "&tool=get_api").json().get("total").asInt());
+            assertEquals(1, admin.get("/api/v1/audit/mcp?service=" + mine + "&from=" + (now - 600)).json().get("total").asInt());
+
+            // 项目成员只能看到自己项目的服务
+            U dev = newUser(admin, "MEMBER");
+            member(admin, project, dev, "DEVELOPER");
+            JsonNode devView = dev.api().get("/api/v1/audit/mcp").json();
+            assertEquals(2, devView.get("total").asInt());
+            assertEquals(mine, devView.get("items").get(0).get("service").asText());
+            U outsider = newUser(admin, "MEMBER");
+            assertEquals(403, outsider.api().get("/api/v1/audit/mcp").status());
+
+            // 导出
+            Api.Resp csv = admin.get("/api/v1/audit/export?kind=mcp&format=csv&service=" + mine);
+            assertEquals(200, csv.status());
+            assertTrue(csv.text().contains("list_apis"));
+            assertEquals(2, admin.get("/api/v1/audit/export?kind=mcp&format=json&service=" + mine).json().size());
+        } finally {
+            jdbc.execute("DROP TABLE csap_apidoc_mcp_audit");
+            mcp.resetCache();
+        }
+    }
+
+    private void insertMcp(String service, long at, String caller, String tool, int success) {
+        jdbc.update("INSERT INTO csap_apidoc_mcp_audit (service, at, caller, remote_address, tool, target, arguments, status, success, result, duration_ms)"
+                + " VALUES (?, ?, ?, '127.0.0.1', ?, '/orders', '{}', 200, ?, 'ok', 5)", service, at, caller, tool, success);
+    }
+
+    // ---------- Webhook ----------
+
+    private long webhook(Api admin, long project, String kind, String url, String secret, List<String> events) {
+        Map<String, Object> body = new java.util.HashMap<>(Map.of("projectId", project, "name", unique("hook"), "kind", kind, "url", url,
+                "events", events, "enabled", true));
+        if (secret != null) {
+            body.put("secret", secret);
+        }
+        Api.Resp r = admin.post("/api/v1/webhooks", body);
+        assertEquals(200, r.status(), r.text());
+        assertNull(r.json().get("secret"), "secret 只写不回显");
+        assertEquals(secret != null, r.json().get("hasSecret").asBoolean());
+        return r.json().get("id").asLong();
+    }
+
+    private static byte[] hmac(byte[] key, byte[] data) throws Exception {
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(key, "HmacSHA256"));
+        return mac.doFinal(data);
+    }
+
+    @Test
+    void webhookFormatsSignaturesAndEventFiltering() throws Exception {
+        Api admin = admin();
+        long project = newProject(admin, true);
+        String svc = newService(admin, project);
+        U dev = newUser(admin, "MEMBER");
+        member(admin, project, dev, "DEVELOPER");
+        try (LocalHttp http = new LocalHttp()) {
+            List<String> events = List.of("change.submitted", "change.approved", "change.published");
+            webhook(admin, project, "GENERIC", http.url() + "/generic", "s3cret", events);
+            webhook(admin, project, "WECOM", http.url() + "/wecom?key=abc", null, events);
+            webhook(admin, project, "DINGTALK", http.url() + "/ding?access_token=t", "ding-secret", events);
+            webhook(admin, project, "FEISHU", http.url() + "/feishu", "fs-secret", events);
+            webhook(admin, project, "GENERIC", http.url() + "/only-conflict", null, List.of("change.conflict"));
+
+            long id = changeId(createChange(dev.api(), project, item(svc, "Hook.key", 0L, rules("h"))));
+            assertEquals(200, dev.api().post("/api/v1/changes/" + id + "/submit", null).status());
+            assertEquals(200, admin.post("/api/v1/changes/" + id + "/approve", Map.of("note", "ok")).status());
+
+            // 通用
+            List<LocalHttp.Req> generic = http.await(r -> r.path().equals("/generic"), 3, 8000);
+            assertEquals(3, generic.size(), "submitted / approved / published");
+            LocalHttp.Req published = generic.stream().filter(r -> "change.published".equals(r.header("X-CSAP-Team-Event"))).findFirst().orElseThrow();
+            JsonNode body = Api.MAPPER.readTree(published.body());
+            assertEquals("change.published", body.get("event").asText());
+            assertEquals(project, body.get("project").get("id").asLong());
+            assertEquals(id, body.get("change").get("id").asLong());
+            assertEquals("https://team.example.com/changes/" + id, body.get("change").get("url").asText());
+            assertEquals(svc, body.get("items").get(0).get("service").asText());
+            assertEquals("Hook.key", body.get("items").get(0).get("ruleKey").asText());
+            assertTrue(body.get("text").asText().contains("已发布(1 条规则)"));
+            assertTrue(body.get("at").asLong() > 0);
+            String expected = "sha256=" + HexFormat.of().formatHex(hmac("s3cret".getBytes(StandardCharsets.UTF_8), published.body().getBytes(StandardCharsets.UTF_8)));
+            assertEquals(expected, published.header("X-CSAP-Team-Signature"));
+
+            // 企业微信:markdown,正文用 text
+            LocalHttp.Req wecom = http.await(r -> r.path().equals("/wecom"), 1, 5000).get(0);
+            assertEquals("key=abc", wecom.query());
+            JsonNode w = Api.MAPPER.readTree(wecom.body());
+            assertEquals("markdown", w.get("msgtype").asText());
+            assertTrue(w.get("markdown").get("content").asText().contains("修改单"));
+            assertNull(wecom.header("X-CSAP-Team-Signature"));
+
+            // 钉钉:timestamp + sign 在查询串里
+            LocalHttp.Req ding = http.await(r -> r.path().equals("/ding"), 1, 5000).get(0);
+            assertTrue(ding.query().contains("access_token=t"));
+            String ts = param(ding.query(), "timestamp");
+            String sign = java.net.URLDecoder.decode(param(ding.query(), "sign"), StandardCharsets.UTF_8);
+            assertEquals(Base64.getEncoder().encodeToString(hmac("ding-secret".getBytes(StandardCharsets.UTF_8),
+                    (ts + "\nding-secret").getBytes(StandardCharsets.UTF_8))), sign);
+            JsonNode d = Api.MAPPER.readTree(ding.body());
+            assertEquals("markdown", d.get("msgtype").asText());
+            assertNotNull(d.get("markdown").get("title"));
+            assertTrue(d.get("markdown").get("text").asText().contains("修改单"));
+
+            // 飞书:body 里 timestamp + sign,msg_type=text
+            LocalHttp.Req fs = http.await(r -> r.path().equals("/feishu"), 1, 5000).get(0);
+            JsonNode f = Api.MAPPER.readTree(fs.body());
+            assertEquals("text", f.get("msg_type").asText());
+            assertTrue(f.get("content").get("text").asText().contains("修改单"));
+            String fts = f.get("timestamp").asText();
+            assertEquals(Base64.getEncoder().encodeToString(hmac((fts + "\nfs-secret").getBytes(StandardCharsets.UTF_8), new byte[0])), f.get("sign").asText());
+
+            // 只订阅 conflict 的收不到
+            Thread.sleep(300);
+            assertEquals(0, http.requests.stream().filter(r -> r.path().equals("/only-conflict")).count());
+        }
+    }
+
+    private static String param(String query, String name) {
+        for (String p : query.split("&")) {
+            if (p.startsWith(name + "=")) {
+                return p.substring(name.length() + 1);
+            }
+        }
+        throw new AssertionError("缺少参数 " + name + ": " + query);
+    }
+
+    @Test
+    void webhookRetriesThenSucceedsAndRecordsDeliveries() throws Exception {
+        Api admin = admin();
+        long project = newProject(admin, true);
+        String svc = newService(admin, project);
+        U dev = newUser(admin, "MEMBER");
+        member(admin, project, dev, "DEVELOPER");
+        try (LocalHttp http = new LocalHttp()) {
+            AtomicInteger calls = new AtomicInteger();
+            http.handler = r -> new LocalHttp.Res(calls.incrementAndGet() <= 2 ? 500 : 200, "{}");
+            long hook = webhook(admin, project, "GENERIC", http.url() + "/retry", null, List.of("change.submitted"));
+            long id = changeId(createChange(dev.api(), project, item(svc, "Retry.key", 0L, rules("r"))));
+            assertEquals(200, dev.api().post("/api/v1/changes/" + id + "/submit", null).status());
+
+            assertEquals(3, http.await(r -> r.path().equals("/retry"), 3, 10_000).size(), "失败两次后第三次成功(测试里重试间隔 1 秒)");
+            Thread.sleep(300);
+            JsonNode deliveries = admin.get("/api/v1/webhooks/" + hook + "/deliveries").json();
+            assertEquals(3, deliveries.size());
+            assertEquals("SUCCESS", deliveries.get(0).get("status").asText());
+            assertEquals(3, deliveries.get(0).get("attempt").asInt());
+            assertEquals("FAILED", deliveries.get(2).get("status").asText());
+            assertEquals(500, deliveries.get(2).get("httpStatus").asInt());
+            // 重试是异步的,不影响业务请求:修改单已是 PENDING
+            assertEquals("PENDING", dev.api().get("/api/v1/changes/" + id).json().get("status").asText());
+
+            // 测试推送
+            http.handler = r -> new LocalHttp.Res(200, "{}");
+            Api.Resp t = admin.post("/api/v1/webhooks/" + hook + "/test", null);
+            assertEquals(200, t.status());
+            assertEquals("SUCCESS", t.json().get("status").asText());
+        }
+    }
+
+    @Test
+    void webhookManagementPermissionsAndValidation() {
+        Api admin = admin();
+        long project = newProject(admin, true);
+        long other = newProject(admin, true);
+        U maintainer = newUser(admin, "MEMBER");
+        U dev = newUser(admin, "MEMBER");
+        member(admin, project, maintainer, "MAINTAINER");
+        member(admin, project, dev, "DEVELOPER");
+
+        assertEquals(403, dev.api().get("/api/v1/webhooks").status());
+        long mine = webhook(maintainer.api(), project, "GENERIC", "http://127.0.0.1:1/x", "sec", List.of("change.published"));
+        assertEquals(403, maintainer.api().post("/api/v1/webhooks", Map.of("projectId", other, "name", "n", "kind", "GENERIC",
+                "url", "http://127.0.0.1:1/x", "events", List.of("change.published"))).status(), "维护者只能管所在项目");
+        assertEquals(403, maintainer.api().post("/api/v1/webhooks", Map.of("name", "n", "kind", "GENERIC", "url", "http://127.0.0.1:1/x",
+                "events", List.of("change.published"))).status(), "全部项目的 webhook 只有管理员");
+        assertEquals(400, admin.post("/api/v1/webhooks", Map.of("projectId", project, "name", "n", "kind", "SLACK", "url", "http://h:1", "events", List.of("change.published"))).status());
+        assertEquals(400, admin.post("/api/v1/webhooks", Map.of("projectId", project, "name", "n", "kind", "GENERIC", "url", "javascript:alert(1)", "events", List.of("change.published"))).status());
+        assertEquals(400, admin.post("/api/v1/webhooks", Map.of("projectId", project, "name", "n", "kind", "GENERIC", "url", "http://h:1", "events", List.of("nope"))).status());
+        JsonNode list = maintainer.api().get("/api/v1/webhooks?projectId=" + project).json();
+        assertEquals(1, list.size());
+        assertNull(list.get(0).get("secret"));
+        assertTrue(list.get(0).get("hasSecret").asBoolean());
+        // 更新:不传 secret 保持;传空串清除
+        assertEquals(200, maintainer.api().patch("/api/v1/webhooks/" + mine, Map.of("enabled", false, "name", "新名字")).status());
+        assertTrue(maintainer.api().get("/api/v1/webhooks?projectId=" + project).json().get(0).get("hasSecret").asBoolean());
+        assertFalse(maintainer.api().patch("/api/v1/webhooks/" + mine, Map.of("secret", "")).json().get("hasSecret").asBoolean());
+        assertEquals(200, maintainer.api().delete("/api/v1/webhooks/" + mine).status());
+        assertEquals(404, maintainer.api().delete("/api/v1/webhooks/" + mine).status());
+        assertTrue(auditList(admin, "action=webhook.create&projectId=" + project).get("total").asInt() >= 1);
+    }
+}

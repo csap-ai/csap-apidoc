@@ -226,7 +226,7 @@ public class WebhookService {
 
     // ---- 组装请求 ----
 
-    String link(WebhookEvent ev) {
+    public String link(WebhookEvent ev) {
         String base = props.getPublicUrl();
         if (base == null || base.isBlank() || ev.changeId() == null) {
             return null;
@@ -234,7 +234,7 @@ public class WebhookService {
         return base.replaceAll("/+$", "") + "/changes/" + ev.changeId();
     }
 
-    HttpRequest buildRequest(Hook h, WebhookEvent ev) {
+    public HttpRequest buildRequest(Hook h, WebhookEvent ev) {
         String link = link(ev);
         String text = ev.text() + (link == null ? "" : "\n" + link);
         String url = h.url();

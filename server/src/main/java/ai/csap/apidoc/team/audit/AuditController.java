@@ -203,7 +203,7 @@ public class AuditController {
         w.flush();
     }
 
-    static String cell(String col, Map<String, Object> row) {
+    public static String cell(String col, Map<String, Object> row) {
         Object v = "time".equals(col) ? time(row.get("at")) : row.get(col);
         if (v == null) {
             return "";
