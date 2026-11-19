@@ -1,10 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { modal } from '@/utils/notify';
 import { ApiError, setErrorHandlers } from '@/api/client';
 import { authApi, setupApi } from '@/api/endpoints';
 import type { Me } from '@/api/types';
-import { t } from '@/i18n';
 
 interface AuthState {
   me: Me | null;
@@ -32,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 全局错误分发:UNAUTHORIZED → 登录;SETUP_REQUIRED → 初始化;LICENSE_LIMIT → 明确提示
+  // 全局错误分发:UNAUTHORIZED → 登录;SETUP_REQUIRED → 初始化
   useEffect(() => {
     setErrorHandlers({
       unauthorized: () => {
@@ -45,9 +43,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setupRequired: () => {
         setInitialized(false);
         navigate('/setup', { replace: true });
-      },
-      licenseLimit: () => {
-        modal.warning({ title: t('err.LICENSE_LIMIT'), okText: t('common.ok') });
       },
     });
   }, [navigate, location.pathname, location.search]);

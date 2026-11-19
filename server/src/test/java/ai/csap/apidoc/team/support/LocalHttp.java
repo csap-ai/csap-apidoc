@@ -10,7 +10,7 @@ import java.util.function.Function;
 
 import com.sun.net.httpserver.HttpServer;
 
-/** 测试用本地 HTTP 服务:记录请求,按函数返回响应。 */
+/** 测试专用本地 HTTP 服务:记录请求,按函数返回响应。 */
 public class LocalHttp implements AutoCloseable {
 
     public record Req(String method, String path, String query, Map<String, List<String>> headers, String body) {

@@ -1,7 +1,7 @@
 // mock 后端的内存数据库与业务逻辑,行为对照 docs/design/team-1.0.md。仅开发 / 测试使用。
 import { createTwoFilesPatch } from 'diff';
 import type {
-  AuditRecord, Change, ChangeItem, ChangeStatus, ConflictItem, DocPayload, License, McpAuditRecord, Member, Project, ProjectRole,
+  AuditRecord, Change, ChangeItem, ChangeStatus, ConflictItem, DocPayload, McpAuditRecord, Member, Project, ProjectRole,
   ServiceInfo, TokenInfo, User, Webhook, WebhookDelivery,
 } from '@/api/types';
 import { fixtureDocs, seedRules } from './fixtures';
@@ -34,10 +34,6 @@ export interface Db {
   webhooks: (Webhook & { secret?: string })[];
   deliveries: WebhookDelivery[];
   tokens: TokenInfo[];
-  licenseStatus: License['status'];
-  licenseMax: number;
-  licensee: string | null;
-  licenseExpiresAt: number | null;
   sessionUserId: number | null;
 }
 
@@ -47,13 +43,13 @@ export let db: Db = emptyDb();
 function emptyDb(): Db {
   return {
     initialized: false, orgName: '', seq: 100, users: [], projects: [], members: [], services: [], docs: {}, rules: {}, history: [], changes: [],
-    audit: [], mcp: [], mcpAvailable: true, webhooks: [], deliveries: [], tokens: [], licenseStatus: 'TRIAL', licenseMax: 5, licensee: null, licenseExpiresAt: null,
+    audit: [], mcp: [], mcpAvailable: true, webhooks: [], deliveries: [], tokens: [],
     sessionUserId: null,
   };
 }
 const nid = () => ++db.seq;
 
-/** 重置;seeded=true 时直接带演示数据与账号(测试用) */
+/** 重置;seeded=true 时直接带演示数据与账号(仅供测试) */
 export function resetDb(seeded = false) {
   db = emptyDb();
   if (seeded) {
@@ -122,11 +118,9 @@ export const visibleProjectIds = (u: UserRow): number[] =>
   u.orgRole === 'ADMIN' ? db.projects.map((p) => p.id) : db.members.filter((m) => m.userId === u.id).map((m) => m.projectId);
 
 export function meOf(u: UserRow) {
-  const active = db.users.filter((x) => x.status === 'ACTIVE').length;
   return {
     id: u.id, username: u.username, displayName: u.displayName, orgRole: u.orgRole,
     projects: db.members.filter((m) => m.userId === u.id).map((m) => ({ id: m.projectId, name: db.projects.find((p) => p.id === m.projectId)!.name, role: m.role })),
-    license: { status: db.licenseStatus, maxMembers: db.licenseMax, activeMembers: active, expiresAt: db.licenseExpiresAt },
   };
 }
 export const publicUser = ({ password: _p, ...u }: UserRow): User => u;

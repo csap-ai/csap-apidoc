@@ -19,7 +19,6 @@ npm test           # Vitest 组件测试
 - 演示账号(初始化向导完成后自动生成):管理员为你在向导里填的账号;`zhangsan`(订单维护者)、`lisi`(订单开发 / 用户中心维护者)、`wangwu`(订单只读),密码均为 `demo1234`。
 - 制造冲突:浏览器控制台执行
   `__mock.editOutside('order-service', 'com.demo.order.OrderController.create', '{"amount":{"min":5}}')`,模拟服务侧 DevTools 直接改规则;之后提交基于旧版本的修改单即得到 409。
-- 试用人数上限为 5,新建第 2 个以上用户会触发 `LICENSE_LIMIT` 提示。
 
 ## 结构
 

@@ -13,8 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 
 import ai.csap.apidoc.team.TeamApplication;
 import ai.csap.apidoc.team.sync.HistorySync;
@@ -44,16 +42,11 @@ public abstract class AbstractIT {
     @Autowired
     protected HistorySync historySync;
 
-    @DynamicPropertySource
-    static void common(DynamicPropertyRegistry r) {
-        r.add("csap.team.license-public-key-file", TestKeys::publicKeyFile);
-    }
-
     protected static String unique(String p) {
         return p + SEQ.incrementAndGet() + "_" + UUID.randomUUID().toString().substring(0, 6);
     }
 
-    /** 已登录的管理员(首次调用时完成初始化并安装大授权)。 */
+    /** 已登录的管理员(首次调用时完成初始化)。 */
     protected synchronized Api admin() {
         Api a = new Api(port);
         if (!a.get("/api/v1/setup/status").json().path("initialized").asBoolean()) {
@@ -63,7 +56,6 @@ public abstract class AbstractIT {
             body.put("password", ADMIN_PASSWORD);
             body.put("displayName", "管理员");
             assertEquals(200, a.post("/api/v1/setup", body).status());
-            assertEquals(200, a.post("/api/v1/license", Map.of("license", TestKeys.license("测试公司", 500, System.currentTimeMillis() + 86_400_000L * 365))).status());
         } else {
             assertEquals(200, a.post("/api/v1/auth/login", Map.of("username", "admin", "password", ADMIN_PASSWORD)).status());
         }

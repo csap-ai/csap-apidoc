@@ -9,8 +9,6 @@ export interface Me {
   displayName: string;
   orgRole: OrgRole;
   projects: { id: number; name: string; role: ProjectRole }[];
-  /** 待契约确认:/auth/me 附带授权概况时,所有人都能看到提示条 */
-  license?: Pick<License, 'status' | 'maxMembers' | 'activeMembers' | 'expiresAt'>;
 }
 
 export interface User {
@@ -302,13 +300,4 @@ export interface TokenInfo {
 }
 export interface TokenCreated extends TokenInfo {
   token: string;
-}
-
-export type LicenseStatus = 'TRIAL' | 'VALID' | 'EXPIRED' | 'INVALID';
-export interface License {
-  status: LicenseStatus;
-  licensee?: string | null;
-  maxMembers: number;
-  expiresAt?: number | null;
-  activeMembers: number;
 }

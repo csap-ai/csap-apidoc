@@ -8,10 +8,9 @@
     <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>CSAP Apidoc Team Parent</name>
-    <description>CSAP Apidoc 团队版(商业产品)</description>
+    <description>CSAP Apidoc 团队版</description>
 
     <modules>
-        <module>license-tool</module>
         <module>server</module>
     </modules>
 

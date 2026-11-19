@@ -37,7 +37,7 @@ public class UserController {
     @PostMapping
     public Map<String, Object> create(@RequestBody Map<String, Object> body) {
         access.admin();
-        UserService.UserRow u = users.create(s(body, "username"), s(body, "displayName"), s(body, "password"), s(body, "orgRole"), false);
+        UserService.UserRow u = users.create(s(body, "username"), s(body, "displayName"), s(body, "password"), s(body, "orgRole"));
         audit.log("user.create").reason(u.username() + " (" + u.orgRole() + ")").save();
         return u.toMap();
     }

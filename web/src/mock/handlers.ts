@@ -93,7 +93,6 @@ route('post', '/users', ({ body }) => {
   const me = M.currentUser(); M.requireAdmin(me);
   if (!body.username || !body.password) throw bad('账号与密码必填');
   if (db.users.some((x) => x.username === body.username)) throw bad('账号已存在');
-  if (M.activeUsers() >= db.licenseMax) throw new HttpErr(403, 'LICENSE_LIMIT', '已达授权人数上限');
   const u = { id: ++db.seq, username: body.username, displayName: body.displayName || body.username, status: 'ACTIVE' as const, orgRole: body.orgRole || 'MEMBER', createdAt: Date.now(), password: body.password };
   db.users.push(u);
   M.logAudit({ ...M.auditBy(me), action: 'user.create', reason: u.username });
@@ -103,7 +102,6 @@ route('patch', '/users/:id', ({ params, body }) => {
   const me = M.currentUser(); M.requireAdmin(me);
   const u = db.users.find((x) => x.id === Number(params.id));
   if (!u) throw new HttpErr(404, 'NOT_FOUND', '用户不存在');
-  if (body.status === 'ACTIVE' && u.status !== 'ACTIVE' && M.activeUsers() >= db.licenseMax) throw new HttpErr(403, 'LICENSE_LIMIT', '已达授权人数上限');
   if (u.id === me.id && (body.status === 'DISABLED' || body.orgRole === 'MEMBER')) throw bad('不能停用或降级自己');
   Object.assign(u, ['displayName', 'status', 'orgRole', 'password'].reduce((o, k) => (body[k] !== undefined ? { ...o, [k]: body[k] } : o), {}));
   M.logAudit({ ...M.auditBy(me), action: 'user.update', reason: u.username });
@@ -491,22 +489,6 @@ route('delete', '/tokens/:id', ({ params }) => {
   t.revoked = true;
   M.logAudit({ ...M.auditBy(u), action: 'token.revoke', reason: t.name });
   return undefined;
-});
-
-// ---------- 授权 ----------
-const lic = () => ({ status: db.licenseStatus, licensee: db.licensee, maxMembers: db.licenseMax, expiresAt: db.licenseExpiresAt, activeMembers: M.activeUsers() });
-route('get', '/license', () => { M.requireAdmin(M.currentUser()); return lic(); });
-route('post', '/license', ({ body }) => {
-  const u = M.currentUser(); M.requireAdmin(u);
-  const text = String(body.license || '').trim();
-  if (!text) throw bad('授权文本为空');
-  try {
-    const j = JSON.parse(atob(text));
-    db.licenseStatus = j.expiresAt && j.expiresAt < Date.now() ? 'EXPIRED' : 'VALID';
-    db.licensee = j.licensee ?? null; db.licenseMax = j.maxMembers ?? 5; db.licenseExpiresAt = j.expiresAt ?? null;
-  } catch { db.licenseStatus = 'INVALID'; throw bad('授权文件无效或签名校验失败'); }
-  M.logAudit({ ...M.auditBy(u), action: 'license.update' });
-  return lic();
 });
 
 export { handlers };

@@ -12,7 +12,7 @@ import java.time.Duration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-/** 测试用 HTTP 客户端:带 Cookie,非 GET 自动带 X-CSAP-Team。 */
+/** 测试专用 HTTP 客户端:带 Cookie,非 GET 自动带 X-CSAP-Team。 */
 public class Api {
 
     public static final ObjectMapper MAPPER = new ObjectMapper();

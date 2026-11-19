@@ -122,8 +122,3 @@ export const tokenApi = {
   create: (b: { name: string; scope: T.TokenScope; projectId?: number }) => post<T.TokenCreated>('/tokens', b),
   revoke: (id: number) => request<void>(`/tokens/${id}`, { method: 'DELETE' }),
 };
-
-export const licenseApi = {
-  get: () => request<T.License>('/license'),
-  upload: (license: string) => post<T.License>('/license', { license }),
-};

@@ -19,10 +19,6 @@ public class TeamProperties {
     private String ruleTablePrefix = "csap_apidoc_";
     /** 信任其 X-Forwarded-For 的代理 IP / CIDR */
     private List<String> trustedProxies = new ArrayList<>();
-    /** 授权文件路径(也可在控制台上传) */
-    private String licenseFile = "";
-    /** 发行公钥文件;为空时用 jar 内 META-INF/csap-team/license-public.pem */
-    private String licensePublicKeyFile = "";
     /** 注册接口返回的心跳周期(秒) */
     private int heartbeatSeconds = 30;
     /** 会话滑动过期(小时) */
@@ -91,10 +87,6 @@ public class TeamProperties {
     public void setRuleTablePrefix(String ruleTablePrefix) { this.ruleTablePrefix = ruleTablePrefix; }
     public List<String> getTrustedProxies() { return trustedProxies; }
     public void setTrustedProxies(List<String> trustedProxies) { this.trustedProxies = trustedProxies; }
-    public String getLicenseFile() { return licenseFile; }
-    public void setLicenseFile(String licenseFile) { this.licenseFile = licenseFile; }
-    public String getLicensePublicKeyFile() { return licensePublicKeyFile; }
-    public void setLicensePublicKeyFile(String licensePublicKeyFile) { this.licensePublicKeyFile = licensePublicKeyFile; }
     public int getHeartbeatSeconds() { return heartbeatSeconds; }
     public void setHeartbeatSeconds(int heartbeatSeconds) { this.heartbeatSeconds = heartbeatSeconds; }
     public int getSessionHours() { return sessionHours; }

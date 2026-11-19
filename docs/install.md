@@ -7,7 +7,7 @@
 - 团队版是**一个 Java 17 的可执行 jar**(也提供 Docker 镜像构建文件),内含控制台前端。
 - 它必须连接**你的服务共用的那个数据库**,并且表前缀与服务一致。不要给团队版单独建库。
 - **1.0 只支持单实例部署**。登录锁定、服务状态等放在进程内存里,起两个实例会互相看不见。
-- 默认端口 `8090`;默认数据库是本地文件 H2,**仅供试用**。
+- 默认端口 `8090`;默认数据库是本地文件 H2,**仅供本地体验 / 测试**。
 - 首次访问控制台,完成初始化向导(创建组织和第一个管理员)。
 
 ## 运行要求
@@ -26,9 +26,9 @@
 |---|---|---|---|
 | MySQL | 5.7.7 及以上、8.x | 已用 MySQL 8 做集成测试 | 随 jar 带 |
 | PostgreSQL | 12 及以上 | 已用 PostgreSQL 16 做集成测试 | 随 jar 带 |
-| H2 | 内置 | **仅试用 / 测试** | 随 jar 带 |
-| 达梦 DM8 | DM8 | **未在真实库验证,试用** | 自行获取,见下文 |
-| 人大金仓 KingbaseES | V8 / V9 | **未在真实库验证,试用** | 自行获取,见下文 |
+| H2 | 内置 | **仅本地体验 / 测试** | 随 jar 带 |
+| 达梦 DM8 | DM8 | **未在真实库验证** | 自行获取,见下文 |
+| 人大金仓 KingbaseES | V8 / V9 | **未在真实库验证** | 自行获取,见下文 |
 
 说明:
 
@@ -98,7 +98,7 @@ PostgreSQL 的 URL 写成 `jdbc:postgresql://db.example.com:5432/csap_apidoc`。
 2. 环境变量:`csap.team.public-url` 写成 `CSAP_TEAM_PUBLICURL`,`csap.team.docs.refresh-seconds` 写成 `CSAP_TEAM_DOCS_REFRESHSECONDS`(去掉连字符,点换下划线);列表用逗号分隔,例如 `CSAP_TEAM_TRUSTEDPROXIES=10.0.0.0/8,192.168.0.0/16`;
 3. 命令行参数:`--csap.team.public-url=https://team.example.com`。
 
-`application.yml` 里的 `CSAP_TEAM_DB_URL`、`CSAP_TEAM_DB_USER`、`CSAP_TEAM_DB_PASSWORD`、`CSAP_TEAM_PUBLIC_URL`、`CSAP_TEAM_RULE_TABLE_PREFIX`、`CSAP_TEAM_LICENSE_FILE` 这六个环境变量是预置好的快捷写法。
+`application.yml` 里的 `CSAP_TEAM_DB_URL`、`CSAP_TEAM_DB_USER`、`CSAP_TEAM_DB_PASSWORD`、`CSAP_TEAM_PUBLIC_URL`、`CSAP_TEAM_RULE_TABLE_PREFIX` 这五个环境变量是预置好的快捷写法。
 
 ### 作为系统服务运行
 
@@ -193,8 +193,6 @@ docker run ... -v $(pwd)/application.yml:/app/config/application.yml:ro csap-api
 | `sync.settle-millis` | `3000` | 只处理写入超过这个时间的修改记录,避免并发事务漏记 |
 | `audit.retention-days` | `0` | 审计保留天数,`0` = 永久保留 |
 | `trusted-proxies` | 空列表 | 信任其 `X-Forwarded-For` 的代理 IP 或 CIDR。不配置则审计里的 IP 是直连来源 |
-| `license-file` | 空 | 授权文件路径。也可以在控制台上传(上传的优先) |
-| `license-public-key-file` | 空 | 授权公钥文件。空 = 用 jar 内置公钥。自行签发授权、替换公钥时用 |
 | `heartbeat-seconds` | `30` | 注册接口返回给服务的心跳周期(秒);3 个周期没有心跳视为实例离线 |
 | `session-hours` | `12` | 登录会话的滑动过期时间(小时) |
 | `webhook.retry-delay-seconds` | `10, 60, 300` | Webhook 失败后的重试间隔(秒),列表长度即重试次数 |
@@ -274,11 +272,10 @@ curl -s -X POST http://localhost:8090/api/v1/setup \
 
 1. 建项目、加成员、给成员分配角色(见 [管理员手册](admin-guide.md));
 2. 创建 `REGISTER` 令牌,把服务接进来(见 [服务接入](connect-services.md));
-3. 需要超过 5 个活跃用户时,上传授权文件。
 
 ## 达梦、人大金仓
 
-这两种库**未在真实库验证**,属于试用。
+这两种库**未在真实库验证**,请先在测试环境验证。
 
 驱动不随团队版分发,需要从厂商获取与你数据库版本匹配的 JDBC 驱动,放进一个目录(例如 `./drivers`),用 `PropertiesLauncher` 启动并指定该目录:
 
@@ -309,7 +306,7 @@ docker run -d --name csap-team -p 8090:8090 \
   -Dloader.path=/app/drivers -cp /app/app.jar org.springframework.boot.loader.launch.PropertiesLauncher
 ```
 
-人大金仓如果初始化为 MySQL 兼容模式,方言设为 `mysql` 试用;Oracle 兼容模式不支持。
+人大金仓如果初始化为 MySQL 兼容模式,方言设为 `mysql`(请先在测试环境验证);Oracle 兼容模式不支持。
 
 ## 升级
 
@@ -325,9 +322,9 @@ docker run -d --name csap-team -p 8090:8090 \
 数据全部在数据库里,备份 = 备份那个库(用 `mysqldump`、`pg_dump` 或你们现有的备份方案)。
 
 - 团队版自有表(`csap_team_*`)和开源规则表**在同一个库**,一起备份才能保证一致。
-- 数据库里的 `csap_team_setting` 存放登录会话签名密钥和授权文本,备份文件要按敏感数据保管。
+- 数据库里的 `csap_team_setting` 存放登录会话签名密钥,备份文件要按敏感数据保管。
 - 恢复到旧备份后:修改单、审计回到备份时刻;服务按版本号轮询,规则也回到备份时刻的版本。
-- 团队版进程本身没有需要备份的文件(试用的 H2 文件库除外:`./data/csap-team*`)。
+- 团队版进程本身没有需要备份的文件(本地体验用的 H2 文件库除外:`./data/csap-team*`)。
 
 ## 日志与排错
 
@@ -340,7 +337,6 @@ docker run -d --name csap-team -p 8090:8090 \
 | 服务的规则在团队版里看不到 | 团队版和服务连了不同的库,或表前缀不一致 |
 | 登录后马上掉线 | 浏览器没带 Cookie:检查是否通过 HTTPS 访问、代理是否改写了 `Host` |
 | 审计里的 IP 都是代理地址 | 没配置 `trusted-proxies`,或代理没传 `X-Forwarded-For` |
-| 授权提示"无效" | 授权文件不是用对应的私钥签发的,见 [授权文件](admin-guide.md#授权文件) |
 
 接口错误统一返回 HTTP 4xx/5xx 加 `{"code":"...","message":"..."}`,常见错误码:
 
@@ -348,7 +344,6 @@ docker run -d --name csap-team -p 8090:8090 \
 |---|---|---|
 | `UNAUTHORIZED` | 401 | 未登录、会话过期、令牌无效 |
 | `FORBIDDEN` | 403 | 没有权限,或缺少请求头 `X-CSAP-Team: 1` |
-| `LICENSE_LIMIT` | 403 | 活跃用户已达授权上限 |
 | `NOT_FOUND` | 404 | 不存在,或你无权查看 |
 | `VALIDATION` | 400 | 提交的内容有误 |
 | `CONFLICT` | 409 | 版本冲突或重名 |

@@ -17,7 +17,6 @@
 | `audit` | 审计写入 / 查询 / 导出 / 保留期、MCP 审计读取 |
 | `sync` | `HistorySync`:`{prefix}history` → `rule.changed_outside` |
 | `webhook` | 四种格式、签名、重试、投递记录 |
-| `license` | Ed25519 授权校验与人数限制 |
 
 ## 发布与开源 `DatabaseRuleStore.save` 的一致性
 
@@ -36,9 +35,8 @@
 
 | 问题 | 选择 |
 |---|---|
-| `SETUP_REQUIRED`、`LICENSE_LIMIT` 的 HTTP 状态码 | 412 / 403;错误码字段 `code` 为准 |
+| `SETUP_REQUIRED` 的 HTTP 状态码 | 412;错误码字段 `code` 为准 |
 | 管理员在 `/auth/me` 的 `projects[].role` | 有成员关系取实际角色,否则 `MAINTAINER`(管理员在项目里等同维护者) |
-| `GET /license`、`POST /license` | 仅管理员(契约 3 节)。非管理员拿不到试用提示,前端如需全员横幅需要契约补充 |
 | `GET /rules/{service}/diff` 的 `from` / `to` | 都是 history id;比较"该条历史之后的规则内容",`to` 省略 = 与当前规则比较 |
 | 历史条目 | 在契约字段外多返回 `ruleKey`、`diff`(before→after 的统一差异) |
 | `GET /changes` 列表 | 每张单附 `itemCount` 和精简 `items`(service/ruleKey/baseVersion);完整内容(含 diff、currentVersion、conflict)用 `GET /changes/{id}` |
@@ -64,5 +62,4 @@
 
 - 达梦 DM8、人大金仓:有建表脚本和方言处理,**没有在真实库验证**。
 - 登录锁定、`service.offline` 10 分钟去重、服务状态缓存都是单实例内存实现,**团队版 1.0 只支持单实例部署**(多实例 1.1 再做)。
-- 授权公钥:仓库里是占位公钥(私钥已销毁),任何授权都会判为 INVALID(试用),正式发行前替换。
 - 审计哈希链列(`prev_hash` / `hash`)只建列不填,1.1 再做。

@@ -16,5 +16,5 @@ ENV JAVA_OPTS="-Xms256m -Xmx768m" \
 EXPOSE 8090
 VOLUME ["/app/data"]
 
-# 数据库、授权等配置用环境变量(见 docker-compose 示例)或挂载 /app/config/application.yml
+# 数据库等配置用环境变量(见 docker-compose 示例)或挂载 /app/config/application.yml
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]

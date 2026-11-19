@@ -9,7 +9,6 @@ import ServicesTab from './ServicesTab';
 import UsersTab from './UsersTab';
 import TokensTab from './TokensTab';
 import WebhooksTab from './WebhooksTab';
-import LicenseTab from './LicenseTab';
 
 export default function Admin() {
   const { me } = useAuth();
@@ -24,7 +23,6 @@ export default function Admin() {
     ...(admin ? [
       { key: 'users', label: t('admin.tab.users'), children: <UsersTab /> },
       { key: 'tokens', label: t('admin.tab.tokens'), children: <TokensTab /> },
-      { key: 'license', label: t('admin.tab.license'), children: <LicenseTab /> },
     ] : []),
   ];
   const active = items.some((i) => i.key === tab) ? tab! : 'projects';

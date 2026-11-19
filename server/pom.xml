@@ -42,7 +42,7 @@
             </exclusions>
         </dependency>
 
-        <!-- 数据库驱动:H2(试用)、MySQL、PostgreSQL 随包;达梦、人大金仓驱动由用户放到 loader.path -->
+        <!-- 数据库驱动:H2(本地体验 / 测试)、MySQL、PostgreSQL 随包;达梦、人大金仓驱动由用户放到 loader.path -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
@@ -76,12 +76,6 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>postgresql</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>ai.csap.apidoc.team</groupId>
-            <artifactId>csap-apidoc-team-license-tool</artifactId>
-            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

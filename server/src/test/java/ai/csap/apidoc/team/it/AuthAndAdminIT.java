@@ -15,10 +15,9 @@ import org.springframework.test.context.DynamicPropertySource;
 
 import ai.csap.apidoc.team.support.AbstractIT;
 import ai.csap.apidoc.team.support.Api;
-import ai.csap.apidoc.team.support.TestKeys;
 import com.fasterxml.jackson.databind.JsonNode;
 
-/** 契约 3、7.2、9:初始化、登录、CSRF、锁定、用户、项目与成员权限、授权人数。 */
+/** 契约 3、7.2、9:初始化、登录、CSRF、锁定、用户、项目与成员权限。 */
 class AuthAndAdminIT extends AbstractIT {
 
     @DynamicPropertySource
@@ -107,13 +106,10 @@ class AuthAndAdminIT extends AbstractIT {
     }
 
     @Test
-    void meCarriesLicenseCandidatesAndAuditDetail() {
+    void meHasNoLicenseFieldAndCandidatesAndAuditDetail() {
         Api admin = admin();
         U u = newUser(admin, "MEMBER");
-        JsonNode lic = u.api().get("/api/v1/auth/me").json().get("license");
-        assertEquals("VALID", lic.get("status").asText());
-        assertTrue(lic.has("maxMembers") && lic.has("activeMembers") && lic.has("expiresAt"));
-        assertFalse(lic.has("licensee"));
+        assertFalse(u.api().get("/api/v1/auth/me").json().has("license"));
         long project = newProject(admin, true);
         U m = newUser(admin, "MEMBER");
         member(admin, project, m, "MAINTAINER");
@@ -136,7 +132,6 @@ class AuthAndAdminIT extends AbstractIT {
         assertEquals(403, u.api().get("/api/v1/users").status());
         assertEquals(403, u.api().post("/api/v1/users", Map.of("username", "zz", "password", "Passw0rd!!")).status());
         assertEquals(403, u.api().get("/api/v1/tokens").status());
-        assertEquals(403, u.api().get("/api/v1/license").status());
         assertEquals(403, u.api().post("/api/v1/projects", Map.of("name", unique("p"))).status());
         assertEquals(400, admin.post("/api/v1/users", Map.of("username", "a b", "password", "Passw0rd!!")).status());
         assertEquals(400, admin.post("/api/v1/users", Map.of("username", unique("short"), "password", "123")).status());
@@ -254,35 +249,15 @@ class AuthAndAdminIT extends AbstractIT {
     }
 
     @Test
-    void licenseLimitsActiveUsers() {
+    void creatingMoreThanFiveUsersIsAllowed() {
         Api admin = admin();
-        String big = TestKeys.license("测试公司", 500, System.currentTimeMillis() + 86_400_000L * 365);
-        try {
-            long active = jdbc.queryForObject("SELECT COUNT(*) FROM csap_team_user WHERE status = 'ACTIVE'", Long.class);
-            // 授权人数刚好等于当前活跃用户数 -> 再新增报 LICENSE_LIMIT
-            Api.Resp inst = admin.post("/api/v1/license", Map.of("license", TestKeys.license("小公司", (int) active, System.currentTimeMillis() + 86_400_000L)));
-            assertEquals(200, inst.status(), inst.text());
-            assertEquals("VALID", inst.json().get("status").asText());
-            assertEquals("小公司", inst.json().get("licensee").asText());
-            Api.Resp r = admin.post("/api/v1/users", Map.of("username", unique("lim"), "password", "Passw0rd!!"));
-            assertEquals(403, r.status());
-            assertEquals("LICENSE_LIMIT", r.code());
-            // 已过期:回到试用上限,已有用户不受影响(能登录),只限制新增
-            admin.post("/api/v1/license", Map.of("license", TestKeys.license("过期公司", 500, System.currentTimeMillis() - 1000)));
-            JsonNode lic = admin.get("/api/v1/license").json();
-            assertEquals("EXPIRED", lic.get("status").asText());
-            assertEquals(active, lic.get("activeMembers").asLong());
-            assertEquals(200, admin.get("/api/v1/auth/me").status());
-            // 无效授权被拒绝
-            assertEquals(400, admin.post("/api/v1/license", Map.of("license", "bm90IGEgbGljZW5zZQ==")).status());
-            assertEquals(400, admin.post("/api/v1/license", Map.of("license", "")).status());
-        } finally {
-            assertEquals(200, admin.post("/api/v1/license", Map.of("license", big)).status());
+        for (int i = 0; i < 8; i++) {
+            newUser(admin, "MEMBER");
         }
-        JsonNode lic = admin.get("/api/v1/license").json();
-        assertEquals("VALID", lic.get("status").asText());
-        assertEquals(500, lic.get("maxMembers").asInt());
-        assertNotNull(lic.get("expiresAt"));
+        long active = jdbc.queryForObject("SELECT COUNT(*) FROM csap_team_user WHERE status = 'ACTIVE'", Long.class);
+        assertTrue(active > 5, "活跃用户数应超过 5: " + active);
+        assertEquals(404, admin.get("/api/v1/license").status());
+        assertFalse(admin.get("/api/v1/auth/me").json().has("license"));
     }
 
     @Test

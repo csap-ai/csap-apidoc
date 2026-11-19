@@ -1,45 +1,13 @@
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Alert, Spin, Button, Dropdown, Layout, Menu, Space, Tooltip } from 'antd';
+import { Spin, Button, Dropdown, Layout, Menu, Space, Tooltip } from 'antd';
 import { AuditOutlined, BulbFilled, BulbOutlined, FileTextOutlined, FormOutlined, SettingOutlined, UserOutlined, ApiOutlined } from '@ant-design/icons';
 import { useAuth } from '@/auth/AuthContext';
-import { canManageProject, canViewAudit, isAdmin } from '@/auth/permissions';
-import { licenseApi } from '@/api/endpoints';
-import type { License } from '@/api/types';
+import { canManageProject, canViewAudit } from '@/auth/permissions';
 import { useThemeMode } from '@/theme';
 import { t } from '@/i18n';
 
 const { Header, Sider, Content } = Layout;
-
-function LicenseBanner() {
-  const { me } = useAuth();
-  const [lic, setLic] = useState<Pick<License, 'status' | 'maxMembers' | 'activeMembers'> | null>(me?.license ?? null);
-  const admin = isAdmin(me);
-  useEffect(() => {
-    if (me?.license) {
-      setLic(me.license);
-      return;
-    }
-    if (!admin) return;
-    licenseApi.get().then(setLic).catch(() => undefined);
-  }, [me, admin]);
-  if (!lic || lic.status === 'VALID') return null;
-  const key = `license.${lic.status}` as const;
-  return (
-    <Alert
-      banner
-      type={lic.status === 'TRIAL' ? 'info' : 'warning'}
-      showIcon
-      data-testid="license-banner"
-      message={
-        <span>
-          {t(key)} {t('license.members', { active: lic.activeMembers, max: lic.maxMembers })}
-          {admin && <Link to="/admin/license" style={{ marginLeft: 12 }}>{t('license.upgrade')}</Link>}
-        </span>
-      }
-    />
-  );
-}
 
 export default function AppLayout() {
   const { me, logout } = useAuth();
@@ -85,7 +53,6 @@ export default function AppLayout() {
             </Dropdown>
           </Space>
         </Header>
-        <LicenseBanner />
         <Content style={{ padding: 24 }}>
           <Suspense fallback={<Spin style={{ display: 'block', margin: '20vh auto' }} />}>
             <Outlet />

@@ -18,15 +18,15 @@ export class ApiError extends Error {
 }
 
 type Handler = (e: ApiError) => void;
-const handlers: { unauthorized?: Handler; setupRequired?: Handler; licenseLimit?: Handler } = {};
+const handlers: { unauthorized?: Handler; setupRequired?: Handler } = {};
 
-/** 全局错误处理注册(由应用壳设置:跳登录 / 跳初始化 / 许可提示) */
+/** 全局错误处理注册(由应用壳设置:跳登录 / 跳初始化) */
 export function setErrorHandlers(h: typeof handlers) {
   Object.assign(handlers, h);
 }
 
 let base = '';
-/** 测试用:Node 的 fetch 不接受相对地址 */
+/** 测试专用:Node 的 fetch 不接受相对地址 */
 export function setApiBase(b: string) {
   base = b;
 }
@@ -75,7 +75,6 @@ async function doFetch(path: string, opts: RequestOptions): Promise<Response> {
     if (!opts.silent) {
       if (err.code === 'UNAUTHORIZED') handlers.unauthorized?.(err);
       else if (err.code === 'SETUP_REQUIRED') handlers.setupRequired?.(err);
-      else if (err.code === 'LICENSE_LIMIT') handlers.licenseLimit?.(err);
     }
     throw err;
   }

@@ -1,8 +1,8 @@
 # CSAP Apidoc 团队版
 
-CSAP Apidoc 的商业版本,企业自部署。面向多服务、多成员的团队:文档中心、成员与角色、修改单(草稿、冲突检测、审批)、审计追溯、变更通知。
+CSAP Apidoc 团队版,免费开源(Apache-2.0),企业自部署。面向多服务、多成员的团队:文档中心、成员与角色、修改单(草稿、冲突检测、审批)、审计追溯、变更通知。
 
-开源核心见 csap-apidoc(Apache-2.0)。本仓库为私有,版权所有,未经授权不得分发。
+开源核心见 csap-apidoc。团队版同样以 Apache-2.0 许可发布,无用户数限制、无授权文件。
 
 ## 文档
 
@@ -16,7 +16,6 @@ CSAP Apidoc 的商业版本,企业自部署。面向多服务、多成员的团�
 | [docs/user-guide.md](docs/user-guide.md) 使用手册 | 开发、维护者、只读成员 |
 | [docs/admin-guide.md](docs/admin-guide.md) 管理员手册 | 管理员、项目维护者 |
 | [docs/security.md](docs/security.md) 安全说明 | 运维、安全评审 |
-| [docs/license-issuing.md](docs/license-issuing.md) 授权签发(**仅发行方**) | 发行方 |
 
 内部资料:
 
@@ -30,7 +29,6 @@ CSAP Apidoc 的商业版本,企业自部署。面向多服务、多成员的团�
 | 目录 | 说明 |
 |---|---|
 | `server/` | 后端(Spring Boot 3.3,Java 17,包 `ai.csap.apidoc.team`),单个可执行 jar,内含控制台前端 |
-| `license-tool/` | 授权文件签发命令行(`keygen` / `issue` / `verify`),不依赖 server |
 | `web/` | 控制台前端(React + antd) |
 | `docker/` | Dockerfile 与 MySQL / PostgreSQL 的 docker-compose 示例 |
 | `docs/` | 客户文档、设计、开发说明 |
@@ -46,11 +44,9 @@ java -jar server/target/csap-apidoc-team-server-1.0.0-SNAPSHOT.jar
 ```
 
 - `web/dist` 存在时会被打进 jar 的 `static/`;不存在时后端构建照常通过(只是没有控制台页面)。前端先执行 `cd web && npm ci && npm run build`。
-- 默认端口 `8090`,默认使用本地文件 H2 库(`./data/csap-team`,仅试用)。首次访问完成初始化。
+- 默认端口 `8090`,默认使用本地文件 H2 库(`./data/csap-team`,仅供本地体验 / 测试)。首次访问完成初始化。
 - 生产部署、数据库、全部配置项、反向代理、Docker:见 [docs/install.md](docs/install.md)。
 
-## 授权
+## 许可
 
-试用模式最多 5 个活跃用户。授权文件的使用见 [管理员手册](docs/admin-guide.md#授权文件);签发见 [docs/license-issuing.md](docs/license-issuing.md)(仅发行方)。
-
-仓库里的 `server/src/main/resources/META-INF/csap-team/license-public.pem` 是**占位公钥**(对应私钥已销毁),正式发行前必须替换。**私钥不得入库、不得写进日志。**
+Apache-2.0。没有授权文件、没有用户数上限、没有试用期。

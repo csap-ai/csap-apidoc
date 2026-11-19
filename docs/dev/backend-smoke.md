@@ -10,7 +10,7 @@ mvn -B -pl server -am package -DskipTests
 cd /tmp/team-smoke && java -jar <仓库>/server/target/csap-apidoc-team-server-1.0.0-SNAPSHOT.jar --server.port=18090
 ```
 
-默认用 `./data/csap-team` 文件 H2 库(试用);接着的所有请求里,非 GET 都带 `X-CSAP-Team: 1`,会话 Cookie 用 `-c` / `-b` 保存。
+默认用 `./data/csap-team` 文件 H2 库(本地体验);接着的所有请求里,非 GET 都带 `X-CSAP-Team: 1`,会话 Cookie 用 `-c` / `-b` 保存。
 (下面的 JSON 为便于阅读经 `jq` 格式化。)
 
 ### 1. 初始化状态
@@ -495,23 +495,5 @@ curl -s -b admin.jar 'http://localhost:18090/api/v1/services?projectId=1' | jq '
     "instances": 1
   }
 ]
-```
-
-### 21. 授权状态(未安装授权 = 试用,最多 5 个活跃用户)
-
-```bash
-curl -s -b admin.jar http://localhost:18090/api/v1/license
-```
-
-结果:
-
-```json
-{
-  "status": "TRIAL",
-  "licensee": null,
-  "maxMembers": 5,
-  "expiresAt": null,
-  "activeMembers": 2
-}
 ```
 

@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import ai.csap.apidoc.team.auth.PasswordService;
 import ai.csap.apidoc.team.common.ApiException;
 import ai.csap.apidoc.team.db.Db;
-import ai.csap.apidoc.team.license.LicenseService;
 
 @Service
 public class UserService {
@@ -19,13 +18,11 @@ public class UserService {
 
     private final Db db;
     private final PasswordService passwords;
-    private final LicenseService license;
     private volatile boolean initialized;
 
-    public UserService(Db db, PasswordService passwords, LicenseService license) {
+    public UserService(Db db, PasswordService passwords) {
         this.db = db;
         this.passwords = passwords;
-        this.license = license;
     }
 
     public record UserRow(long id, String username, String displayName, String passwordHash, String status, String orgRole,
@@ -71,7 +68,7 @@ public class UserService {
         return db.query("SELECT " + COLS + " FROM csap_team_user ORDER BY id", UserService::map);
     }
 
-    public UserRow create(String username, String displayName, String password, String orgRole, boolean skipLicense) {
+    public UserRow create(String username, String displayName, String password, String orgRole) {
         username = username == null ? null : username.trim();
         if (username == null || !USERNAME.matcher(username).matches()) {
             throw ApiException.validation("用户名只能包含字母、数字和 . _ @ -,长度 2–64");
@@ -87,9 +84,6 @@ public class UserService {
         }
         if (byUsername(username) != null) {
             throw ApiException.conflict("用户名已存在");
-        }
-        if (!skipLicense) {
-            license.checkCanAddActive();
         }
         long now = System.currentTimeMillis();
         try {
@@ -143,9 +137,6 @@ public class UserService {
         if (wasActiveAdmin && !stillActiveAdmin
                 && db.count("SELECT COUNT(*) FROM csap_team_user WHERE status = 'ACTIVE' AND org_role = 'ADMIN'") <= 1) {
             throw ApiException.validation("不能停用或降级最后一个管理员");
-        }
-        if ("DISABLED".equals(u.status()) && "ACTIVE".equals(status)) {
-            license.checkCanAddActive();
         }
         db.update("UPDATE csap_team_user SET display_name = ?, status = ?, org_role = ?, password_hash = ?, updated_at = ?"
                 + " WHERE id = ?", dn, status, role, hash, System.currentTimeMillis(), id);

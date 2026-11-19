@@ -4,7 +4,6 @@ import { t, type MsgKey } from '@/i18n';
 
 export function errorText(e: unknown): string {
   if (e instanceof ApiError) {
-    if (e.code === 'LICENSE_LIMIT') return t('err.LICENSE_LIMIT');
     if (e.body.message) return e.body.message;
     return t(`err.${e.code}` as MsgKey) || e.message;
   }

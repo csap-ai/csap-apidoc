@@ -28,8 +28,6 @@ import ai.csap.apidoc.team.common.UnifiedDiff;
 import ai.csap.apidoc.team.config.TeamProperties;
 import ai.csap.apidoc.team.db.Db;
 import ai.csap.apidoc.team.docs.DocsService;
-import ai.csap.apidoc.team.license.LicenseService;
-import ai.csap.apidoc.team.support.TestKeys;
 import ai.csap.apidoc.team.token.TokenService;
 import ai.csap.apidoc.team.webhook.WebhookEvent;
 import ai.csap.apidoc.team.webhook.WebhookService;
@@ -248,27 +246,6 @@ class UnitTests {
         assertTrue(full.stream().anyMatch(e -> e.path().equals("/api/v2/users/")));
     }
 
-    // ---- 授权 ----
-
-    @Test
-    void licenseVerificationUsesConfiguredPublicKey() {
-        TeamProperties props = new TeamProperties();
-        props.setLicensePublicKeyFile(TestKeys.publicKeyFile());
-        LicenseService svc = new LicenseService(null, null, props);
-        String good = TestKeys.license("甲公司", 10, System.currentTimeMillis() + 100_000);
-        assertNotNull(svc.verifyForTest(good));
-        assertNull(svc.verifyForTest("bm90IGEgbGljZW5zZQ=="));
-        assertNull(svc.verifyForTest(null));
-        // 篡改 payload 中的人数 -> 签名失败
-        String json = new String(java.util.Base64.getDecoder().decode(good), StandardCharsets.UTF_8);
-        String tampered = java.util.Base64.getEncoder().encodeToString(json.replace("\\\"maxMembers\\\":10", "\\\"maxMembers\\\":999").getBytes(StandardCharsets.UTF_8));
-        assertTrue(!json.equals(new String(java.util.Base64.getDecoder().decode(tampered), StandardCharsets.UTF_8)));
-        assertNull(svc.verifyForTest(tampered));
-        // 仓库里只有占位公钥:任何别处签发的授权都无效
-        TeamProperties placeholder = new TeamProperties();
-        assertNull(new LicenseService(null, null, placeholder).verifyForTest(good));
-    }
-
     // ---- 建表脚本 ----
 
     private static final Pattern TABLE = Pattern.compile("CREATE TABLE (csap_team_\\w+)");
@@ -299,10 +276,7 @@ class UnitTests {
     }
 
     @Test
-    void placeholderPublicKeyIsPublicOnly() throws Exception {
-        String pem = Files.readString(Paths.get("src/main/resources/META-INF/csap-team/license-public.pem"), StandardCharsets.US_ASCII);
-        assertTrue(pem.contains("BEGIN PUBLIC KEY"));
-        assertFalse(pem.contains("PRIVATE"));
+    void repositoryHasNoPrivateKeyFiles() throws Exception {
         // 仓库里不得出现私钥文件
         try (var files = Files.walk(Paths.get(".."))) {
             files.filter(f -> !f.toString().contains("/target/") && !f.toString().contains("/.git/") && !f.toString().contains("/node_modules/")

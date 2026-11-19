@@ -34,11 +34,9 @@ public class AuthController {
     private final Settings settings;
     private final Access access;
     private final Db db;
-    private final ai.csap.apidoc.team.license.LicenseService license;
 
     public AuthController(UserService users, PasswordService passwords, SessionTokens sessions, LoginGuard guard,
-                          AuthFilter filter, AuditService audit, Settings settings, Access access, Db db, ai.csap.apidoc.team.license.LicenseService license) {
-        this.license = license;
+                          AuthFilter filter, AuditService audit, Settings settings, Access access, Db db) {
         this.users = users;
         this.passwords = passwords;
         this.sessions = sessions;
@@ -67,7 +65,7 @@ public class AuthController {
             if (org == null || org.isBlank() || org.length() > 128) {
                 throw ApiException.validation("组织名称不能为空且不超过 128 字");
             }
-            UserService.UserRow u = users.create(str(body, "username"), str(body, "displayName"), str(body, "password"), "ADMIN", true);
+            UserService.UserRow u = users.create(str(body, "username"), str(body, "displayName"), str(body, "password"), "ADMIN");
             settings.set("org.name", org.trim());
             RequestContext.setActor(Actor.user(u.id(), u.username(), "CONSOLE", RequestContext.ip()));
             audit.log("setup.init").reason("组织 " + org.trim()).save();
@@ -162,13 +160,6 @@ public class AuthController {
             }
         }
         m.put("projects", projects);
-        ai.csap.apidoc.team.license.LicenseService.Info li = license.current();
-        Map<String, Object> lm = new LinkedHashMap<>();
-        lm.put("status", li.status());
-        lm.put("maxMembers", li.maxMembers());
-        lm.put("activeMembers", li.activeMembers());
-        lm.put("expiresAt", li.expiresAt());
-        m.put("license", lm);
         return m;
     }
 
