@@ -58,7 +58,7 @@ function Records() {
         <Select allowClear style={{ width: 140 }} placeholder={t('common.project')} value={draft.projectId} onChange={(v) => setDraft({ ...draft, projectId: v })} options={(projects.data ?? []).map((p) => ({ value: p.id, label: p.name }))} />
         <Select allowClear showSearch style={{ width: 160 }} placeholder={t('common.service')} value={draft.service} onChange={(v) => setDraft({ ...draft, service: v })} options={(services.data ?? []).map((s) => ({ value: s.service, label: s.service }))} />
         <Input style={{ width: 170 }} placeholder={t('audit.ruleKey')} value={draft.ruleKey} onChange={(e) => setDraft({ ...draft, ruleKey: e.target.value })} allowClear />
-        <Input style={{ width: 150 }} placeholder={`${t('audit.action')} 如 change.`} value={draft.action} onChange={(e) => setDraft({ ...draft, action: e.target.value })} allowClear />
+        <Tooltip title={t('audit.actionHint')}><Input style={{ width: 230 }} placeholder={t('audit.actionPlaceholder')} value={draft.action} onChange={(e) => setDraft({ ...draft, action: e.target.value })} allowClear /></Tooltip>
         <Select allowClear style={{ width: 130 }} placeholder={t('audit.source')} value={draft.source} onChange={(v) => setDraft({ ...draft, source: v })} options={SOURCES.map((s) => ({ value: s, label: tDyn('audit.source', s) }))} />
         <Button type="primary" onClick={apply}>{t('common.search')}</Button>
         <Button onClick={reset}>{t('common.reset')}</Button>

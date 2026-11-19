@@ -7,3 +7,6 @@ html[data-theme='light'] { --hdr-bg: #fff; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 /* 表头、关键列不竖排折行;窄屏由 Table scroll.x 横向滚动兜底 */
 .ant-table-thead > tr > th { white-space: nowrap; }
+/* 加载中(Spin 模糊态)时不显示表格 / 列表的空状态文案,避免与转圈重叠 */
+.ant-spin-blur .ant-table-placeholder,
+.ant-spin-blur .ant-list-empty-text { visibility: hidden; }

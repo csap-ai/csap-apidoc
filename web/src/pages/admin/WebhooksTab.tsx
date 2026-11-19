@@ -25,12 +25,15 @@ export default function WebhooksTab() {
   const open = (w: Webhook | 'new') => {
     setEditing(w);
     form.resetFields();
-    form.setFieldsValue(w === 'new' ? { kind: 'GENERIC', enabled: true, events: EVENTS.slice(0, 4) } : { ...w, secret: undefined });
+    form.setFieldsValue(w === 'new' ? { kind: 'GENERIC', enabled: true, events: EVENTS.slice(0, 4) } : { ...w, url: '', secret: undefined });
   };
   const save = async (v: WebhookInput) => {
     try {
       if (editing === 'new') await webhookApi.create({ ...v, projectId: v.projectId ?? null });
-      else await webhookApi.update((editing as Webhook).id, { ...v, projectId: v.projectId ?? null });
+      else {
+        const { url, ...rest } = v;
+        await webhookApi.update((editing as Webhook).id, { ...rest, ...(url ? { url } : {}), projectId: v.projectId ?? null }); // 不传 url = 保持原值
+      }
       setEditing(null); void hooks.reload();
     } catch (e) { showError(e); }
   };
@@ -69,7 +72,7 @@ export default function WebhooksTab() {
         <Form form={form} layout="vertical" onFinish={save}>
           <Form.Item name="name" label={t('common.name')} rules={[{ required: true, message: t('common.required') }]}><Input /></Form.Item>
           <Form.Item name="kind" label={t('webhook.kind')}><Select options={KINDS.map((k) => ({ value: k, label: tDyn('webhook.kind', k) }))} /></Form.Item>
-          <Form.Item name="url" label={t('webhook.url')} rules={[{ required: true, type: 'url', message: t('common.required') }]}><Input /></Form.Item>
+          <Form.Item name="url" label={t('webhook.url')} extra={editing !== 'new' ? `${t('webhook.urlKeep')}:${(editing as Webhook | null)?.url ?? ''}` : undefined} rules={[{ required: editing === 'new', type: 'url', message: t('common.required') }]}><Input placeholder={editing !== 'new' ? t('webhook.urlKeep') : undefined} /></Form.Item>
           <Form.Item name="secret" label={t('webhook.secret')} extra={t('webhook.secretHint')}><Input.Password autoComplete="new-password" /></Form.Item>
           <Form.Item name="projectId" label={t('common.project')}><Select allowClear placeholder={t('webhook.global')} disabled={!isAdmin(me) && false} options={(projects.data ?? []).map((p) => ({ value: p.id, label: p.name }))} /></Form.Item>
           <Form.Item name="events" label={t('webhook.events')}>
