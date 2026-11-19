@@ -43,6 +43,8 @@
 | 历史条目 | 在契约字段外多返回 `ruleKey`、`diff`(before→after 的统一差异) |
 | `GET /changes` 列表 | 每张单附 `itemCount` 和精简 `items`(service/ruleKey/baseVersion);完整内容(含 diff、currentVersion、conflict)用 `GET /changes/{id}` |
 | `afterRules` 入参 | JSON 字符串或 JSON 对象均可;**必须出现**(`null` = 删除),缺失报 `VALIDATION`,防止漏传导致误删;`baseVersion` 缺省取当前版本 |
+| 修改单权限 | 编辑 / 提交 / rebase 仅作者(管理员也不行);reject 的 note 必填 |
+| Webhook url | 列表 / 详情只返回协议 + 主机 + `/***`;PATCH 不传 url 保持原值;审计不记 url |
 | 撤回 | 只允许 DRAFT / PENDING(按状态机图);CONFLICT 只能 rebase。作者或项目维护者 / 管理员可撤回 |
 | 审批 / 驳回 | 管理员可审批自己的;维护者不能审批自己提交的;令牌不能审批 |
 | 项目角色之外的资源可见性 | 不在项目里的人访问项目 / 服务 / 修改单返回 `NOT_FOUND`(不暴露存在性);权限不足返回 `FORBIDDEN` |
@@ -53,7 +55,7 @@
 | MCP 审计导出 | `GET /audit/export?kind=mcp&format=csv|json&from&to&service&caller&tool`(契约只说"导出同样支持",路径未定) |
 | 审计筛选 `action` | 精确匹配;以 `*` 结尾为前缀匹配(如 `change.*`) |
 | 审计可见范围 | 管理员全部;查看需要开发及以上,导出需要维护者及以上;只能看所在项目的记录(项目为空的系统记录仅管理员) |
-| 登录锁定 | 内存计数(按用户名,不区分大小写,含不存在的用户名),单实例有效;重启清零 |
+| 登录锁定 | 内存计数(单实例,重启清零):账号(不区分大小写)+ 来源 IP 连续失败 5 次锁 15 分钟;同一账号 15 分钟内所有 IP 合计失败 50 次也锁 15 分钟;含不存在的用户名;来源 IP 遵守 `trusted-proxies` |
 | 会话令牌 | HS256,载荷含用户 id、签发 / 过期时间、密码指纹(改密码后旧会话失效);超过 5 分钟的请求会换发新 Cookie(滑动过期) |
 | 文档拉取目标 | 注册来源取最近上报的在线实例;手工来源取 `baseUrl`;`last_seen_at`:注册服务为最近心跳,手工服务为最近一次成功拉取 |
 | ID | 团队版各表用数据库自增主键(开源 `DatabaseDialect.idColumn()` 同款写法) |

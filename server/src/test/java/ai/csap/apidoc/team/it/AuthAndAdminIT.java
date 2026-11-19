@@ -211,6 +211,20 @@ class AuthAndAdminIT extends AbstractIT {
         assertEquals("WITHDRAWN", dev.api().post("/api/v1/changes/" + wd + "/withdraw", null).json().get("status").asText());
         assertEquals(400, dev.api().post("/api/v1/changes/" + wd + "/submit", null).status(), "已撤回不能再提交");
 
+        // 管理员也不能提交 / 编辑 / rebase 他人的草稿
+        long others = changeId(createChange(dev.api(), project, item(svc, "K6", 0L, rules("o"))));
+        assertEquals(403, admin.post("/api/v1/changes/" + others + "/submit", null).status());
+        assertEquals(403, admin.patch("/api/v1/changes/" + others, Map.of("title", "x")).status());
+        assertEquals(403, admin.post("/api/v1/changes/" + others + "/rebase", Map.of("items", List.of())).status());
+        // 管理员 / 维护者可撤回他人的 DRAFT
+        assertEquals("WITHDRAWN", admin.post("/api/v1/changes/" + others + "/withdraw", null).json().get("status").asText());
+        // reject 必须填 note
+        long needNote = changeId(createChange(dev.api(), project, item(svc, "K7", 0L, rules("n"))));
+        dev.api().post("/api/v1/changes/" + needNote + "/submit", null);
+        assertEquals(400, maintainer.api().post("/api/v1/changes/" + needNote + "/reject", Map.of("note", "")).status());
+        assertEquals(400, maintainer.api().post("/api/v1/changes/" + needNote + "/reject", Map.of()).status());
+        assertEquals(200, maintainer.api().post("/api/v1/changes/" + needNote + "/reject", Map.of("note", "原因")).status());
+
         // 编辑草稿:仅作者
         long draft = changeId(createChange(dev.api(), project, item(svc, "K5", 0L, rules("d"))));
         assertEquals(403, maintainer.api().patch("/api/v1/changes/" + draft, Map.of("title", "x")).status());

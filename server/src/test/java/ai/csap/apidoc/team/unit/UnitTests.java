@@ -103,23 +103,39 @@ class UnitTests {
     }
 
     @Test
-    void loginGuardLocksForFifteenMinutes() {
+    void loginGuardLocksPerAccountAndIpWithGlobalAccountCap() {
         LoginGuard g = new LoginGuard();
         long t0 = 1_000_000L;
         for (int i = 0; i < 4; i++) {
-            g.fail("Alice", t0);
-            assertFalse(g.isLocked("alice", t0));
+            g.fail("Alice", "1.1.1.1", t0);
+            assertFalse(g.isLocked("alice", "1.1.1.1", t0));
         }
-        g.fail("alice", t0);
-        assertTrue(g.isLocked("ALICE", t0 + 1000), "用户名不区分大小写");
-        assertTrue(g.isLocked("alice", t0 + 14 * 60_000));
-        assertFalse(g.isLocked("alice", t0 + 15 * 60_000 + 1));
-        g.fail("bob", t0);
-        g.success("bob");
+        g.fail("alice", "1.1.1.1", t0);
+        assertTrue(g.isLocked("ALICE", "1.1.1.1", t0 + 1000), "账号不区分大小写");
+        assertFalse(g.isLocked("alice", "2.2.2.2", t0 + 1000), "别的来源 IP 不受影响,攻击者锁不住真用户");
+        assertTrue(g.isLocked("alice", "1.1.1.1", t0 + 14 * 60_000));
+        assertFalse(g.isLocked("alice", "1.1.1.1", t0 + 15 * 60_000 + 1));
+        g.fail("bob", "1.1.1.1", t0);
+        g.success("bob", "1.1.1.1");
         for (int i = 0; i < 4; i++) {
-            g.fail("bob", t0);
+            g.fail("bob", "1.1.1.1", t0);
         }
-        assertFalse(g.isLocked("bob", t0), "成功登录后计数清零");
+        assertFalse(g.isLocked("bob", "1.1.1.1", t0), "成功登录后该来源的计数清零");
+        // 同一账号 15 分钟内多个 IP 合计 50 次 -> 对所有 IP 锁定
+        LoginGuard h = new LoginGuard();
+        for (int i = 0; i < 49; i++) {
+            h.fail("carol", "10.0.0." + (i % 200), t0 + i);
+        }
+        assertFalse(h.isLocked("carol", "9.9.9.9", t0 + 100));
+        h.fail("carol", "10.1.1.1", t0 + 60);
+        assertTrue(h.isLocked("carol", "9.9.9.9", t0 + 100));
+        assertFalse(h.isLocked("carol", "9.9.9.9", t0 + 15 * 60_000 + 100));
+    }
+
+    @Test
+    void webhookUrlIsMasked() {
+        assertEquals("https://qyapi.weixin.qq.com/***", WebhookService.maskUrl("https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=abc"));
+        assertEquals("http://h:8080/***", WebhookService.maskUrl("http://h:8080/x"));
     }
 
     @Test
