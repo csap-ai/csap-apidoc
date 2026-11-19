@@ -7,7 +7,7 @@
 
 ```bash
 mvn -B -pl server -am package -DskipTests
-cd /tmp/team-smoke && java -jar <仓库>/server/target/csap-apidoc-team-server-1.0.0-SNAPSHOT.jar --server.port=18090
+cd /tmp/team-smoke && java -jar <仓库>/server/target/csap-apidoc-team-server-1.0.0.jar --server.port=18090
 ```
 
 默认用 `./data/csap-team` 文件 H2 库(本地体验);接着的所有请求里,非 GET 都带 `X-CSAP-Team: 1`,会话 Cookie 用 `-c` / `-b` 保存。

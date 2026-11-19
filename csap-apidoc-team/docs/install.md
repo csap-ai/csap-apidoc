@@ -71,6 +71,8 @@
 
 ## 用 jar 部署
 
+jar 从 [GitHub Releases](https://github.com/csap-ai/csap-apidoc/releases) 下载(附件 `csap-apidoc-team-server-1.0.0.jar`,已包含控制台页面),也可以按 [README](../README.md) 从源码构建。
+
 ```bash
 java -jar csap-apidoc-team-server-1.0.0.jar
 ```

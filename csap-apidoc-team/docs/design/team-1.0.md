@@ -17,7 +17,7 @@
 
 ```
 csap-apidoc/csap-apidoc-team/   # 开源仓库里的子目录,不进根 pom 的模块列表(Java 17 + Boot 3,单独构建)
-  pom.xml                 # 父 pom,groupId ai.csap.apidoc.team,版本 1.0.0-SNAPSHOT
+  pom.xml                 # 父 pom,groupId ai.csap.apidoc.team,版本 1.0.0
   server/                 # Spring Boot 3.3.x,Java 17,包名 ai.csap.apidoc.team
   web/                    # 控制台前端:React 18 + antd 5 + Vite 5 + TypeScript 5 + react-router 6
   docker/                 # Dockerfile、docker-compose 示例(MySQL / PostgreSQL)
