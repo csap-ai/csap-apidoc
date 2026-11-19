@@ -1,13 +1,13 @@
 # CSAP Apidoc 团队版 1.0 设计与契约
 
-状态:契约冻结(2026-11-18,主会话制定;同日修订三次:PostgreSQL 12+、修改单操作权限、登录锁定按账号+IP、Webhook 地址隐藏;错误码 HTTP 状态与 `LOCKED`、`setting_value`/`cursor_value` 列名、MCP 导出参数;补 `/auth/me` 的 license、成员与候选人、审计/MCP/Webhook/用户/令牌的返回字段)。实现会话按本文开发;要改契约先找主会话,不要各自改。
+状态:契约冻结(2026-11-18,主会话制定;同日修订三次:PostgreSQL 12+、修改单操作权限、登录锁定按账号+IP、Webhook 地址隐藏;错误码 HTTP 状态与 `LOCKED`、`setting_value`/`cursor_value` 列名、MCP 导出参数;补 `/auth/me` 的 license、成员与候选人、审计/MCP/Webhook/用户/令牌的返回字段;2026-11-19 修订:团队版改为免费开源,并入开源仓库 `csap-apidoc` 的 `csap-apidoc-team/` 目录,删除授权机制)。实现会话按本文开发;要改契约先找主会话,不要各自改。
 
 发布目标:2026-12-31。
 
 ## 0. 定位与边界
 
-- 团队版是**商业产品**,私有仓库 `csap-apidoc-team`,企业自部署(jar / Docker),按团队规模授权。
-- 开源版(Apache-2.0)功能**不阉割**。团队版只做"多人、多服务"的事:成员与角色、草稿与审批、审计、文档中心、通知。
+- 团队版**免费开源**(Apache-2.0),代码在开源仓库 `csap-apidoc` 的 `csap-apidoc-team/` 目录,与开源 Java / Go 同期发布;企业自部署(jar / Docker),**不限人数、没有授权文件**。
+- 单服务场景用开源版本身即可,功能**不阉割**。团队版只做"多人、多服务"的事:成员与角色、草稿与审批、审计、文档中心、通知。
 - 团队版**直接读写开源版数据库模式的三张表**(`{prefix}rule` / `{prefix}history` / `{prefix}meta`,默认前缀 `csap_apidoc_`),服务(Java 或 Go)按开源版已有的版本号轮询拿到变更。**不得改开源表结构**。
 - 团队版自己的表一律以 `csap_team_` 开头。
 - 产品名:**CSAP Apidoc 团队版**。界面、代码、文档里不得出现任何下游业务名。
@@ -16,10 +16,9 @@
 ## 1. 仓库结构与技术栈
 
 ```
-csap-apidoc-team/
+csap-apidoc/csap-apidoc-team/   # 开源仓库里的子目录,不进根 pom 的模块列表(Java 17 + Boot 3,单独构建)
   pom.xml                 # 父 pom,groupId ai.csap.apidoc.team,版本 1.0.0-SNAPSHOT
   server/                 # Spring Boot 3.3.x,Java 17,包名 ai.csap.apidoc.team
-  license-tool/           # 授权文件签发命令行(Java 17,不依赖 server)
   web/                    # 控制台前端:React 18 + antd 5 + Vite 5 + TypeScript 5 + react-router 6
   docker/                 # Dockerfile、docker-compose 示例(MySQL / PostgreSQL)
   docs/                   # 设计、部署、使用文档(中文)
@@ -34,7 +33,7 @@ csap-apidoc-team/
 
 ### 2.1 支持范围
 
-与开源数据库模式一致:MySQL 5.7+/8、PostgreSQL 12+、达梦 DM8、人大金仓;另支持 H2(仅试用 / 测试)。方言识别复用开源 `DatabaseDialect`。
+与开源数据库模式一致:MySQL 5.7+/8、PostgreSQL 12+、达梦 DM8、人大金仓;另支持 H2(仅本地体验 / 测试)。方言识别复用开源 `DatabaseDialect`。
 
 - 团队版连的是**服务共用的那个库**(服务的 `csap.apidoc.database` 指向同一个库、同一个前缀)。
 - 建表:启动时检查,缺表按方言执行 `META-INF/csap-team/schema/{dialect}.sql`(风格同开源:不写 `DEFAULT ''`,时间用毫秒 BIGINT,字符串列值都由程序显式写入)。`csap.team.database.create-tables`(默认 true)。
@@ -46,7 +45,7 @@ csap-apidoc-team/
 
 | 表 | 主要列 | 说明 |
 |---|---|---|
-| `csap_team_setting` | `name` PK, `setting_value` | 系统设置:schema 版本、令牌签名密钥(首次启动随机生成)、授权文本等 |
+| `csap_team_setting` | `name` PK, `setting_value` | 系统设置:schema 版本、令牌签名密钥(首次启动随机生成)等(旧库里若有 `license` 行,忽略即可,不迁移) |
 | `csap_team_user` | `id`, `username` 唯一, `display_name`, `password_hash`(BCrypt), `status`(ACTIVE/DISABLED), `org_role`(ADMIN/MEMBER), `created_at`, `updated_at` | 1.0 单组织:组织信息存 setting `org.name`;`org_role=ADMIN` 即"管理员" |
 | `csap_team_project` | `id`, `name` 唯一, `description`, `require_approval`(0/1,默认 1), `created_at`, `updated_at` | 项目 = 一组服务 |
 | `csap_team_project_service` | `service` PK, `project_id`(可空=未分配), `base_url`, `doc_path`, `language`, `framework_version`, `source`(REGISTERED/MANUAL), `last_seen_at`, `created_at` | 一个服务只属于一个项目 |
@@ -79,7 +78,7 @@ csap-apidoc-team/
 | 项目成员管理 | ✓ | ✓(不能设管理员) | ✗ | ✗ |
 | 项目设置(是否需要审批)、服务归属 | ✓ | ✓ | ✗ | ✗ |
 | Webhook | ✓ | 所在项目 | ✗ | ✗ |
-| 用户、令牌、授权、全局设置 | ✓ | ✗ | ✗ | ✗ |
+| 用户、令牌、全局设置 | ✓ | ✗ | ✗ | ✗ |
 
 - 管理员审批自己的修改单允许(小团队需要),审计里照常记录。
 - 项目 `require_approval=0`:提交即发布(仍记审计,仍可回滚)。
@@ -114,7 +113,7 @@ DRAFT --withdraw--> WITHDRAWN
 
 ### 6.1 记录什么
 
-每次写操作一条:登录成功/失败、用户/成员/项目/服务归属/令牌/webhook/授权的增删改、修改单的创建/编辑/提交/通过/驳回/撤回/发布/冲突/rebase、导出审计本身。
+每次写操作一条:登录成功/失败、用户/成员/项目/服务归属/令牌/webhook 的增删改、修改单的创建/编辑/提交/通过/驳回/撤回/发布/冲突/rebase、导出审计本身。
 
 `source` 取值:`CONSOLE`(控制台)、`OPEN_API`(令牌调用)、`SERVICE`(服务侧直接修改,见 6.2)、`MCP`(见 6.3)、`MIGRATE`、`SYSTEM`。`ip` 取请求来源(信任 `X-Forwarded-For` 需配置 `csap.team.trusted-proxies`,默认不信任)。
 
@@ -139,7 +138,7 @@ DRAFT --withdraw--> WITHDRAWN
 
 ## 7. 接口
 
-通用约定:JSON;时间为毫秒数;分页参数 `page`(从 1)、`size`(默认 20,最大 200),分页响应 `{"items":[...],"total":n}`;错误响应 HTTP 4xx/5xx + `{"code":"...","message":"中文说明"}`。错误码与 HTTP 状态:`UNAUTHORIZED` 401、`FORBIDDEN` 403、`LICENSE_LIMIT` 403、`NOT_FOUND` 404、`VALIDATION` 400、`CONFLICT` 409、`SETUP_REQUIRED` 412、`LOCKED` 429(登录失败次数过多,账号暂时锁定)、`INTERNAL` 500。客户端以 `code` 为准。列名避开各库保留字(例如不用 `value`)。
+通用约定:JSON;时间为毫秒数;分页参数 `page`(从 1)、`size`(默认 20,最大 200),分页响应 `{"items":[...],"total":n}`;错误响应 HTTP 4xx/5xx + `{"code":"...","message":"中文说明"}`。错误码与 HTTP 状态:`UNAUTHORIZED` 401、`FORBIDDEN` 403、`NOT_FOUND` 404、`VALIDATION` 400、`CONFLICT` 409、`SETUP_REQUIRED` 412、`LOCKED` 429(登录失败次数过多,账号暂时锁定)、`INTERNAL` 500。客户端以 `code` 为准。列名避开各库保留字(例如不用 `value`)。
 
 ### 7.1 开放接口 `/api/open/v1`(令牌鉴权 `Authorization: Bearer <token>`)
 
@@ -165,7 +164,7 @@ DRAFT --withdraw--> WITHDRAWN
 | POST | `/setup` | `{"orgName","username","password","displayName"}`,仅在没有用户时可用,创建管理员 |
 | POST | `/auth/login` | `{"username","password"}` → 用户信息;同一账号 + 同一来源 IP 连续失败 5 次锁 15 分钟,锁定期间返回 `LOCKED`(429) |
 | POST | `/auth/logout` | |
-| GET | `/auth/me` | `{"id","username","displayName","orgRole","projects":[{"id","name","role"}],"license":{"status","maxMembers","activeMembers","expiresAt"}}`;`license` 对所有登录用户返回(用于授权提示条,不含 `licensee`) |
+| GET | `/auth/me` | `{"id","username","displayName","orgRole","projects":[{"id","name","role"}]}` |
 | POST | `/auth/password` | `{"oldPassword","newPassword"}` |
 
 **用户(管理员)**:`GET /users` → `[{"id","username","displayName","status","orgRole","createdAt"}]`、`POST /users {"username","displayName","password","orgRole"}`、`PATCH /users/{id} {"displayName"?,"status"?,"orgRole"?,"password"?}`。
@@ -214,7 +213,6 @@ DRAFT --withdraw--> WITHDRAWN
 
 **令牌(管理员)**:`GET /tokens` → `[{"id","name","prefix","scope","projectId","createdBy","createdAt","lastUsedAt","revoked"}]`、`POST /tokens {"name","scope","projectId"?}` → 含一次性明文 `token`(格式 `csapt_` + 40 位随机 base62)、`DELETE /tokens/{id}`(撤销)。
 
-**授权(管理员)**:`GET /license` → `{"status":"TRIAL|VALID|EXPIRED|INVALID","licensee","maxMembers","expiresAt","activeMembers"}`;`POST /license {"license":"<文本>"}`。
 
 ## 8. Webhook 事件
 
@@ -234,13 +232,9 @@ GENERIC 的请求体:
 - 控制台外链地址取 `csap.team.public-url`(未配置时不带链接)。
 - 失败重试 3 次(10s、60s、300s),异步,不阻塞业务。
 
-## 9. 授权
+## 9. 授权(已取消)
 
-- 授权文件:JSON `{"id","licensee","edition":"TEAM","maxMembers","issuedAt","expiresAt"}` + Ed25519 签名,整体 base64 文本。
-- server 内置**发行公钥**(资源文件 `META-INF/csap-team/license-public.pem`)。仓库里只放**占位**;正式公钥由用户用 `license-tool keygen` 自行生成后替换。**任何私钥都不得进入仓库、日志或测试资源**;测试里临时生成密钥对。
-- 没有授权或授权无效:试用模式,最多 5 个活跃用户,界面顶部提示。过期:同试用限制,已有数据和功能**不锁**,只限制新增用户。
-- 超出人数时新增 / 启用用户返回 `LICENSE_LIMIT`。
-- `license-tool`:`keygen --out <dir>`、`issue --key <private.pem> --licensee ... --max-members ... --expires 2027-12-31`、`verify --pub <public.pem> <file>`。
+2026-11-19 起团队版免费开源,**没有授权机制**:不限人数,不需要授权文件;`/license` 接口、`LICENSE_LIMIT` 错误码、`license-tool`、`csap.team.license-file` 配置、控制台的授权页和提示条全部删除。
 
 ## 10. 配置(`csap.team.*`)
 
@@ -257,13 +251,12 @@ csap:
     sync.history-seconds: 10
     audit.retention-days: 0
     trusted-proxies: []              # 信任其 X-Forwarded-For 的代理 IP / CIDR
-    license-file: ""                 # 也可在控制台上传
 ```
 
 ## 11. 测试与验收
 
 - 后端:单元测试 + H2 集成测试覆盖第 2–9 节;MySQL 8 / PostgreSQL 16 用 Testcontainers 各跑一遍发布、冲突、回滚、历史同步;达梦、人大金仓标注"未在真实库验证"。
-- 互通(主会话验收时做):团队版发布修改单后,Java 1.4.0 服务和 Go v0.2.0 服务在轮询周期内生效;服务 DevTools 改规则后团队版审计出现 `rule.changed_outside`。
+- 互通(主会话验收时做):团队版发布修改单后,Java 1.4.0 服务和 Go v0.2.0 服务(发布时以开源 Java 1.5.0 / Go v0.3.0 为准)在轮询周期内生效;服务 DevTools 改规则后团队版审计出现 `rule.changed_outside`。
 - 前端:`npm run build` 无错误,`npm run lint`、类型检查通过;关键页面有组件测试(Vitest)。
 - 安全:密码 BCrypt;令牌只存哈希;Cookie HttpOnly;SQL 全部参数化;表名前缀只允许 `[A-Za-z0-9_]`;日志不打印密码、令牌、webhook secret。
 
