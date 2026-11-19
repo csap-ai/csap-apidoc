@@ -292,6 +292,13 @@ public abstract class CoreFlowTests extends AbstractIT {
         assertEquals("Order.create", a.get("ruleKey").asText());
         assertEquals(project, a.get("projectId").asLong());
         assertTrue(a.get("diff").asText().contains("fromService"));
+        // 内容相同的 history(旧版 Go 服务会写 before==after):不记审计
+        long vSame = store.version();
+        jdbc.update("INSERT INTO csap_apidoc_history (service, rule_key, before_rules, after_rules, version, updated_by, updated_at)"
+                + " VALUES (?, 'Order.create', ?, ?, ?, 'old-go', ?)", svc, rules("fromService"), " " + rules("fromService").replace("{", "{ "), vSame + 1, System.currentTimeMillis());
+        historySync.syncOnce();
+        assertEquals(0, auditList(admin, "action=rule.changed_outside&actor=old-go&service=" + svc).get("total").asInt());
+        assertEquals(1, auditList(admin, "action=rule.changed_outside&service=" + svc).get("total").asInt());
         // 重复同步不重复记录
         historySync.syncOnce();
         assertEquals(1, auditList(admin, "action=rule.changed_outside&service=" + svc).get("total").asInt());

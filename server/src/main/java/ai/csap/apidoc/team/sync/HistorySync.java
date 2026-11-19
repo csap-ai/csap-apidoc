@@ -75,7 +75,9 @@ public class HistorySync {
                     stop = true;
                     break;
                 }
-                if (db.count("SELECT COUNT(*) FROM csap_team_change_item WHERE published_history_id = ?", r.id()) == 0) {
+                // 旧版 Go 服务内容相同也会写 before==after 的 history:只推进游标,不记审计、不发事件
+                if (!ai.csap.apidoc.strategy.store.RuleJson.sameJson(r.before(), r.after())
+                        && db.count("SELECT COUNT(*) FROM csap_team_change_item WHERE published_history_id = ?", r.id()) == 0) {
                     record(r);
                     recorded++;
                 }
