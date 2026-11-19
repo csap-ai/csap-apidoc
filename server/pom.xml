@@ -29,6 +29,17 @@
         <dependency>
             <groupId>ai.csap.apidoc</groupId>
             <artifactId>csap-apidoc-database</artifactId>
+            <exclusions>
+                <!-- 只用 RuleJson / DatabaseRuleStore / DatabaseDialect:不需要文档 UI 静态资源,也不引入 fastjson -->
+                <exclusion>
+                    <groupId>ai.csap.apidoc</groupId>
+                    <artifactId>csap-apidoc-ui</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.alibaba</groupId>
+                    <artifactId>fastjson</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- 数据库驱动:H2(试用)、MySQL、PostgreSQL 随包;达梦、人大金仓驱动由用户放到 loader.path -->

@@ -1,0 +1,44 @@
+# 团队版 + MySQL 8 示例。
+# 团队版必须连接"服务共用的那个库":你的服务(Java / Go)的 csap.apidoc.database 指向同一个库、同一个表前缀。
+# 这里为了演示自带一个 MySQL;生产环境把 CSAP_TEAM_DB_URL 指向你已有的库即可,并删掉 mysql 服务。
+#
+#   docker compose -f docker/docker-compose.mysql.yml up -d
+#   访问 http://localhost:8090 ,首次打开完成初始化(创建管理员)。
+services:
+  mysql:
+    image: mysql:8.0
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    environment:
+      MYSQL_DATABASE: csap_apidoc
+      MYSQL_USER: csap
+      MYSQL_PASSWORD: ${DB_PASSWORD:?请设置 DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?请设置 DB_ROOT_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  team:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8090:8090"
+    environment:
+      CSAP_TEAM_DB_URL: jdbc:mysql://mysql:3306/csap_apidoc?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
+      CSAP_TEAM_DB_USER: csap
+      CSAP_TEAM_DB_PASSWORD: ${DB_PASSWORD}
+      # 与服务侧 csap.apidoc.database.table-prefix 保持一致
+      CSAP_TEAM_RULE_TABLE_PREFIX: csap_apidoc_
+      # 通知里的控制台链接(可选)
+      CSAP_TEAM_PUBLIC_URL: ${PUBLIC_URL:-}
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
