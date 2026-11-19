@@ -278,6 +278,11 @@
                 <artifactId>csap-apidoc-mock</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>ai.csap.apidoc</groupId>
+                <artifactId>csap-apidoc-team-client</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- Spring Framework -->
             <dependency>
