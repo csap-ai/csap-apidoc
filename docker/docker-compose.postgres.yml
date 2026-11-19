@@ -1,0 +1,38 @@
+# 团队版 + PostgreSQL 16 示例。说明同 docker-compose.mysql.yml:生产环境请连接服务共用的库。
+#
+#   docker compose -f docker/docker-compose.postgres.yml up -d
+#   访问 http://localhost:8090 ,首次打开完成初始化(创建管理员)。
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: csap_apidoc
+      POSTGRES_USER: csap
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?请设置 DB_PASSWORD}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U csap -d csap_apidoc"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  team:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8090:8090"
+    environment:
+      CSAP_TEAM_DB_URL: jdbc:postgresql://postgres:5432/csap_apidoc
+      CSAP_TEAM_DB_USER: csap
+      CSAP_TEAM_DB_PASSWORD: ${DB_PASSWORD}
+      CSAP_TEAM_RULE_TABLE_PREFIX: csap_apidoc_
+      CSAP_TEAM_PUBLIC_URL: ${PUBLIC_URL:-}
+    restart: unless-stopped
+
+volumes:
+  pg-data:
