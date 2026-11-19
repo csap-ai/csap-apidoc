@@ -104,7 +104,7 @@ export function seedDemo(adminDisplay = '管理员') {
 
 // ---------- 会话 ----------
 export function currentUser(): UserRow {
-  if (!db.initialized) throw new HttpErr(409, 'SETUP_REQUIRED', '系统尚未初始化');
+  if (!db.initialized) throw new HttpErr(412, 'SETUP_REQUIRED', '系统尚未初始化');
   const u = db.users.find((x) => x.id === db.sessionUserId && x.status === 'ACTIVE');
   if (!u) throw new HttpErr(401, 'UNAUTHORIZED', '请先登录');
   return u;

@@ -54,7 +54,7 @@ route('post', '/setup', ({ body }) => {
 });
 const fails = new Map<string, { n: number; until: number }>();
 route('post', '/auth/login', ({ body }) => {
-  if (!db.initialized) throw new HttpErr(409, 'SETUP_REQUIRED', '系统尚未初始化');
+  if (!db.initialized) throw new HttpErr(412, 'SETUP_REQUIRED', '系统尚未初始化');
   const f = fails.get(body.username) ?? { n: 0, until: 0 };
   if (f.until > Date.now()) throw new HttpErr(429, 'FORBIDDEN', '连续失败次数过多,账号已被暂时锁定,请 15 分钟后再试');
   const u = db.users.find((x) => x.username === body.username);
@@ -93,7 +93,7 @@ route('post', '/users', ({ body }) => {
   const me = M.currentUser(); M.requireAdmin(me);
   if (!body.username || !body.password) throw bad('账号与密码必填');
   if (db.users.some((x) => x.username === body.username)) throw bad('账号已存在');
-  if (M.activeUsers() >= db.licenseMax) throw new HttpErr(402, 'LICENSE_LIMIT', '已达授权人数上限');
+  if (M.activeUsers() >= db.licenseMax) throw new HttpErr(403, 'LICENSE_LIMIT', '已达授权人数上限');
   const u = { id: ++db.seq, username: body.username, displayName: body.displayName || body.username, status: 'ACTIVE' as const, orgRole: body.orgRole || 'MEMBER', createdAt: Date.now(), password: body.password };
   db.users.push(u);
   M.logAudit({ ...M.auditBy(me), action: 'user.create', reason: u.username });
@@ -103,7 +103,7 @@ route('patch', '/users/:id', ({ params, body }) => {
   const me = M.currentUser(); M.requireAdmin(me);
   const u = db.users.find((x) => x.id === Number(params.id));
   if (!u) throw new HttpErr(404, 'NOT_FOUND', '用户不存在');
-  if (body.status === 'ACTIVE' && u.status !== 'ACTIVE' && M.activeUsers() >= db.licenseMax) throw new HttpErr(402, 'LICENSE_LIMIT', '已达授权人数上限');
+  if (body.status === 'ACTIVE' && u.status !== 'ACTIVE' && M.activeUsers() >= db.licenseMax) throw new HttpErr(403, 'LICENSE_LIMIT', '已达授权人数上限');
   if (u.id === me.id && (body.status === 'DISABLED' || body.orgRole === 'MEMBER')) throw bad('不能停用或降级自己');
   Object.assign(u, ['displayName', 'status', 'orgRole', 'password'].reduce((o, k) => (body[k] !== undefined ? { ...o, [k]: body[k] } : o), {}));
   M.logAudit({ ...M.auditBy(me), action: 'user.update', reason: u.username });
