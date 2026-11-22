@@ -1,5 +1,6 @@
-import { render } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render, screen } from '@testing-library/react';
+import type { UserEvent } from '@testing-library/user-event';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import App from '@/App';
 import { ThemeProvider } from '@/theme';
 import { db, defaultEnvKey, resetDb, type Scenario } from '@/mock/db';
@@ -11,14 +12,30 @@ export function loginAs(username: string | null, scenario: Scenario = 'single') 
   db.sessionUserId = username ? db.users.find((u) => u.username === username)!.id : null;
 }
 
+/** 把当前 URL 的 search 部分显示出来,方便断言 env 参数 */
+function LocationProbe() {
+  const loc = useLocation();
+  return <div data-testid="loc" data-path={loc.pathname}>{loc.search}</div>;
+}
+
 export function renderApp(route: string) {
   return render(
     <ThemeProvider>
       <MemoryRouter initialEntries={[route]}>
         <App />
+        <LocationProbe />
       </MemoryRouter>
     </ThemeProvider>,
   );
+}
+
+/** 打开 antd Select 并点选下拉里文字为 text 的选项 */
+export async function pickOption(user: UserEvent, select: HTMLElement, text: string) {
+  await user.click(select);
+  const hits = await screen.findAllByText(text);
+  const opt = hits.find((e) => e.closest('.ant-select-item-option'));
+  if (!opt) throw new Error(`下拉里没有选项:${text}`);
+  await user.click(opt);
 }
 
 export const userId = (username: string) => db.users.find((u) => u.username === username)!.id;
