@@ -30,6 +30,26 @@ csap:
       history-seconds: 10
     audit:
       retention-days: 0
+      checkpoint-cron: "0 5 0 * * *"   # audit.checkpoint 事件(服务器时区),订阅了才发
+    presence:
+      ttl-seconds: 90                  # 编辑中提示:这么久没续上视为离开
+    # 环境(开发 / 测试 / 生产)。不配置 = 只有一个环境 default,用上面的主数据源和 rule-table-prefix。
+    # 环境只在这里定义;数据库连接和密码不进团队版的表、不出现在界面和接口里。顺序即展示顺序和推广方向,第一个是默认环境。
+    # environments:
+    #   - key: dev                       # [a-z0-9-]{1,32},唯一;写进各表的 env_key,定了以后不要改
+    #     name: 开发
+    #   - key: test
+    #     name: 测试
+    #     datasource:                    # 省略 = 用主数据源
+    #       url: jdbc:mysql://test-db:3306/app
+    #       username: app
+    #       password: ${TEST_DB_PASSWORD}
+    #     rule-table-prefix: csap_apidoc_ # 省略 = 上面的 rule-table-prefix
+    #   - key: prod
+    #     name: 生产
+    #     protected: true                # 发布到这个环境一律要审批
+    #     read-only: false               # true:不能向这个环境发布,只能看
+    #     datasource: { url: jdbc:mysql://prod-db:3306/app, username: app, password: ${PROD_DB_PASSWORD} }
     trusted-proxies: []
 
 logging:
