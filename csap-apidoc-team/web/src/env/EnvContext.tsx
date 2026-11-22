@@ -40,6 +40,8 @@ interface EnvState {
   multi: boolean;
   /** 当前环境 key;单环境时为 undefined(请求不带 env 参数) */
   env: string | undefined;
+  /** 默认环境的 key(后端是 1.0 时为 undefined);省略 env 参数 = 它 */
+  defaultKey: string | undefined;
   current: Env | undefined;
   setEnv: (key: string) => void;
   find: (key: string | null | undefined) => Env | undefined;
@@ -93,6 +95,7 @@ export function EnvProvider({ children }: { children: ReactNode }) {
     const idx = envs.findIndex((e) => e.key === env);
     return {
       envs, loading, multi, env,
+      defaultKey: (envs.find((e) => e.default) ?? envs[0])?.key,
       current: idx >= 0 ? envs[idx] : undefined,
       setEnv, find,
       nameOf: (key) => (key ? envs.find((e) => e.key === key)?.name ?? key : ''),

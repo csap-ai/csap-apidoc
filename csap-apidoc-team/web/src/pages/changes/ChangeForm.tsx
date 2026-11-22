@@ -10,6 +10,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { canWrite } from '@/auth/permissions';
 import { useEnv } from '@/env/EnvContext';
 import { EnvTag } from '@/components/EnvSwitcher';
+import { OpenChangesNotice, PresenceNotice, useDebounced } from '@/components/PresenceNotice';
 import { Forbidden, PageTitle } from '@/components/common';
 import { jsonError, prettyJson } from '@/utils/format';
 import { showError } from '@/utils/errors';
@@ -40,7 +41,7 @@ export default function ChangeForm() {
   const [items, setItems] = useState<ItemState[]>([blank()]);
   const [busy, setBusy] = useState(false);
   const [touched, setTouched] = useState(false);
-  const { env: currentEnv, multi, find } = useEnv();
+  const { env: currentEnv, defaultKey, multi, find } = useEnv();
   // 一张修改单只针对一个环境:新建 = 当前环境;编辑草稿 = 这张单自己的环境
   const [draftEnv, setDraftEnv] = useState<string | undefined>();
   const env = editId ? draftEnv ?? currentEnv : currentEnv;
@@ -148,6 +149,9 @@ export default function ChangeForm() {
               it={it}
               svcOptions={svcOptions}
               env={env}
+              presenceEnv={env ?? defaultKey}
+              canEdit={canWrite(me, projectId) && !envBlocked}
+              excludeChangeId={editId}
               disabledService={!projectId}
               error={touched ? errorOf(it) : null}
               onPatch={(v) => patch(it.uid, v)}
@@ -170,14 +174,23 @@ export default function ChangeForm() {
   );
 }
 
-function RuleItemEditor({ it, env, svcOptions, disabledService, error, onPatch, onLoad, onRemove }: {
-  it: ItemState; env?: string; svcOptions: { value: string; label: string }[]; disabledService: boolean; error: string | null;
+function RuleItemEditor({ it, env, presenceEnv, canEdit, excludeChangeId, svcOptions, disabledService, error, onPatch, onLoad, onRemove }: {
+  it: ItemState; env?: string; presenceEnv?: string; canEdit: boolean; excludeChangeId?: number; svcOptions: { value: string; label: string }[]; disabledService: boolean; error: string | null;
   onPatch: (v: Partial<ItemState>) => void; onLoad: (service?: string, key?: string) => void; onRemove?: () => void;
 }) {
   const keys = useLoad(() => ruleApi.list(it.service!, env), [it.service, env], { skip: !it.service, silent: true });
   const options = (keys.data?.items ?? []).map((k) => ({ value: k.ruleKey }));
+  // 规则 Key 稳定一会儿再上报"我正在编辑"并查"有哪些未完成的修改单涉及这条规则"
+  const stableKey = useDebounced(it.ruleKey, 600);
+  const touching = useLoad(() => ruleApi.item(it.service!, stableKey!, env), [it.service, stableKey, env], { skip: !it.service || !stableKey, silent: true });
   return (
     <Card size="small" style={{ marginBottom: 12 }} extra={onRemove && <Button type="text" danger icon={<DeleteOutlined />} onClick={onRemove} aria-label={t('common.delete')} />}>
+      {it.service && stableKey && (
+        <>
+          <PresenceNotice env={presenceEnv} service={it.service} ruleKey={stableKey} heartbeat={canEdit} />
+          <OpenChangesNotice changes={touching.data?.openChanges} excludeId={excludeChangeId} />
+        </>
+      )}
       <Space wrap style={{ marginBottom: 8 }}>
         <Select style={{ width: 200 }} placeholder={t('changes.form.service')} disabled={disabledService} value={it.service} options={svcOptions}
           onChange={(v) => onPatch({ service: v, ruleKey: undefined, baseVersion: 0, text: '{}' })} />

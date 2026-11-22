@@ -8,6 +8,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { useEnv } from '@/env/EnvContext';
 import { canWrite } from '@/auth/permissions';
 import { GuardedButton, PageTitle } from '@/components/common';
+import { OpenChangesNotice, PresenceNotice } from '@/components/PresenceNotice';
 import DiffView, { CodeBlock } from '@/components/DiffView';
 import { useLoad } from '@/utils/useLoad';
 import { fmtTime, prettyJson } from '@/utils/format';
@@ -74,7 +75,7 @@ export default function Rules() {
 function RuleDetail({ service, ruleKey, projectId }: { service: string; ruleKey: string; projectId: number | null; onChanged: () => void }) {
   const { me } = useAuth();
   const navigate = useNavigate();
-  const { env, current } = useEnv();
+  const { env, defaultKey, current } = useEnv();
   const item = useLoad(() => ruleApi.item(service, ruleKey, env), [service, ruleKey, env]);
   const history = useLoad(() => ruleApi.history(service, ruleKey, 50, env), [service, ruleKey, env]);
   const [rb, setRb] = useState<RuleHistory | null>(null);
@@ -104,6 +105,8 @@ function RuleDetail({ service, ruleKey, projectId }: { service: string; ruleKey:
         <GuardedButton size="small" type="primary" allowed={write} reason={writeReason} onClick={() => navigate(`/changes/new?service=${encodeURIComponent(service)}&key=${encodeURIComponent(ruleKey)}${env ? `&env=${encodeURIComponent(env)}` : ''}`)}>{t('rules.edit')}</GuardedButton>
       </Space>
     }>
+      <PresenceNotice env={env ?? defaultKey} service={service} ruleKey={ruleKey} heartbeat={false} />
+      <OpenChangesNotice changes={item.data?.openChanges} />
       <Tabs
         items={[
           {
