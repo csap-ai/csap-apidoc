@@ -17,6 +17,7 @@ import ai.csap.apidoc.team.change.ChangeService;
 import ai.csap.apidoc.team.change.Who;
 import ai.csap.apidoc.team.common.ApiException;
 import ai.csap.apidoc.team.config.TeamProperties;
+import ai.csap.apidoc.team.env.Environments;
 import ai.csap.apidoc.team.rule.RuleReader;
 import ai.csap.apidoc.team.user.UserService;
 
@@ -30,9 +31,11 @@ public class OpenApiController {
     private final ChangeService changes;
     private final UserService users;
     private final TeamProperties props;
+    private final Environments environments;
 
     public OpenApiController(ServiceService services, RuleReader reader, ChangeService changes, UserService users,
-                             TeamProperties props) {
+                             TeamProperties props, Environments environments) {
+        this.environments = environments;
         this.services = services;
         this.reader = reader;
         this.changes = changes;
@@ -66,7 +69,7 @@ public class OpenApiController {
     }
 
     @GetMapping("/rules/{service}")
-    public Map<String, Object> rules(@PathVariable String service) {
+    public Map<String, Object> rules(@PathVariable String service, @org.springframework.web.bind.annotation.RequestParam(required = false) String env) {
         TokenPrincipal t = token("OPEN_API");
         if (t.projectId() != null) {
             ServiceService.Row r = services.get(service);
@@ -74,7 +77,7 @@ public class OpenApiController {
                 throw ApiException.forbidden("令牌只能访问其绑定项目的服务");
             }
         }
-        return reader.itemsWithRules(service);
+        return reader.itemsWithRules(environments.require(env), service);
     }
 
     @PostMapping("/changes")
@@ -89,8 +92,8 @@ public class OpenApiController {
         if (projectId == null) {
             throw ApiException.validation("projectId 必填");
         }
-        Map<String, Object> change = changes.create(who, projectId, body.get("title") instanceof String s ? s : null,
-                body.get("reason") instanceof String r ? r : null,
+        Map<String, Object> change = changes.create(who, projectId, environments.require(body.get("env") instanceof String e ? e : null),
+                body.get("title") instanceof String s ? s : null, body.get("reason") instanceof String r ? r : null,
                 ai.csap.apidoc.team.change.ChangeController.parseItemsPublic(body.get("items")), "EDIT");
         if (Boolean.TRUE.equals(body.get("submit"))) {
             return changes.submit(who, ((Number) change.get("id")).longValue());

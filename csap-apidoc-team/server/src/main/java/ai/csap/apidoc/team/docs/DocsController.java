@@ -18,6 +18,8 @@ import ai.csap.apidoc.team.auth.Access;
 import ai.csap.apidoc.team.auth.Role;
 import ai.csap.apidoc.team.auth.SessionUser;
 import ai.csap.apidoc.team.common.ApiException;
+import ai.csap.apidoc.team.env.Env;
+import ai.csap.apidoc.team.env.Environments;
 import ai.csap.apidoc.team.service.ServiceService;
 
 @RestController
@@ -27,16 +29,20 @@ public class DocsController {
     private final DocsService docs;
     private final ServiceService services;
     private final Access access;
+    private final Environments environments;
 
-    public DocsController(DocsService docs, ServiceService services, Access access) {
+    public DocsController(DocsService docs, ServiceService services, Access access, Environments environments) {
         this.docs = docs;
         this.services = services;
         this.access = access;
+        this.environments = environments;
     }
 
     @GetMapping("/search")
     public List<Map<String, Object>> search(@RequestParam(required = false, defaultValue = "") String q,
-                                            @RequestParam(required = false) Long projectId) {
+                                            @RequestParam(required = false) Long projectId,
+                                            @RequestParam(required = false) String env) {
+        Env e = environments.require(env);
         SessionUser u = access.user();
         Set<Long> visible = access.projectsWith(u, Role.VIEWER);
         Set<String> names = new HashSet<>();
@@ -46,21 +52,22 @@ public class DocsController {
                 names.add(r.service());
             }
         }
-        return docs.search(q, names).stream().map(DocsService.Hit::toMap).toList();
+        return docs.search(e.key(), q, names).stream().map(DocsService.Hit::toMap).toList();
     }
 
     /** 缓存的 /csap/apidoc 原样 JSON,外加 X-CSAP-Team-Fetched-At、X-CSAP-Team-Stale。 */
     @GetMapping("/{service}")
-    public ResponseEntity<String> get(@PathVariable String service) {
+    public ResponseEntity<String> get(@PathVariable String service, @RequestParam(required = false) String env) {
         access.requireViewService(service);
-        ServiceService.Row row = services.get(service);
+        Env e = environments.require(env);
+        ServiceService.EnvRow row = services.envRow(service, e.key());
         if (row == null) {
-            throw ApiException.notFound("服务不存在");
+            throw ApiException.notFound("服务在环境「" + e.name() + "」没有记录");
         }
-        DocsService.Cached c = docs.cached(service);
+        DocsService.Cached c = docs.cached(e.key(), service);
         if (c == null) {
             docs.refresh(row);
-            c = docs.cached(service);
+            c = docs.cached(e.key(), service);
         }
         if (c == null) {
             throw ApiException.notFound("文档尚未拉取到(服务离线或地址不可达)");

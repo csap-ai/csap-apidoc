@@ -23,6 +23,8 @@ import org.springframework.stereotype.Service;
 import ai.csap.apidoc.team.common.Json;
 import ai.csap.apidoc.team.config.TeamProperties;
 import ai.csap.apidoc.team.db.Db;
+import ai.csap.apidoc.team.env.Env;
+import ai.csap.apidoc.team.env.Environments;
 import ai.csap.apidoc.team.service.ServiceService;
 import ai.csap.apidoc.team.webhook.WebhookEvent;
 import ai.csap.apidoc.team.webhook.WebhookService;
@@ -43,13 +45,14 @@ public class DocsService {
     public record Cached(String json, long fetchedAt, boolean stale, List<Entry> index) {
     }
 
-    public record Entry(String service, String method, String path, String title, String description, List<String[]> fields) {
+    public record Entry(String env, String service, String method, String path, String title, String description, List<String[]> fields) {
     }
 
     private final ServiceService services;
     private final TeamProperties props;
     private final Db db;
     private final WebhookService webhooks;
+    private final Environments environments;
     private final HttpClient http;
     private final ExecutorService pool = Executors.newFixedThreadPool(8, r -> {
         Thread t = new Thread(r, "csap-team-docs");
@@ -62,11 +65,12 @@ public class DocsService {
     private final Map<String, String> lastStatus = new ConcurrentHashMap<>();
     private final Map<String, Long> lastOfflineEvent = new ConcurrentHashMap<>();
 
-    public DocsService(ServiceService services, TeamProperties props, Db db, WebhookService webhooks) {
+    public DocsService(ServiceService services, TeamProperties props, Db db, WebhookService webhooks, Environments environments) {
         this.services = services;
         this.props = props;
         this.db = db;
         this.webhooks = webhooks;
+        this.environments = environments;
         this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(props.getDocs().getTimeoutSeconds())).build();
     }
 
@@ -75,16 +79,20 @@ public class DocsService {
         pool.shutdownNow();
     }
 
-    public Cached cached(String service) {
-        return cache.get(service);
+    private static String k(String env, String service) {
+        return env + "\u0000" + service;
+    }
+
+    public Cached cached(String env, String service) {
+        return cache.get(k(env, service));
     }
 
     @Scheduled(initialDelayString = "5", fixedDelayString = "${csap.team.docs.refresh-seconds:60}", timeUnit = TimeUnit.SECONDS)
     public void refreshAll() {
         try {
-            List<ServiceService.Row> rows = services.all();
+            List<ServiceService.EnvRow> rows = services.allEnvRows().stream().filter(r -> environments.find(r.env()) != null).toList();
             List<java.util.concurrent.Future<?>> fs = new ArrayList<>();
-            for (ServiceService.Row r : rows) {
+            for (ServiceService.EnvRow r : rows) {
                 fs.add(pool.submit(() -> refresh(r)));
             }
             for (java.util.concurrent.Future<?> f : fs) {
@@ -95,7 +103,7 @@ public class DocsService {
                 }
             }
             long now = System.currentTimeMillis();
-            for (ServiceService.Row r : rows) {
+            for (ServiceService.EnvRow r : rows) {
                 checkOffline(r, now);
             }
         } catch (RuntimeException e) {
@@ -104,14 +112,14 @@ public class DocsService {
     }
 
     /** 后台拉取一次(手工添加服务后马上看),不阻塞请求。 */
-    public void refreshAsync(ServiceService.Row r) {
+    public void refreshAsync(ServiceService.EnvRow r) {
         pool.submit(() -> refresh(r));
     }
 
     /** 立刻拉取一个服务。 */
-    public boolean refresh(ServiceService.Row r) {
+    public boolean refresh(ServiceService.EnvRow r) {
         long now = System.currentTimeMillis();
-        String base = "REGISTERED".equals(r.source()) ? services.onlineInstanceUrl(r.service(), now) : r.baseUrl();
+        String base = "REGISTERED".equals(r.source()) ? services.onlineInstanceUrl(r.env(), r.service(), now) : r.baseUrl();
         if (base == null) {
             return false;
         }
@@ -129,32 +137,34 @@ public class DocsService {
             if (body == null || body.length() > MAX_BYTES || Json.read(body) == null) {
                 throw new IllegalStateException("返回内容不是有效的 JSON 文档");
             }
-            cache.put(r.service(), new Cached(body, System.currentTimeMillis(), false, buildIndex(r.service(), Json.read(body))));
-            failed.put(r.service(), false);
+            cache.put(k(r.env(), r.service()), new Cached(body, System.currentTimeMillis(), false,
+                    buildIndex(r.env(), r.service(), Json.read(body))));
+            failed.put(k(r.env(), r.service()), false);
             if ("MANUAL".equals(r.source())) {
-                db.update("UPDATE csap_team_project_service SET last_seen_at = ? WHERE service = ?", System.currentTimeMillis(), r.service());
+                db.update("UPDATE csap_team_service_env SET last_seen_at = ? WHERE service = ? AND env_key = ?", System.currentTimeMillis(),
+                        r.service(), r.env());
             }
             return true;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return false;
         } catch (Exception e) {
-            failed.put(r.service(), true);
-            Cached old = cache.get(r.service());
+            failed.put(k(r.env(), r.service()), true);
+            Cached old = cache.get(k(r.env(), r.service()));
             if (old != null && !old.stale()) {
-                cache.put(r.service(), new Cached(old.json(), old.fetchedAt(), true, old.index()));
+                cache.put(k(r.env(), r.service()), new Cached(old.json(), old.fetchedAt(), true, old.index()));
             }
-            log.warn("拉取服务 {} 的文档失败: {}", r.service(), e.getMessage());
+            log.warn("拉取服务 {}({})的文档失败: {}", r.service(), r.env(), e.getMessage());
             return false;
         }
     }
 
     /** ONLINE / STALE / OFFLINE。 */
-    public String status(ServiceService.Row r, long now) {
-        Cached c = cache.get(r.service());
-        boolean failedLast = Boolean.TRUE.equals(failed.get(r.service()));
+    public String status(ServiceService.EnvRow r, long now) {
+        Cached c = cache.get(k(r.env(), r.service()));
+        boolean failedLast = Boolean.TRUE.equals(failed.get(k(r.env(), r.service())));
         if ("REGISTERED".equals(r.source())) {
-            if (services.onlineInstances(r.service(), now) == 0) {
+            if (services.onlineInstances(r.env(), r.service(), now) == 0) {
                 return "OFFLINE";
             }
             return failedLast && c != null ? "STALE" : "ONLINE";
@@ -165,30 +175,53 @@ public class DocsService {
         return failedLast ? "STALE" : "ONLINE";
     }
 
-    private void checkOffline(ServiceService.Row r, long now) {
+    private void checkOffline(ServiceService.EnvRow r, long now) {
+        String key = k(r.env(), r.service());
         String s = status(r, now);
-        String prev = lastStatus.put(r.service(), s);
+        String prev = lastStatus.put(key, s);
         if ("OFFLINE".equals(s) && prev != null && !"OFFLINE".equals(prev)) {
-            Long last = lastOfflineEvent.get(r.service());
+            Long last = lastOfflineEvent.get(key);
             if (last == null || now - last >= OFFLINE_EVENT_GAP_MS) {
-                lastOfflineEvent.put(r.service(), now);
-                String pname = r.projectId() == null ? null
-                        : db.one("SELECT name FROM csap_team_project WHERE id = ?", (rs, i) -> rs.getString(1), r.projectId());
-                webhooks.fire(new WebhookEvent("service.offline", now, r.projectId(), pname, null, null, null,
-                        List.of(WebhookEvent.item(r.service(), null)), "服务 " + r.service() + " 已离线"));
+                lastOfflineEvent.put(key, now);
+                ServiceService.Row svc = services.get(r.service());
+                Long projectId = svc == null ? null : svc.projectId();
+                String pname = projectId == null ? null
+                        : db.one("SELECT name FROM csap_team_project WHERE id = ?", (rs, i) -> rs.getString(1), projectId);
+                Env env = environments.find(r.env());
+                String envName = env == null ? r.env() : env.name();
+                webhooks.fire(new WebhookEvent("service.offline", now, projectId, pname, null, null, null,
+                        List.of(WebhookEvent.item(r.service(), null)),
+                        "服务 " + r.service() + (environments.multiple() ? "(" + envName + ")" : "") + " 已离线", r.env(), envName));
             }
         }
     }
 
-    public void forget(String service) {
-        cache.remove(service);
-        failed.remove(service);
-        lastStatus.remove(service);
+    public void forget(String env, String service) {
+        String key = k(env, service);
+        cache.remove(key);
+        failed.remove(key);
+        lastStatus.remove(key);
+        lastOfflineEvent.remove(key);
+    }
+
+    /** 整个服务被删除:所有环境的缓存一起清掉。 */
+    public void forgetAll(String service) {
+        String suffix = "\u0000" + service;
+        for (String key : new ArrayList<>(cache.keySet())) {
+            if (key.endsWith(suffix)) {
+                String env = key.substring(0, key.length() - suffix.length());
+                forget(env, service);
+            }
+        }
     }
 
     // ---- 搜索 ----
 
     static List<Entry> buildIndex(String service, JsonNode root) {
+        return buildIndex(null, service, root);
+    }
+
+    static List<Entry> buildIndex(String env, String service, JsonNode root) {
         List<Entry> out = new ArrayList<>();
         JsonNode data = root.has("data") && root.get("data").isObject() ? root.get("data") : root;
         for (String listName : new String[] {"apiList", "globalApiList"}) {
@@ -203,14 +236,14 @@ public class DocsService {
                 }
                 List<String> controllerPaths = strings(c.get("path"));
                 for (JsonNode m : methods) {
-                    addMethod(out, service, controllerPaths, m);
+                    addMethod(out, env, service, controllerPaths, m);
                 }
             }
         }
         return out;
     }
 
-    private static void addMethod(List<Entry> out, String service, List<String> controllerPaths, JsonNode m) {
+    private static void addMethod(List<Entry> out, String env, String service, List<String> controllerPaths, JsonNode m) {
         // 标题优先取方法的 value(中文说明),为空再取 name / simpleName
         String title = firstText(m, "value", "name", "simpleName");
         String desc = text(m, "description");
@@ -231,7 +264,7 @@ public class DocsService {
         }
         for (String p : paths) {
             for (String v : verbs) {
-                out.add(new Entry(service, v, p, title, desc, fields));
+                out.add(new Entry(env, service, v, p, title, desc, fields));
             }
         }
     }
@@ -297,9 +330,10 @@ public class DocsService {
         return "";
     }
 
-    public record Hit(String service, String method, String path, String title, String matchedIn, String snippet) {
+    public record Hit(String env, String service, String method, String path, String title, String matchedIn, String snippet) {
         public Map<String, Object> toMap() {
             Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("env", env);
             m.put("service", service);
             m.put("method", method);
             m.put("path", path);
@@ -311,19 +345,29 @@ public class DocsService {
     }
 
     /** 包含匹配(不区分大小写,中文直接子串),最多 100 条;services 为 null 表示全部。 */
-    public List<Hit> search(String q, Set<String> only) {
+    public List<Hit> search(String env, String q, Set<String> only) {
         List<Hit> hits = new ArrayList<>();
         if (q == null || q.isBlank()) {
             return hits;
         }
         String needle = q.trim().toLowerCase(Locale.ROOT);
-        List<String> names = new ArrayList<>(cache.keySet());
+        List<String> names = new ArrayList<>();
+        String prefix = env + "\u0000";
+        for (String key : cache.keySet()) {
+            if (key.startsWith(prefix)) {
+                names.add(key.substring(prefix.length()));
+            }
+        }
         java.util.Collections.sort(names);
         for (String svc : names) {
             if (only != null && !only.contains(svc)) {
                 continue;
             }
-            for (Entry e : cache.get(svc).index()) {
+            Cached cached = cache.get(prefix + svc);
+            if (cached == null) {
+                continue;
+            }
+            for (Entry e : cached.index()) {
                 Hit h = match(e, needle);
                 if (h != null) {
                     hits.add(h);
@@ -338,17 +382,17 @@ public class DocsService {
 
     private static Hit match(Entry e, String needle) {
         if (e.path().toLowerCase(Locale.ROOT).contains(needle) || e.method().toLowerCase(Locale.ROOT).contains(needle)) {
-            return new Hit(e.service(), e.method(), e.path(), e.title(), "path", e.method() + " " + e.path());
+            return new Hit(e.env(), e.service(), e.method(), e.path(), e.title(), "path", e.method() + " " + e.path());
         }
         if (e.title().toLowerCase(Locale.ROOT).contains(needle)) {
-            return new Hit(e.service(), e.method(), e.path(), e.title(), "title", e.title());
+            return new Hit(e.env(), e.service(), e.method(), e.path(), e.title(), "title", e.title());
         }
         if (e.description().toLowerCase(Locale.ROOT).contains(needle)) {
-            return new Hit(e.service(), e.method(), e.path(), e.title(), "description", around(e.description(), needle));
+            return new Hit(e.env(), e.service(), e.method(), e.path(), e.title(), "description", around(e.description(), needle));
         }
         for (String[] f : e.fields()) {
             if (f[0].toLowerCase(Locale.ROOT).contains(needle) || f[1].toLowerCase(Locale.ROOT).contains(needle)) {
-                return new Hit(e.service(), e.method(), e.path(), e.title(), "field", f[1].isEmpty() ? f[0] : f[0] + ": " + f[1]);
+                return new Hit(e.env(), e.service(), e.method(), e.path(), e.title(), "field", f[1].isEmpty() ? f[0] : f[0] + ": " + f[1]);
             }
         }
         return null;

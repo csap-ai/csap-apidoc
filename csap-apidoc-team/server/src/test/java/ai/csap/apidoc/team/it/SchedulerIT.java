@@ -50,6 +50,8 @@ class SchedulerIT extends AbstractIT {
             String svc = unique("schedocs");
             jdbc.update("INSERT INTO csap_team_project_service (service, base_url, doc_path, source, created_at) VALUES (?, ?, '/csap/apidoc', 'MANUAL', ?)",
                     svc, http.url(), System.currentTimeMillis());
+            jdbc.update("INSERT INTO csap_team_service_env (service, env_key, base_url, doc_path, source, created_at) VALUES (?, 'default', ?, '/csap/apidoc', 'MANUAL', ?)",
+                    svc, http.url(), System.currentTimeMillis());
             assertTrue(http.await(r -> r.path().equals("/csap/apidoc"), 1, 20_000).size() >= 1, "定时刷新应在首次延迟 5 秒 + 间隔内拉取");
         }
     }

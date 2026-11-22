@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import ai.csap.apidoc.team.audit.AuditService;
 import ai.csap.apidoc.team.auth.Access;
 import ai.csap.apidoc.team.auth.SessionUser;
+import ai.csap.apidoc.team.env.Environments;
 
 @RestController
 @RequestMapping("/api/v1/tokens")
@@ -22,11 +23,13 @@ public class TokenController {
     private final TokenService tokens;
     private final Access access;
     private final AuditService audit;
+    private final Environments environments;
 
-    public TokenController(TokenService tokens, Access access, AuditService audit) {
+    public TokenController(TokenService tokens, Access access, AuditService audit, Environments environments) {
         this.tokens = tokens;
         this.access = access;
         this.audit = audit;
+        this.environments = environments;
     }
 
     @GetMapping
@@ -40,9 +43,11 @@ public class TokenController {
     public Map<String, Object> create(@RequestBody Map<String, Object> body) {
         SessionUser u = access.admin();
         Long projectId = body.get("projectId") instanceof Number n ? n.longValue() : null;
+        String envKey = body.get("env") instanceof String e && !e.isBlank() ? environments.require(e).key() : null;
         Map<String, Object> t = tokens.create(body.get("name") instanceof String s ? s : null,
-                body.get("scope") instanceof String s ? s : null, projectId, u.id());
-        audit.log("token.create").project(projectId).reason(t.get("name") + " (" + t.get("prefix") + "…, " + t.get("scope") + ")").save();
+                body.get("scope") instanceof String s ? s : null, projectId, envKey, u.id());
+        audit.log("token.create").project(projectId).env(envKey).reason(t.get("name") + " (" + t.get("prefix") + "…, " + t.get("scope")
+                + (envKey == null ? "" : ", env=" + envKey) + ")").save();
         return t;
     }
 

@@ -18,13 +18,15 @@ import ai.csap.apidoc.team.db.Db;
 @Service
 public class AuditService {
 
-    static final String COLS = "id, at, actor_type, actor_id, actor_name, source, ip, action, project_id, service, rule_key,"
-            + " change_id, before_value, after_value, diff, reason, oss_history_id";
+    static final String COLS = "id, at, actor_type, actor_id, actor_name, source, ip, action, project_id, env_key, service, rule_key,"
+            + " change_id, before_value, after_value, diff, reason, oss_history_id, prev_hash, hash";
 
     private final Db db;
+    private final AuditChain chain;
 
-    public AuditService(Db db) {
+    public AuditService(Db db, AuditChain chain) {
         this.db = db;
+        this.chain = chain;
     }
 
     /** 一条审计的构造器,{@link #save()} 落库。 */
@@ -32,6 +34,7 @@ public class AuditService {
         private final Actor actor;
         private final String action;
         private Long projectId;
+        private String envKey;
         private String service;
         private String ruleKey;
         private Long changeId;
@@ -48,6 +51,7 @@ public class AuditService {
         }
 
         public Entry project(Long id) { this.projectId = id; return this; }
+        public Entry env(String key) { this.envKey = key; return this; }
         public Entry service(String s) { this.service = s; return this; }
         public Entry rule(String key) { this.ruleKey = key; return this; }
         public Entry change(Long id) { this.changeId = id; return this; }
@@ -58,14 +62,36 @@ public class AuditService {
         public Entry ossHistory(Long id) { this.ossHistoryId = id; return this; }
         public Entry at(long ms) { this.at = ms; return this; }
 
+        /**
+         * 落库并接入哈希链:在同一个主库事务里锁住链头 → 插入(带 prev_hash)→ 算 hash 补写 → 更新链头。
+         * 审计写入失败会让所在业务操作失败。
+         */
         public long save() {
             long now = at != null ? at : System.currentTimeMillis();
-            return db.insert("INSERT INTO csap_team_audit (at, actor_type, actor_id, actor_name, source, ip, action, project_id,"
-                            + " service, rule_key, change_id, before_value, after_value, diff, reason, oss_history_id)"
-                            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    now, actor.type(), actor.id(), actor.name(), actor.source(), actor.ip(), action, projectId, service,
-                    ruleKey, changeId, before, after, diff, reason, ossHistoryId);
+            String b = blankToNull(before);
+            String a = blankToNull(after);
+            String d = blankToNull(diff);
+            String r = blankToNull(reason);
+            return db.inTx(() -> {
+                AuditChain.Point head = chain.lockHead();
+                long id = db.insert("INSERT INTO csap_team_audit (at, actor_type, actor_id, actor_name, source, ip, action, project_id,"
+                                + " env_key, service, rule_key, change_id, before_value, after_value, diff, reason, oss_history_id,"
+                                + " prev_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        now, actor.type(), actor.id(), actor.name(), actor.source(), actor.ip(), action, projectId, envKey, service,
+                        ruleKey, changeId, b, a, d, r, ossHistoryId, head.hash());
+                String hash = AuditChain.hash(head.hash(), AuditChain.values(id, now, actor.type(), actor.id(), actor.name(),
+                        actor.source(), actor.ip(), action, projectId, envKey, service, ruleKey, changeId, b, a, d, r, ossHistoryId,
+                        head.hash()));
+                db.update("UPDATE csap_team_audit SET hash = ? WHERE id = ?", hash, id);
+                chain.setHead(id, hash);
+                return id;
+            });
         }
+    }
+
+    /** 空串在个别库里等同 NULL,统一成 NULL,保证库里读出来的值与算 hash 时一致。 */
+    private static String blankToNull(String s) {
+        return s == null || s.isEmpty() ? null : s;
     }
 
     /** 以当前请求的身份记录;后台任务里为系统。 */
@@ -85,6 +111,7 @@ public class AuditService {
         public Long to;
         public String actor;
         public Long projectId;
+        public String env;
         public String service;
         public String ruleKey;
         public String action;
@@ -114,6 +141,7 @@ public class AuditService {
         if (f.to != null) { w.append(" AND at <= ?"); args.add(f.to); }
         if (notBlank(f.actor)) { w.append(" AND actor_name = ?"); args.add(f.actor); }
         if (f.projectId != null) { w.append(" AND project_id = ?"); args.add(f.projectId); }
+        if (notBlank(f.env)) { w.append(" AND env_key = ?"); args.add(f.env); }
         if (notBlank(f.service)) { w.append(" AND service = ?"); args.add(f.service); }
         if (notBlank(f.ruleKey)) { w.append(" AND rule_key = ?"); args.add(f.ruleKey); }
         if (notBlank(f.action)) {
@@ -147,6 +175,7 @@ public class AuditService {
         m.put("ip", rs.getString("ip"));
         m.put("action", rs.getString("action"));
         m.put("projectId", nl(rs, "project_id"));
+        m.put("env", rs.getString("env_key"));
         m.put("service", rs.getString("service"));
         m.put("ruleKey", rs.getString("rule_key"));
         m.put("changeId", nl(rs, "change_id"));
@@ -155,6 +184,8 @@ public class AuditService {
         m.put("diff", rs.getString("diff"));
         m.put("reason", rs.getString("reason"));
         m.put("ossHistoryId", nl(rs, "oss_history_id"));
+        m.put("prevHash", rs.getString("prev_hash"));
+        m.put("hash", rs.getString("hash"));
         return m;
     };
 

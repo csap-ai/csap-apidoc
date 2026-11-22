@@ -254,7 +254,8 @@ class UnitTests {
     void schemaScriptsExistForEveryDialectAndMatchTheTemplate() throws Exception {
         List<String> expected = List.of("csap_team_setting", "csap_team_user", "csap_team_project", "csap_team_project_service",
                 "csap_team_service_instance", "csap_team_member", "csap_team_token", "csap_team_change", "csap_team_change_item",
-                "csap_team_audit", "csap_team_webhook", "csap_team_webhook_delivery", "csap_team_cursor");
+                "csap_team_audit", "csap_team_webhook", "csap_team_webhook_delivery", "csap_team_cursor", "csap_team_service_env",
+                "csap_team_env_instance", "csap_team_comment");
         String template = Files.readString(Paths.get("schema-template.sql"), StandardCharsets.UTF_8);
         Map<String, String[]> dialects = Map.of(
                 "mysql", new String[] {"LONGTEXT", "id BIGINT AUTO_INCREMENT PRIMARY KEY", " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},

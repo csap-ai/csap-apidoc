@@ -57,7 +57,17 @@ public class WebhookService {
     }
 
     public record Hook(long id, Long projectId, String name, String kind, String url, String secret, String events, boolean enabled,
-                       long createdAt, long updatedAt) {
+                       long createdAt, long updatedAt, String envKeys) {
+        public Hook(long id, Long projectId, String name, String kind, String url, String secret, String events, boolean enabled,
+                    long createdAt, long updatedAt) {
+            this(id, projectId, name, kind, url, secret, events, enabled, createdAt, updatedAt, null);
+        }
+
+        /** 订阅的环境;null = 全部。 */
+        public boolean wantsEnv(String envKey) {
+            return envKeys == null || envKeys.isBlank() || envKey == null || List.of(envKeys.split(",")).contains(envKey);
+        }
+
         public Map<String, Object> toMap() {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id", id);
@@ -67,6 +77,7 @@ public class WebhookService {
             m.put("url", maskUrl(url));
             m.put("hasSecret", secret != null && !secret.isEmpty());
             m.put("events", events == null || events.isBlank() ? List.of() : List.of(events.split(",")));
+            m.put("environments", envKeys == null || envKeys.isBlank() ? List.of() : List.of(envKeys.split(",")));
             m.put("enabled", enabled);
             m.put("createdAt", createdAt);
             m.put("updatedAt", updatedAt);
@@ -89,10 +100,10 @@ public class WebhookService {
         Long project = rs.wasNull() ? null : pid;
         return new Hook(rs.getLong("id"), project, rs.getString("name"), rs.getString("kind"), rs.getString("url"),
                 rs.getString("secret"), rs.getString("events"), rs.getInt("enabled") == 1, rs.getLong("created_at"),
-                rs.getLong("updated_at"));
+                rs.getLong("updated_at"), rs.getString("env_keys"));
     }
 
-    static final String COLS = "id, project_id, name, kind, url, secret, events, enabled, created_at, updated_at";
+    static final String COLS = "id, project_id, name, kind, url, secret, events, enabled, created_at, updated_at, env_keys";
 
     public Hook get(long id) {
         return db.one("SELECT " + COLS + " FROM csap_team_webhook WHERE id = ?", WebhookService::map, id);
@@ -106,7 +117,7 @@ public class WebhookService {
                     : db.query("SELECT " + COLS + " FROM csap_team_webhook WHERE enabled = 1 AND (project_id IS NULL OR project_id = ?)",
                             WebhookService::map, ev.projectId());
             for (Hook h : hooks) {
-                if (h.events() != null && (h.events().equals("*") || List.of(h.events().split(",")).contains(ev.event()))) {
+                if (h.wantsEnv(ev.envKey()) && h.events() != null && (h.events().equals("*") || List.of(h.events().split(",")).contains(ev.event()))) {
                     pool.execute(() -> deliver(h, ev, 1, true));
                 }
             }
@@ -280,6 +291,13 @@ public class WebhookService {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("event", ev.event());
                 m.put("at", ev.at());
+                if (ev.checkpoint() != null) {
+                    // audit.checkpoint:{"event","at","checkpoint":{headId,headHash,count},"text"}
+                    m.put("checkpoint", ev.checkpoint());
+                    m.put("text", ev.text());
+                    body = Json.write(m);
+                    break;
+                }
                 m.put("project", ev.projectId() == null ? null : projectMap(ev));
                 Map<String, Object> change = null;
                 if (ev.changeId() != null) {
@@ -290,6 +308,10 @@ public class WebhookService {
                     change.put("url", link);
                 }
                 m.put("change", change);
+                if (ev.comment() != null) {
+                    m.put("comment", ev.comment());
+                }
+                m.put("env", ev.envKey() == null ? null : envMap(ev));
                 m.put("items", ev.items() == null ? List.of() : ev.items());
                 m.put("text", ev.text());
                 body = Json.write(m);
@@ -306,6 +328,13 @@ public class WebhookService {
             }
         }
         return b.build();
+    }
+
+    private static Map<String, Object> envMap(WebhookEvent ev) {
+        Map<String, Object> e = new LinkedHashMap<>();
+        e.put("key", ev.envKey());
+        e.put("name", ev.envName());
+        return e;
     }
 
     private static Map<String, Object> projectMap(WebhookEvent ev) {

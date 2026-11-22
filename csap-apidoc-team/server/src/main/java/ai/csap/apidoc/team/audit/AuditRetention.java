@@ -9,7 +9,12 @@ import ai.csap.apidoc.team.auth.Actor;
 import ai.csap.apidoc.team.config.TeamProperties;
 import ai.csap.apidoc.team.db.Db;
 
-/** 审计保留期清理:全代码里唯一允许删除审计的地方,删除本身记一条 {@code audit.purge}。 */
+/**
+ * 审计保留期清理:全代码里唯一允许删除审计的地方,删除本身记一条 {@code audit.purge}。
+ *
+ * <p>为了不破坏哈希链,只删"最早的一段":第一条仍在保留期内的记录(按 id)之前的全部记录;
+ * 被删的最后一条的 {id, hash} 存入 setting {@code audit.chain.anchor},校验从 anchor 接上。
+ */
 @Component
 public class AuditRetention {
 
@@ -17,11 +22,13 @@ public class AuditRetention {
 
     private final Db db;
     private final AuditService audit;
+    private final AuditChain chain;
     private final TeamProperties props;
 
-    public AuditRetention(Db db, AuditService audit, TeamProperties props) {
+    public AuditRetention(Db db, AuditService audit, AuditChain chain, TeamProperties props) {
         this.db = db;
         this.audit = audit;
+        this.chain = chain;
         this.props = props;
     }
 
@@ -41,11 +48,27 @@ public class AuditRetention {
             return 0;
         }
         long cutoff = now - days * 86_400_000L;
-        int n = db.update("DELETE FROM csap_team_audit WHERE at < ?", cutoff);
-        if (n > 0) {
-            audit.logAs(Actor.system(), "audit.purge").reason("保留期 " + days + " 天,清理 " + n + " 条").at(now).save();
-            log.info("审计保留期清理:删除 {} 条", n);
-        }
-        return n;
+        return db.inTx(() -> {
+            // 先锁链头,与审计写入串行
+            chain.lockHead();
+            Long firstKept = db.one("SELECT MIN(id) FROM csap_team_audit WHERE at >= ?", (rs, i) -> {
+                long v = rs.getLong(1);
+                return rs.wasNull() ? null : v;
+            }, cutoff);
+            long bound = firstKept == null ? Long.MAX_VALUE : firstKept;
+            AuditChain.Point anchor = db.one("SELECT id, hash FROM csap_team_audit WHERE id < ? ORDER BY id DESC",
+                    (rs, i) -> new AuditChain.Point(rs.getLong(1), rs.getString(2)), bound);
+            if (anchor == null || anchor.hash() == null) {
+                return 0;
+            }
+            int n = db.update("DELETE FROM csap_team_audit WHERE id < ?", bound);
+            if (n > 0) {
+                chain.setAnchor(anchor);
+                audit.logAs(Actor.system(), "audit.purge").at(now)
+                        .reason("保留期 " + days + " 天,清理 " + n + " 条;anchor id=" + anchor.id() + " hash=" + anchor.hash()).save();
+                log.info("审计保留期清理:删除 {} 条", n);
+            }
+            return n;
+        });
     }
 }
