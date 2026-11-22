@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Button, Card, Descriptions, Input, Modal, Popconfirm, Space, Tag, Timeline, Tooltip, Typography } from 'antd';
+import { Alert, Button, Card, Descriptions, Input, Modal, Popconfirm, Space, Tag, Timeline, Tooltip, Typography } from 'antd';
 import { message } from '@/utils/notify';
 import { changeApi, ruleApi } from '@/api/endpoints';
 import { ApiError } from '@/api/client';
@@ -8,12 +8,15 @@ import type { ConflictItem } from '@/api/types';
 import { useAuth } from '@/auth/AuthContext';
 import { changeActions, isAuthor } from '@/auth/permissions';
 import { ChangeStatusTag, PageTitle } from '@/components/common';
+import { EnvTag, EnvTagByKey } from '@/components/EnvSwitcher';
+import { useEnv } from '@/env/EnvContext';
 import DiffView from '@/components/DiffView';
 import { useLoad } from '@/utils/useLoad';
 import { fmtTime } from '@/utils/format';
 import { showError } from '@/utils/errors';
 import { t, tDyn } from '@/i18n';
 import ConflictPanel from './ConflictPanel';
+import Comments from './Comments';
 
 export default function ChangeDetail() {
   const id = Number(useParams().id);
@@ -24,12 +27,13 @@ export default function ChangeDetail() {
   const [decide, setDecide] = useState<'approve' | 'reject' | null>(null);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const { multi, find } = useEnv();
 
   // 状态为 CONFLICT 但还没有冲突明细(刷新页面后):按条目取当前库内容
   useEffect(() => {
     if (!c || c.status !== 'CONFLICT' || conflicts) return;
     Promise.all(c.items.filter((i) => i.conflict).map(async (i) => {
-      const cur = await ruleApi.item(i.service, i.ruleKey);
+      const cur = await ruleApi.item(i.service, i.ruleKey, c.env);
       return { service: i.service, ruleKey: i.ruleKey, baseVersion: i.baseVersion, currentVersion: cur.version, currentRules: cur.rules } as ConflictItem;
     })).then(setConflicts).catch(showError);
   }, [c, conflicts]);
@@ -66,7 +70,7 @@ export default function ChangeDetail() {
   return (
     <>
       <PageTitle
-        title={<Space>{c.title}<ChangeStatusTag status={c.status} /><Tag>{tDyn('changes.kind', c.kind)}</Tag></Space>}
+        title={<Space>{c.title}<ChangeStatusTag status={c.status} /><Tag>{tDyn('changes.kind', c.kind)}</Tag>{multi && <EnvTag env={find(c.env)} showState={false} />}</Space>}
         extra={
           <Space data-testid="change-actions">
             {visible.includes('edit') && <Button onClick={() => navigate(`/changes/${id}/edit`)}>{t('changes.action.edit')}</Button>}
@@ -89,6 +93,9 @@ export default function ChangeDetail() {
         <Card size="small">
           <Descriptions size="small" column={{ xs: 1, md: 2 }}>
             <Descriptions.Item label={t('common.project')}>{c.projectName}</Descriptions.Item>
+            {multi && <Descriptions.Item label={t('changes.env')}><EnvTagByKey envKey={c.env} name={c.envName} showState /></Descriptions.Item>}
+            {multi && c.sourceEnv && <Descriptions.Item label={t('changes.sourceEnv')}><EnvTagByKey envKey={c.sourceEnv} /></Descriptions.Item>}
+            {multi && c.requireApproval != null && <Descriptions.Item label={t('changes.requireApproval')}>{c.requireApproval ? t('env.requireApproval') : t('env.directPublish')}</Descriptions.Item>}
             <Descriptions.Item label={t('changes.author')}>{c.author.displayName}</Descriptions.Item>
             <Descriptions.Item label={t('changes.createdAt')}>{fmtTime(c.createdAt)}</Descriptions.Item>
             <Descriptions.Item label={t('changes.submittedAt')}>{fmtTime(c.submittedAt)}</Descriptions.Item>
@@ -105,10 +112,30 @@ export default function ChangeDetail() {
               {i.conflict && <Tag color="orange">{t('changes.itemConflict')}(v{i.currentVersion})</Tag>}
               <Link to={`/rules/${encodeURIComponent(i.service)}?key=${encodeURIComponent(i.ruleKey)}`}>{t('nav.rules')}</Link>
             </Space>}>
+            {!!i.overlaps?.length && (
+              <Alert
+                type="warning"
+                showIcon
+                style={{ marginBottom: 8 }}
+                data-testid="overlaps"
+                message={t('changes.overlapTitle', { n: i.overlaps.length })}
+                description={
+                  <>
+                    <ul style={{ margin: 0, paddingInlineStart: 18 }}>
+                      {i.overlaps.map((o) => (
+                        <li key={o.changeId}><Link to={`/changes/${o.changeId}`}>#{o.changeId} {o.title}</Link> <Tag>{tDyn('changes.status', o.status)}</Tag></li>
+                      ))}
+                    </ul>
+                    <Typography.Text type="secondary">{t('changes.overlapHint')}</Typography.Text>
+                  </>
+                }
+              />
+            )}
             <Typography.Text strong>{t('changes.diff')}</Typography.Text>
             <DiffView diff={i.diff} defaultMode="unified" />
           </Card>
         ))}
+        <Comments change={c} onChanged={reload} />
         <Card size="small" title={t('changes.timeline')}>
           <Timeline items={[
             { children: `${fmtTime(c.createdAt)} ${c.author.displayName} 创建` },
