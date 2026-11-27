@@ -56,10 +56,11 @@ export default function PromoteModal({ open, from, to, projectId, projectName, r
       navigate(`/changes/${c.id}`);
     } catch (e) {
       if (e instanceof ApiError && e.code === 'CONFLICT') {
-        // 一键推广时提交发现版本已变化:单子已创建,去修改单列表里处理
+        // 一键推广时提交发现版本已变化:单子已创建(状态 CONFLICT),后端在 409 里带 changeId
         message.warning(t('envdiff.submittedConflict'));
         onClose();
-        navigate('/changes');
+        const id = (e.body as unknown as { changeId?: number }).changeId;
+        navigate(id ? `/changes/${id}` : '/changes');
       } else showError(e);
     } finally {
       setBusy(false);

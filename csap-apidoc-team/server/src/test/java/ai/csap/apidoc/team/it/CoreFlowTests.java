@@ -95,6 +95,7 @@ public abstract class CoreFlowTests extends AbstractIT {
         Api.Resp r = maintainer.api().post("/api/v1/changes/" + a + "/approve", Map.of("note", "x"));
         assertEquals(409, r.status());
         assertEquals("CONFLICT", r.code());
+        assertEquals(a, r.json().get("changeId").asLong());
         JsonNode ci = r.json().get("items").get(0);
         assertEquals("K.c", ci.get("ruleKey").asText());
         assertEquals(0, ci.get("baseVersion").asLong());

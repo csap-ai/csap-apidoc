@@ -765,6 +765,7 @@ public class ChangeService {
                 list.add(m);
             }
             Map<String, Object> extra = new LinkedHashMap<>();
+            extra.put("changeId", c.id());
             extra.put("items", list);
             throw new ApiException(HttpStatus.CONFLICT, "CONFLICT", "规则已被他人修改,请先同步最新内容(rebase)", extra);
         }

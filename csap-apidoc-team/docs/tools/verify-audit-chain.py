@@ -73,7 +73,7 @@ def compute_hash(item, prev_hash):
     return hashlib.sha256((prev_hash + "\n" + canonical).encode("utf-8")).hexdigest()
 
 
-def verify(doc, allow_partial=False):
+def verify(doc, allow_partial=False, allow_gaps=False):
     """返回 (ok, checked, first_broken_id, problem, head_id, head_hash)。"""
     anchor = doc.get("anchor")
     items = sorted(doc["items"], key=lambda x: x["id"])
@@ -84,7 +84,7 @@ def verify(doc, allow_partial=False):
         h, p = get_hash(it), get_prev(it)
         if not h or not p:
             return False, checked, it["id"], "MISSING_HASH", head_id, head_hash
-        if i == 0 and allow_partial:
+        if allow_gaps or (i == 0 and allow_partial):
             expected_prev = p  # 只导出了一段:第一条的 prev_hash 无法核对,按它自己的值接着算
         if p != expected_prev:
             return False, checked, it["id"], "PREV_MISMATCH", head_id, head_hash
@@ -96,8 +96,8 @@ def verify(doc, allow_partial=False):
     return True, checked, None, None, head_id, head_hash
 
 
-def run(doc, allow_partial=False, head_hash_expected=None):
-    ok, checked, bad, problem, head_id, head_hash = verify(doc, allow_partial)
+def run(doc, allow_partial=False, head_hash_expected=None, allow_gaps=False):
+    ok, checked, bad, problem, head_id, head_hash = verify(doc, allow_partial, allow_gaps)
     if ok and head_hash_expected and head_hash != head_hash_expected.lower():
         print("未通过:链内部一致,但链头哈希与外部保存的值不一致(整条链可能被重算过)")
         print("  链头 id=%s hash=%s" % (head_id, head_hash))
@@ -146,6 +146,11 @@ def self_test():
     # 删中间一条 -> PREV_MISMATCH(id=4)
     t = json.loads(json.dumps(doc)); del t["items"][1]
     r = verify(t); assert (r[0], r[2], r[3]) == (False, 4, "PREV_MISMATCH"), r
+    # 带筛选的导出(中间有缺口):--allow-gaps 只校验每条自身的 hash
+    t = json.loads(json.dumps(doc)); del t["items"][1]
+    assert verify(t, allow_gaps=True)[0], "--allow-gaps 时缺口不算错"
+    t["items"][1]["reason"] = "被改"
+    r = verify(t, allow_gaps=True); assert (r[0], r[2], r[3]) == (False, 4, "HASH_MISMATCH"), r
     # 缺 hash -> MISSING_HASH
     t = json.loads(json.dumps(doc)); t["items"][2]["hash"] = None
     r = verify(t); assert (r[0], r[2], r[3]) == (False, 4, "MISSING_HASH"), r
@@ -166,6 +171,8 @@ def main():
     ap.add_argument("--head-hash", help="外部保存的链头哈希(例如 audit.checkpoint 事件里的 headHash),额外比对")
     ap.add_argument("--allow-partial", action="store_true",
                     help="导出的只是中间一段:不核对第一条的 prev_hash,只校验这一段内部")
+    ap.add_argument("--allow-gaps", action="store_true",
+                    help="带筛选条件的导出(记录不连续):不核对前后衔接,只校验每条记录自身的 hash")
     a = ap.parse_args()
     if a.self_test:
         return self_test()
@@ -178,7 +185,7 @@ def main():
         if not isinstance(doc, dict) or "items" not in doc:
             print('输入格式不对:1.1 的导出是 {"anchor":...,"items":[...]};1.0 的数组格式需要先包装成这个形式', file=sys.stderr)
             return 2
-        return run(doc, a.allow_partial, a.head_hash)
+        return run(doc, a.allow_partial, a.head_hash, a.allow_gaps)
     except (OSError, ValueError, KeyError) as e:
         print("读取或解析失败:%s" % e, file=sys.stderr)
         return 2

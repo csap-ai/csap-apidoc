@@ -1,6 +1,6 @@
 # CSAP Apidoc 团队版 1.1 设计与契约
 
-状态:契约冻结(2026-11-21,主会话制定)。实现会话按本文开发;要改契约先找主会话,不要各自改。
+状态:契约冻结(2026-11-21,主会话制定;2026-11-26 联调后修订:409 冲突带 `changeId`、保留期清理按段删除、`GAP` 的含义、单环境通知文案、DOWN 环境下哪些接口仍可用、列表接口不带 `env` 的含义)。实现会话按本文开发;要改契约先找主会话,不要各自改。
 本文只写 1.1 **新增和改变**的部分;没提到的一律沿用 [team-1.0.md](team-1.0.md)(错误码、分页、鉴权、`X-CSAP-Team: 1`、审计只追加、表名 `csap_team_` 前缀、不改开源表结构、界面不出现下游业务名、不写成"只支持 Java"等)。
 
 版本:开发期间 `1.1.0-SNAPSHOT`,发布 `1.1.0`。依赖的开源 `csap-apidoc-database` 仍为 1.5.0(**1.1 不需要开源侧任何改动**,服务注册协议不变)。
@@ -78,10 +78,10 @@ csap:
 ### 3.2 修改单
 
 - 一张修改单**只针对一个环境**:`csap_team_change.env_key`。创建 body 增加 `"env"`(省略 = 默认环境),开放接口 `POST /api/open/v1/changes` 同样。
-- 修改单 JSON 增加 `"env"`、`"envName"`、`"sourceEnv"`(仅推广单,否则 null)、`"requireApproval"`(本单是否需要审批,bool)。列表 `GET /changes` 增加筛选 `env=`。
+- 修改单 JSON 增加 `"env"`、`"envName"`、`"sourceEnv"`(仅推广单,否则 null)、`"requireApproval"`(本单是否需要审批,bool)。列表 `GET /changes` 增加筛选 `env=`;**列表接口(`/changes`、`/audit`)不带 `env` = 全部环境**(不是默认环境),这是与其它接口"省略 = 默认环境"的唯一区别。
 - 是否需要审批 = `项目.require_approval == 1` **或** `环境.protected == true`。
 - 目标环境 `read-only`:创建、编辑、提交、通过、rebase、回滚、推广都返回 `FORBIDDEN`,message 说明"环境只读"。
-- 目标环境 `DOWN`:需要读写该环境开源表的操作(包括 §2、§3 的读接口)返回新增错误码 **`ENV_UNAVAILABLE`(HTTP 503)**,message 带环境名。
+- 目标环境 `DOWN`:需要读写该环境开源表的操作(规则读写、发布、推广、差异、MCP 审计)返回新增错误码 **`ENV_UNAVAILABLE`(HTTP 503)**,message 带环境名。服务列表、文档中心只读主库和缓存,仍然可用;修改单详情里该环境条目的 `currentVersion` 为 null、`conflict=false`。
 - 发布的并发安全、写入格式与 1.0 §2.3 完全相同,只是作用在目标环境的库上,在**目标环境数据源的事务**里完成。修改单状态、审计等团队版表的写入在主数据源;两个库不做分布式事务,顺序为:先在目标环境提交规则写入,成功后再在主库更新修改单状态和审计。若主库更新失败,下一轮 `HistorySync`(§3.4)会因为 `published_history_id` 没对上而记一条 `rule.changed_outside`——可接受,但实现要在日志里打 ERROR。
 - `kind` 新增 `PROMOTE`(推广单)。
 
@@ -108,7 +108,9 @@ csap:
   - `items` 省略 = 该项目所有服务在两个环境之间 `DIFFERENT` 和 `ONLY_FROM` 的规则;`includeDeletes=true` 时再加上 `ONLY_TO`(推广后在目标环境删除)。
   - 每项 `after_rules` = 来源环境当前内容(`ONLY_TO` 为 null),`base_version`/`before_rules` = 目标环境当前内容。
   - 一条都没有时返回 `VALIDATION`,message "两个环境没有差异"。
-  - `submit=true` 时创建后立刻提交(= "一键推广"):目标环境需要审批 → `PENDING`;否则直接发布(或 `CONFLICT`)。
+  - `submit=true` 时创建后立刻提交(= "一键推广"):目标环境需要审批 → `PENDING`;否则直接发布。提交时发现版本已变化:修改单保留为 `CONFLICT`,返回 409(同 1.0 的冲突响应)。
+- 所有 409 冲突响应(提交、通过、推广)在 1.0 的字段之外增加 `"changeId"`,便于前端直接打开该修改单。
+- 推广显式指定的 `items` 里含 `ONLY_TO` 条目时,必须同时 `includeDeletes=true`,否则 `VALIDATION`。`title` 为空时默认 `推广 {from} → {to}`。
 - 权限:能在**目标环境所在项目**建修改单的人(管理员、维护者、开发)。之后的审批、冲突、rebase、撤回与普通修改单完全相同。
 - 推广不限制方向(允许 prod → test 拉回),但前端默认按环境顺序给出"推广到下一个环境"。
 - 审计:创建推广单记 `change.create`,`reason` 里带 `promote dev→test`;其余动作同 1.0。
@@ -123,7 +125,7 @@ csap:
 
 - `csap_team_audit.env_key`(可空:与环境无关的动作,如登录、用户管理,为 null)。审计查询增加筛选 `env=`,审计项增加 `"env"`。
 - Webhook 增加可选订阅环境 `environments`(数组;空 / 省略 = 全部环境),存在 `csap_team_webhook.env_keys`(逗号分隔,null = 全部)。Webhook 项增加 `"environments":[...]`。
-- 所有事件的 GENERIC 请求体增加 `"env":{"key","name"}`(与环境无关的事件为 null);`text` 里带环境名,例如 `[订单 / 生产] 张三 的修改单「...」已发布(2 条规则)`。企业微信、钉钉、飞书同样在正文里带环境名。
+- 所有事件的 GENERIC 请求体增加 `"env":{"key","name"}`(与环境无关的事件为 null);配置了 2 个及以上环境时 `text` 里带环境名(单环境时与 1.0 相同),例如 `[订单 / 生产] 张三 的修改单「...」已发布(2 条规则)`。企业微信、钉钉、飞书同样在正文里带环境名。
 
 ## 4. 权限补充(A)
 
@@ -196,12 +198,13 @@ hash = lowercase_hex( SHA-256( prev_hash + "\n" + canonical ) )
 
 ### 6.4 保留期清理与链
 
-- 清理(1.0 §6.4)删掉最早的一段后,剩下的第一条的 `prev_hash` 指向已删除的记录。清理时把被删的最后一条的 `{id, hash}` 存到 setting `audit.chain.anchor`,校验从 anchor 接上;`audit.purge` 审计的 `reason` 里也带上 anchor 的 id 和 hash。
+- 为了不破坏链,清理只删除"第一条仍在保留期内的记录"之前的整段(按 id),不再像 1.0 那样删所有过期记录(夹在中间的过期记录等前面的也过期后再删)。
+- 清理删掉最早的一段后,剩下的第一条的 `prev_hash` 指向已删除的记录。清理时把被删的最后一条的 `{id, hash}` 存到 setting `audit.chain.anchor`,校验从 anchor 接上;`audit.purge` 审计的 `reason` 里也带上 anchor 的 id 和 hash。
 
 ### 6.5 校验与外部锚定
 
 - `GET /api/v1/audit/verify?fromId=&toId=`(仅管理员)→ `{"ok":bool,"checked":n,"headId","headHash","firstBrokenId":id|null,"problem":"HASH_MISMATCH|PREV_MISMATCH|MISSING_HASH|GAP"|null}`。不传范围 = 全部(从 anchor 或链首开始),流式分批计算,不一次读进内存。
-  - `GAP`:id 不连续(有记录被删)。注意自增 id 在事务回滚时可能跳号,所以 `GAP` 只在"下一条的 `prev_hash` 不等于上一条的 `hash`"时才算错;id 跳号但 `prev_hash` 接得上不算错。即实际判断以 `prev_hash` 为准,`GAP` 只用于说明原因。
+  - 判断以 `prev_hash` 为准:id 跳号(事务回滚)但接得上不算错;中间有记录被删报 `PREV_MISMATCH`。`GAP` 只用于不带范围的全量校验中"尾部记录被删、链头 `audit.chain.head` 对不上"。
   - 每次校验记一条审计 `audit.verify`(`reason` 带结果)。
 - 导出(CSV / JSON)增加 `envKey`、`prevHash`、`hash` 列,JSON 导出在开头带 `{"anchor":{...}|null}`,便于离线校验。JSON 导出格式改为 `{"anchor":...,"items":[...]}`(1.0 是数组;这是 1.1 唯一的不兼容变化,在 CHANGELOG 里写明)。
 - 新 Webhook 事件 `audit.checkpoint`:每天 00:05(服务器时区)发一次当前 `headId`/`headHash`,订阅了才发。用途:把链头存到团队版之外(群消息、外部系统),之后有人整体重算整条链也能发现。GENERIC 体 `{"event":"audit.checkpoint","at","checkpoint":{"headId","headHash","count"},"text"}`。

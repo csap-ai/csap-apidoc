@@ -460,7 +460,7 @@ const zh = {
   'envdiff.submitNowHint': '一键推广:目标环境需要审批时进入待审批,否则直接发布。',
   'envdiff.protectedNote': '目标环境受保护,提交后需要审批。',
   'envdiff.created': '推广修改单已创建',
-  'envdiff.submittedConflict': '推广单已创建,但提交时发现规则版本已变化,请到修改单列表处理',
+  'envdiff.submittedConflict': '推广单已创建,但提交时发现规则版本已变化,请在修改单里同步最新内容(rebase)后重新提交',
   'envdiff.defaultTitle': '推广 {project}:{from} → {to}',
   'envdiff.nothingSelected': '没有可推广的规则(「仅目标有」的规则需要勾选"包含删除")',
   'envdiff.loadMore': '请选择项目后点击「对比」',

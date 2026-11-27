@@ -119,6 +119,7 @@ curl -s 'https://team.example.com/api/v1/audit/verify' -H 'X-CSAP-Team: 1' -b co
    |---|---|
    | `--head-hash <哈希>` | 再与外部保存的链头哈希比对(例如收到的 `audit.checkpoint`)。不一致就判未通过,说明整条链可能被重算过 |
    | `--allow-partial` | 导出的只是中间一段:不核对第一条的 `prev_hash`,只校验这一段内部是否连续、哈希是否对 |
+   | `--allow-gaps` | 带筛选条件的导出(按人、动作等筛过,记录不连续):不核对前后衔接,只校验每条记录自身的哈希 |
    | `--self-test` | 用脚本内构造的 3 条记录自测:算一遍再校验,并验证改内容、删记录都会被发现 |
 
 ```bash
@@ -126,7 +127,7 @@ python3 verify-audit-chain.py --self-test
 python3 verify-audit-chain.py audit-export.json --head-hash 8736ef83…
 ```
 
-导出文件要**完整**(含 `anchor` 和全部 `items`)才能核对链头与链首;筛选后的导出只适合配合 `--allow-partial` 做段内校验。
+导出文件要**完整**(含 `anchor` 和全部 `items`)才能核对链头与链首,也才能发现记录被删除;按时间段导出的连续一段用 `--allow-partial`,按人、动作等筛选过的导出用 `--allow-gaps`(只能发现内容被改,发现不了删除)。
 
 1.0 的导出是数组,没有哈希,不能用这个脚本校验。
 

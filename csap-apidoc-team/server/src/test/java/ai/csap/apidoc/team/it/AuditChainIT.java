@@ -356,13 +356,13 @@ class AuditChainIT extends AbstractIT {
     }
 
     private static int python(Path file, String... extra) throws Exception {
-        List<String> cmd = new ArrayList<>(List.of("python3", "-I", Paths.get("tools/verify_audit_chain.py").toAbsolutePath().toString(),
+        List<String> cmd = new ArrayList<>(List.of("python3", "-I", Paths.get("../docs/tools/verify-audit-chain.py").toAbsolutePath().toString(),
                 file.toString()));
         cmd.addAll(List.of(extra));
         Process p = new ProcessBuilder(cmd).redirectErrorStream(true).start();
         String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         int code = p.waitFor();
-        System.out.println("verify_audit_chain.py " + file.getFileName() + " -> " + code + " " + out.strip());
+        System.out.println("verify-audit-chain.py " + file.getFileName() + " -> " + code + " " + out.strip());
         return code;
     }
 
