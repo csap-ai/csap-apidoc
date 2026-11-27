@@ -5,7 +5,10 @@ import type { Dayjs } from 'dayjs';
 import { auditApi, projectApi, serviceApi, type AuditQuery } from '@/api/endpoints';
 import type { AuditRecord, McpAuditRecord } from '@/api/types';
 import { useAuth } from '@/auth/AuthContext';
-import { canExportAudit, canViewAudit } from '@/auth/permissions';
+import { canExportAudit, canViewAudit, isAdmin } from '@/auth/permissions';
+import { useEnv } from '@/env/EnvContext';
+import { EnvTagByKey } from '@/components/EnvSwitcher';
+import VerifyChain from './VerifyChain';
 import { Forbidden, PageTitle } from '@/components/common';
 import DiffView, { CodeBlock } from '@/components/DiffView';
 import { useLoad } from '@/utils/useLoad';
@@ -22,7 +25,7 @@ export default function Audit() {
   if (!canViewAudit(me)) return <Forbidden />;
   return (
     <>
-      <PageTitle title={t('audit.title')} />
+      <PageTitle title={t('audit.title')} extra={isAdmin(me) ? <VerifyChain /> : null} />
       <Tabs items={[
         { key: 'records', label: t('audit.tab.records'), children: <Records /> },
         { key: 'mcp', label: t('audit.tab.mcp'), children: <Mcp /> },
@@ -34,8 +37,10 @@ export default function Audit() {
 function Records() {
   const { me } = useAuth();
   const [range, setRange] = useState<Range>(null);
-  const [f, setF] = useState<Omit<AuditQuery, 'from' | 'to'>>({});
-  const [draft, setDraft] = useState<Omit<AuditQuery, 'from' | 'to'>>({});
+  const { env, envs, multi } = useEnv();
+  // 按当前环境筛选(与环境无关的动作如登录、用户管理没有环境;清掉筛选可以看到全部)
+  const [f, setF] = useState<Omit<AuditQuery, 'from' | 'to'>>({ env });
+  const [draft, setDraft] = useState<Omit<AuditQuery, 'from' | 'to'>>({ env });
   const [draftRange, setDraftRange] = useState<Range>(null);
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(20);
@@ -47,7 +52,7 @@ function Records() {
   const exportable = canExportAudit(me);
 
   const apply = () => { setF(draft); setRange(draftRange); setPage(1); };
-  const reset = () => { setDraft({}); setDraftRange(null); setF({}); setRange(null); setPage(1); };
+  const reset = () => { setDraft({ env }); setDraftRange(null); setF({ env }); setRange(null); setPage(1); };
   const doExport = (format: 'csv' | 'json') => { window.location.href = auditApi.exportUrl(format, query); };
 
   return (
@@ -55,6 +60,7 @@ function Records() {
       <Space wrap style={{ marginBottom: 12 }}>
         <DatePicker.RangePicker value={draftRange as any} onChange={(v) => setDraftRange(v as Range)} placeholder={[t('audit.range'), '']} />
         <Input style={{ width: 130 }} placeholder={t('audit.actor')} value={draft.actor} onChange={(e) => setDraft({ ...draft, actor: e.target.value })} allowClear />
+        {multi && <Select allowClear style={{ width: 130 }} placeholder={t('audit.env')} aria-label={t('audit.env')} value={draft.env} onChange={(v) => setDraft({ ...draft, env: v })} options={envs.map((e) => ({ value: e.key, label: e.name }))} />}
         <Select allowClear style={{ width: 140 }} placeholder={t('common.project')} value={draft.projectId} onChange={(v) => setDraft({ ...draft, projectId: v })} options={(projects.data ?? []).map((p) => ({ value: p.id, label: p.name }))} />
         <Select allowClear showSearch style={{ width: 160 }} placeholder={t('common.service')} value={draft.service} onChange={(v) => setDraft({ ...draft, service: v })} options={(services.data ?? []).map((s) => ({ value: s.service, label: s.service }))} />
         <Input style={{ width: 170 }} placeholder={t('audit.ruleKey')} value={draft.ruleKey} onChange={(e) => setDraft({ ...draft, ruleKey: e.target.value })} allowClear />
@@ -82,6 +88,7 @@ function Records() {
           { title: t('common.time'), dataIndex: 'at', width: 170, render: fmtTime },
           { title: t('audit.actor'), dataIndex: 'actorName', width: 110, render: (n: string, r) => <span>{n} <Tag>{tDyn('audit.actorType', r.actorType)}</Tag></span> },
           { title: t('audit.action'), dataIndex: 'action', width: 170, render: (a: string) => <Tooltip title={a}><span>{tDyn('audit.act', a)}</span></Tooltip> },
+          ...(multi ? [{ title: t('audit.env'), dataIndex: 'env', width: 100, render: (e?: string | null) => <EnvTagByKey envKey={e} /> }] : []),
           { title: t('common.service'), dataIndex: 'service', width: 130 },
           { title: t('audit.ruleKey'), dataIndex: 'ruleKey', ellipsis: true, render: (k?: string) => <span className="mono">{k}</span> },
           { title: t('audit.source'), dataIndex: 'source', width: 100, render: (s: string) => tDyn('audit.source', s) },
@@ -96,6 +103,7 @@ function Records() {
               <Descriptions.Item label={t('audit.actor')}>{detail.actorName}({tDyn('audit.actorType', detail.actorType)})</Descriptions.Item>
               <Descriptions.Item label={t('audit.source')}>{tDyn('audit.source', detail.source)}</Descriptions.Item>
               <Descriptions.Item label={t('audit.ip')}>{detail.ip || '-'}</Descriptions.Item>
+              {multi && <Descriptions.Item label={t('audit.env')}><EnvTagByKey envKey={detail.env} /></Descriptions.Item>}
               <Descriptions.Item label={t('common.service')}>{detail.service || '-'}</Descriptions.Item>
               <Descriptions.Item label={t('audit.ruleKey')}>{detail.ruleKey || '-'}</Descriptions.Item>
               <Descriptions.Item label={t('audit.reason')}>{detail.reason || '-'}</Descriptions.Item>
@@ -115,18 +123,19 @@ function Records() {
 }
 
 function Mcp() {
+  const { env } = useEnv(); // MCP 审计表在各环境的库里,按当前环境读取
+  const services = useLoad(() => serviceApi.list({ env }), [env]);
   const [range, setRange] = useState<Range>(null);
   const [draft, setDraft] = useState<{ service?: string; caller?: string; tool?: string }>({});
   const [f, setF] = useState<typeof draft>({});
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(20);
   const [expanded, setExpanded] = useState<McpAuditRecord | null>(null);
-  const services = useLoad(() => serviceApi.list(), []);
   const [r, setR] = useState<Range>(null);
   const { me } = useAuth();
   const exportable = canExportAudit(me);
-  const doExport = (format: 'csv' | 'json') => { window.location.href = auditApi.exportMcpUrl(format, { ...f, ...toRange(r) }); };
-  const list = useLoad(() => auditApi.mcp({ ...f, ...toRange(r), page, size }), [JSON.stringify(f), JSON.stringify(toRange(r)), page, size]);
+  const doExport = (format: 'csv' | 'json') => { window.location.href = auditApi.exportMcpUrl(format, { ...f, ...toRange(r), env }); };
+  const list = useLoad(() => auditApi.mcp({ ...f, ...toRange(r), env, page, size }), [JSON.stringify(f), JSON.stringify(toRange(r)), env, page, size]);
 
   if (list.data && !list.data.available) return <Alert type="info" showIcon message={t('audit.mcp.unavailable')} data-testid="mcp-unavailable" />;
   return (

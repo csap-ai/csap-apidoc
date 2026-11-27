@@ -15,6 +15,7 @@ const Rules = lazy(() => import('@/pages/rules/Rules'));
 const ChangeList = lazy(() => import('@/pages/changes/ChangeList'));
 const ChangeForm = lazy(() => import('@/pages/changes/ChangeForm'));
 const ChangeDetail = lazy(() => import('@/pages/changes/ChangeDetail'));
+const EnvDiff = lazy(() => import('@/pages/envs/EnvDiff'));
 const Audit = lazy(() => import('@/pages/audit/Audit'));
 const Admin = lazy(() => import('@/pages/admin/Admin'));
 
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="/changes/new" element={<ChangeForm />} />
           <Route path="/changes/:id" element={<ChangeDetail />} />
           <Route path="/changes/:id/edit" element={<ChangeForm />} />
+          <Route path="/envs" element={<EnvDiff />} />
           <Route path="/audit" element={<Audit />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/:tab" element={<Admin />} />
