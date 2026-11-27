@@ -1,0 +1,71 @@
+# 团队版 1.1 多环境示例:一个 PostgreSQL 实例里的三个库
+#   app_team —— 团队版自己的表(主数据源)
+#   app_dev  —— 开发环境的开源规则表
+#   app_test —— 测试环境的开源规则表
+#
+# 这里是两个环境(dev / test),各一个库;团队版自己的表在主库 app_team。
+# 生产环境请把各环境的 datasource.url 指向服务各自共用的库,并删掉示例里的数据库服务。
+#
+#   export DB_PASSWORD='<数据库密码>'
+#   docker compose -f docker/docker-compose.multi-env.yml up -d
+#   访问 http://localhost:8090 ,首次打开完成初始化(创建管理员)。
+#
+# 之后在"管理 → 令牌"里为每个环境各建一个 REGISTER 令牌(创建时绑定环境),
+# dev 环境的服务用 dev 令牌注册,test 环境的服务用 test 令牌注册。
+# 各环境的服务要连对应的库:dev 的服务连 app_dev,test 的服务连 app_test,表前缀与下面一致。
+#
+# 环境用的配置也可以放进 application.yml 并挂载到 /app/config/application.yml,
+# 这里用环境变量(列表下标写法)是为了让示例只有一个文件。
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: app_team
+      POSTGRES_USER: csap
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?请设置 DB_PASSWORD}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      # 首次初始化时多建两个库(同一个 PostgreSQL 实例里)
+      - ./multi-env-init.sql:/docker-entrypoint-initdb.d/10-multi-env.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U csap -d app_team"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  team:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8090:8090"
+    environment:
+      # 主数据源:团队版自己的表
+      CSAP_TEAM_DB_URL: jdbc:postgresql://postgres:5432/app_team
+      CSAP_TEAM_DB_USER: csap
+      CSAP_TEAM_DB_PASSWORD: ${DB_PASSWORD}
+      CSAP_TEAM_RULE_TABLE_PREFIX: csap_apidoc_
+      CSAP_TEAM_PUBLIC_URL: ${PUBLIC_URL:-}
+      # 环境 1:dev(第一个 = 默认环境)
+      CSAP_TEAM_ENVIRONMENTS_0_KEY: dev
+      CSAP_TEAM_ENVIRONMENTS_0_NAME: 开发
+      CSAP_TEAM_ENVIRONMENTS_0_DATASOURCE_URL: jdbc:postgresql://postgres:5432/app_dev
+      CSAP_TEAM_ENVIRONMENTS_0_DATASOURCE_USERNAME: csap
+      CSAP_TEAM_ENVIRONMENTS_0_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      # 环境 2:test
+      CSAP_TEAM_ENVIRONMENTS_1_KEY: test
+      CSAP_TEAM_ENVIRONMENTS_1_NAME: 测试
+      CSAP_TEAM_ENVIRONMENTS_1_DATASOURCE_URL: jdbc:postgresql://postgres:5432/app_test
+      CSAP_TEAM_ENVIRONMENTS_1_DATASOURCE_USERNAME: csap
+      CSAP_TEAM_ENVIRONMENTS_1_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      # 想要生产环境受保护,再加一个环境并设置:
+      # CSAP_TEAM_ENVIRONMENTS_2_KEY: prod
+      # CSAP_TEAM_ENVIRONMENTS_2_NAME: 生产
+      # CSAP_TEAM_ENVIRONMENTS_2_PROTECTED: "true"
+    restart: unless-stopped
+
+volumes:
+  pg-data:

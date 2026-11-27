@@ -2,6 +2,8 @@
 
 CSAP Apidoc 团队版,免费开源(Apache-2.0),企业自部署。面向多服务、多成员的团队:文档中心、成员与角色、修改单(草稿、冲突检测、审批)、审计追溯、变更通知。
 
+> **1.1(开发中,未发布)**:多环境与一键推广、环境差异对比、修改单评论、编辑中提示、审计哈希链。设计见 [docs/design/team-1.1.md](docs/design/team-1.1.md),变更见 [CHANGELOG.md](CHANGELOG.md)。下文文档里标注"(1.1)"的内容在 1.1 发布后才可用。
+
 团队版是开源仓库 [csap-apidoc](../README.md) 的一部分(`csap-apidoc-team/` 目录),同样以 Apache-2.0 许可发布,无用户数限制、无授权文件。下文命令都在 `csap-apidoc-team/` 目录下执行;它不在仓库根 pom 的模块里(需要 JDK 17),单独构建。
 
 ## 文档
@@ -16,10 +18,14 @@ CSAP Apidoc 团队版,免费开源(Apache-2.0),企业自部署。面向多服务
 | [docs/user-guide.md](docs/user-guide.md) 使用手册 | 开发、维护者、只读成员 |
 | [docs/admin-guide.md](docs/admin-guide.md) 管理员手册 | 管理员、项目维护者 |
 | [docs/security.md](docs/security.md) 安全说明 | 运维、安全评审 |
+| [docs/environments.md](docs/environments.md) 多环境与推广(1.1) | 运维、管理员、维护者、开发 |
+| [docs/audit-chain.md](docs/audit-chain.md) 审计哈希链(1.1) | 管理员、运维、安全评审 |
+| [docs/upgrade-1.1.md](docs/upgrade-1.1.md) 从 1.0 升级到 1.1 | 部署运维 |
 
 内部资料:
 
-- [设计与接口契约](docs/design/team-1.0.md)
+- [设计与接口契约 1.0](docs/design/team-1.0.md)、[1.1](docs/design/team-1.1.md)
+- [更新日志](CHANGELOG.md)
 - [后端冒烟演示(curl)](docs/dev/backend-smoke.md)
 - [后端实现说明与契约解读](docs/dev/backend-notes.md)
 - [控制台前端说明](web/README.md)
@@ -30,7 +36,7 @@ CSAP Apidoc 团队版,免费开源(Apache-2.0),企业自部署。面向多服务
 |---|---|
 | `server/` | 后端(Spring Boot 3.3,Java 17,包 `ai.csap.apidoc.team`),单个可执行 jar,内含控制台前端 |
 | `web/` | 控制台前端(React + antd) |
-| `docker/` | Dockerfile 与 MySQL / PostgreSQL 的 docker-compose 示例 |
+| `docker/` | Dockerfile 与 MySQL / PostgreSQL 的 docker-compose 示例,以及两环境示例 `docker-compose.multi-env.yml`(1.1) |
 | `docs/` | 客户文档、设计、开发说明 |
 
 ## 构建与运行(开发)
