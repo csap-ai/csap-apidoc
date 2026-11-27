@@ -56,7 +56,7 @@ csap:
 
 ### 1.2 环境接口
 
-- `GET /api/v1/envs`(任何已登录用户)→ `[{"key","name","order","protected","readOnly","status":"UP|DOWN","error":string|null,"default":bool}]`。`order` 从 0 开始。不返回数据源地址。
+- `GET /api/v1/envs`(任何已登录用户)→ `[{"key","name","order","protected","readOnly","status":"UP|DOWN","error":string|null,"default":bool}]`。`order` 从 0 开始。不返回数据源地址。`error` 的数据库报错原文(可能含库地址、库名)只给管理员,其他用户看到固定文字"连接失败";`ENV_UNAVAILABLE` 的 message 也不带报错原文。
 
 ## 2. 服务与文档按环境(A)
 

@@ -36,10 +36,10 @@ public class EnvController {
         this.db = db;
     }
 
-    /** 任何已登录用户;不返回数据源地址。 */
+    /** 任何已登录用户;不返回数据源地址。连接失败的原文(可能含库地址)只给管理员,其他人只看到状态。 */
     @GetMapping
     public List<Map<String, Object>> list() {
-        access.user();
+        boolean admin = access.user().isAdmin();
         List<Map<String, Object>> out = new ArrayList<>();
         for (Env e : environments.all()) {
             Map<String, Object> m = new LinkedHashMap<>();
@@ -49,7 +49,7 @@ public class EnvController {
             m.put("protected", e.isProtected());
             m.put("readOnly", e.readOnly());
             m.put("status", e.isUp() ? "UP" : "DOWN");
-            m.put("error", e.error());
+            m.put("error", e.error() == null ? null : admin ? e.error() : "连接失败");
             m.put("default", e.order() == 0);
             out.add(m);
         }

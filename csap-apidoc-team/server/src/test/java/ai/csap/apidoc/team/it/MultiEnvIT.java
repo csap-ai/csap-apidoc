@@ -133,7 +133,9 @@ class MultiEnvIT extends AbstractIT {
             assertTrue(list.get(i).get("error").isNull());
         }
         assertEquals("DOWN", list.get(4).get("status").asText());
-        assertFalse(list.get(4).get("error").isNull());
+        // 连接失败的原文只给管理员,普通成员只看到"连接失败"
+        assertEquals("连接失败", list.get(4).get("error").asText());
+        assertFalse(admin.get("/api/v1/envs").json().get(4).get("error").asText().equals("连接失败"));
         // 不返回数据源地址,错误信息里没有密码
         assertFalse(r.text().contains("jdbc:"), r.text());
         assertFalse(r.text().contains("pw-secret"), r.text());
@@ -265,6 +267,7 @@ class MultiEnvIT extends AbstractIT {
         Api.Resp r = admin.get("/api/v1/rules/" + svc + "?env=down");
         assertEquals(503, r.status(), r.text());
         assertEquals("ENV_UNAVAILABLE", r.code());
+        assertFalse(r.text().contains("jdbc:"), r.text());
         assertTrue(r.json().get("message").asText().contains("故障库"));
         assertFalse(r.text().contains("pw-secret"));
         assertEquals(503, admin.get("/api/v1/rules/" + svc + "/item?key=K&env=down").status());
