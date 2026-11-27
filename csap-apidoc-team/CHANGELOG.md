@@ -14,7 +14,8 @@
 - **修改单评论**:`GET/POST /api/v1/changes/{id}/comments`、`PATCH/DELETE /api/v1/comments/{id}`,可关联到某条规则;软删除;审计 `comment.create / update / delete`;Webhook 事件 `change.commented`。
 - **编辑中提示**:`PUT/DELETE/GET /api/v1/presence`(进程内存)显示谁正在编辑某条规则;`GET /rules/{service}/item` 增加 `openChanges`,`GET /changes/{id}` 每项增加 `overlaps`,提示同一条规则上其它未完成的修改单。
 - **审计哈希链**:每条审计带 `prev_hash` / `hash`(SHA-256 链),`GET /api/v1/audit/verify` 与控制台"校验哈希链"按钮,保留期清理后用 anchor 接上,Webhook 事件 `audit.checkpoint` 用于外部锚定,独立校验脚本 [docs/tools/verify-audit-chain.py](docs/tools/verify-audit-chain.py)。见 [docs/audit-chain.md](docs/audit-chain.md)。
-- 所有 Webhook 事件的通用请求体增加 `env`;通知正文带环境名。
+- 所有 Webhook 事件的通用请求体增加 `env`;配置了 2 个及以上环境时通知正文带环境名。
+- 409 冲突响应增加 `changeId`,控制台一键推广遇到冲突时直接打开该修改单。
 - 新增错误码 `ENV_UNAVAILABLE`(HTTP 503)。
 - 新增配置 `csap.team.environments`、`csap.team.presence.ttl-seconds`、`csap.team.audit.checkpoint-cron`。
 - 新增 Docker 示例 `docker/docker-compose.multi-env.yml`(两个 PostgreSQL 库、两个环境)。
@@ -23,7 +24,12 @@
 
 - 数据库表结构版本 `1` → `2`。启动时自动升级(`create-tables=false` 时需手工执行 `upgrade/2/{方言}.sql`)。新增表 `csap_team_service_env`、`csap_team_env_instance`、`csap_team_comment`,新增列 `env_key`(修改单、审计、令牌)、`source_env`、`env_keys`。
 - 升级时已有审计被逐条封存进哈希链,并追加一条 `audit.chain.sealed`。**升级前的记录只能证明升级之后没被改过。**
+- 审计保留期清理改为只删除"第一条仍在保留期内的记录"之前的整段(按 id),以免打断哈希链;夹在中间的过期记录会晚一些删除。
 - `csap_team_service_instance` 的数据在升级时丢弃(实例在一个心跳周期内重新注册),表保留。`csap_team_project_service` 的地址列保留但不再读写。
+
+### 修复
+
+- 同一个新服务的多个实例同时首次注册时,PostgreSQL 上部分注册返回 HTTP 500(1.0 也有此问题;多环境下同一服务在各环境同时启动更容易出现)。
 
 ### 不兼容
 

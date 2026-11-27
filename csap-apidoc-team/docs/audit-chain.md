@@ -54,6 +54,8 @@ hash = lowercase_hex( SHA-256( prev_hash + "\n" + canonical ) )
 
 所以清理不会让链断掉,校验仍然通过。
 
+注意(1.1 起):为了不打断链,清理只删除"第一条仍在保留期内的记录"**之前的整段**(按 id)。夹在较新记录之间的过期记录,要等它前面的记录也过期后才会一起删除;所以实际保留的记录可能比 `retention-days` 稍多。1.0 是删除所有过期记录。
+
 ## 在控制台校验
 
 管理员:菜单"审计"→ "校验哈希链"按钮,显示结果:是否通过、校验条数、链头 id 与哈希、第一条有问题的记录 id 和原因。
@@ -89,7 +91,7 @@ curl -s 'https://team.example.com/api/v1/audit/verify' -H 'X-CSAP-Team: 1' -b co
 | `HASH_MISMATCH` | 这条记录的内容与它的哈希对不上:内容被改过 |
 | `PREV_MISMATCH` | 这条记录的 `prev_hash` 不等于上一条的 `hash`:中间有记录被删、被插入或被替换 |
 | `MISSING_HASH` | 这条记录没有哈希(升级后不应出现) |
-| `GAP` | id 不连续;仅用于说明原因 |
+| `GAP` | 仅在不带范围的全量校验中出现:最后几条记录被删,链头(`audit.chain.head`)对不上。id 跳号(事务回滚)但 `prev_hash` 接得上不算问题;中间有记录被删报 `PREV_MISMATCH` |
 
 注意:数据库自增 id 在事务回滚时会跳号,**id 跳号本身不算错**。实际判断以 `prev_hash` 能否接上为准。
 

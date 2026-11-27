@@ -375,7 +375,7 @@ docker run -d --name csap-team -p 8090:8090 \
 | `VALIDATION` | 400 | 提交的内容有误 |
 | `CONFLICT` | 409 | 版本冲突或重名 |
 | `SETUP_REQUIRED` | 412 | 系统尚未初始化 |
-| `ENV_UNAVAILABLE` | 503 | (1.1)目标环境不可用(`DOWN`),message 带环境名 |
+| `ENV_UNAVAILABLE` | 503 | (1.1)目标环境不可用(`DOWN`),message 带环境名,不带数据库报错原文 |
 | `LOCKED` | 429 | 登录失败过多,账号暂时锁定 15 分钟 |
 | `INTERNAL` | 500 | 服务器内部错误 |
 
