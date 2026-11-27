@@ -126,7 +126,8 @@ public class ServiceService {
             throw ApiException.validation("项目不存在");
         }
         long now = System.currentTimeMillis();
-        db.inTx(() -> {
+        // 不放进事务:PostgreSQL 里唯一键冲突会让所在事务中止,后面的语句全部失败;这里每条语句各自提交即可
+        {
             if (get(name) == null) {
                 try {
                     db.update("INSERT INTO csap_team_project_service (service, project_id, doc_path, source, created_at)"
@@ -141,7 +142,7 @@ public class ServiceService {
             } catch (DuplicateKeyException e) {
                 throw ApiException.conflict("服务在环境「" + env.name() + "」已存在");
             }
-        });
+        }
         return envRow(name, env.key());
     }
 
@@ -177,7 +178,10 @@ public class ServiceService {
         }
         Env env = tokenEnv(token);
         long now = System.currentTimeMillis();
-        boolean created = db.inTx(() -> {
+        // 不放进事务:同一服务在多个环境(或多个实例)同时首次注册时会并发插入同一行,
+        // PostgreSQL 里唯一键冲突会让所在事务中止;这里都是幂等的 upsert,每条语句各自提交即可
+        boolean created;
+        {
             Row existing = get(service);
             if (existing != null && token.projectId() != null && existing.projectId() != null
                     && !existing.projectId().equals(token.projectId())) {
@@ -199,8 +203,8 @@ public class ServiceService {
             }
             boolean createdEnv = upsertEnv(service, env.key(), baseUrl, docPath, now);
             upsertInstance(env.key(), service, instanceId, baseUrl, now);
-            return createdService || createdEnv;
-        });
+            created = createdService || createdEnv;
+        }
         if (created) {
             audit.log("service.register").project(token.projectId()).env(env.key()).service(service)
                     .reason(language + " " + version + " " + instanceId).save();
