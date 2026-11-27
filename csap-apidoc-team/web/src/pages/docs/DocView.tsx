@@ -5,6 +5,9 @@ import { ArrowLeftOutlined } from '@ant-design/icons';
 import { docApi } from '@/api/endpoints';
 import type { DocMethod, DocParam } from '@/api/types';
 import { PageTitle } from '@/components/common';
+import { EnvTagByKey } from '@/components/EnvSwitcher';
+import { useEnv } from '@/env/EnvContext';
+import { ApiError } from '@/api/client';
 import { useLoad } from '@/utils/useLoad';
 import { fmtTime } from '@/utils/format';
 import { t } from '@/i18n';
@@ -60,7 +63,8 @@ export default function DocView() {
   const [sp] = useSearchParams();
   const [filter, setFilter] = useState('');
   const [selKey, setSelKey] = useState<string | undefined>();
-  const { data, loading, error } = useLoad(() => docApi.get(service), [service], { silent: true });
+  const { env, multi } = useEnv();
+  const { data, loading, error } = useLoad(() => docApi.get(service, env), [service, env], { silent: true });
 
   const controllers = useMemo(() => data?.doc.data.apiList ?? [], [data]);
   const all = useMemo(() => controllers.flatMap((c) => c.methodList.map((m) => ({ c, m }))), [controllers]);
@@ -77,12 +81,14 @@ export default function DocView() {
   return (
     <>
       <PageTitle
-        title={<Space><Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/docs')} aria-label={t('common.back')} />{service}{data?.doc.data.apiInfo?.version && <Tag>v{data.doc.data.apiInfo.version}</Tag>}</Space>}
+        title={<Space><Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/docs')} aria-label={t('common.back')} />{service}{multi && <EnvTagByKey envKey={env} />}{data?.doc.data.apiInfo?.version && <Tag>v{data.doc.data.apiInfo.version}</Tag>}</Space>}
         extra={<Link to={`/rules/${encodeURIComponent(service)}`}>{t('docs.toRules')}</Link>}
       />
       {data?.stale && <Alert type="warning" showIcon message={t('docs.stale')} style={{ marginBottom: 12 }} />}
       {data?.fetchedAt && <Typography.Text type="secondary">{t('docs.fetchedAt')} {fmtTime(data.fetchedAt)}</Typography.Text>}
-      {error && !loading && <Alert type="info" showIcon message={t('docs.noDoc')} style={{ marginTop: 12 }} />}
+      {error && !loading && (error instanceof ApiError && error.code === 'ENV_UNAVAILABLE'
+        ? <Alert type="error" showIcon message={error.message} style={{ marginTop: 12 }} />
+        : <Alert type="info" showIcon message={t('docs.noDoc')} style={{ marginTop: 12 }} />)}
       {!error && (
         <Layout style={{ background: 'transparent', marginTop: 12, gap: 16, flexDirection: 'row' }}>
           <Card size="small" loading={loading} style={{ width: 250, flex: 'none', maxHeight: 'calc(100vh - 220px)', overflow: 'auto' }}>

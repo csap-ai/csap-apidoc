@@ -97,7 +97,7 @@ class ServicesDocsIT extends AbstractIT {
         assertEquals(200, r.post("/api/open/v1/services/register", register(svc, "10.0.0.5:8080", "http://10.0.0.5:8080")).status());
         assertEquals(200, r.post("/api/open/v1/services/register", register(svc, "10.0.0.6:8080", "http://10.0.0.6:8080")).status());
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM csap_team_project_service WHERE service = ?", Integer.class, svc));
-        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM csap_team_service_instance WHERE service = ?", Integer.class, svc));
+        assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM csap_team_env_instance WHERE service = ?", Integer.class, svc));
         // 注册的新服务:未分配 + 一条审计
         JsonNode unassigned = admin.get("/api/v1/services?unassigned=true").json();
         JsonNode mine = null;
@@ -134,11 +134,11 @@ class ServicesDocsIT extends AbstractIT {
         assertEquals(other, services.get(newSvc).projectId().longValue(), "绑定项目的令牌注册的新服务直接归属该项目");
 
         // 离线判定:超过 3 个心跳周期没上报
-        assertEquals(2, services.onlineInstances(svc, System.currentTimeMillis()));
-        assertEquals(0, services.onlineInstances(svc, System.currentTimeMillis() + 3 * 30_000L + 5_000));
+        assertEquals(2, services.onlineInstances("default", svc, System.currentTimeMillis()));
+        assertEquals(0, services.onlineInstances("default", svc, System.currentTimeMillis() + 3 * 30_000L + 5_000));
         // 注销
         assertEquals(200, r.post("/api/open/v1/services/deregister", Map.of("service", svc, "instanceId", "10.0.0.6:8080")).status());
-        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM csap_team_service_instance WHERE service = ?", Integer.class, svc));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM csap_team_env_instance WHERE service = ?", Integer.class, svc));
     }
 
     @Test
@@ -182,7 +182,7 @@ class ServicesDocsIT extends AbstractIT {
             http.handler = req -> new LocalHttp.Res(200, DOC);
             String svc = unique("docs");
             assertEquals(200, admin.post("/api/v1/services", Map.of("service", svc, "baseUrl", http.url(), "projectId", project)).status());
-            ServiceService.Row row = services.get(svc);
+            ServiceService.EnvRow row = services.envRow(svc, "default");
 
             Api.Resp d = admin.get("/api/v1/docs/" + svc);
             assertEquals(200, d.status(), d.text());
@@ -238,11 +238,11 @@ class ServicesDocsIT extends AbstractIT {
             String svc = unique("regdoc");
             Api r = Api.bearer(port, token(admin, "REGISTER", project));
             assertEquals(200, r.post("/api/open/v1/services/register", register(svc, "a:1", http.url())).status());
-            assertTrue(docs.refresh(services.get(svc)));
+            assertTrue(docs.refresh(services.envRow(svc, "default")));
             assertEquals("ONLINE", statusOf(admin, svc));
             assertEquals(DOC, admin.get("/api/v1/docs/" + svc).text());
             // 实例超过 3 个心跳周期没上报 -> OFFLINE(有缓存仍可读)
-            jdbc.update("UPDATE csap_team_service_instance SET last_seen_at = ? WHERE service = ?", System.currentTimeMillis() - 200_000, svc);
+            jdbc.update("UPDATE csap_team_env_instance SET last_seen_at = ? WHERE service = ?", System.currentTimeMillis() - 200_000, svc);
             assertEquals("OFFLINE", statusOf(admin, svc));
             assertEquals(200, admin.get("/api/v1/docs/" + svc).status());
         }

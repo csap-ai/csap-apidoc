@@ -24,6 +24,7 @@ import ai.csap.apidoc.team.auth.Role;
 import ai.csap.apidoc.team.auth.SessionUser;
 import ai.csap.apidoc.team.common.ApiException;
 import ai.csap.apidoc.team.db.Db;
+import ai.csap.apidoc.team.env.Environments;
 
 /** Webhook 管理:管理员全部;维护者只能管理所在项目的。secret 只写不回显。 */
 @RestController
@@ -36,12 +37,46 @@ public class WebhookController {
     private final Db db;
     private final Access access;
     private final AuditService audit;
+    private final Environments environments;
 
-    public WebhookController(WebhookService service, Db db, Access access, AuditService audit) {
+    public WebhookController(WebhookService service, Db db, Access access, AuditService audit, Environments environments) {
         this.service = service;
         this.db = db;
         this.access = access;
         this.audit = audit;
+        this.environments = environments;
+    }
+
+    /** 订阅环境:空 / 省略 = 全部(存 null);否则逗号分隔的环境 key。 */
+    private String envKeys(Object v) {
+        if (v == null) {
+            return null;
+        }
+        List<String> keys = new ArrayList<>();
+        if (v instanceof List<?> l) {
+            for (Object o : l) {
+                keys.add(String.valueOf(o));
+            }
+        } else if (v instanceof String s) {
+            for (String p : s.split(",")) {
+                if (!p.isBlank()) {
+                    keys.add(p.trim());
+                }
+            }
+        } else {
+            throw ApiException.validation("environments 必须是数组");
+        }
+        if (keys.isEmpty()) {
+            return null;
+        }
+        for (String k : keys) {
+            environments.require(k);
+        }
+        String joined = String.join(",", keys.stream().distinct().toList());
+        if (joined.length() > 512) {
+            throw ApiException.validation("environments 过长");
+        }
+        return joined;
     }
 
     @GetMapping
@@ -68,9 +103,11 @@ public class WebhookController {
         String secret = secret(body.get("secret"));
         String events = events(body.get("events"));
         boolean enabled = !body.containsKey("enabled") || Boolean.TRUE.equals(body.get("enabled"));
+        String envKeys = envKeys(body.get("environments"));
         long now = System.currentTimeMillis();
         long id = db.insert("INSERT INTO csap_team_webhook (project_id, name, kind, url, secret, events, enabled, created_at,"
-                + " updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", projectId, name, kind, url, secret, events, enabled ? 1 : 0, now, now);
+                + " updated_at, env_keys) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", projectId, name, kind, url, secret, events,
+                enabled ? 1 : 0, now, now, envKeys);
         audit.log("webhook.create").project(projectId).reason(name + " (" + kind + ")").save();
         return service.get(id).toMap();
     }
@@ -84,6 +121,8 @@ public class WebhookController {
         String secret = h.secret();
         String events = h.events();
         boolean enabled = h.enabled();
+        String envKeys = h.envKeys();
+        if (body.containsKey("environments")) { envKeys = envKeys(body.get("environments")); }
         if (body.containsKey("name")) { name = text(body, "name", 128, true); }
         if (body.containsKey("kind")) {
             kind = body.get("kind") instanceof String k ? k : null;
@@ -95,8 +134,8 @@ public class WebhookController {
         if (body.containsKey("secret")) { secret = secret(body.get("secret")); }
         if (body.containsKey("events")) { events = events(body.get("events")); }
         if (body.containsKey("enabled")) { enabled = Boolean.TRUE.equals(body.get("enabled")); }
-        db.update("UPDATE csap_team_webhook SET name = ?, kind = ?, url = ?, secret = ?, events = ?, enabled = ?, updated_at = ?"
-                + " WHERE id = ?", name, kind, url, secret, events, enabled ? 1 : 0, System.currentTimeMillis(), id);
+        db.update("UPDATE csap_team_webhook SET name = ?, kind = ?, url = ?, secret = ?, events = ?, enabled = ?, updated_at = ?,"
+                + " env_keys = ? WHERE id = ?", name, kind, url, secret, events, enabled ? 1 : 0, System.currentTimeMillis(), envKeys, id);
         audit.log("webhook.update").project(h.projectId()).reason(name).save();
         return service.get(id).toMap();
     }

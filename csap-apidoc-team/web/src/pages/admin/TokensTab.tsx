@@ -4,6 +4,8 @@ import { message } from '@/utils/notify';
 import { CopyOutlined } from '@ant-design/icons';
 import { projectApi, tokenApi } from '@/api/endpoints';
 import type { TokenCreated, TokenInfo, TokenScope } from '@/api/types';
+import { useEnv } from '@/env/EnvContext';
+import { EnvTagByKey } from '@/components/EnvSwitcher';
 import { useLoad } from '@/utils/useLoad';
 import { showError } from '@/utils/errors';
 import { copyText, fmtTime } from '@/utils/format';
@@ -15,8 +17,10 @@ export default function TokensTab() {
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<TokenCreated | null>(null); // 明文只存在这里,关闭即丢弃
   const [form] = Form.useForm();
+  const { envs, multi } = useEnv();
+  const scope = Form.useWatch('scope', form);
 
-  const create = async (v: { name: string; scope: TokenScope; projectId?: number }) => {
+  const create = async (v: { name: string; scope: TokenScope; projectId?: number; env?: string }) => {
     try {
       const tk = await tokenApi.create(v);
       setCreating(false);
@@ -42,6 +46,7 @@ export default function TokensTab() {
           { title: t('token.prefix'), dataIndex: 'prefix', width: 110, render: (p: string) => <span className="mono">{p}…</span> },
           { title: t('token.scope'), dataIndex: 'scope', width: 110, render: (s: string) => <Tag>{s}</Tag> },
           { title: t('common.project'), dataIndex: 'projectId', width: 110, render: (id: number | null) => (id ? projects.data?.find((p) => p.id === id)?.name ?? id : t('webhook.global')) },
+          ...(multi ? [{ title: t('token.env'), dataIndex: 'env', width: 110, render: (e: string | null | undefined, tk: TokenInfo) => (tk.scope === 'REGISTER' ? (e ? <EnvTagByKey envKey={e} /> : t('env.defaultEnv')) : '-') }] : []),
           { title: t('changes.createdAt'), dataIndex: 'createdAt', width: 170, render: fmtTime },
           { title: t('token.lastUsed'), dataIndex: 'lastUsedAt', width: 170, render: (v: number | null) => (v ? fmtTime(v) : t('common.never')) },
           { title: t('common.operation'), width: 100, render: (_, tk) => tk.revoked ? <Tag>{t('token.revoked')}</Tag> : (
@@ -53,6 +58,11 @@ export default function TokensTab() {
         <Form form={form} layout="vertical" onFinish={create} initialValues={{ scope: 'REGISTER' }}>
           <Form.Item name="name" label={t('token.name')} rules={[{ required: true, message: t('common.required') }]}><Input /></Form.Item>
           <Form.Item name="scope" label={t('token.scope')}><Select options={(['REGISTER', 'OPEN_API'] as const).map((s) => ({ value: s, label: tDyn('token.scope', s) }))} /></Form.Item>
+          {multi && scope === 'REGISTER' && (
+            <Form.Item name="env" label={t('token.env')} extra={t('token.envHint')}>
+              <Select allowClear placeholder={t('env.defaultEnv')} options={envs.map((e) => ({ value: e.key, label: e.name }))} />
+            </Form.Item>
+          )}
           <Form.Item name="projectId" label={t('token.projectLimit')}><Select allowClear options={(projects.data ?? []).map((p) => ({ value: p.id, label: p.name }))} /></Form.Item>
         </Form>
       </Modal>

@@ -21,7 +21,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
-import ai.csap.apidoc.team.audit.AuditRetention;
 import ai.csap.apidoc.team.audit.McpAuditService;
 import ai.csap.apidoc.team.config.TeamProperties;
 import ai.csap.apidoc.team.support.AbstractIT;
@@ -39,8 +38,6 @@ class AuditWebhookIT extends AbstractIT {
     }
 
     @Autowired
-    AuditRetention retention;
-    @Autowired
     TeamProperties props;
     @Autowired
     McpAuditService mcp;
@@ -48,7 +45,7 @@ class AuditWebhookIT extends AbstractIT {
     // ---------- 审计导出 ----------
 
     @Test
-    void exportCsvHasBomAndJsonIsAnArray() throws Exception {
+    void exportCsvHasBomAndJsonHasAnchorAndItems() throws Exception {
         Api admin = admin();
         long project = newProject(admin, true);
         String svc = newService(admin, project);
@@ -73,7 +70,9 @@ class AuditWebhookIT extends AbstractIT {
 
         Api.Resp json = admin.get("/api/v1/audit/export?format=json&service=" + svc + "&action=change.publish");
         assertEquals(200, json.status());
-        JsonNode arr = json.json();
+        // 1.1:JSON 导出改为 {"anchor":...,"items":[...]}(契约 6.5,唯一的不兼容变化)
+        assertTrue(json.json().has("anchor"));
+        JsonNode arr = json.json().get("items");
         assertTrue(arr.isArray());
         assertEquals(1, arr.size());
         assertEquals("change.publish", arr.get(0).get("action").asText());
@@ -81,31 +80,8 @@ class AuditWebhookIT extends AbstractIT {
         // 导出本身也被审计
         assertTrue(auditList(admin, "action=audit.export").get("total").asInt() >= 2);
         // 无结果时仍是合法 JSON
-        assertEquals(0, admin.get("/api/v1/audit/export?format=json&service=nonexistent-" + unique("x")).json().size());
+        assertEquals(0, admin.get("/api/v1/audit/export?format=json&service=nonexistent-" + unique("x")).json().get("items").size());
         assertNotNull(c);
-    }
-
-    @Test
-    void retentionPurgesOldEntriesAndRecordsThePurge() {
-        Api admin = admin();
-        long now = System.currentTimeMillis();
-        jdbc.update("INSERT INTO csap_team_audit (at, actor_type, actor_name, source, action) VALUES (?, 'SYSTEM', 'old', 'SYSTEM', 'old.entry')",
-                now - 40L * 86_400_000L);
-        jdbc.update("INSERT INTO csap_team_audit (at, actor_type, actor_name, source, action) VALUES (?, 'SYSTEM', 'new', 'SYSTEM', 'new.entry')",
-                now - 1L * 86_400_000L);
-        assertEquals(0, retention.purge(now), "默认 0 = 永久,不清理");
-        assertEquals(1, auditList(admin, "action=old.entry").get("total").asInt());
-        props.getAudit().setRetentionDays(30);
-        try {
-            assertTrue(retention.purge(now) >= 1);
-        } finally {
-            props.getAudit().setRetentionDays(0);
-        }
-        assertEquals(0, auditList(admin, "action=old.entry").get("total").asInt());
-        assertEquals(1, auditList(admin, "action=new.entry").get("total").asInt());
-        JsonNode purge = auditList(admin, "action=audit.purge");
-        assertTrue(purge.get("total").asInt() >= 1);
-        assertEquals("SYSTEM", purge.get("items").get(0).get("source").asText());
     }
 
     // ---------- MCP 调用审计 ----------

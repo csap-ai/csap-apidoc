@@ -23,6 +23,8 @@ import ai.csap.apidoc.team.auth.SessionUser;
 import ai.csap.apidoc.team.common.ApiException;
 import ai.csap.apidoc.team.db.Db;
 import ai.csap.apidoc.team.docs.DocsService;
+import ai.csap.apidoc.team.env.Env;
+import ai.csap.apidoc.team.env.Environments;
 
 @RestController
 @RequestMapping("/api/v1/services")
@@ -33,31 +35,64 @@ public class ServiceController {
     private final Db db;
     private final Access access;
     private final AuditService audit;
+    private final Environments environments;
 
-    public ServiceController(ServiceService services, DocsService docs, Db db, Access access, AuditService audit) {
+    public ServiceController(ServiceService services, DocsService docs, Db db, Access access, AuditService audit,
+                             Environments environments) {
         this.services = services;
         this.docs = docs;
         this.db = db;
         this.access = access;
         this.audit = audit;
+        this.environments = environments;
     }
 
-    Map<String, Object> toMap(ServiceService.Row r, Map<Long, String> projectNames, long now) {
+    private Map<String, Object> envMap(ServiceService.EnvRow e, long now) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("env", e.env());
+        m.put("baseUrl", e.baseUrl());
+        m.put("docPath", e.docPath());
+        m.put("source", e.source());
+        m.put("status", docs.status(e, now));
+        m.put("instances", services.onlineInstances(e.env(), e.service(), now));
+        m.put("lastSeenAt", e.lastSeenAt());
+        DocsService.Cached c = docs.cached(e.env(), e.service());
+        m.put("lastFetchedAt", c == null ? null : c.fetchedAt());
+        return m;
+    }
+
+    /** 顶层字段取 env 所指环境(没有记录时为 null、status=OFFLINE);envs 列出该服务出现过的所有环境。 */
+    Map<String, Object> toMap(ServiceService.Row r, List<ServiceService.EnvRow> envRows, Env env, Map<Long, String> projectNames,
+                              long now) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("service", r.service());
         m.put("projectId", r.projectId());
         m.put("projectName", r.projectId() == null ? null : projectNames.get(r.projectId()));
-        m.put("baseUrl", r.baseUrl());
-        m.put("docPath", r.docPath());
+        ServiceService.EnvRow cur = envRows.stream().filter(e -> e.env().equals(env.key())).findFirst().orElse(null);
+        Map<String, Object> top = cur == null ? null : envMap(cur, now);
+        m.put("baseUrl", cur == null ? null : cur.baseUrl());
+        m.put("docPath", cur == null ? null : cur.docPath());
         m.put("language", r.language());
         m.put("frameworkVersion", r.frameworkVersion());
-        m.put("source", r.source());
-        m.put("status", docs.status(r, now));
-        m.put("instances", services.onlineInstances(r.service(), now));
-        m.put("lastSeenAt", r.lastSeenAt());
-        DocsService.Cached c = docs.cached(r.service());
-        m.put("lastFetchedAt", c == null ? null : c.fetchedAt());
+        m.put("source", cur == null ? null : cur.source());
+        m.put("status", top == null ? "OFFLINE" : top.get("status"));
+        m.put("instances", top == null ? 0 : top.get("instances"));
+        m.put("lastSeenAt", cur == null ? null : cur.lastSeenAt());
+        m.put("lastFetchedAt", top == null ? null : top.get("lastFetchedAt"));
+        List<Map<String, Object>> envs = new ArrayList<>();
+        for (Env e : environments.all()) {
+            for (ServiceService.EnvRow er : envRows) {
+                if (er.env().equals(e.key())) {
+                    envs.add(envMap(er, now));
+                }
+            }
+        }
+        m.put("envs", envs);
         return m;
+    }
+
+    private Map<String, Object> one(String service, Env env) {
+        return toMap(services.get(service), services.envRows(service), env, projectNames(), System.currentTimeMillis());
     }
 
     private Map<Long, String> projectNames() {
@@ -70,10 +105,16 @@ public class ServiceController {
 
     @GetMapping
     public List<Map<String, Object>> list(@RequestParam(required = false) Long projectId,
-                                          @RequestParam(required = false) Boolean unassigned) {
+                                          @RequestParam(required = false) Boolean unassigned,
+                                          @RequestParam(required = false) String env) {
         SessionUser u = access.user();
+        Env e = environments.require(env);
         Set<Long> visible = access.projectsWith(u, Role.VIEWER);
         Map<Long, String> names = projectNames();
+        Map<String, List<ServiceService.EnvRow>> byService = new java.util.HashMap<>();
+        for (ServiceService.EnvRow er : services.allEnvRows()) {
+            byService.computeIfAbsent(er.service(), k -> new ArrayList<>()).add(er);
+        }
         long now = System.currentTimeMillis();
         List<Map<String, Object>> out = new ArrayList<>();
         for (ServiceService.Row r : services.all()) {
@@ -86,32 +127,36 @@ public class ServiceController {
             if (Boolean.TRUE.equals(unassigned) && r.projectId() != null) {
                 continue;
             }
-            out.add(toMap(r, names, now));
+            out.add(toMap(r, byService.getOrDefault(r.service(), List.of()), e, names, now));
         }
         return out;
     }
 
     @PostMapping
     public Map<String, Object> add(@RequestBody Map<String, Object> body) {
-        Long projectId = body.get("projectId") instanceof Number n ? n.longValue() : null;
+        Env e = environments.require(str(body, "env"));
+        String name = ServiceService.checkName(str(body, "service"));
+        ServiceService.Row existing = services.get(name);
+        Long projectId = existing != null ? existing.projectId()
+                : (body.get("projectId") instanceof Number n ? n.longValue() : null);
         if (projectId == null) {
             access.admin();
         } else {
             access.requireRole(projectId, Role.MAINTAINER);
         }
-        ServiceService.Row r = services.addManual(str(body, "service"), str(body, "baseUrl"), str(body, "docPath"), projectId);
-        audit.log("service.create").project(projectId).service(r.service()).reason(r.baseUrl()).save();
+        ServiceService.EnvRow r = services.addManual(name, str(body, "baseUrl"), str(body, "docPath"), projectId, e);
+        audit.log("service.create").project(projectId).env(e.key()).service(r.service()).reason(r.baseUrl()).save();
         docs.refreshAsync(r);
-        return toMap(r, projectNames(), System.currentTimeMillis());
+        return one(r.service(), e);
     }
 
     @PatchMapping("/{service}")
-    public Map<String, Object> update(@PathVariable String service, @RequestBody Map<String, Object> body) {
+    public Map<String, Object> update(@PathVariable String service, @RequestBody Map<String, Object> body,
+                                      @RequestParam(required = false) String env) {
         ServiceService.Row r = load(service);
+        Env e = environments.require(env);
         authorize(r);
         Long projectId = r.projectId();
-        String baseUrl = r.baseUrl();
-        String docPath = r.docPath();
         StringBuilder changed = new StringBuilder();
         if (body.containsKey("projectId")) {
             Object v = body.get("projectId");
@@ -130,28 +175,44 @@ public class ServiceController {
             projectId = target;
             changed.append("projectId ");
         }
-        if (body.containsKey("baseUrl")) {
-            baseUrl = ServiceService.checkBaseUrl(str(body, "baseUrl"));
-            changed.append("baseUrl ");
+        if (body.containsKey("baseUrl") || body.containsKey("docPath")) {
+            ServiceService.EnvRow er = services.envRow(service, e.key());
+            if (er == null) {
+                throw ApiException.notFound("服务在环境「" + e.name() + "」没有地址,请先添加");
+            }
+            String baseUrl = er.baseUrl();
+            String docPath = er.docPath();
+            if (body.containsKey("baseUrl")) {
+                baseUrl = ServiceService.checkBaseUrl(str(body, "baseUrl"));
+                changed.append("baseUrl ");
+            }
+            if (body.containsKey("docPath")) {
+                docPath = ServiceService.checkDocPath(str(body, "docPath"));
+                changed.append("docPath ");
+            }
+            services.updateEnvRow(service, e.key(), baseUrl, docPath);
         }
-        if (body.containsKey("docPath")) {
-            docPath = ServiceService.checkDocPath(str(body, "docPath"));
-            changed.append("docPath ");
-        }
-        db.update("UPDATE csap_team_project_service SET project_id = ?, base_url = ?, doc_path = ? WHERE service = ?", projectId,
-                baseUrl, docPath, service);
-        audit.log("service.update").project(projectId).service(service).before(r.projectId() == null ? null : String.valueOf(r.projectId()))
+        db.update("UPDATE csap_team_project_service SET project_id = ? WHERE service = ?", projectId, service);
+        audit.log("service.update").project(projectId).env(e.key()).service(service)
+                .before(r.projectId() == null ? null : String.valueOf(r.projectId()))
                 .after(projectId == null ? null : String.valueOf(projectId)).reason(changed.toString().trim()).save();
-        return toMap(services.get(service), projectNames(), System.currentTimeMillis());
+        return one(service, e);
     }
 
     @DeleteMapping("/{service}")
-    public Map<String, Object> delete(@PathVariable String service) {
+    public Map<String, Object> delete(@PathVariable String service, @RequestParam(required = false) String env) {
         ServiceService.Row r = load(service);
         authorize(r);
-        services.delete(service);
-        docs.forget(service);
-        audit.log("service.delete").project(r.projectId()).service(service).save();
+        if (env != null && !env.isBlank()) {
+            Env e = environments.require(env);
+            services.deleteEnv(service, e.key());
+            docs.forget(e.key(), service);
+            audit.log("service.delete").project(r.projectId()).env(e.key()).service(service).save();
+        } else {
+            services.delete(service);
+            docs.forgetAll(service);
+            audit.log("service.delete").project(r.projectId()).service(service).save();
+        }
         return new LinkedHashMap<>();
     }
 

@@ -10,7 +10,7 @@ import java.util.function.Consumer;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 
-import ai.csap.apidoc.team.db.Db;
+import ai.csap.apidoc.team.env.Env;
 
 /** 读开源 Java 写入的 {prefix}mcp_audit(团队版不复制数据);表不存在时 available=false。 */
 @Service
@@ -20,26 +20,26 @@ public class McpAuditService {
     private static final String COLS = "id, service, at, caller, remote_address, tool, target, arguments, status, success, result,"
             + " duration_ms";
 
-    private final Db db;
-    private volatile long checkedAt;
-    private volatile boolean available;
-
-    public McpAuditService(Db db) {
-        this.db = db;
+    private record Probe(long at, boolean available) {
     }
+
+    private final java.util.Map<String, Probe> probes = new java.util.concurrent.ConcurrentHashMap<>();
 
     /** 清除"表是否存在"的缓存(仅供测试)。 */
     public void resetCache() {
-        checkedAt = 0;
+        probes.clear();
     }
 
-    public boolean available() {
+    /** 该环境的 {prefix}mcp_audit 是否存在;环境不可用时抛 ENV_UNAVAILABLE。 */
+    public boolean available(Env env) {
+        env.db();
         long now = System.currentTimeMillis();
-        if (now - checkedAt > CACHE_MS) {
-            available = db.tableExists(db.mcpAuditTable());
-            checkedAt = now;
+        Probe p = probes.get(env.key());
+        if (p == null || now - p.at() > CACHE_MS) {
+            p = new Probe(now, env.db().tableExists(env.mcpAuditTable()));
+            probes.put(env.key(), p);
         }
-        return available;
+        return p.available();
     }
 
     public static final class Filter {
@@ -89,9 +89,9 @@ public class McpAuditService {
         return w.toString();
     }
 
-    public Map<String, Object> list(Filter f, int page, int size) {
+    public Map<String, Object> list(Env env, Filter f, int page, int size) {
         Map<String, Object> out = new LinkedHashMap<>();
-        if (!available()) {
+        if (!available(env)) {
             out.put("available", false);
             out.put("items", List.of());
             out.put("total", 0);
@@ -105,14 +105,14 @@ public class McpAuditService {
         }
         List<Object> args = new ArrayList<>();
         String w = where(f, args);
-        out.put("total", db.count("SELECT COUNT(*) FROM " + db.mcpAuditTable() + w, args.toArray()));
-        out.put("items", db.page("SELECT " + COLS + " FROM " + db.mcpAuditTable() + w + " ORDER BY id DESC", ROW,
+        out.put("total", env.db().count("SELECT COUNT(*) FROM " + env.mcpAuditTable() + w, args.toArray()));
+        out.put("items", env.db().page("SELECT " + COLS + " FROM " + env.mcpAuditTable() + w + " ORDER BY id DESC", ROW,
                 (page - 1) * size, size, args.toArray()));
         return out;
     }
 
-    public int stream(Filter f, int max, Consumer<Map<String, Object>> sink) {
-        if (!available() || (f.visibleServices != null && f.visibleServices.isEmpty())) {
+    public int stream(Env env, Filter f, int max, Consumer<Map<String, Object>> sink) {
+        if (!available(env) || (f.visibleServices != null && f.visibleServices.isEmpty())) {
             return 0;
         }
         int sent = 0;
@@ -122,7 +122,7 @@ public class McpAuditService {
             String w = where(f, args) + " AND id < ?";
             args.add(lastId);
             int batch = Math.min(1000, max - sent);
-            List<Map<String, Object>> rows = db.page("SELECT " + COLS + " FROM " + db.mcpAuditTable() + w + " ORDER BY id DESC",
+            List<Map<String, Object>> rows = env.db().page("SELECT " + COLS + " FROM " + env.mcpAuditTable() + w + " ORDER BY id DESC",
                     ROW, 0, batch, args.toArray());
             if (rows.isEmpty()) {
                 break;

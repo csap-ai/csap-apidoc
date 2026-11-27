@@ -41,18 +41,29 @@ export const projectApi = {
     request<void>(`/projects/${id}/members/${userId}`, { method: 'DELETE' }),
 };
 
+export const envApi = {
+  list: () => request<T.Env[]>('/envs', { silent: true }),
+  diff: (q: { from: string; to: string; projectId?: number; service?: string }) => request<T.EnvDiff>('/envs/diff', { query: q as Q }),
+  diffItem: (q: { from: string; to: string; service: string; key: string }) => request<T.EnvDiffDetail>('/envs/diff/item', { query: q as Q }),
+};
+
+export const promotionApi = {
+  create: (b: T.PromotionInput) => post<T.Change>('/promotions', b),
+};
+
 export const serviceApi = {
-  list: (q?: { projectId?: number; unassigned?: boolean }) => request<T.ServiceInfo[]>('/services', { query: q as Q }),
-  create: (b: { service: string; baseUrl: string; docPath?: string; projectId?: number }) =>
+  list: (q?: { projectId?: number; unassigned?: boolean; env?: string }) => request<T.ServiceInfo[]>('/services', { query: q as Q }),
+  create: (b: { service: string; baseUrl: string; docPath?: string; projectId?: number; env?: string }) =>
     post<T.ServiceInfo>('/services', b),
-  update: (service: string, b: Partial<{ projectId: number | null; baseUrl: string; docPath: string }>) =>
-    request<T.ServiceInfo>(`/services/${encodeURIComponent(service)}`, { method: 'PATCH', body: b }),
-  remove: (service: string) => request<void>(`/services/${encodeURIComponent(service)}`, { method: 'DELETE' }),
+  update: (service: string, b: Partial<{ projectId: number | null; baseUrl: string; docPath: string }>, env?: string) =>
+    request<T.ServiceInfo>(`/services/${encodeURIComponent(service)}`, { method: 'PATCH', body: b, query: { env } }),
+  /** 带 env:只删该环境的地址和实例;不带:删整个服务 */
+  remove: (service: string, env?: string) => request<void>(`/services/${encodeURIComponent(service)}`, { method: 'DELETE', query: { env } }),
 };
 
 export const docApi = {
-  get: async (service: string): Promise<T.DocResult> => {
-    const res = await requestRaw(`/docs/${encodeURIComponent(service)}`);
+  get: async (service: string, env?: string): Promise<T.DocResult> => {
+    const res = await requestRaw(`/docs/${encodeURIComponent(service)}`, { query: { env } });
     const fetched = res.headers.get('X-CSAP-Team-Fetched-At');
     return {
       doc: await res.json(),
@@ -60,22 +71,38 @@ export const docApi = {
       stale: res.headers.get('X-CSAP-Team-Stale') === 'true',
     };
   },
-  search: (q: string, projectId?: number) => request<T.SearchHit[]>('/docs/search', { query: { q, projectId } }),
+  search: (q: string, projectId?: number, env?: string) => request<T.SearchHit[]>('/docs/search', { query: { q, projectId, env } }),
 };
 
+// 规则相关接口的 env 省略 = 默认环境(单环境部署时前端不传)
 export const ruleApi = {
-  list: (service: string) => request<T.RuleList>(`/rules/${encodeURIComponent(service)}`),
-  item: (service: string, key: string) => request<T.RuleItem>(`/rules/${encodeURIComponent(service)}/item`, { query: { key } }),
-  history: (service: string, key: string, limit = 50) =>
-    request<T.RuleHistory[]>(`/rules/${encodeURIComponent(service)}/history`, { query: { key, limit } }),
-  diff: (service: string, key: string, from: number, to?: number) =>
-    request<T.RuleDiff>(`/rules/${encodeURIComponent(service)}/diff`, { query: { key, from, to } }),
-  rollback: (service: string, b: { key: string; historyId: number; reason: string }) =>
+  list: (service: string, env?: string) => request<T.RuleList>(`/rules/${encodeURIComponent(service)}`, { query: { env } }),
+  item: (service: string, key: string, env?: string) => request<T.RuleItem>(`/rules/${encodeURIComponent(service)}/item`, { query: { key, env } }),
+  history: (service: string, key: string, limit = 50, env?: string) =>
+    request<T.RuleHistory[]>(`/rules/${encodeURIComponent(service)}/history`, { query: { key, limit, env } }),
+  diff: (service: string, key: string, from: number, to?: number, env?: string) =>
+    request<T.RuleDiff>(`/rules/${encodeURIComponent(service)}/diff`, { query: { key, from, to, env } }),
+  rollback: (service: string, b: { key: string; historyId: number; reason: string; env?: string }) =>
     post<T.Change>(`/rules/${encodeURIComponent(service)}/rollback`, b),
 };
 
+export const presenceApi = {
+  /** 打开规则编辑器后每 30 秒调用一次;90 秒没续上视为离开 */
+  put: (b: T.PresenceBody) => request<void>('/presence', { method: 'PUT', body: b }),
+  /** 关闭编辑器时调用,失败也无妨 */
+  remove: (b: T.PresenceBody) => request<void>('/presence', { method: 'DELETE', body: b }),
+  list: (q: { env?: string; service: string }) => request<T.PresenceEntry[]>('/presence', { query: q as Q }),
+};
+
+export const commentApi = {
+  list: (changeId: number) => request<T.Comment[]>(`/changes/${changeId}/comments`),
+  create: (changeId: number, b: { body: string; itemId?: number }) => post<T.Comment>(`/changes/${changeId}/comments`, b),
+  update: (id: number, body: string) => request<T.Comment>(`/comments/${id}`, { method: 'PATCH', body: { body } }),
+  remove: (id: number) => request<void>(`/comments/${id}`, { method: 'DELETE' }),
+};
+
 export const changeApi = {
-  list: (q: { projectId?: number; status?: string; mine?: boolean; page?: number; size?: number }) =>
+  list: (q: { projectId?: number; status?: string; mine?: boolean; env?: string; page?: number; size?: number }) =>
     request<T.Paged<T.Change>>('/changes', { query: q as Q }),
   get: (id: number) => request<T.Change>(`/changes/${id}`),
   create: (b: T.ChangeInput) => post<T.Change>('/changes', b),
@@ -97,15 +124,18 @@ export interface AuditQuery {
   ruleKey?: string;
   action?: string;
   source?: string;
+  env?: string;
 }
 export const auditApi = {
   list: (q: AuditQuery & { page?: number; size?: number }) => request<T.Paged<T.AuditRecord>>('/audit', { query: q as Q }),
   get: (id: number) => request<T.AuditRecord>(`/audit/${id}`),
   exportUrl: (format: 'csv' | 'json', q: AuditQuery) => url('/audit/export', { ...(q as Q), format }),
-  exportMcpUrl: (format: 'csv' | 'json', q: { from?: number; to?: number; service?: string; caller?: string; tool?: string }) =>
+  exportMcpUrl: (format: 'csv' | 'json', q: { from?: number; to?: number; service?: string; caller?: string; tool?: string; env?: string }) =>
     url('/audit/export', { ...(q as Q), kind: 'mcp', format }),
-  mcp: (q: { from?: number; to?: number; service?: string; caller?: string; tool?: string; page?: number; size?: number }) =>
+  mcp: (q: { from?: number; to?: number; service?: string; caller?: string; tool?: string; env?: string; page?: number; size?: number }) =>
     request<T.McpAuditPage>('/audit/mcp', { query: q as Q }),
+  /** 校验哈希链(仅管理员);不传范围 = 全部 */
+  verify: (q?: { fromId?: number; toId?: number }) => request<T.AuditVerifyResult>('/audit/verify', { query: q as Q }),
 };
 
 export const webhookApi = {
@@ -119,6 +149,6 @@ export const webhookApi = {
 
 export const tokenApi = {
   list: () => request<T.TokenInfo[]>('/tokens'),
-  create: (b: { name: string; scope: T.TokenScope; projectId?: number }) => post<T.TokenCreated>('/tokens', b),
+  create: (b: { name: string; scope: T.TokenScope; projectId?: number; env?: string }) => post<T.TokenCreated>('/tokens', b),
   revoke: (id: number) => request<void>(`/tokens/${id}`, { method: 'DELETE' }),
 };

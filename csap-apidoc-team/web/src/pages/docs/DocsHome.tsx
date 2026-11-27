@@ -4,6 +4,8 @@ import { Card, Empty, Input, Select, Space, Table, Tag, Tooltip } from 'antd';
 import { docApi, projectApi, serviceApi } from '@/api/endpoints';
 import type { SearchHit, ServiceInfo } from '@/api/types';
 import { PageTitle, ServiceStatusTag } from '@/components/common';
+import { ServiceEnvTags } from '@/components/ServiceEnvTags';
+import { useEnv } from '@/env/EnvContext';
 import { useLoad } from '@/utils/useLoad';
 import { fmtTime } from '@/utils/format';
 import { showError } from '@/utils/errors';
@@ -16,14 +18,15 @@ export default function DocsHome() {
   const [hits, setHits] = useState<SearchHit[] | null>(null);
   const [searching, setSearching] = useState(false);
   const projects = useLoad(() => projectApi.list(), []);
-  const services = useLoad(() => serviceApi.list({ projectId }), [projectId]);
+  const { env, multi } = useEnv();
+  const services = useLoad(() => serviceApi.list({ projectId, env }), [projectId, env]);
 
   const search = async (v: string) => {
     setQ(v);
     if (!v.trim()) return setHits(null);
     setSearching(true);
     try {
-      setHits(await docApi.search(v.trim(), projectId));
+      setHits(await docApi.search(v.trim(), projectId, env));
     } catch (e) {
       showError(e);
     } finally {
@@ -32,7 +35,7 @@ export default function DocsHome() {
   };
 
   const open = (service: string, path?: string) =>
-    navigate(`/docs/${encodeURIComponent(service)}${path ? `?path=${encodeURIComponent(path)}` : ''}`);
+    navigate({ pathname: `/docs/${encodeURIComponent(service)}`, search: new URLSearchParams({ ...(path ? { path } : {}), ...(env ? { env } : {}) }).toString() });
 
   return (
     <>
@@ -95,6 +98,7 @@ export default function DocsHome() {
           columns={[
             { title: t('docs.service'), dataIndex: 'service', width: 190, ellipsis: { showTitle: false }, render: (s: string) => <Tooltip title={s}><b>{s}</b></Tooltip> },
             { title: t('docs.status'), dataIndex: 'status', width: 130, render: (s) => <ServiceStatusTag status={s} /> },
+            ...(multi ? [{ title: t('svc.envs'), dataIndex: 'envs', width: 240, render: (_: unknown, r: ServiceInfo) => <ServiceEnvTags service={r} /> }] : []),
             { title: t('docs.language'), dataIndex: 'language', width: 90, render: (l: string) => <Tag>{l}</Tag> },
             { title: t('docs.version'), dataIndex: 'frameworkVersion', width: 110 },
             { title: t('docs.instances'), dataIndex: 'instances', width: 90 },

@@ -1,9 +1,11 @@
 #!/bin/sh
-# 从 schema-template.sql 生成各方言建表脚本(与开源 DatabaseDialect 的类型约定一致)
+# 从 schema-template.sql / upgrade-2-template.sql 生成各方言脚本(与开源 DatabaseDialect 的类型约定一致)
 cd "$(dirname "$0")" || exit 1
 out=src/main/resources/META-INF/csap-team/schema
+mkdir -p "$out/upgrade/2"
 gen() { # 方言 文本类型 自增列 表选项
   sed -e "s/{{DIALECT}}/$1/g" -e "s/{{TEXT}}/$2/g" -e "s/{{ID}}/$3/g" -e "s/{{OPTS}}/$4/g" schema-template.sql > "$out/$1.sql"
+  sed -e "s/{{DIALECT}}/$1/g" -e "s/{{TEXT}}/$2/g" -e "s/{{ID}}/$3/g" -e "s/{{OPTS}}/$4/g" upgrade-2-template.sql > "$out/upgrade/2/$1.sql"
 }
 gen mysql LONGTEXT "id BIGINT AUTO_INCREMENT PRIMARY KEY" " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
 gen postgresql TEXT "id BIGSERIAL PRIMARY KEY" ""

@@ -5,8 +5,10 @@ import { message } from '@/utils/notify';
 import { ruleApi, serviceApi } from '@/api/endpoints';
 import type { RuleHistory, RuleListItem } from '@/api/types';
 import { useAuth } from '@/auth/AuthContext';
+import { useEnv } from '@/env/EnvContext';
 import { canWrite } from '@/auth/permissions';
 import { GuardedButton, PageTitle } from '@/components/common';
+import { OpenChangesNotice, PresenceNotice } from '@/components/PresenceNotice';
 import DiffView, { CodeBlock } from '@/components/DiffView';
 import { useLoad } from '@/utils/useLoad';
 import { fmtTime, prettyJson } from '@/utils/format';
@@ -19,8 +21,9 @@ export default function Rules() {
   const [sp, setSp] = useSearchParams();
   const navigate = useNavigate();
   const key = sp.get('key') || undefined;
-  const services = useLoad(() => serviceApi.list(), []);
-  const list = useLoad(() => ruleApi.list(service!), [service], { skip: !service });
+  const { env } = useEnv();
+  const services = useLoad(() => serviceApi.list({ env }), [env]);
+  const list = useLoad(() => ruleApi.list(service!, env), [service, env], { skip: !service });
   const project = services.data?.find((s) => s.service === service)?.projectId ?? null;
 
   return (
@@ -33,7 +36,7 @@ export default function Rules() {
             style={{ width: 240 }}
             placeholder={t('rules.pickService')}
             value={service}
-            onChange={(v) => navigate(`/rules/${encodeURIComponent(v)}`)}
+            onChange={(v) => navigate({ pathname: `/rules/${encodeURIComponent(v)}`, search: env ? `?env=${encodeURIComponent(env)}` : '' })}
             options={(services.data ?? []).map((s) => ({ value: s.service, label: s.service }))}
           />
         }
@@ -52,7 +55,7 @@ export default function Rules() {
                 dataSource={list.data?.items ?? []}
                 locale={{ emptyText: t('rules.noRules') }}
                 rowClassName={(r) => (r.ruleKey === key ? 'ant-table-row-selected' : '')}
-                onRow={(r) => ({ onClick: () => setSp({ key: r.ruleKey }), style: { cursor: 'pointer' } })}
+                onRow={(r) => ({ onClick: () => setSp((p) => { const n = new URLSearchParams(p); n.set('key', r.ruleKey); return n; }), style: { cursor: 'pointer' } })}
                 columns={[
                   { title: t('rules.keys'), dataIndex: 'ruleKey', ellipsis: true, render: (k: string) => <span className="mono">{k.split('.').slice(-2).join('.')}</span> },
                   { title: t('rules.version'), dataIndex: 'version', width: 70, render: (v: number) => <Tag>v{v}</Tag> },
@@ -61,7 +64,7 @@ export default function Rules() {
             </Card>
           </Col>
           <Col xs={24} lg={15}>
-            {key ? <RuleDetail key={`${service}|${key}`} service={service} ruleKey={key} projectId={project} onChanged={list.reload} /> : <Empty description={t('rules.keys')} />}
+            {key ? <RuleDetail key={`${service}|${key}|${env ?? ''}`} service={service} ruleKey={key} projectId={project} onChanged={list.reload} /> : <Empty description={t('rules.keys')} />}
           </Col>
         </Row>
       )}
@@ -72,18 +75,20 @@ export default function Rules() {
 function RuleDetail({ service, ruleKey, projectId }: { service: string; ruleKey: string; projectId: number | null; onChanged: () => void }) {
   const { me } = useAuth();
   const navigate = useNavigate();
-  const item = useLoad(() => ruleApi.item(service, ruleKey), [service, ruleKey]);
-  const history = useLoad(() => ruleApi.history(service, ruleKey), [service, ruleKey]);
+  const { env, defaultKey, current } = useEnv();
+  const item = useLoad(() => ruleApi.item(service, ruleKey, env), [service, ruleKey, env]);
+  const history = useLoad(() => ruleApi.history(service, ruleKey, 50, env), [service, ruleKey, env]);
   const [rb, setRb] = useState<RuleHistory | null>(null);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
-  const write = canWrite(me, projectId);
+  const write = canWrite(me, projectId) && !current?.readOnly;
+  const writeReason = current?.readOnly ? t('env.readOnlyReason') : undefined;
 
   const doRollback = async () => {
     if (!rb) return;
     setBusy(true);
     try {
-      const c = await ruleApi.rollback(service, { key: ruleKey, historyId: rb.id, reason });
+      const c = await ruleApi.rollback(service, { key: ruleKey, historyId: rb.id, reason, env });
       message.success(t('rules.rollbackCreated'));
       navigate(`/changes/${c.id}`);
     } catch (e) {
@@ -97,9 +102,11 @@ function RuleDetail({ service, ruleKey, projectId }: { service: string; ruleKey:
     <Card size="small" title={<span className="mono">{ruleKey}</span>} extra={
       <Space>
         <Link to={`/docs/${encodeURIComponent(service)}`}>{t('docs.viewDoc')}</Link>
-        <GuardedButton size="small" type="primary" allowed={write} onClick={() => navigate(`/changes/new?service=${encodeURIComponent(service)}&key=${encodeURIComponent(ruleKey)}`)}>{t('rules.edit')}</GuardedButton>
+        <GuardedButton size="small" type="primary" allowed={write} reason={writeReason} onClick={() => navigate(`/changes/new?service=${encodeURIComponent(service)}&key=${encodeURIComponent(ruleKey)}${env ? `&env=${encodeURIComponent(env)}` : ''}`)}>{t('rules.edit')}</GuardedButton>
       </Space>
     }>
+      <PresenceNotice env={env ?? defaultKey} service={service} ruleKey={ruleKey} heartbeat={false} />
+      <OpenChangesNotice changes={item.data?.openChanges} />
       <Tabs
         items={[
           {
@@ -128,12 +135,12 @@ function RuleDetail({ service, ruleKey, projectId }: { service: string; ruleKey:
                   { title: t('rules.updatedBy'), dataIndex: 'updatedBy' },
                   { title: t('rules.updatedAt'), dataIndex: 'updatedAt', render: fmtTime },
                   { title: t('changes.title'), dataIndex: 'changeId', render: (c?: number | null) => (c ? <Link to={`/changes/${c}`}>{t('rules.byChange', { id: c })}</Link> : <Tag color="orange">{t('rules.outside')}</Tag>) },
-                  { title: t('common.operation'), width: 130, render: (_, h) => <GuardedButton size="small" allowed={write} onClick={() => { setRb(h); setReason(''); }}>{t('rules.rollback')}</GuardedButton> },
+                  { title: t('common.operation'), width: 130, render: (_, h) => <GuardedButton size="small" allowed={write} reason={writeReason} onClick={() => { setRb(h); setReason(''); }}>{t('rules.rollback')}</GuardedButton> },
                 ]}
               />
             ),
           },
-          { key: 'compare', label: t('rules.compare'), children: <Compare service={service} ruleKey={ruleKey} history={history.data ?? []} /> },
+          { key: 'compare', label: t('rules.compare'), children: <Compare service={service} ruleKey={ruleKey} env={env} history={history.data ?? []} /> },
         ]}
       />
       <Modal open={!!rb} title={t('rules.rollbackTitle')} onCancel={() => setRb(null)} onOk={doRollback} confirmLoading={busy} okText={t('common.ok')} cancelText={t('common.cancel')} okButtonProps={{ disabled: !reason.trim() }}>
@@ -145,7 +152,7 @@ function RuleDetail({ service, ruleKey, projectId }: { service: string; ruleKey:
   );
 }
 
-function Compare({ service, ruleKey, history }: { service: string; ruleKey: string; history: RuleHistory[] }) {
+function Compare({ service, ruleKey, env, history }: { service: string; ruleKey: string; env?: string; history: RuleHistory[] }) {
   const [from, setFrom] = useState<number | undefined>();
   const [to, setTo] = useState<number | undefined>(); // undefined = 当前
   const [diff, setDiff] = useState<string | null>(null);
@@ -155,7 +162,7 @@ function Compare({ service, ruleKey, history }: { service: string; ruleKey: stri
     if (!from) return;
     setLoading(true);
     try {
-      setDiff((await ruleApi.diff(service, ruleKey, from, to)).diff);
+      setDiff((await ruleApi.diff(service, ruleKey, from, to, env)).diff);
     } catch (e) {
       showError(e);
     } finally {

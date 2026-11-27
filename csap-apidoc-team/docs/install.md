@@ -6,7 +6,7 @@
 
 - 团队版是**一个 Java 17 的可执行 jar**(也提供 Docker 镜像构建文件),内含控制台前端。
 - 它必须连接**你的服务共用的那个数据库**,并且表前缀与服务一致。不要给团队版单独建库。
-- **1.0 只支持单实例部署**。登录锁定、服务状态等放在进程内存里,起两个实例会互相看不见。
+- **只支持单实例部署**(1.0、1.1 相同)。登录锁定、服务状态等放在进程内存里,起两个实例会互相看不见。
 - 默认端口 `8090`;默认数据库是本地文件 H2,**仅供本地体验 / 测试**。
 - 首次访问控制台,完成初始化向导(创建组织和第一个管理员)。
 
@@ -178,6 +178,22 @@ docker run -d --name csap-team -p 8090:8090 \
 docker run ... -v $(pwd)/application.yml:/app/config/application.yml:ro csap-apidoc-team:1.0.0
 ```
 
+## 多个环境(1.1)
+
+团队版 1.1 可以同时管理开发 / 测试 / 生产多套开源规则表。环境只在配置文件里定义,每个环境一个数据源和前缀:
+
+```yaml
+csap:
+  team:
+    environments:
+      - { key: dev,  name: 开发,
+          datasource: { url: "jdbc:postgresql://pg:5432/app_dev",  username: csap, password: "${DEV_DB_PASSWORD}" } }
+      - { key: prod, name: 生产, protected: true,
+          datasource: { url: "jdbc:postgresql://pg:5432/app_prod", username: csap, password: "${PROD_DB_PASSWORD}" } }
+```
+
+要点:团队版自己的表只在主数据源(`spring.datasource`);各环境的数据源只读写该环境的开源规则表;不配置就是 1.0 的单环境行为。密码用环境变量。完整说明、`protected` / `read-only`、环境 DOWN 的行为见 [多环境与推广](environments.md)。两个 PostgreSQL 库的 Docker 示例:`docker/docker-compose.multi-env.yml`。
+
 ## 配置项
 
 前缀 `csap.team`。表中"环境变量"一列是直接可用的写法(见上文"配置的三种写法")。
@@ -198,6 +214,9 @@ docker run ... -v $(pwd)/application.yml:/app/config/application.yml:ro csap-api
 | `heartbeat-seconds` | `30` | 注册接口返回给服务的心跳周期(秒);3 个周期没有心跳视为实例离线 |
 | `session-hours` | `12` | 登录会话的滑动过期时间(小时) |
 | `webhook.retry-delay-seconds` | `10, 60, 300` | Webhook 失败后的重试间隔(秒),列表长度即重试次数 |
+| `environments` | 空列表 | (1.1)环境定义,空 = 单环境 `default`。字段和写法见 [多环境与推广](environments.md#配置环境) |
+| `presence.ttl-seconds` | `90` | (1.1)"编辑中"提示多久没续上视为离开(秒) |
+| `audit.checkpoint-cron` | `0 5 0 * * *` | (1.1)`audit.checkpoint` 事件的发送时间(Spring cron,服务器时区),默认每天 00:05 |
 
 `docs.headers` 示例(YAML):
 
@@ -314,8 +333,11 @@ docker run -d --name csap-team -p 8090:8090 \
 
 1. **先备份数据库**(见下节)。
 2. 停止旧进程,替换 jar(或换新镜像),启动。
-3. 启动时只在缺表时建表,已有表不会被改动。1.0 的表版本为 `1`(存在 `csap_team_setting` 的 `schema.version`)。
-4. 版本之间如有表结构变更,会在对应版本的发布说明里提供增量脚本和步骤。
+3. 启动时缺表建表;表版本落后时(`csap_team_setting` 的 `schema.version`,1.0 为 `1`,1.1 为 `2`)自动执行增量升级脚本和数据迁移,成功后写入新版本。
+4. `create-tables=false` 时不会自动升级,启动失败并提示手工执行升级脚本。
+5. 版本之间如有表结构变更,会在对应版本的发布说明里提供增量脚本和步骤。
+
+**1.0 → 1.1**(1.1 开发中,未发布)的完整步骤、自动迁移内容、手工升级、审计导出格式变化和回退见 [升级指南](upgrade-1.1.md)。升级时 1.1 会给已有审计封存哈希链,审计很多时启动会多花一些时间。
 
 升级团队版**不影响**服务:服务读的是开源三张表,团队版不会改动它们的结构。
 
@@ -336,6 +358,9 @@ docker run -d --name csap-team -p 8090:8090 \
 | 启动失败:"无法从 JDBC URL 识别数据库方言" | 设置 `csap.team.database.dialect` |
 | 启动失败:`rule-table-prefix` 无效 | 前缀只允许字母、数字、下划线 |
 | 启动失败:`trusted-proxies` 配置无效 | 只接受 IP 或 CIDR,如 `10.0.0.0/8` |
+| 启动失败:环境配置无效(1.1) | `key` 格式、重复、`name` 为空、前缀格式,或两个环境共用同一数据源和同一前缀;按提示修改 `csap.team.environments` |
+| 启动失败:团队版表需要升级(1.1) | `create-tables=false` 时,按[升级指南](upgrade-1.1.md#create-tablesfalse-时手工升级)手工执行升级脚本 |
+| 某个环境状态 `DOWN`(1.1) | 该环境的库连不上或缺开源表(`create-tables=false` 时),错误信息在环境列表里;每 60 秒自动重试,其它环境不受影响 |
 | 服务的规则在团队版里看不到 | 团队版和服务连了不同的库,或表前缀不一致 |
 | 登录后马上掉线 | 浏览器没带 Cookie:检查是否通过 HTTPS 访问、代理是否改写了 `Host` |
 | 审计里的 IP 都是代理地址 | 没配置 `trusted-proxies`,或代理没传 `X-Forwarded-For` |
@@ -345,11 +370,12 @@ docker run -d --name csap-team -p 8090:8090 \
 | code | HTTP | 含义 |
 |---|---|---|
 | `UNAUTHORIZED` | 401 | 未登录、会话过期、令牌无效 |
-| `FORBIDDEN` | 403 | 没有权限,或缺少请求头 `X-CSAP-Team: 1` |
+| `FORBIDDEN` | 403 | 没有权限,或缺少请求头 `X-CSAP-Team: 1`;(1.1)目标环境只读 |
 | `NOT_FOUND` | 404 | 不存在,或你无权查看 |
 | `VALIDATION` | 400 | 提交的内容有误 |
 | `CONFLICT` | 409 | 版本冲突或重名 |
 | `SETUP_REQUIRED` | 412 | 系统尚未初始化 |
+| `ENV_UNAVAILABLE` | 503 | (1.1)目标环境不可用(`DOWN`),message 带环境名,不带数据库报错原文 |
 | `LOCKED` | 429 | 登录失败过多,账号暂时锁定 15 分钟 |
 | `INTERNAL` | 500 | 服务器内部错误 |
 

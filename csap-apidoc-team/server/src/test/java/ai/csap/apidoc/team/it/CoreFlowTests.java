@@ -95,6 +95,7 @@ public abstract class CoreFlowTests extends AbstractIT {
         Api.Resp r = maintainer.api().post("/api/v1/changes/" + a + "/approve", Map.of("note", "x"));
         assertEquals(409, r.status());
         assertEquals("CONFLICT", r.code());
+        assertEquals(a, r.json().get("changeId").asLong());
         JsonNode ci = r.json().get("items").get(0);
         assertEquals("K.c", ci.get("ruleKey").asText());
         assertEquals(0, ci.get("baseVersion").asLong());
@@ -341,5 +342,38 @@ public abstract class CoreFlowTests extends AbstractIT {
         assertEquals(jdbc.queryForObject("SELECT COUNT(*) FROM csap_apidoc_rule WHERE service = ?", Integer.class, ossSvc),
                 jdbc.queryForObject("SELECT COUNT(*) FROM csap_apidoc_rule WHERE service = ?", Integer.class, teamSvc));
         assertFalse(t.isEmpty());
+    }
+
+    /** 同一个新服务的多个实例同时首次注册(联调时在 PostgreSQL 上出现过 500:唯一键冲突让事务中止)。 */
+    @Test
+    void concurrentFirstRegistrationOfSameServiceAllSucceed() throws Exception {
+        Api admin = admin();
+        Api.Resp tr = admin.post("/api/v1/tokens", Map.of("name", unique("tok"), "scope", "REGISTER"));
+        assertEquals(200, tr.status());
+        Api bearer = Api.bearer(port, tr.json().get("token").asText());
+        String svc = unique("race");
+        int n = 8;
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(n);
+        try {
+            List<Future<Integer>> fs = new ArrayList<>();
+            for (int i = 0; i < n; i++) {
+                String inst = "i" + i;
+                fs.add(pool.submit(() -> {
+                    start.await();
+                    return bearer.post("/api/open/v1/services/register", Map.of("service", svc, "instanceId", inst,
+                            "baseUrl", "http://127.0.0.1:9", "docPath", "/csap/apidoc", "language", "go", "frameworkVersion", "v0.3.0"))
+                            .status();
+                }));
+            }
+            start.countDown();
+            for (Future<Integer> f : fs) {
+                assertEquals(200, f.get());
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM csap_team_project_service WHERE service = ?", Integer.class, svc));
+        assertEquals(n, jdbc.queryForObject("SELECT COUNT(*) FROM csap_team_env_instance WHERE service = ?", Integer.class, svc));
     }
 }

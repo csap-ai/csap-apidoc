@@ -5,13 +5,14 @@ import { projectApi, webhookApi } from '@/api/endpoints';
 import type { Webhook, WebhookDelivery, WebhookInput, WebhookKind } from '@/api/types';
 import { useAuth } from '@/auth/AuthContext';
 import { isAdmin } from '@/auth/permissions';
+import { useEnv } from '@/env/EnvContext';
 import { useLoad } from '@/utils/useLoad';
 import { showError } from '@/utils/errors';
 import { fmtTime } from '@/utils/format';
 import { t, tDyn } from '@/i18n';
 
 const KINDS: WebhookKind[] = ['GENERIC', 'WECOM', 'DINGTALK', 'FEISHU'];
-const EVENTS = ['change.submitted', 'change.approved', 'change.rejected', 'change.published', 'change.conflict', 'rule.changed_outside', 'service.offline'];
+const EVENTS = ['change.submitted', 'change.approved', 'change.rejected', 'change.published', 'change.conflict', 'rule.changed_outside', 'service.offline', 'change.commented', 'audit.checkpoint'];
 
 export default function WebhooksTab() {
   const { me } = useAuth();
@@ -20,12 +21,13 @@ export default function WebhooksTab() {
   const [editing, setEditing] = useState<Webhook | 'new' | null>(null);
   const [logFor, setLogFor] = useState<Webhook | null>(null);
   const [form] = Form.useForm<WebhookInput>();
+  const { envs, multi, nameOf } = useEnv();
   const deliveries = useLoad(() => webhookApi.deliveries(logFor!.id), [logFor?.id], { skip: !logFor });
 
   const open = (w: Webhook | 'new') => {
     setEditing(w);
     form.resetFields();
-    form.setFieldsValue(w === 'new' ? { kind: 'GENERIC', enabled: true, events: EVENTS.slice(0, 4) } : { ...w, url: '', secret: undefined });
+    form.setFieldsValue(w === 'new' ? { kind: 'GENERIC', enabled: true, events: EVENTS.slice(0, 4), environments: [] } : { ...w, url: '', secret: undefined, environments: w.environments ?? [] });
   };
   const save = async (v: WebhookInput) => {
     try {
@@ -55,6 +57,7 @@ export default function WebhooksTab() {
           { title: t('common.name'), dataIndex: 'name', width: 160 },
           { title: t('webhook.kind'), dataIndex: 'kind', width: 110, render: (k: string) => <Tag>{tDyn('webhook.kind', k)}</Tag> },
           { title: t('common.project'), dataIndex: 'projectId', width: 110, render: (id: number | null) => (id ? projects.data?.find((p) => p.id === id)?.name ?? id : t('webhook.global')) },
+          ...(multi ? [{ title: t('webhook.envs'), dataIndex: 'environments', width: 140, render: (e?: string[]) => (e?.length ? e.map((k) => <Tag key={k}>{nameOf(k)}</Tag>) : t('env.allEnvs')) }] : []),
           { title: t('webhook.events'), dataIndex: 'events', render: (e: string[]) => e.map((x) => <Tag key={x}>{tDyn('event', x)}</Tag>) },
           { title: t('webhook.secret'), dataIndex: 'hasSecret', width: 90, render: (s: boolean) => (s ? t('webhook.hasSecret') : '-') },
           { title: t('common.enabled'), dataIndex: 'enabled', width: 80, render: (en: boolean, w) => <Switch size="small" checked={en} onChange={async (v) => { try { await webhookApi.update(w.id, { enabled: v }); void hooks.reload(); } catch (e) { showError(e); } }} /> },
@@ -75,6 +78,11 @@ export default function WebhooksTab() {
           <Form.Item name="url" label={t('webhook.url')} extra={editing !== 'new' ? `${t('webhook.urlKeep')}:${(editing as Webhook | null)?.url ?? ''}` : undefined} rules={[{ required: editing === 'new', type: 'url', message: t('common.required') }]}><Input placeholder={editing !== 'new' ? t('webhook.urlKeep') : undefined} /></Form.Item>
           <Form.Item name="secret" label={t('webhook.secret')} extra={t('webhook.secretHint')}><Input.Password autoComplete="new-password" /></Form.Item>
           <Form.Item name="projectId" label={t('common.project')}><Select allowClear placeholder={t('webhook.global')} disabled={!isAdmin(me) && false} options={(projects.data ?? []).map((p) => ({ value: p.id, label: p.name }))} /></Form.Item>
+          {multi && (
+            <Form.Item name="environments" label={t('webhook.envs')} extra={t('webhook.envsHint')}>
+              <Select mode="multiple" allowClear placeholder={t('env.allEnvs')} options={envs.map((e) => ({ value: e.key, label: e.name }))} />
+            </Form.Item>
+          )}
           <Form.Item name="events" label={t('webhook.events')}>
             <Select mode="multiple" options={EVENTS.map((e) => ({ value: e, label: tDyn('event', e) }))} />
           </Form.Item>

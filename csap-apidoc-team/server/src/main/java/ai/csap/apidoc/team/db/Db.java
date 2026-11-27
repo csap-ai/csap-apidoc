@@ -31,12 +31,17 @@ public class Db {
 
     private static final Pattern PREFIX = Pattern.compile("[A-Za-z0-9_]*");
 
+    private final DataSource dataSource;
+    private final PlatformTransactionManager txManager;
     private final JdbcTemplate jdbc;
     private final TransactionTemplate tx;
     private final DatabaseDialect dialect;
     private final String prefix;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public Db(DataSource dataSource, PlatformTransactionManager txManager, TeamProperties props) {
+        this.dataSource = dataSource;
+        this.txManager = txManager;
         this.jdbc = new JdbcTemplate(dataSource);
         this.tx = new TransactionTemplate(txManager);
         this.prefix = props.getRuleTablePrefix() == null ? "csap_apidoc_" : props.getRuleTablePrefix();
@@ -49,6 +54,27 @@ public class Db {
         }
         this.dialect = d;
     }
+
+    /** 某个环境的开源表访问:数据源、事务管理器、方言、前缀都由调用方给定。 */
+    public Db(DataSource dataSource, PlatformTransactionManager txManager, DatabaseDialect dialect, String prefix) {
+        if (prefix == null || !PREFIX.matcher(prefix).matches()) {
+            throw new IllegalArgumentException("规则表前缀只能包含字母、数字和下划线");
+        }
+        this.dataSource = dataSource;
+        this.txManager = txManager;
+        this.jdbc = new JdbcTemplate(dataSource);
+        this.tx = new TransactionTemplate(txManager);
+        this.dialect = dialect;
+        this.prefix = prefix;
+    }
+
+    /** 同一个数据源、同一个事务管理器,换一个开源表前缀。 */
+    public Db withPrefix(String newPrefix) {
+        return new Db(dataSource, txManager, dialect, newPrefix);
+    }
+
+    public DataSource dataSource() { return dataSource; }
+    public PlatformTransactionManager txManager() { return txManager; }
 
     private static DatabaseDialect detect(DataSource ds) {
         try (Connection c = ds.getConnection()) {
@@ -147,6 +173,16 @@ public class Db {
     public boolean tableExists(String table) {
         try {
             jdbc.query("SELECT 1 FROM " + table + " WHERE 1 = 0", rs -> null);
+            return true;
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /** 列是否存在(探测一条空查询)。 */
+    public boolean columnExists(String table, String column) {
+        try {
+            jdbc.query("SELECT " + column + " FROM " + table + " WHERE 1 = 0", rs -> null);
             return true;
         } catch (RuntimeException e) {
             return false;

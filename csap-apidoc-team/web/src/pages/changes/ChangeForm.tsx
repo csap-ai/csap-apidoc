@@ -8,6 +8,9 @@ import type { ServiceInfo } from '@/api/types';
 import { ApiError } from '@/api/client';
 import { useAuth } from '@/auth/AuthContext';
 import { canWrite } from '@/auth/permissions';
+import { useEnv } from '@/env/EnvContext';
+import { EnvTag } from '@/components/EnvSwitcher';
+import { OpenChangesNotice, PresenceNotice, useDebounced } from '@/components/PresenceNotice';
 import { Forbidden, PageTitle } from '@/components/common';
 import { jsonError, prettyJson } from '@/utils/format';
 import { showError } from '@/utils/errors';
@@ -38,7 +41,13 @@ export default function ChangeForm() {
   const [items, setItems] = useState<ItemState[]>([blank()]);
   const [busy, setBusy] = useState(false);
   const [touched, setTouched] = useState(false);
-  const services = useLoad(() => serviceApi.list({ projectId }), [projectId], { skip: !projectId });
+  const { env: currentEnv, defaultKey, multi, find } = useEnv();
+  // 一张修改单只针对一个环境:新建 = 当前环境;编辑草稿 = 这张单自己的环境
+  const [draftEnv, setDraftEnv] = useState<string | undefined>();
+  const env = editId ? draftEnv ?? currentEnv : currentEnv;
+  const envInfo = find(env);
+  const envBlocked = !!envInfo?.readOnly;
+  const services = useLoad(() => serviceApi.list({ projectId, env }), [projectId, env], { skip: !projectId });
   const prefilled = useRef(false);
 
   // 编辑草稿:载入
@@ -46,6 +55,7 @@ export default function ChangeForm() {
     if (!editId) return;
     changeApi.get(editId).then((c) => {
       setProjectId(c.projectId);
+      if (c.env) setDraftEnv(c.env);
       setTitle(c.title);
       setReason(c.reason);
       setItems(c.items.map((i) => ({ uid: ++uidSeq, service: i.service, ruleKey: i.ruleKey, baseVersion: i.baseVersion, text: prettyJson(i.afterRules), del: i.afterRules == null })));
@@ -63,11 +73,12 @@ export default function ChangeForm() {
       if (!s?.projectId) return;
       setProjectId(s.projectId);
       if (key) {
-        const cur = await ruleApi.item(svc, key);
+        const cur = await ruleApi.item(svc, key, env);
         setItems([{ uid: ++uidSeq, service: svc, ruleKey: key, baseVersion: cur.version, text: prettyJson(cur.rules) || '{}', del: false }]);
         setTitle(`调整 ${key.split('.').slice(-1)[0]} 的规则`);
       }
     }).catch(showError);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editId, sp, projects.data]);
 
   const writableProjects = (projects.data ?? []).filter((p) => canWrite(me, p.id));
@@ -77,7 +88,7 @@ export default function ChangeForm() {
   const loadCurrent = async (it: ItemState, service = it.service, key = it.ruleKey) => {
     if (!service || !key) return;
     try {
-      const cur = await ruleApi.item(service, key);
+      const cur = await ruleApi.item(service, key, env);
       patch(it.uid, { service, ruleKey: key, baseVersion: cur.version, text: prettyJson(cur.rules) || '{}', del: false });
     } catch (e) {
       showError(e);
@@ -92,7 +103,7 @@ export default function ChangeForm() {
     if (!valid) return;
     setBusy(true);
     const body = {
-      projectId: projectId!, title: title.trim(), reason,
+      projectId: projectId!, env, title: title.trim(), reason,
       items: items.map((i) => ({ service: i.service!, ruleKey: i.ruleKey!, baseVersion: i.baseVersion, afterRules: i.del ? null : JSON.stringify(JSON.parse(i.text)) })),
     };
     try {
@@ -118,13 +129,15 @@ export default function ChangeForm() {
 
   return (
     <>
-      <PageTitle title={editId ? t('changes.action.edit') : t('changes.new')} />
+      <PageTitle title={editId ? t('changes.action.edit') : t('changes.new')} extra={multi && envInfo ? <span>{t('changes.env')}:<EnvTag env={envInfo} /></span> : null} />
+      {multi && envInfo?.readOnly && <Alert type="warning" showIcon style={{ marginBottom: 16 }} message={t('env.readOnlyBanner', { name: envInfo.name })} />}
+      {multi && envInfo?.protected && !envInfo.readOnly && <Alert type="warning" showIcon style={{ marginBottom: 16 }} message={t('env.protectedHint', { name: envInfo.name })} />}
       <Card>
         <Form layout="vertical" requiredMark>
           <Form.Item label={t('changes.form.pickProject')} required validateStatus={touched && !projectId ? 'error' : ''}>
             <Select style={{ maxWidth: 320 }} disabled={!!editId} value={projectId} onChange={(v) => { setProjectId(v); setItems([blank()]); }} options={writableProjects.map((p) => ({ value: p.id, label: p.name }))} />
           </Form.Item>
-          {proj && !proj.requireApproval && <Alert type="info" showIcon style={{ marginBottom: 16 }} message={t('changes.requireApprovalOff')} />}
+          {proj && !proj.requireApproval && !envInfo?.protected && <Alert type="info" showIcon style={{ marginBottom: 16 }} message={t('changes.requireApprovalOff')} />}
           <Form.Item label={t('changes.form.title')} required validateStatus={touched && !title.trim() ? 'error' : ''} help={touched && !title.trim() ? t('common.required') : undefined}>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={100} />
           </Form.Item>
@@ -135,6 +148,10 @@ export default function ChangeForm() {
               key={it.uid}
               it={it}
               svcOptions={svcOptions}
+              env={env}
+              presenceEnv={env ?? defaultKey}
+              canEdit={canWrite(me, projectId) && !envBlocked}
+              excludeChangeId={editId}
               disabledService={!projectId}
               error={touched ? errorOf(it) : null}
               onPatch={(v) => patch(it.uid, v)}
@@ -146,8 +163,8 @@ export default function ChangeForm() {
           {touched && items.length === 0 && <Alert type="error" message={t('changes.form.noItems')} style={{ marginTop: 8 }} />}
           <div style={{ marginTop: 24 }}>
             <Space>
-              <Button loading={busy} onClick={() => save(false)}>{t('common.save')}</Button>
-              <Button type="primary" loading={busy} onClick={() => save(true)}>{t('changes.action.submit')}</Button>
+              <Button loading={busy} disabled={envBlocked} onClick={() => save(false)}>{t('common.save')}</Button>
+              <Button type="primary" loading={busy} disabled={envBlocked} onClick={() => save(true)}>{t('changes.action.submit')}</Button>
               <Button onClick={() => navigate(-1)}>{t('common.cancel')}</Button>
             </Space>
           </div>
@@ -157,14 +174,23 @@ export default function ChangeForm() {
   );
 }
 
-function RuleItemEditor({ it, svcOptions, disabledService, error, onPatch, onLoad, onRemove }: {
-  it: ItemState; svcOptions: { value: string; label: string }[]; disabledService: boolean; error: string | null;
+function RuleItemEditor({ it, env, presenceEnv, canEdit, excludeChangeId, svcOptions, disabledService, error, onPatch, onLoad, onRemove }: {
+  it: ItemState; env?: string; presenceEnv?: string; canEdit: boolean; excludeChangeId?: number; svcOptions: { value: string; label: string }[]; disabledService: boolean; error: string | null;
   onPatch: (v: Partial<ItemState>) => void; onLoad: (service?: string, key?: string) => void; onRemove?: () => void;
 }) {
-  const keys = useLoad(() => ruleApi.list(it.service!), [it.service], { skip: !it.service, silent: true });
+  const keys = useLoad(() => ruleApi.list(it.service!, env), [it.service, env], { skip: !it.service, silent: true });
   const options = (keys.data?.items ?? []).map((k) => ({ value: k.ruleKey }));
+  // 规则 Key 稳定一会儿再上报"我正在编辑"并查"有哪些未完成的修改单涉及这条规则"
+  const stableKey = useDebounced(it.ruleKey, 600);
+  const touching = useLoad(() => ruleApi.item(it.service!, stableKey!, env), [it.service, stableKey, env], { skip: !it.service || !stableKey, silent: true });
   return (
     <Card size="small" style={{ marginBottom: 12 }} extra={onRemove && <Button type="text" danger icon={<DeleteOutlined />} onClick={onRemove} aria-label={t('common.delete')} />}>
+      {it.service && stableKey && (
+        <>
+          <PresenceNotice env={presenceEnv} service={it.service} ruleKey={stableKey} heartbeat={canEdit} />
+          <OpenChangesNotice changes={touching.data?.openChanges} excludeId={excludeChangeId} />
+        </>
+      )}
       <Space wrap style={{ marginBottom: 8 }}>
         <Select style={{ width: 200 }} placeholder={t('changes.form.service')} disabled={disabledService} value={it.service} options={svcOptions}
           onChange={(v) => onPatch({ service: v, ruleKey: undefined, baseVersion: 0, text: '{}' })} />
