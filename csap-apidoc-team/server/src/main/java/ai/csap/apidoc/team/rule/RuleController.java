@@ -16,6 +16,8 @@ import ai.csap.apidoc.team.change.ChangeService;
 import ai.csap.apidoc.team.change.Who;
 import ai.csap.apidoc.team.common.ApiException;
 import ai.csap.apidoc.team.common.UnifiedDiff;
+import ai.csap.apidoc.team.env.Env;
+import ai.csap.apidoc.team.env.Environments;
 
 /** 规则读取、历史、差异、回滚。 */
 @RestController
@@ -25,54 +27,60 @@ public class RuleController {
     private final RuleReader reader;
     private final ChangeService changes;
     private final Access access;
+    private final Environments environments;
 
-    public RuleController(RuleReader reader, ChangeService changes, Access access) {
+    public RuleController(RuleReader reader, ChangeService changes, Access access, Environments environments) {
         this.reader = reader;
         this.changes = changes;
         this.access = access;
+        this.environments = environments;
     }
 
     @GetMapping("/{service}")
-    public Map<String, Object> items(@PathVariable String service) {
+    public Map<String, Object> items(@PathVariable String service, @RequestParam(required = false) String env) {
         access.requireViewService(service);
-        return reader.items(service);
+        return reader.items(environments.require(env), service);
     }
 
     @GetMapping("/{service}/item")
-    public Map<String, Object> item(@PathVariable String service, @RequestParam String key) {
+    public Map<String, Object> item(@PathVariable String service, @RequestParam String key,
+                                    @RequestParam(required = false) String env) {
         access.requireViewService(service);
-        RuleReader.Current c = reader.current(service, key);
+        Env e = environments.require(env);
+        RuleReader.Current c = reader.current(e, service, key);
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("ruleKey", key);
         m.put("rules", c == null ? null : c.rules());
         m.put("version", c == null ? 0 : c.version());
+        m.put("openChanges", changes.openChanges(e, service, key));
         return m;
     }
 
     @GetMapping("/{service}/history")
     public Object history(@PathVariable String service, @RequestParam(required = false) String key,
-                          @RequestParam(defaultValue = "50") int limit) {
+                          @RequestParam(defaultValue = "50") int limit, @RequestParam(required = false) String env) {
         access.requireViewService(service);
-        return reader.history(service, key, Math.max(1, Math.min(limit, 500)));
+        return reader.history(environments.require(env), service, key, Math.max(1, Math.min(limit, 500)));
     }
 
     /** 比较 from 与 to 两条历史记录之后的规则内容;to 省略表示与当前规则比较。 */
     @GetMapping("/{service}/diff")
     public Map<String, Object> diff(@PathVariable String service, @RequestParam String key, @RequestParam long from,
-                                    @RequestParam(required = false) Long to) {
+                                    @RequestParam(required = false) Long to, @RequestParam(required = false) String env) {
         access.requireViewService(service);
-        RuleReader.HistoryRow f = reader.historyById(service, from);
+        Env e = environments.require(env);
+        RuleReader.HistoryRow f = reader.historyById(e, service, from);
         if (f == null || !f.ruleKey().equals(key)) {
             throw ApiException.notFound("历史记录不存在: " + from);
         }
         String toRules;
         String toLabel;
         if (to == null) {
-            RuleReader.Current c = reader.current(service, key);
+            RuleReader.Current c = reader.current(e, service, key);
             toRules = c == null ? null : c.rules();
             toLabel = "current";
         } else {
-            RuleReader.HistoryRow t = reader.historyById(service, to);
+            RuleReader.HistoryRow t = reader.historyById(e, service, to);
             if (t == null || !t.ruleKey().equals(key)) {
                 throw ApiException.notFound("历史记录不存在: " + to);
             }
@@ -87,13 +95,15 @@ public class RuleController {
     }
 
     @PostMapping("/{service}/rollback")
-    public Map<String, Object> rollback(@PathVariable String service, @RequestBody Map<String, Object> body) {
+    public Map<String, Object> rollback(@PathVariable String service, @RequestBody Map<String, Object> body,
+                                        @RequestParam(required = false) String env) {
         access.requireViewService(service);
+        String envKey = env != null && !env.isBlank() ? env : (body.get("env") instanceof String b ? b : null);
         String key = body.get("key") instanceof String s ? s : null;
         if (key == null || key.isBlank() || !(body.get("historyId") instanceof Number id)) {
             throw ApiException.validation("key 和 historyId 必填");
         }
         String reason = body.get("reason") instanceof String r ? r : null;
-        return changes.rollback(Who.console(access.user()), service, key, id.longValue(), reason);
+        return changes.rollback(Who.console(access.user()), environments.require(envKey), service, key, id.longValue(), reason);
     }
 }

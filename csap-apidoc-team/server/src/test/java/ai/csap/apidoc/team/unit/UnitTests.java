@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -254,7 +255,8 @@ class UnitTests {
     void schemaScriptsExistForEveryDialectAndMatchTheTemplate() throws Exception {
         List<String> expected = List.of("csap_team_setting", "csap_team_user", "csap_team_project", "csap_team_project_service",
                 "csap_team_service_instance", "csap_team_member", "csap_team_token", "csap_team_change", "csap_team_change_item",
-                "csap_team_audit", "csap_team_webhook", "csap_team_webhook_delivery", "csap_team_cursor");
+                "csap_team_audit", "csap_team_webhook", "csap_team_webhook_delivery", "csap_team_cursor", "csap_team_service_env",
+                "csap_team_env_instance", "csap_team_comment");
         String template = Files.readString(Paths.get("schema-template.sql"), StandardCharsets.UTF_8);
         Map<String, String[]> dialects = Map.of(
                 "mysql", new String[] {"LONGTEXT", "id BIGINT AUTO_INCREMENT PRIMARY KEY", " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
@@ -273,6 +275,140 @@ class UnitTests {
             assertFalse(sql.contains("DEFAULT ''"), "不写 DEFAULT ''");
             assertFalse(sql.contains("{{"));
         }
+    }
+
+    // ---- 环境配置(契约 1.1)----
+
+    private static ai.csap.apidoc.team.env.Environments envs(TeamProperties props) {
+        DriverManagerDataSource ds = new DriverManagerDataSource("jdbc:h2:mem:envcfg");
+        Db db = new Db(ds, new DataSourceTransactionManager(ds), props);
+        return new ai.csap.apidoc.team.env.Environments(props, db, new org.springframework.mock.env.MockEnvironment()
+                .withProperty("spring.datasource.url", "jdbc:h2:mem:envcfg"));
+    }
+
+    private static TeamProperties.Environment cfg(String key, String name, String prefix, String url) {
+        TeamProperties.Environment e = new TeamProperties.Environment();
+        e.setKey(key);
+        e.setName(name);
+        e.setRuleTablePrefix(prefix);
+        if (url != null) {
+            TeamProperties.EnvDatasource d = new TeamProperties.EnvDatasource();
+            d.setUrl(url);
+            d.setUsername("sa");
+            e.setDatasource(d);
+        }
+        return e;
+    }
+
+    private static String envError(TeamProperties.Environment... list) {
+        TeamProperties p = new TeamProperties();
+        p.setEnvironments(List.of(list));
+        return assertThrows(IllegalStateException.class, () -> envs(p)).getMessage();
+    }
+
+    @Test
+    void noEnvironmentsConfiguredMeansOneDefaultEnvironment() {
+        var e = envs(new TeamProperties());
+        assertEquals(1, e.all().size());
+        assertEquals("default", e.defaultEnv().key());
+        assertEquals("默认", e.defaultEnv().name());
+        assertFalse(e.defaultEnv().isProtected());
+        assertFalse(e.defaultEnv().readOnly());
+        assertEquals("csap_apidoc_rule", e.defaultEnv().ruleTable());
+        assertSame(e.defaultEnv(), e.require(null));
+        assertThrows(ai.csap.apidoc.team.common.ApiException.class, () -> e.require("nope"));
+    }
+
+    @Test
+    void environmentConfigurationIsValidatedWithChineseMessages() {
+        assertTrue(envError(cfg("Dev", "开发", null, null)).contains("key"));
+        assertTrue(envError(cfg("a_b", "x", null, null)).contains("key"));
+        assertTrue(envError(cfg("x".repeat(33), "x", null, null)).contains("key"));
+        assertTrue(envError(cfg("dev", "开发", null, null), cfg("dev", "开发 2", "b_", null)).contains("重复"));
+        assertTrue(envError(cfg("dev", " ", null, null)).contains("name"));
+        assertTrue(envError(cfg("dev", "开发", "a-b", null)).contains("rule-table-prefix"));
+        // 同一数据源 + 同一前缀被两个环境共用
+        assertTrue(envError(cfg("dev", "开发", null, null), cfg("test", "测试", null, null)).contains("同一个数据源"));
+        assertTrue(envError(cfg("a", "A", "p_", "jdbc:h2:mem:x1"), cfg("b", "B", "p_", "jdbc:h2:mem:x1")).contains("同一个数据源"));
+        // 数据源不同,或前缀不同都可以
+        var ok = new TeamProperties();
+        ok.setEnvironments(List.of(cfg("a", "A", null, null), cfg("b", "B", "b_", null), cfg("c", "C", null, "jdbc:h2:mem:envcfg_c")));
+        var e = envs(ok);
+        assertEquals(List.of("a", "b", "c"), e.all().stream().map(ai.csap.apidoc.team.env.Env::key).toList());
+        assertEquals("a", e.defaultEnv().key());
+        assertEquals("b_rule", e.find("b").ruleTable());
+        assertTrue(e.find("c").ownDataSource());
+        assertFalse(e.find("a").ownDataSource());
+        e.all().forEach(x -> assertFalse(x.isUp(), "init 之前尚未探测"));
+    }
+
+    // ---- 审计哈希链(契约 6.1)----
+
+    @Test
+    void auditChainCanonicalFormAndHashMatchTheContractAlgorithm() {
+        // 契约示例;期望值由独立的 Python(json.dumps(ensure_ascii=False, separators=(",", ":")) + hashlib.sha256)算出
+        Object[] v = ai.csap.apidoc.team.audit.AuditChain.values(12L, 1763452800000L, "USER", 1L, "张三", "CONSOLE", "10.0.0.1",
+                "change.publish", 1L, "prod", "order-service", "k", 12L, null, "{}", null, null, 345L,
+                ai.csap.apidoc.team.audit.AuditChain.ZERO);
+        assertEquals("[12,1763452800000,\"USER\",1,\"张三\",\"CONSOLE\",\"10.0.0.1\",\"change.publish\",1,\"prod\",\"order-service\",\"k\",12,null,"
+                + "\"{}\",null,null,345,\"" + "0".repeat(64) + "\"]", ai.csap.apidoc.team.audit.AuditChain.canonical(v));
+        assertEquals("cf8a33044d1e0bcca346041875856cc31cd1b14ef9503e98e9e0d45b05c58653",
+                ai.csap.apidoc.team.audit.AuditChain.hash(ai.csap.apidoc.team.audit.AuditChain.ZERO, v));
+        // 转义:引号、反斜杠、换行、制表符、控制字符用 u00xx 小写十六进制,非 ASCII 原样输出
+        Object[] w = ai.csap.apidoc.team.audit.AuditChain.values(1L, 2L, "SYSTEM", null, "s\"q\\\n\t\u0001é", "X", null, "a", null, null, null, null,
+                null, "行1\n行2", null, null, null, null, "a".repeat(64));
+        assertEquals("[1,2,\"SYSTEM\",null,\"s\\\"q\\\\\\n\\t\\u0001é\",\"X\",null,\"a\",null,null,null,null,null,\"行1\\n行2\",null,null,null,null,\"" + "a".repeat(64) + "\"]",
+                ai.csap.apidoc.team.audit.AuditChain.canonical(w));
+        assertEquals("7b1747a652441fa5b20aed1b1b6a2a3c06e64fb62b5981ce378f15d2f9f40224",
+                ai.csap.apidoc.team.audit.AuditChain.hash("a".repeat(64), w));
+    }
+
+    @Test
+    void onlyTheChainCodeTouchesAuditRowsAfterTheyAreWritten() throws Exception {
+        // 契约 6.2:除写入时补 hash、升级回填和保留期清理外,不得对 csap_team_audit 做 UPDATE / DELETE
+        Pattern p = Pattern.compile("(UPDATE\\s+csap_team_audit|DELETE\\s+FROM\\s+csap_team_audit)", Pattern.CASE_INSENSITIVE);
+        Map<String, Integer> found = new java.util.TreeMap<>();
+        try (var files = Files.walk(Paths.get("src/main/java"))) {
+            for (Path f : files.filter(x -> x.toString().endsWith(".java")).toList()) {
+                String text = Files.readString(f, StandardCharsets.UTF_8);
+                int n = (int) p.matcher(text).results().count();
+                if (n > 0) {
+                    found.put(f.getFileName().toString(), n);
+                }
+            }
+        }
+        assertEquals(Map.of("AuditService.java", 1, "AuditChain.java", 1, "AuditRetention.java", 1), found);
+    }
+
+    @Test
+    void upgradeScriptsExistForEveryDialectAndMatchTheTemplate() throws Exception {
+        String template = Files.readString(Paths.get("upgrade-2-template.sql"), StandardCharsets.UTF_8);
+        Map<String, String[]> dialects = Map.of(
+                "mysql", new String[] {"LONGTEXT", "id BIGINT AUTO_INCREMENT PRIMARY KEY", " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"},
+                "postgresql", new String[] {"TEXT", "id BIGSERIAL PRIMARY KEY", ""},
+                "dm", new String[] {"CLOB", "id BIGINT IDENTITY(1, 1) PRIMARY KEY", ""},
+                "kingbase", new String[] {"TEXT", "id BIGSERIAL PRIMARY KEY", ""},
+                "h2", new String[] {"CLOB", "id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY", ""});
+        for (Map.Entry<String, String[]> e : dialects.entrySet()) {
+            String sql = Files.readString(Paths.get("src/main/resources/META-INF/csap-team/schema/upgrade/2/" + e.getKey() + ".sql"),
+                    StandardCharsets.UTF_8);
+            String regenerated = template.replace("{{DIALECT}}", e.getKey()).replace("{{TEXT}}", e.getValue()[0])
+                    .replace("{{ID}}", e.getValue()[1]).replace("{{OPTS}}", e.getValue()[2]);
+            assertEquals(regenerated, sql, e.getKey() + " 升级脚本与模板不一致,请运行 server/generate-schema.sh");
+            assertEquals(List.of("csap_team_service_env", "csap_team_env_instance", "csap_team_comment"),
+                    TABLE.matcher(sql).results().map(m -> m.group(1)).toList(), e.getKey());
+            for (String col : List.of("csap_team_change ADD COLUMN env_key", "csap_team_change ADD COLUMN source_env",
+                    "csap_team_audit ADD COLUMN env_key", "csap_team_token ADD COLUMN env_key", "csap_team_webhook ADD COLUMN env_keys")) {
+                assertTrue(sql.contains(col), e.getKey() + " 缺少 " + col);
+            }
+            assertFalse(sql.contains("{{"));
+        }
+        // 新库的建表脚本包含升级脚本里的全部新表和列
+        String fresh = Files.readString(Paths.get("src/main/resources/META-INF/csap-team/schema/h2.sql"), StandardCharsets.UTF_8);
+        for (String t : List.of("csap_team_service_env", "csap_team_env_instance", "csap_team_comment")) {
+            assertTrue(fresh.contains("CREATE TABLE " + t));
+        }
+        assertTrue(fresh.contains("env_keys VARCHAR(512)") && fresh.contains("source_env VARCHAR(32)"));
     }
 
     @Test

@@ -28,6 +28,9 @@ public class TeamProperties {
     private final Sync sync = new Sync();
     private final Audit audit = new Audit();
     private final Webhook webhook = new Webhook();
+    private final Presence presence = new Presence();
+    /** 环境定义;空 = 只有一个环境 default(1.0 行为) */
+    private List<Environment> environments = new ArrayList<>();
 
     public static class Database {
         /** 启动时缺表就建表 */
@@ -68,9 +71,61 @@ public class TeamProperties {
     public static class Audit {
         /** 保留天数,0 = 永久 */
         private int retentionDays = 0;
+        /** audit.checkpoint 事件的 cron(服务器时区),默认每天 00:05 */
+        private String checkpointCron = "0 5 0 * * *";
+
+        public String getCheckpointCron() { return checkpointCron; }
+        public void setCheckpointCron(String checkpointCron) { this.checkpointCron = checkpointCron; }
 
         public int getRetentionDays() { return retentionDays; }
         public void setRetentionDays(int retentionDays) { this.retentionDays = retentionDays; }
+    }
+
+    public static class Presence {
+        private int ttlSeconds = 90;
+
+        public int getTtlSeconds() { return ttlSeconds; }
+        public void setTtlSeconds(int ttlSeconds) { this.ttlSeconds = ttlSeconds; }
+    }
+
+    /** 一个环境的数据源(省略 = 主数据源)。密码只在内存里,不进日志、接口。 */
+    public static class EnvDatasource {
+        private String url;
+        private String username;
+        private String password;
+        private String driverClassName;
+
+        public String getUrl() { return url; }
+        public void setUrl(String url) { this.url = url; }
+        public String getUsername() { return username; }
+        public void setUsername(String username) { this.username = username; }
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
+        public String getDriverClassName() { return driverClassName; }
+        public void setDriverClassName(String driverClassName) { this.driverClassName = driverClassName; }
+    }
+
+    public static class Environment {
+        private String key;
+        private String name;
+        private EnvDatasource datasource;
+        private String ruleTablePrefix;
+        private boolean protect;
+        private boolean readOnly;
+
+        public String getKey() { return key; }
+        public void setKey(String key) { this.key = key; }
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public EnvDatasource getDatasource() { return datasource; }
+        public void setDatasource(EnvDatasource datasource) { this.datasource = datasource; }
+        public String getRuleTablePrefix() { return ruleTablePrefix; }
+        public void setRuleTablePrefix(String ruleTablePrefix) { this.ruleTablePrefix = ruleTablePrefix; }
+        /** 配置项 {@code protected} */
+        public boolean isProtected() { return protect; }
+        public void setProtected(boolean value) { this.protect = value; }
+        public boolean isReadOnly() { return readOnly; }
+        public void setReadOnly(boolean readOnly) { this.readOnly = readOnly; }
     }
 
     public static class Webhook {
@@ -96,4 +151,7 @@ public class TeamProperties {
     public Sync getSync() { return sync; }
     public Audit getAudit() { return audit; }
     public Webhook getWebhook() { return webhook; }
+    public Presence getPresence() { return presence; }
+    public List<Environment> getEnvironments() { return environments; }
+    public void setEnvironments(List<Environment> environments) { this.environments = environments == null ? new ArrayList<>() : environments; }
 }

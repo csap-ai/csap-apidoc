@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 import ai.csap.apidoc.team.auth.Access;
 import ai.csap.apidoc.team.common.ApiException;
 import ai.csap.apidoc.team.common.Json;
+import ai.csap.apidoc.team.env.Environments;
+import ai.csap.apidoc.team.env.Environments;
 
 @RestController
 @RequestMapping("/api/v1/changes")
@@ -23,24 +25,27 @@ public class ChangeController {
 
     private final ChangeService changes;
     private final Access access;
+    private final Environments environments;
 
-    public ChangeController(ChangeService changes, Access access) {
+    public ChangeController(ChangeService changes, Access access, Environments environments) {
         this.changes = changes;
         this.access = access;
+        this.environments = environments;
     }
 
     @GetMapping
     public Map<String, Object> list(@RequestParam(required = false) Long projectId, @RequestParam(required = false) String status,
-                                    @RequestParam(required = false) Boolean mine, @RequestParam(defaultValue = "1") int page,
-                                    @RequestParam(defaultValue = "20") int size) {
-        return changes.list(access.user(), projectId, status, Boolean.TRUE.equals(mine), Math.max(1, page),
+                                    @RequestParam(required = false) Boolean mine, @RequestParam(required = false) String env,
+                                    @RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int size) {
+        String envKey = env == null || env.isBlank() ? null : environments.require(env).key();
+        return changes.list(access.user(), projectId, status, Boolean.TRUE.equals(mine), envKey, Math.max(1, page),
                 Math.max(1, Math.min(size, 200)));
     }
 
     @PostMapping
     public Map<String, Object> create(@RequestBody Map<String, Object> body) {
-        return changes.create(Who.console(access.user()), longOf(body.get("projectId"), "projectId"), str(body, "title"),
-                str(body, "reason"), parseItems(body.get("items"), true), "EDIT");
+        return changes.create(Who.console(access.user()), longOf(body.get("projectId"), "projectId"), environments.require(str(body, "env")),
+                str(body, "title"), str(body, "reason"), parseItems(body.get("items"), true), "EDIT");
     }
 
     @GetMapping("/{id}")

@@ -45,7 +45,7 @@ public class TokenService {
     }
 
     /** @return 含一次性明文 token 的 Map */
-    public Map<String, Object> create(String name, String scope, Long projectId, long createdBy) {
+    public Map<String, Object> create(String name, String scope, Long projectId, String envKey, long createdBy) {
         if (name == null || name.isBlank() || name.length() > 128) {
             throw ApiException.validation("令牌名称不能为空且不超过 128 字");
         }
@@ -58,8 +58,8 @@ public class TokenService {
         String raw = generate();
         long now = System.currentTimeMillis();
         long id = db.insert("INSERT INTO csap_team_token (name, token_hash, prefix, scope, project_id, created_by, created_at,"
-                + " revoked) VALUES (?, ?, ?, ?, ?, ?, ?, 0)", name.trim(), sha256(raw), raw.substring(0, 8), scope, projectId,
-                createdBy, now);
+                + " revoked, env_key) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)", name.trim(), sha256(raw), raw.substring(0, 8), scope, projectId,
+                createdBy, now, envKey);
         Map<String, Object> m = get(id);
         m.put("token", raw);
         return m;
@@ -73,6 +73,7 @@ public class TokenService {
         m.put("scope", rs.getString("scope"));
         long pid = rs.getLong("project_id");
         m.put("projectId", rs.wasNull() ? null : pid);
+        m.put("env", rs.getString("env_key"));
         m.put("createdBy", rs.getLong("created_by"));
         m.put("createdAt", rs.getLong("created_at"));
         long used = rs.getLong("last_used_at");
@@ -81,7 +82,7 @@ public class TokenService {
         return m;
     }
 
-    private static final String COLS = "id, name, prefix, scope, project_id, created_by, created_at, last_used_at, revoked";
+    private static final String COLS = "id, name, prefix, scope, project_id, env_key, created_by, created_at, last_used_at, revoked";
 
     public Map<String, Object> get(long id) {
         return db.one("SELECT " + COLS + " FROM csap_team_token WHERE id = ?", TokenService::map, id);
@@ -104,13 +105,13 @@ public class TokenService {
             return null;
         }
         String hash = sha256(raw);
-        Object[] row = db.one("SELECT id, name, scope, project_id, created_by, revoked, last_used_at FROM csap_team_token"
+        Object[] row = db.one("SELECT id, name, scope, project_id, created_by, revoked, last_used_at, env_key FROM csap_team_token"
                 + " WHERE token_hash = ?", (rs, i) -> {
                     long pid = rs.getLong(4);
                     Long project = rs.wasNull() ? null : pid;
                     long used = rs.getLong(7);
                     return new Object[] {rs.getLong(1), rs.getString(2), rs.getString(3), project, rs.getLong(5), rs.getInt(6),
-                            rs.wasNull() ? null : used};
+                            rs.wasNull() ? null : used, rs.getString(8)};
                 }, hash);
         if (row == null || (int) row[5] == 1) {
             return null;
@@ -120,6 +121,6 @@ public class TokenService {
         if (used == null || now - used > 60_000) {
             db.update("UPDATE csap_team_token SET last_used_at = ? WHERE id = ?", now, row[0]);
         }
-        return new TokenPrincipal((long) row[0], (String) row[1], (String) row[2], (Long) row[3], (long) row[4]);
+        return new TokenPrincipal((long) row[0], (String) row[1], (String) row[2], (Long) row[3], (long) row[4], (String) row[7]);
     }
 }

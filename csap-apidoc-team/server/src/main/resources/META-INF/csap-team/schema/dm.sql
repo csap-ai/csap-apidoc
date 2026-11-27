@@ -1,5 +1,6 @@
 -- CSAP Apidoc 团队版 建表脚本 / schema for the team edition (dm)
--- 团队版自己的表;开源数据库模式的三张表(rule / history / meta)由开源建表脚本创建。
+-- 团队版自己的表(schema 版本 2,含 1.1 的全部内容);开源数据库模式的三张表(rule / history / meta)由开源建表脚本创建。
+-- 1.0 的库(schema 版本 1)升级到 2 用 upgrade/2/{dialect}.sql(由 upgrade-2-template.sql 生成)。
 -- 由 server/generate-schema.sh 从 server/schema-template.sql 生成,不要手工修改。
 -- 未在真实库验证的方言:dm、kingbase(按开源版同样的类型约定编写)。
 
@@ -72,7 +73,8 @@ CREATE TABLE csap_team_token (
     created_by BIGINT NOT NULL,
     created_at BIGINT NOT NULL,
     last_used_at BIGINT,
-    revoked SMALLINT NOT NULL
+    revoked SMALLINT NOT NULL,
+    env_key VARCHAR(32)
 );
 
 CREATE UNIQUE INDEX csap_team_token_hash ON csap_team_token (token_hash);
@@ -91,10 +93,13 @@ CREATE TABLE csap_team_change (
     decided_at BIGINT,
     decision_note VARCHAR(1000),
     published_at BIGINT,
-    kind VARCHAR(16) NOT NULL
+    kind VARCHAR(16) NOT NULL,
+    env_key VARCHAR(32),
+    source_env VARCHAR(32)
 );
 
 CREATE INDEX csap_team_change_project ON csap_team_change (project_id, id);
+CREATE INDEX csap_team_change_env ON csap_team_change (env_key, status);
 
 CREATE TABLE csap_team_change_item (
     id BIGINT IDENTITY(1, 1) PRIMARY KEY,
@@ -121,6 +126,7 @@ CREATE TABLE csap_team_audit (
     ip VARCHAR(64),
     action VARCHAR(64) NOT NULL,
     project_id BIGINT,
+    env_key VARCHAR(32),
     service VARCHAR(128),
     rule_key VARCHAR(512),
     change_id BIGINT,
@@ -147,7 +153,8 @@ CREATE TABLE csap_team_webhook (
     events VARCHAR(512) NOT NULL,
     enabled SMALLINT NOT NULL,
     created_at BIGINT NOT NULL,
-    updated_at BIGINT NOT NULL
+    updated_at BIGINT NOT NULL,
+    env_keys VARCHAR(512)
 );
 
 CREATE TABLE csap_team_webhook_delivery (
@@ -167,3 +174,36 @@ CREATE TABLE csap_team_cursor (
     name VARCHAR(128) NOT NULL PRIMARY KEY,
     cursor_value VARCHAR(512) NOT NULL
 );
+
+CREATE TABLE csap_team_service_env (
+    service VARCHAR(128) NOT NULL,
+    env_key VARCHAR(32) NOT NULL,
+    base_url VARCHAR(512),
+    doc_path VARCHAR(256) NOT NULL,
+    source VARCHAR(16) NOT NULL,
+    last_seen_at BIGINT,
+    created_at BIGINT NOT NULL,
+    PRIMARY KEY (service, env_key)
+);
+
+CREATE TABLE csap_team_env_instance (
+    env_key VARCHAR(32) NOT NULL,
+    service VARCHAR(128) NOT NULL,
+    instance_id VARCHAR(128) NOT NULL,
+    base_url VARCHAR(512) NOT NULL,
+    last_seen_at BIGINT NOT NULL,
+    PRIMARY KEY (env_key, service, instance_id)
+);
+
+CREATE TABLE csap_team_comment (
+    id BIGINT IDENTITY(1, 1) PRIMARY KEY,
+    change_id BIGINT NOT NULL,
+    item_id BIGINT,
+    author_id BIGINT NOT NULL,
+    body CLOB,
+    deleted SMALLINT NOT NULL,
+    created_at BIGINT NOT NULL,
+    updated_at BIGINT NOT NULL
+);
+
+CREATE INDEX csap_team_comment_change ON csap_team_comment (change_id, id);
