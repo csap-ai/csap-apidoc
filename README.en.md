@@ -25,8 +25,8 @@ The doc protocol, the rule file format and the docs page are shared across langu
 
 | Language | Status | Frameworks |
 |---|---|---|
-| **Java** | ✅ Released [1.5.0](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
-| **Go** | ✅ Released [v0.3.0](https://pkg.go.dev/github.com/csap-ai/csap-apidoc/csap-apidoc-go) (`go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.3.0`) | gin, net/http |
+| **Java** | ✅ Released [1.5.1](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
+| **Go** | ✅ Released [v0.3.1](https://pkg.go.dev/github.com/csap-ai/csap-apidoc/csap-apidoc-go) (`go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.3.1`) | gin, net/http |
 | **Rust** | 📋 Planned | axum, actix-web |
 | More | 📋 Coming | see the [roadmap](docs/ROADMAP.md) |
 
@@ -53,7 +53,7 @@ These work in both Java and Go (see the [Go guide](https://apidoc.csap.ai/go/) f
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.5.0</version>
+    <version>1.5.1</version>
 </dependency>
 ```
 
@@ -98,7 +98,7 @@ Why `forceReq` / `forceRep`, and how to choose fields per endpoint: see [Quick s
 ## Quick start (Go)
 
 ```bash
-go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.3.0
+go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.3.1
 ```
 
 ```go

@@ -122,6 +122,26 @@ public interface ParamGroupStrategy extends ApidocStrategyName {
     }
 
     /**
+     * 单值参数(@RequestParam / @PathVariable 等)的规则键。
+     * <p>
+     * 规则键为 "<名>.<名>";规则里没有它、但有纯 "<名>" 时用纯名(早期版本写出的规则文件用这种写法)。
+     * 只在请求规则里找纯名,不会误用同名的返回字段规则。文档里的 keyName 与新写入的规则仍是 "<名>.<名>"。
+     *
+     * @param keyName   参数名
+     * @param paramName 参数名
+     * @return 用于查找规则的键
+     */
+    default String basicParamRuleKey(StrategyModel strategyModel, CsapDocMethod method, String keyName, String paramName) {
+        String full = keyName + "." + paramName;
+        ParamGroupMethodProperty property = yamlMethodProperty(strategyModel, method);
+        if (Objects.isNull(property) || MapUtil.isEmpty(property.getRequest())
+                || property.getRequest().containsKey(full) || !property.getRequest().containsKey(paramName)) {
+            return full;
+        }
+        return paramName;
+    }
+
+    /**
      * yaml属性信息
      *
      * @param method 方法

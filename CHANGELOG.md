@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-11-27
+
+Patch release, together with Go v0.3.1. No configuration changes.
+
+### Fixed
+
+- **Request rules for single-value parameters written with the plain parameter name now apply**
+  (`@RequestParam`, `@PathVariable` and other basic-type method parameters). Rules are looked up
+  as `<name>.<name>` (for example `limit.limit`); rule files written by early versions use the
+  plain name (`limit:`), which was ignored, so their description, required flag and validation
+  rules had no effect in the docs or at runtime. The lookup now falls back to the plain name in
+  the request rules when `<name>.<name>` is missing; `<name>.<name>` still wins when both exist,
+  a response field with the same name is never used, and newly written rules keep the
+  `<name>.<name>` form. Applies to the YAML, SQLite, database and Redis rule sources. Go v0.3.1
+  has the same fix.
+
 ## [1.5.0] - 2026-11-19
 
 Java 1.5.0, Go v0.3.0 and the **team edition 1.0** are released together. The team edition

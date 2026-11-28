@@ -13,12 +13,12 @@ CSAP Apidoc 的 Go 实现,是仓库 `csap-apidoc-go/` 目录下的独立 Go 模�
 - **规则文件与 Java 通用**:YAML 规则与 Java 的 `method-field.yaml` 格式相同,Java 项目的规则文件可以直接拿来用。
 - **导出**:OpenAPI 3.1(`/csap/openapi.json`)和 Postman Collection(`/csap/openapi/postman`)。
 
-当前版本 **v0.3.0**,最低 Go 1.22,协议 Apache-2.0。源码与设计文档见 [csap-apidoc-go](https://github.com/csap-ai/csap-apidoc/tree/main/csap-apidoc-go)。
+当前版本 **v0.3.1**,最低 Go 1.22,协议 Apache-2.0。源码与设计文档见 [csap-apidoc-go](https://github.com/csap-ai/csap-apidoc/tree/main/csap-apidoc-go)。
 
 ## 安装
 
 ```bash
-go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.3.0
+go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.3.1
 ```
 
 根包只依赖标准库;用到 gin 适配、YAML 规则时才会编译对应的依赖。SQL 规则来源不引入任何数据库驱动,由你自己 import。
@@ -156,7 +156,7 @@ example.UserController:          # 分组(Java 的 Controller 全名)
 ```
 
 - 格式与 Java `method-field.yaml` 完全相同,Java 项目的文件可以直接用;Java 写出的 `code: 1001`(数字)、`-` 单独一行的数组写法都认。
-- 规则路径与 Java 一致:返回字段是 `data.xxx`,请求体字段是 `request.xxx`(参数名可以用 `BodyName` 改),单值参数是 `参数名.参数名`(如 `id.id`)。路径同时认驼峰和下划线写法。
+- 规则路径与 Java 一致:返回字段是 `data.xxx`,请求体字段是 `request.xxx`(参数名可以用 `BodyName` 改),单值参数是 `参数名.参数名`(如 `id.id`),没有时也认纯 `参数名`(早期规则文件的写法)。路径同时认驼峰和下划线写法。
 - 目录下所有 `.yaml/.yml` 都会加载,文件名不要求与分组对应。`yaml.FS(fsys, dir)` 可以从 `go:embed` 只读加载。
 - Go 版新增的 `hidden`(只在文档隐藏)、`example` 字段,Java 读取时会忽略。
 - 多实例部署、需要在线修改时,可以换成 SQL 规则来源 `strategy/sql`(SQLite / PostgreSQL / MySQL),保存时版本号加 1,其他实例轮询或经 Redis 通知后重新加载。

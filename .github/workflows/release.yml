@@ -17,7 +17,7 @@ on:
       version:
         description: "Release version — must match <version> in pom.xml (e.g. 1.1.0)"
         required: true
-        default: "1.5.0"
+        default: "1.5.1"
       dry_run:
         description: "If true, build + sign locally but skip the upload to Central"
         required: false

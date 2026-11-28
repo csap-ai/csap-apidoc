@@ -334,3 +334,21 @@ func TestJavaUnicodePattern(t *testing.T) {
 		t.Fatalf("compile java unicode: %v", err)
 	}
 }
+
+// 早期版本写出的规则文件里,单值参数的规则键是纯参数名(limit),没有 limit.limit。查不到 <名>.<名> 时回退纯名,校验照常生效。
+func TestPlainKeyRuleForBasicParam(t *testing.T) {
+	d := newDoc(strategy.Rules{"G.list": {Request: map[string]strategy.FieldRule{
+		"id":    {Required: model.Bool(true), Validate: []strategy.ValidateRule{notEmpty("1001", "ID不能为空")}},
+		"limit": {Required: model.Bool(false), Validate: []strategy.ValidateRule{{Type: "Pattern", Pattern: `^([1-9][0-9]{0,2}|1000)$`, Code: "1002", Message: "返回数量,最大1000"}}},
+	}}})
+	v := New(d, Options{Mode: Enforce})
+	if viol := check(t, v, d, "GET", "/list", "/list?id=1&limit=2000", "", nil); viol == nil || viol.Code != "1002" || viol.Field != "limit" {
+		t.Fatalf("limit=2000 should be rejected: %+v", viol)
+	}
+	if viol := check(t, v, d, "GET", "/list", "/list?limit=10", "", nil); viol == nil || viol.Code != "1001" {
+		t.Fatalf("id required by plain-key rule: %+v", viol)
+	}
+	if viol := check(t, v, d, "GET", "/list", "/list?id=1&limit=1000", "", nil); viol != nil {
+		t.Fatalf("unexpected %+v", viol)
+	}
+}

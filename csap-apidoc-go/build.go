@@ -287,13 +287,17 @@ func classify(f reflect.StructField, httpMethod string, pathParams map[string]bo
 }
 
 // basicParam 生成路径、查询、请求头这类单值参数(对应 Java 的 @RequestParam 基本类型参数)。
-// 规则路径为 "<名>.<名>",与 Java 一致。
+// 规则路径为 "<名>.<名>",与 Java 一致;查不到时回退纯 "<名>"(早期版本写出的规则文件用这种写法)。
+// keyName 始终是 "<名>.<名>",新写入的规则也用它。
 func (b *builder) basicParam(rf reqField, mc *methodCtx) *model.Parameter {
 	if rf.meta.Name == "-" || rf.meta.Hidden {
 		return nil
 	}
 	keyName := rf.name + "." + rf.name
 	rule, hasRule := strategy.Lookup(mc.rules.Request, keyName)
+	if !hasRule {
+		rule, hasRule = strategy.Lookup(mc.rules.Request, rf.name)
+	}
 	p := &model.Parameter{
 		DataType:     dataType(rf.sf.Type, rf.meta),
 		DefaultValue: rf.meta.DefaultValue,

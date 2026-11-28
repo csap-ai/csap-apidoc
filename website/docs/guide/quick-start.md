@@ -19,14 +19,14 @@
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.5.0</version>
+    <version>1.5.1</version>
 </dependency>
 ```
 
 Gradle 写法：
 
 ```groovy
-implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.5.0'
+implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.5.1'
 ```
 
 `csap-apidoc-boot-starter` 已经包含文档页面（`csap-apidoc-ui`）、YAML / SQLite 存储策略、DevTools 和返回字段过滤（`csap-apidoc-runtime`），不需要再单独引入。参数校验 starter `csap-validation-boot-starter` 是可选的，需要运行时参数校验（1.2.0 起）、它的校验异常处理器或 `csap.validation.*` 配置时引入。各模块的说明见 [安装](/guide/installation)。

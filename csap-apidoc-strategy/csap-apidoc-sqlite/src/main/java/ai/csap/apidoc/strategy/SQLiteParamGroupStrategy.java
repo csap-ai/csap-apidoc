@@ -5,7 +5,6 @@ import static ai.csap.apidoc.DbUtilsCrudUtil.getConnection;
 import static ai.csap.apidoc.DbUtilsCrudUtil.queryList;
 import static ai.csap.apidoc.DbUtilsCrudUtil.save;
 import static ai.csap.apidoc.DbUtilsCrudUtil.updateByWhere;
-import static ai.csap.apidoc.util.IValidate.DOT;
 
 import java.io.File;
 import java.lang.annotation.Annotation;
@@ -208,7 +207,7 @@ public class SQLiteParamGroupStrategy implements ParamGroupStrategy, SQLiteHandl
                                                                          Method method, String paramName,
                                                                          Parameter parameter) {
         ParamGroupMethodProperty.ParamDataValidate dataValidate = requestGroup(strategyModel,
-                keyName + DOT + paramName, docMethod, method, parameter.getType(),
+                basicParamRuleKey(strategyModel, docMethod, keyName, paramName), docMethod, method, parameter.getType(),
                 parameter.getAnnotations());
         if (Objects.nonNull(dataValidate) && Objects.nonNull(ApidocUtils.getParameterAnnotation(parameter, PathVariable.class))) {
             dataValidate.setParamType(ParamType.PATH);

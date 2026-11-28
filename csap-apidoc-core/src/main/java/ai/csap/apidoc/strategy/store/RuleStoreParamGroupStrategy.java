@@ -1,6 +1,5 @@
 package ai.csap.apidoc.strategy.store;
 
-import static ai.csap.apidoc.util.IValidate.DOT;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -373,7 +372,7 @@ public abstract class RuleStoreParamGroupStrategy implements ParamGroupStrategy,
                                                                          Method method, String paramName,
                                                                          Parameter parameter) {
         ParamGroupMethodProperty.ParamDataValidate dataValidate = requestGroup(strategyModel,
-                keyName + DOT + paramName, docMethod, parameter.getType(), parameter.getAnnotations());
+                basicParamRuleKey(strategyModel, docMethod, keyName, paramName), docMethod, parameter.getType(), parameter.getAnnotations());
         if (Objects.nonNull(dataValidate)
                 && Objects.nonNull(ApidocUtils.getParameterAnnotation(parameter, PathVariable.class))) {
             dataValidate.setParamType(ParamType.PATH);
