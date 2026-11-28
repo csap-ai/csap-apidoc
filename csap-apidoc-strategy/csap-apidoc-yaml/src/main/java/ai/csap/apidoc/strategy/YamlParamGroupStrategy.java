@@ -1,7 +1,6 @@
 package ai.csap.apidoc.strategy;
 
 import static ai.csap.apidoc.handle.IStandardHandle.splitName;
-import static ai.csap.apidoc.util.IValidate.DOT;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -115,7 +114,7 @@ public class YamlParamGroupStrategy implements ParamGroupStrategy {
                                                                          Method method, String paramName,
                                                                          Parameter parameter) {
         ParamGroupMethodProperty.ParamDataValidate dataValidate = requestGroup(strategyModel,
-                keyName + DOT + paramName, docMethod, method, parameter.getType(),
+                basicParamRuleKey(strategyModel, docMethod, keyName, paramName), docMethod, method, parameter.getType(),
                 parameter.getAnnotations());
         // 没有这个参数的规则时返回 null,由调用方回退到参数上的 @ApiProperty(必填以规则为准,没有规则才看注解)
         if (Objects.nonNull(dataValidate) && Objects.nonNull(parameter.getAnnotation(PathVariable.class))) {

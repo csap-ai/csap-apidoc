@@ -69,7 +69,7 @@ Go 的 handler 签名都一样（如 `gin.HandlerFunc`），看不出请求和�
 Java 的请求是"方法参数列表"，Go 是一个请求结构体，映射规则如下：
 
 - `Req(v)`：逐个字段决定位置，优先级 `in:"..."` > `uri`（PATH）> `header`（HEADER）> 与路径参数同名（PATH）> `form`（GET 为 QUERY，其他方法为 FORM）> 有 `json` 且方法为 POST/PUT/PATCH（BODY）；都没有时 GET/DELETE 为 QUERY，其余为 BODY。匿名嵌入的结构体会展开。
-- 非 BODY 字段各自生成一个 `BASE_DATA` 参数（对应 Java 的 `@RequestParam`），`methodParamName` 为参数名，规则路径为 `<名>.<名>`，如 `id.id`，与 Java 项目的 YAML 写法一致。
+- 非 BODY 字段各自生成一个 `BASE_DATA` 参数（对应 Java 的 `@RequestParam`），`methodParamName` 为参数名，规则路径为 `<名>.<名>`，如 `id.id`，与 Java 项目的 YAML 写法一致；查不到时回退请求规则里的纯 `<名>`(早期版本写出的规则文件用这种写法)，与 Java 一致。
 - BODY 字段合并成一个 `OBJECT` 参数，参数名默认 `request`（`BodyName` 可改），规则路径为 `request.<字段>`。
 - `Body(v)`：整个结构体作为请求体（对应 `@RequestBody`），切片时 `modelType` 为 `ARRAY`。
 

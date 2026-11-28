@@ -499,3 +499,51 @@ func TestInferName(t *testing.T) {
 		}
 	}
 }
+
+// 单值参数规则:<名>.<名> 优先;没有时回退纯 <名>(纯名同样按下划线/驼峰写法查找)。keyName 始终是 <名>.<名>。
+func TestBasicParamPlainKeyFallback(t *testing.T) {
+	fa := model.Bool(false)
+	snap := newDoc(strategy.Rules{
+		"com.x.ItemController.list": {
+			Request: map[string]strategy.FieldRule{
+				"limit":   {Description: "返回数量,最大1000", Validate: []strategy.ValidateRule{{Type: "Pattern", Pattern: "^[0-9]+$", Code: "1002"}}},
+				"id":      {Description: "纯名规则"},
+				"id.id":   {Required: fa, Description: "全名规则"},
+				"X-Token": {Description: "请求头纯名"},
+			},
+		},
+	}).Snapshot()
+	list := snap.Method("com.x.ItemController", "com.x.ItemController.list")
+	var limit, id, token *model.Parameter
+	for _, g := range list.Request {
+		for _, p := range g.Parameters {
+			switch p.Name {
+			case "limit":
+				limit = p
+			case "id":
+				id = p
+			case "X-Token":
+				token = p
+			}
+		}
+	}
+	if limit == nil || limit.Description != "返回数量,最大1000" || limit.KeyName != "limit.limit" || len(limit.Validate) != 1 {
+		t.Fatalf("plain key should apply: %+v", limit)
+	}
+	if id == nil || id.Description != "全名规则" || id.Required {
+		t.Fatalf("<name>.<name> must win over plain name: %+v", id)
+	}
+	if token == nil || token.Description != "请求头纯名" {
+		t.Fatalf("header plain key: %+v", token)
+	}
+	ep := snap.Endpoint("GET", "/api/items")
+	found := false
+	for _, c := range ep.Checks {
+		if c.Name == "limit" && len(c.Rules) == 1 && c.Rules[0].Code == "1002" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("limit check should carry plain-key rules: %+v", ep.Checks)
+	}
+}

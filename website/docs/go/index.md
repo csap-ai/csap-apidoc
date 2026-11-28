@@ -156,7 +156,7 @@ example.UserController:          # 分组(Java 的 Controller 全名)
 ```
 
 - 格式与 Java `method-field.yaml` 完全相同,Java 项目的文件可以直接用;Java 写出的 `code: 1001`(数字)、`-` 单独一行的数组写法都认。
-- 规则路径与 Java 一致:返回字段是 `data.xxx`,请求体字段是 `request.xxx`(参数名可以用 `BodyName` 改),单值参数是 `参数名.参数名`(如 `id.id`)。路径同时认驼峰和下划线写法。
+- 规则路径与 Java 一致:返回字段是 `data.xxx`,请求体字段是 `request.xxx`(参数名可以用 `BodyName` 改),单值参数是 `参数名.参数名`(如 `id.id`),没有时也认纯 `参数名`(早期规则文件的写法)。路径同时认驼峰和下划线写法。
 - 目录下所有 `.yaml/.yml` 都会加载,文件名不要求与分组对应。`yaml.FS(fsys, dir)` 可以从 `go:embed` 只读加载。
 - Go 版新增的 `hidden`(只在文档隐藏)、`example` 字段,Java 读取时会忽略。
 - 多实例部署、需要在线修改时,可以换成 SQL 规则来源 `strategy/sql`(SQLite / PostgreSQL / MySQL),保存时版本号加 1,其他实例轮询或经 Redis 通知后重新加载。
