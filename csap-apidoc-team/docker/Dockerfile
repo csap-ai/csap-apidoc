@@ -1,6 +1,6 @@
 # CSAP Apidoc 团队版 运行镜像
 # 先在 csap-apidoc-team/ 目录构建 jar(web/dist 会被打进去):  mvn -B -pl server -am package -DskipTests
-# 再构建镜像:                                    docker build -f docker/Dockerfile -t csap-apidoc-team:1.0.0 .
+# 再构建镜像:                                    docker build -f docker/Dockerfile -t csap-apidoc-team:1.1.0 .
 FROM eclipse-temurin:17-jre
 
 RUN groupadd --system csap && useradd --system --gid csap --home-dir /app csap \

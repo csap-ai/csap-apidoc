@@ -1,6 +1,6 @@
 {
   "name": "csap-apidoc-team-web",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "CSAP Apidoc 团队版控制台",

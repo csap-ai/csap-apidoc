@@ -5,7 +5,7 @@
     <parent>
         <groupId>ai.csap.apidoc.team</groupId>
         <artifactId>csap-apidoc-team-parent</artifactId>
-        <version>1.1.0-SNAPSHOT</version>
+        <version>1.1.0</version>
     </parent>
 
     <artifactId>csap-apidoc-team-server</artifactId>

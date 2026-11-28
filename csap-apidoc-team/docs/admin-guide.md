@@ -259,4 +259,4 @@ export CSAP_TEAM_AUDIT_RETENTIONDAYS=365      # 保留 365 天,0 = 永久
 
 ## 后续版本
 
-1.1(开发中,未发布)提供多环境与推广、评论、编辑中提示、审计哈希链,见 [多环境与推广](environments.md)、[审计哈希链](audit-chain.md)。以下功能计划更晚的版本:按环境的细粒度权限、SSO(OIDC / LDAP)、API 监控、AI 辅助、多实例部署。
+1.1(2026-11-27 发布)提供多环境与推广、评论、编辑中提示、审计哈希链,见 [多环境与推广](environments.md)、[审计哈希链](audit-chain.md)。以下功能计划更晚的版本:按环境的细粒度权限、SSO(OIDC / LDAP)、API 监控、AI 辅助、多实例部署。
