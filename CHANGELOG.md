@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-11-27
+
+Patch release, together with Go v0.3.1. No configuration changes.
+
 ### Fixed
 
 - **Request rules for single-value parameters written with the plain parameter name now apply**

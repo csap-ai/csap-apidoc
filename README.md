@@ -25,8 +25,8 @@ CSAP Apidoc 在服务运行时直接从代码生成 API 文档,不需要单独�
 
 | 语言 | 状态 | 支持的框架 |
 |---|---|---|
-| **Java** | ✅ 已发布 [1.5.0](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
-| **Go** | ✅ 已发布 [v0.3.0](https://pkg.go.dev/github.com/csap-ai/csap-apidoc/csap-apidoc-go)(`go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.3.0`) | gin、net/http |
+| **Java** | ✅ 已发布 [1.5.1](https://central.sonatype.com/namespace/ai.csap.apidoc) | Spring Boot 2.x / 3.x |
+| **Go** | ✅ 已发布 [v0.3.1](https://pkg.go.dev/github.com/csap-ai/csap-apidoc/csap-apidoc-go)(`go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.3.1`) | gin、net/http |
 | **Rust** | 📋 规划中 | axum、actix-web |
 | 更多语言 | 📋 陆续支持 | 见 [路线图](docs/ROADMAP.md) |
 
@@ -53,7 +53,7 @@ CSAP Apidoc 在服务运行时直接从代码生成 API 文档,不需要单独�
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.5.0</version>
+    <version>1.5.1</version>
 </dependency>
 ```
 
@@ -98,7 +98,7 @@ public class User {
 ## 快速开始(Go)
 
 ```bash
-go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.3.0
+go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.3.1
 ```
 
 ```go

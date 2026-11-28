@@ -13,12 +13,12 @@ CSAP Apidoc 的 Go 实现,是仓库 `csap-apidoc-go/` 目录下的独立 Go 模�
 - **规则文件与 Java 通用**:YAML 规则与 Java 的 `method-field.yaml` 格式相同,Java 项目的规则文件可以直接拿来用。
 - **导出**:OpenAPI 3.1(`/csap/openapi.json`)和 Postman Collection(`/csap/openapi/postman`)。
 
-当前版本 **v0.3.0**,最低 Go 1.22,协议 Apache-2.0。源码与设计文档见 [csap-apidoc-go](https://github.com/csap-ai/csap-apidoc/tree/main/csap-apidoc-go)。
+当前版本 **v0.3.1**,最低 Go 1.22,协议 Apache-2.0。源码与设计文档见 [csap-apidoc-go](https://github.com/csap-ai/csap-apidoc/tree/main/csap-apidoc-go)。
 
 ## 安装
 
 ```bash
-go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.3.0
+go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.3.1
 ```
 
 根包只依赖标准库;用到 gin 适配、YAML 规则时才会编译对应的依赖。SQL 规则来源不引入任何数据库驱动,由你自己 import。

@@ -39,7 +39,7 @@ features:
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.5.0</version>
+    <version>1.5.1</version>
 </dependency>
 ```
 
@@ -48,7 +48,7 @@ features:
 ### Go(gin、net/http)
 
 ```bash
-go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.3.0
+go get github.com/csap-ai/csap-apidoc/csap-apidoc-go@v0.3.1
 ```
 
 创建 `apidoc.New(...)`,用 `ginadapter.Mount` 或 `nethttpadapter.Mount` 挂载,注册路由时用 `apidoc.Op` 声明接口,启动后访问 `/csap-api.html`。完整步骤见 [Go 版](/go/)。

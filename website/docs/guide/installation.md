@@ -17,13 +17,13 @@
 
 ## 添加依赖
 
-所有构件都发布在 Maven Central，当前版本 `1.5.0`。一般项目只需要引入文档 starter。
+所有构件都发布在 Maven Central，当前版本 `1.5.1`。一般项目只需要引入文档 starter。
 
 ### Maven
 
 ```xml
 <properties>
-    <csap.apidoc.version>1.5.0</csap.apidoc.version>
+    <csap.apidoc.version>1.5.1</csap.apidoc.version>
 </properties>
 
 <dependencies>
@@ -40,7 +40,7 @@
 
 ```groovy
 dependencies {
-    implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.5.0'
+    implementation 'ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.5.1'
 }
 ```
 
@@ -48,7 +48,7 @@ dependencies {
 
 ```kotlin
 dependencies {
-    implementation("ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.5.0")
+    implementation("ai.csap.apidoc.boot:csap-apidoc-boot-starter:1.5.1")
 }
 ```
 
@@ -102,7 +102,7 @@ dependencies {
 <dependency>
     <groupId>ai.csap.apidoc</groupId>
     <artifactId>csap-apidoc-annotation</artifactId>
-    <version>1.5.0</version>
+    <version>1.5.1</version>
 </dependency>
 ```
 

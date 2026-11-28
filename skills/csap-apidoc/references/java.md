@@ -1,6 +1,6 @@
 # Java 版(Spring Boot 2.x / 3.x)
 
-当前版本 1.5.0。本文件只适用于 Java 项目;Go 项目见 [go.md](go.md)。共用的 YAML 规则格式见 [yaml-rules.md](yaml-rules.md)。
+当前版本 1.5.1。本文件只适用于 Java 项目;Go 项目见 [go.md](go.md)。共用的 YAML 规则格式见 [yaml-rules.md](yaml-rules.md)。
 
 动手前先看项目现状:`pom.xml` / `build.gradle` 里有没有 `ai.csap.apidoc`、启动类上有没有 `@EnableApidoc`、`src/main/resources/csap-api-doc/method-field/` 下有没有 YAML 规则。
 
@@ -10,7 +10,7 @@
 <dependency>
     <groupId>ai.csap.apidoc.boot</groupId>
     <artifactId>csap-apidoc-boot-starter</artifactId>
-    <version>1.5.0</version>
+    <version>1.5.1</version>
 </dependency>
 ```
 
