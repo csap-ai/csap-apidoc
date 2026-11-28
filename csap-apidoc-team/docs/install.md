@@ -71,10 +71,10 @@
 
 ## 用 jar 部署
 
-jar 从 [GitHub Releases](https://github.com/csap-ai/csap-apidoc/releases) 下载(附件 `csap-apidoc-team-server-1.0.0.jar`,已包含控制台页面),也可以按 [README](../README.md) 从源码构建。
+jar 从 [GitHub Releases](https://github.com/csap-ai/csap-apidoc/releases) 下载(附件 `csap-apidoc-team-server-1.1.0.jar`,已包含控制台页面),也可以按 [README](../README.md) 从源码构建。
 
 ```bash
-java -jar csap-apidoc-team-server-1.0.0.jar
+java -jar csap-apidoc-team-server-1.1.0.jar
 ```
 
 用环境变量指定数据库(MySQL 示例,账号密码为占位符):
@@ -85,7 +85,7 @@ export CSAP_TEAM_DB_USER='csap'
 export CSAP_TEAM_DB_PASSWORD='<数据库密码>'
 export CSAP_TEAM_RULE_TABLE_PREFIX='csap_apidoc_'
 export CSAP_TEAM_PUBLIC_URL='https://team.example.com'
-java -Xms256m -Xmx768m -jar csap-apidoc-team-server-1.0.0.jar
+java -Xms256m -Xmx768m -jar csap-apidoc-team-server-1.1.0.jar
 ```
 
 PostgreSQL 的 URL 写成 `jdbc:postgresql://db.example.com:5432/csap_apidoc`。
@@ -115,7 +115,7 @@ After=network.target
 User=csap
 WorkingDirectory=/opt/csap-team
 EnvironmentFile=/opt/csap-team/team.env
-ExecStart=/usr/bin/java -Xms256m -Xmx768m -jar /opt/csap-team/csap-apidoc-team-server-1.0.0.jar
+ExecStart=/usr/bin/java -Xms256m -Xmx768m -jar /opt/csap-team/csap-apidoc-team-server-1.1.0.jar
 Restart=on-failure
 
 [Install]
@@ -141,7 +141,7 @@ curl -s http://localhost:8090/api/v1/setup/status
 
 ```bash
 mvn -B -pl server -am package -DskipTests
-docker build -f docker/Dockerfile -t csap-apidoc-team:1.0.0 .
+docker build -f docker/Dockerfile -t csap-apidoc-team:1.1.0 .
 ```
 
 镜像基于 `eclipse-temurin:17-jre`,以非 root 用户 `csap` 运行,暴露 `8090`,数据目录 `/app/data`(`VOLUME`)。环境变量 `JAVA_OPTS` 控制 JVM 参数,默认 `-Xms256m -Xmx768m`。
@@ -169,13 +169,13 @@ docker run -d --name csap-team -p 8090:8090 \
   -e CSAP_TEAM_RULE_TABLE_PREFIX='csap_apidoc_' \
   -e CSAP_TEAM_PUBLIC_URL='https://team.example.com' \
   --restart unless-stopped \
-  csap-apidoc-team:1.0.0
+  csap-apidoc-team:1.1.0
 ```
 
 需要更多配置时,挂载配置文件到 `/app/config/application.yml`:
 
 ```bash
-docker run ... -v $(pwd)/application.yml:/app/config/application.yml:ro csap-apidoc-team:1.0.0
+docker run ... -v $(pwd)/application.yml:/app/config/application.yml:ro csap-apidoc-team:1.1.0
 ```
 
 ## 多个环境(1.1)
@@ -302,7 +302,7 @@ curl -s -X POST http://localhost:8090/api/v1/setup \
 
 ```bash
 java -Dloader.path=./drivers \
-     -cp csap-apidoc-team-server-1.0.0.jar \
+     -cp csap-apidoc-team-server-1.1.0.jar \
      org.springframework.boot.loader.launch.PropertiesLauncher
 ```
 
@@ -323,7 +323,7 @@ docker run -d --name csap-team -p 8090:8090 \
   -e CSAP_TEAM_DB_URL='jdbc:dm://db.example.com:5236' \
   -e CSAP_TEAM_DB_USER='<数据库账号>' -e CSAP_TEAM_DB_PASSWORD='<数据库密码>' \
   -e CSAP_TEAM_DATABASE_DIALECT=dm \
-  --entrypoint java csap-apidoc-team:1.0.0 \
+  --entrypoint java csap-apidoc-team:1.1.0 \
   -Dloader.path=/app/drivers -cp /app/app.jar org.springframework.boot.loader.launch.PropertiesLauncher
 ```
 
@@ -337,7 +337,7 @@ docker run -d --name csap-team -p 8090:8090 \
 4. `create-tables=false` 时不会自动升级,启动失败并提示手工执行升级脚本。
 5. 版本之间如有表结构变更,会在对应版本的发布说明里提供增量脚本和步骤。
 
-**1.0 → 1.1**(1.1 开发中,未发布)的完整步骤、自动迁移内容、手工升级、审计导出格式变化和回退见 [升级指南](upgrade-1.1.md)。升级时 1.1 会给已有审计封存哈希链,审计很多时启动会多花一些时间。
+**1.0 → 1.1** 的完整步骤、自动迁移内容、手工升级、审计导出格式变化和回退见 [升级指南](upgrade-1.1.md)。升级时 1.1 会给已有审计封存哈希链,审计很多时启动会多花一些时间。
 
 升级团队版**不影响**服务:服务读的是开源三张表,团队版不会改动它们的结构。
 

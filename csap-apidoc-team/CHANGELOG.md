@@ -2,7 +2,7 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。开源版(Java / Go)的更新日志见仓库根目录的 `CHANGELOG.md`。
 
-## [1.1.0] - 未发布
+## [1.1.0] - 2026-11-27
 
 依赖的开源 `csap-apidoc-database` 仍为 1.5.0,服务注册协议不变,**服务侧不需要任何改动**。不配置环境时行为与 1.0 相同。升级步骤见 [docs/upgrade-1.1.md](docs/upgrade-1.1.md)。
 
