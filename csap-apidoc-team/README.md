@@ -2,7 +2,7 @@
 
 CSAP Apidoc 团队版,免费开源(Apache-2.0),企业自部署。面向多服务、多成员的团队:文档中心、成员与角色、修改单(草稿、冲突检测、审批)、审计追溯、变更通知。
 
-> **1.1(开发中,未发布)**:多环境与一键推广、环境差异对比、修改单评论、编辑中提示、审计哈希链。设计见 [docs/design/team-1.1.md](docs/design/team-1.1.md),变更见 [CHANGELOG.md](CHANGELOG.md)。下文文档里标注"(1.1)"的内容在 1.1 发布后才可用。
+> **1.1.0 已发布(2026-11-27)**:多环境与一键推广、环境差异对比、修改单评论、编辑中提示、审计哈希链。从 1.0 升级见 [docs/upgrade-1.1.md](docs/upgrade-1.1.md),变更见 [CHANGELOG.md](CHANGELOG.md),设计见 [docs/design/team-1.1.md](docs/design/team-1.1.md)。文档里标注"(1.1)"的内容从 1.1.0 起可用。
 
 团队版是开源仓库 [csap-apidoc](../README.md) 的一部分(`csap-apidoc-team/` 目录),同样以 Apache-2.0 许可发布,无用户数限制、无授权文件。下文命令都在 `csap-apidoc-team/` 目录下执行;它不在仓库根 pom 的模块里(需要 JDK 17),单独构建。
 
@@ -48,7 +48,7 @@ CSAP Apidoc 团队版,免费开源(Apache-2.0),企业自部署。面向多服务
 ```bash
 mvn -B verify                       # 全部测试(含 Testcontainers:需要本机 Docker)
 mvn -B -pl server -am package -DskipTests
-java -jar server/target/csap-apidoc-team-server-1.0.0.jar
+java -jar server/target/csap-apidoc-team-server-1.1.0.jar
 ```
 
 - `web/dist` 存在时会被打进 jar 的 `static/`;不存在时后端构建照常通过(只是没有控制台页面)。前端先执行 `cd web && npm ci && npm run build`。
